@@ -1,0 +1,6 @@
+# CODEOWNERS file for agent-skills repository
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# GitHub configuration and workflows
+/.github/ @mongodb/devdocs
+
