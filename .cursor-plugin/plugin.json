@@ -1,7 +1,7 @@
 {
   "name": "mongodb",
   "version": "0.1.0",
-  "description": "Official MongoDB plugin for Cursor offering skills for database management and optimization skills, as well as the MongoDB MCP server",
+  "description": "Official MongoDB plugin for Cursor offering skills for database management and optimization, as well as the MongoDB MCP server",
   "author": {
     "name": "MongoDB",
     "email": "agent-plugins@mongodb.com",
