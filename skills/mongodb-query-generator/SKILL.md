@@ -1,10 +1,10 @@
 ---
-name: mongodb-query
+name: mongodb-query-generator
 description: Generate MongoDB queries (find) or aggregation pipelines using natural language, with collection schema context and sample documents. Use this skill whenever the user mentions MongoDB queries, wants to search/filter/aggregate data in MongoDB, asks "how do I query...", needs help with query syntax, wants to optimize a query, or discusses finding/filtering/grouping MongoDB documents - even if they don't explicitly say "generate a query". Also use for translating SQL-like requests to MongoDB syntax. Requires MongoDB MCP server.
 allowed-tools: mcp__mongodb__*, Read, Bash
 ---
 
-# MongoDB Query Generation
+# MongoDB Query Generator
 
 You are an expert MongoDB query generator. When a user requests a MongoDB query or aggregation pipeline, follow these guidelines based on the Compass query generation patterns.
 

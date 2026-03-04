@@ -164,10 +164,10 @@ Check if a search index exists using `collection-indexes` before choosing approa
 ## 📁 Files Created
 
 ### Test Infrastructure
-- `mongodb-query/mongodb-query-workspace/fixtures/` - Test data (5 TypeScript files)
-- `mongodb-query/mongodb-query-workspace/load-fixtures.ts` - Fixture loader script
-- `mongodb-query/mongodb-query-workspace/package.json` - Dependencies
-- `mongodb-query/mongodb-query-workspace/README.md` - Setup documentation
+- `mongodb-query-generator/mongodb-query-workspace/fixtures/` - Test data (5 TypeScript files)
+- `mongodb-query-generator/mongodb-query-workspace/load-fixtures.ts` - Fixture loader script
+- `mongodb-query-generator/mongodb-query-workspace/package.json` - Dependencies
+- `mongodb-query-generator/mongodb-query-workspace/README.md` - Setup documentation
 
 ### Test Results
 - `iteration-1/test-results.md` - Detailed test comparison
@@ -198,7 +198,7 @@ Check if a search index exists using `collection-indexes` before choosing approa
 
 ## 📦 Portability
 
-Everything in `mongodb-query/mongodb-query-workspace/` is self-contained:
+Everything in `mongodb-query-generator/mongodb-query-workspace/` is self-contained:
 - Fixtures can be loaded into any MongoDB instance
 - Scripts work with local MongoDB, Atlas, or Atlas Local
 - No dependencies on Compass repository
@@ -240,6 +240,6 @@ The mongodb-query skill is **production-ready** with excellent performance acros
 
 ## 📞 Support
 
-**Test Data Location:** `/Users/elizabeth.button/devTools/agent-skills/skills/mongodb-query/mongodb-query-workspace/`
-**Skill Location:** `/Users/elizabeth.button/devTools/agent-skills/skills/mongodb-query/`
+**Test Data Location:** `/Users/elizabeth.button/devTools/agent-skills/testing/mongodb-query-generator/mongodb-query-workspace/`
+**Skill Location:** `/Users/elizabeth.button/devTools/agent-skills/skills/mongodb-query-generator/`
 **Atlas Connection:** Configured in `.mcp.json`
