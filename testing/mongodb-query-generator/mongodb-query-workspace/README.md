@@ -5,7 +5,7 @@ This workspace contains test fixtures, evaluation cases, and scripts for testing
 ## Directory Structure
 
 ```
-mongodb-query/mongodb-query-workspace/
+mongodb-query-generator/mongodb-query-workspace/
 ├── fixtures/              # Test data fixtures (copied from Compass)
 │   ├── airbnb.listingsAndReviews.ts
 │   ├── berlin.cocktailbars.ts
