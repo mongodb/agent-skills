@@ -1,0 +1,18 @@
+{
+  "name": "mongodb-query-skill-tests",
+  "version": "1.0.0",
+  "description": "Test workspace for mongodb-query skill evaluation",
+  "type": "module",
+  "scripts": {
+    "load-fixtures": "tsx load-fixtures.ts",
+    "test": "echo \"Run skill tests using Claude Code\""
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0",
+    "bson": "^6.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

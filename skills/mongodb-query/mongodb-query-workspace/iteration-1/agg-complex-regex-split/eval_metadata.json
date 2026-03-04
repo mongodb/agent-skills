@@ -1,0 +1,41 @@
+{
+  "eval_id": 31,
+  "eval_name": "agg-complex-regex-split",
+  "prompt": "What are the 5 most frequent words (case sensitive) used in movie titles in the 1980s and 1990s combined? Sorted first by frequency count then alphabetically. output fields count and word",
+  "database": "netflix",
+  "collection": "movies",
+  "assertions": [
+    {
+      "name": "uses_aggregation",
+      "description": "Uses aggregation pipeline (required for this complexity)"
+    },
+    {
+      "name": "filters_year_range",
+      "description": "$match for years 1980-1999"
+    },
+    {
+      "name": "splits_title",
+      "description": "Uses $split or similar to break title into words"
+    },
+    {
+      "name": "unwinds_words",
+      "description": "Uses $unwind to process individual words"
+    },
+    {
+      "name": "groups_and_counts",
+      "description": "$group stage to count word frequency"
+    },
+    {
+      "name": "sorts_correctly",
+      "description": "Sorts by count descending, then word alphabetically"
+    },
+    {
+      "name": "limits_to_5",
+      "description": "Limits to 5 results"
+    },
+    {
+      "name": "output_fields_correct",
+      "description": "Output has 'count' and 'word' fields"
+    }
+  ]
+}
