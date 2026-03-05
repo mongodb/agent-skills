@@ -1,0 +1,14 @@
+{
+    "name": "mongodb-plugins",
+    "owner": {
+        "name": "MongoDB",
+        "email": "agent-plugins@mongodb.com"
+    },
+    "plugins": [
+        {
+            "name": "mongodb",
+            "source": "./",
+            "description": "Official MongoDB plugin for Claude offering skills for database management and optimization, as well as the MongoDB MCP server"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "mongodb",
+  "version": "0.1.0",
+  "description": "Official MongoDB plugin for Cursor offering skills for database management and optimization, as well as the MongoDB MCP server",
+  "author": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com",
+    "url": "https://www.mongodb.com"
+  },
+  "homepage": "https://www.mongodb.com/docs/mcp-server/overview/",
+  "repository": "https://github.com/mongodb/agent-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mongodb",
+    "database",
+    "skills",
+    "agent"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json",
+  "logo": "./assets/logo.svg"
+}
