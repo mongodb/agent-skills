@@ -39,49 +39,51 @@ Reference these guidelines when:
 
 ### 1. Schema Anti-Patterns (CRITICAL) - 7 rules
 
-- `antipattern-unbounded-arrays` - Never allow arrays to grow without limit
-- `antipattern-bloated-documents` - Keep documents under 16KB for working set
-- `antipattern-massive-arrays` - Arrays over 1000 elements hurt performance
-- `antipattern-unnecessary-collections` - Fewer collections, more embedding
-- `antipattern-excessive-lookups` - Reduce $lookup by denormalizing
-- `antipattern-schema-drift` - Enforce consistent structure across documents
-- `antipattern-unnecessary-indexes` - Audit and remove unused or redundant indexes
+- [antipattern-unbounded-arrays](references/antipattern-unbounded-arrays.md) - Never allow arrays to grow without limit
+- [antipattern-bloated-documents](references/antipattern-bloated-documents.md) - Keep documents under 16KB for working set
+- [antipattern-massive-arrays](references/antipattern-massive-arrays.md) - Arrays over 1000 elements hurt performance
+- [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Fewer collections, more embedding
+- [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - Reduce $lookup by denormalizing
+- [antipattern-schema-drift](references/antipattern-schema-drift.md) - Enforce consistent structure across documents
+- [antipattern-unnecessary-indexes](references/antipattern-unnecessary-indexes.md) - Audit and remove unused or redundant indexes
 
 ### 2. Schema Fundamentals (HIGH) - 5 rules
 
-- `fundamental-embed-vs-reference` - Decision framework for relationships
-- `fundamental-data-together` - Data accessed together stored together
-- `fundamental-document-model` - Embrace documents, avoid SQL patterns
-- `fundamental-schema-validation` - Enforce structure with JSON Schema
-- `fundamental-16mb-awareness` - Design around BSON document limit
+- [fundamental-embed-vs-reference](references/fundamental-embed-vs-reference.md) - Decision framework for relationships
+- [fundamental-data-together](references/fundamental-data-together.md) - Data accessed together stored together
+- [fundamental-document-model](references/fundamental-document-model.md) - Embrace documents, avoid SQL patterns
+- [fundamental-schema-validation](references/fundamental-schema-validation.md) - Enforce structure with JSON Schema
+- [fundamental-16mb-awareness](references/fundamental-16mb-awareness.md) - Design around BSON document limit
 
 ### 3. Relationship Patterns (HIGH) - 6 rules
 
-- `relationship-one-to-one` - Embed for simplicity, reference for independence
-- `relationship-one-to-few` - Embed bounded arrays (addresses, phone numbers)
-- `relationship-one-to-many` - Reference for large/unbounded relationships
-- `relationship-one-to-squillions` - Reference massive child sets, store summaries
-- `relationship-many-to-many` - Two-way referencing for bidirectional access
-- `relationship-tree-structures` - Parent/child/materialized path patterns
+- [relationship-one-to-one](references/relationship-one-to-one.md) - Embed for simplicity, reference for independence
+- [relationship-one-to-few](references/relationship-one-to-few.md) - Embed bounded arrays (addresses, phone numbers)
+- [relationship-one-to-many](references/relationship-one-to-many.md) - Reference for large/unbounded relationships
+- [relationship-one-to-squillions](references/relationship-one-to-squillions.md) - Reference massive child sets, store summaries
+- [relationship-many-to-many](references/relationship-many-to-many.md) - Two-way referencing for bidirectional access
+- [relationship-tree-structures](references/relationship-tree-structures.md) - Parent/child/materialized path patterns
 
 ### 4. Design Patterns (MEDIUM) - 12 rules
 
-- `pattern-archive` - Move historical data to separate storage for performance
-- `pattern-attribute` - Collapse many optional fields into key-value attributes
-- `pattern-bucket` - Group time-series or IoT data into buckets
-- `pattern-time-series-collections` - Use native time series collections when available
-- `pattern-extended-reference` - Cache frequently-accessed related data
-- `pattern-subset` - Store hot data in main doc, cold data elsewhere
-- `pattern-computed` - Pre-calculate expensive aggregations
-- `pattern-outlier` - Handle documents with exceptional array sizes
-- `pattern-polymorphic` - Store heterogeneous documents with a type discriminator
-- `pattern-schema-versioning` - Evolve schemas safely with version fields
+- [pattern-approximation](references/pattern-approximation.md) - Use approximate values for high-frequency counters
+- [pattern-archive](references/pattern-archive.md) - Move historical data to separate storage for performance
+- [pattern-attribute](references/pattern-attribute.md) - Collapse many optional fields into key-value attributes
+- [pattern-bucket](references/pattern-bucket.md) - Group time-series or IoT data into buckets
+- [pattern-computed](references/pattern-computed.md) - Pre-calculate expensive aggregations
+- [pattern-document-versioning](references/pattern-document-versioning.md) - Track document change history
+- [pattern-extended-reference](references/pattern-extended-reference.md) - Cache frequently-accessed related data
+- [pattern-outlier](references/pattern-outlier.md) - Handle documents with exceptional array sizes
+- [pattern-polymorphic](references/pattern-polymorphic.md) - Store heterogeneous documents with a type discriminator
+- [pattern-schema-versioning](references/pattern-schema-versioning.md) - Evolve schemas safely with version fields
+- [pattern-subset](references/pattern-subset.md) - Store hot data in main doc, cold data elsewhere
+- [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections when available
 
 ### 5. Schema Validation (MEDIUM) - 3 rules
 
-- `validation-json-schema` - Validate data types and structure at database level
-- `validation-action-levels` - Choose warn vs error mode for validation
-- `validation-rollout-strategy` - Introduce validation safely in production
+- [validation-json-schema](references/validation-json-schema.md) - Validate data types and structure at database level
+- [validation-action-levels](references/validation-action-levels.md) - Choose warn vs error mode for validation
+- [validation-rollout-strategy](references/validation-rollout-strategy.md) - Introduce validation safely in production
 
 ## Key Principle
 
@@ -100,15 +102,9 @@ This is MongoDB's core philosophy. Embedding related data eliminates joins, redu
 
 ## How to Use
 
-Read individual rule files for detailed explanations and code examples:
+Read individual reference files for detailed explanations and code examples.
 
-```
-rules/antipattern-unbounded-arrays.md
-rules/relationship-one-to-many.md
-rules/_sections.md
-```
-
-Each rule file contains:
+Each reference file contains:
 - Brief explanation of why it matters
 - Incorrect code example with explanation
 - Correct code example with explanation
@@ -206,8 +202,4 @@ If you're not sure about a recommendation:
 
 We're a team—let's get this right together.
 
----
 
-## Full Compiled Document
-
-For the complete guide with all rules expanded: `AGENTS.md`

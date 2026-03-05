@@ -4,21 +4,16 @@ A structured repository for creating and maintaining MongoDB Schema Design best 
 
 ## Structure
 
-- `rules/` - Individual rule files (one per rule)
-  - `_sections.md` - Section metadata (titles, impacts, descriptions)
-  - `area-description.md` - Individual rule files
+- `references/` - Individual reference files (one per rule)
+- `SKILL.md` - Skill definition with frontmatter and overview
 - `metadata.json` - Document metadata (version, organization, abstract)
-- __`AGENTS.md`__ - Compiled output (generated)
-- __`test-cases.json`__ - Test cases for LLM evaluation (generated)
+- `test-cases.json` - Test cases for LLM evaluation
 
-## Installation (End Users)
+## Installation
 
-### Claude Code plugin
-Use the root install flow in `/README.md` to install from Claude Code plugin marketplace.
-
-### Agent Skills CLI (recommended)
+### Agent Skills CLI
 ```bash
-npx skills add romiluz13/mongodb-agent-skills --skill mongodb-schema-design -a claude-code -a codex -a cursor
+npx skills add romiluz13/mongodb-agent-skills --skill mongodb-schema-design
 ```
 
 ## Getting Started
@@ -45,7 +40,7 @@ npx skills add romiluz13/mongodb-agent-skills --skill mongodb-schema-design -a c
 
 ## Creating a New Rule
 
-1. Copy an existing rule file to `rules/area-description.md`
+1. Create a new file in `references/` named `area-description.md`
 2. Choose the appropriate area prefix:
    - `antipattern-` for Schema Anti-Patterns (Section 1)
    - `fundamental-` for Schema Fundamentals (Section 2)
@@ -54,7 +49,7 @@ npx skills add romiluz13/mongodb-agent-skills --skill mongodb-schema-design -a c
    - `validation-` for Schema Validation (Section 5)
 3. Fill in the frontmatter and content
 4. Ensure you have clear bad/good examples with explanations
-5. Run `pnpm build mongodb-schema-design` to regenerate AGENTS.md
+5. Run `pnpm build mongodb-schema-design` to regenerate outputs
 
 ## Rule File Structure
 
@@ -91,7 +86,6 @@ Reference: [MongoDB Documentation](https://mongodb.com/docs/manual/)
 
 ## File Naming Convention
 
-- Files starting with `_` are special (excluded from build)
 - Rule files: `area-description.md` (e.g., `antipattern-unbounded-arrays.md`)
 - Section is automatically inferred from filename prefix
 - Rules are sorted alphabetically by title within each section
@@ -105,7 +99,7 @@ Reference: [MongoDB Documentation](https://mongodb.com/docs/manual/)
 
 ## Scripts
 
-- `pnpm build mongodb-schema-design` - Compile rules into AGENTS.md
+- `pnpm build mongodb-schema-design` - Compile rules
 - `pnpm validate mongodb-schema-design` - Validate all rule files
 - `pnpm extract-tests mongodb-schema-design` - Extract test cases for LLM evaluation
 
@@ -117,7 +111,7 @@ When adding or modifying rules:
 2. Follow the rule file structure above
 3. Include clear bad/good examples using MongoDB Shell syntax
 4. Add appropriate tags
-5. Run `pnpm build mongodb-schema-design` to regenerate AGENTS.md
+5. Run `pnpm build mongodb-schema-design` to regenerate outputs
 6. Rules are automatically sorted by title - no need to manage numbers
 
 ## Acknowledgments
