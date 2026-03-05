@@ -124,6 +124,23 @@ While they work through the documentation, remind them of the key steps:
 5. **Generate Credentials** - Create the Client ID and Secret (they can only see the secret once!)
 6. **Save Credentials** - Keep the Client ID and Secret somewhere safe
 
+**⚠️ IMPORTANT: API Access List Configuration**
+
+Before using the service account, the user MUST add their IP address to the service account's API Access List. Without this:
+- All Atlas Admin API operations will fail with authentication errors
+- The service account credentials won't work even if they're valid
+
+To configure the API Access List (recommended - more secure):
+1. After creating the service account, stay on the service account details page
+2. Find the "API Access List" section
+3. Click "Add Access List Entry"
+4. Either add their current IP address or use 0.0.0.0/0 for testing (not recommended for production)
+5. Save the changes
+
+This approach is more secure than using the global Network Access settings because it only affects this specific service account's API access, not database connections.
+
+Without proper API Access List configuration, they'll encounter errors when trying to use Atlas Admin API tools.
+
 ### 3b.4: Collect Credentials
 
 Once they've completed the Atlas setup, ask them to provide:
@@ -231,9 +248,9 @@ export MDB_MCP_CONNECTION_STRING="<their-exact-value>"
 
 1. Open your shell profile: `nano ~/.zshrc` (or vim/code)
 2. Paste the export line(s) at the end
-3. Save and run: `source ~/.zshrc`
-4. Verify: `env | grep MDB_MCP`
-5. Restart the agentic client (fully quit and reopen)
+3. Save the file
+4. Restart the agentic client (fully quit and reopen) - the environment variables will be loaded when the client starts
+5. Verify: `env | grep MDB_MCP` in a new terminal to confirm the variables are set
 
 ## Finding your shell profile
 
@@ -261,37 +278,15 @@ Tell the user in your response:
 
 **Do not** create multiple README files, architecture documents, comparison guides, or verbose explanations. Keep the user-facing communication concise and the documentation minimal.
 
-After completing Documentation Mode, skip Step 5 (since there's no automatic sourcing) and go to Step 6.
+After completing Documentation Mode, proceed to Step 5 (Next Steps).
 
-## Step 5: Apply Configuration (Interactive Mode Only)
+After completing Interactive Mode, proceed to Step 5 (Next Steps).
 
-After updating the profile, the environment variables need to be loaded into the current session.
-
-### 5.1: Source the Profile
-
-Source the profile file to load the new environment variables:
-
-```bash
-source ~/.zshrc  # or whatever profile file was used
-```
-
-This makes the variables available immediately in the current terminal session.
-
-### 5.2: Verify Configuration
-
-Verify the environment variables are now set:
-
-```bash
-env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET)"
-```
-
-Confirm that the expected variables appear in the output.
-
-## Step 6: Next Steps
+## Step 5: Next Steps
 
 Inform the user about what to do next:
 
-1. **Restart the client**: The MCP server runs when the agentic client starts, so they need to fully restart it (not just reload the window) for the new environment variables to be picked up.
+1. **Restart the client**: The MCP server runs when the agentic client starts, so they need to fully restart it (not just reload the window) for the new environment variables to be picked up. The shell profile will be sourced when they open a new terminal or when the client starts in a new process.
 
 2. **Verify MCP Server**: After restarting, they can verify the MongoDB MCP server is working by asking the agent to connect to MongoDB or perform MongoDB operations.
 
@@ -300,6 +295,7 @@ Inform the user about what to do next:
    - If they configured service account credentials, they'll additionally have:
      - Atlas Admin API tools
      - The `atlas-connect-cluster` tool to switch between clusters dynamically
+   - **Important for service account users**: Make sure their IP address is added to the service account's API Access List (found in the service account settings), otherwise all API operations will fail
 
 ## Important Notes
 
