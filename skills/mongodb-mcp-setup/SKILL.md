@@ -1,0 +1,323 @@
+---
+name: mongodb-mcp-setup
+description: Guide users through configuring the MongoDB MCP server. Use this skill when a user has the MongoDB MCP server installed but hasn't configured the required environment variables, or when they ask about connecting to MongoDB/Atlas and don't have the credentials set up. Also trigger immediately after the user installs the MongoDB plugin. This skill helps users choose between direct database connection (connection string) or Atlas Admin API access (service account credentials), then walks them through the setup process.
+---
+
+# MongoDB MCP Server Setup
+
+This skill guides users through configuring the MongoDB MCP server for use with an agentic client.
+
+## Overview
+
+The MongoDB MCP server requires authentication credentials to work. Users have two options:
+
+1. **Connection String** (Option A): Direct connection to a specific MongoDB cluster
+   - Simpler setup
+   - Single cluster access
+   - Requires `MDB_MCP_CONNECTION_STRING` environment variable
+
+2. **Service Account Credentials** (Option B): MongoDB Atlas Admin API access
+   - More complex setup
+   - Access to Atlas Admin API
+   - Ability to connect to any cluster dynamically using the `atlas-connect-cluster` tool
+   - Requires both `MDB_MCP_API_CLIENT_ID` and `MDB_MCP_API_CLIENT_SECRET` environment variables
+
+## Execution Modes
+
+This skill supports two execution modes:
+
+1. **Interactive Mode** (preferred): Directly modifies the user's shell profile when Bash access is available
+2. **Documentation Mode** (fallback): Creates example configuration files and instructions when Bash access is restricted
+
+Always attempt Interactive Mode first. If Bash permission is denied, automatically switch to Documentation Mode without asking the user.
+
+## Step 1: Check Existing Configuration
+
+Before starting the setup, check if the user already has the required environment variables configured.
+
+**Try to run** this command to check for existing configuration:
+
+```bash
+env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET)"
+```
+
+**If Bash access is denied:** Skip to Documentation Mode (see Step 4b). You can't check existing configuration interactively, so proceed with creating documentation files.
+
+**Interpretation (if Bash succeeded):**
+- If `MDB_MCP_CONNECTION_STRING` is set, the user has connection string auth configured
+- If both `MDB_MCP_API_CLIENT_ID` and `MDB_MCP_API_CLIENT_SECRET` are set, the user has service account auth configured
+- If the user has either valid configuration, exit gracefully unless they explicitly need Atlas Admin API access but only have the connection string configured
+
+**Important**: If the user is asking to perform an Atlas Admin API action (like managing clusters, creating database users, getting performance advisor recommendations) but only has `MDB_MCP_CONNECTION_STRING` configured, explain that they need service account credentials for Atlas Admin API access and offer to help them set it up.
+
+## Step 2: Present Configuration Options
+
+If no valid configuration exists, present both options to the user and help them understand which one suits their needs:
+
+**Connection String (Option A)** is best when:
+- They want quick setup
+- They're working with a single cluster
+- They don't need Atlas Admin API access
+- They already have a MongoDB connection string
+
+**Service Account Credentials (Option B)** is best when:
+- They need to access Atlas Admin API
+- They want to switch between multiple clusters
+- They want the full power of the MongoDB MCP server
+- They're working with MongoDB Atlas (not self-hosted)
+
+Use the AskUserQuestion tool to let them choose.
+
+## Step 3a: Connection String Setup
+
+If the user chooses Option A:
+
+### 3a.1: Obtain Connection String
+
+Ask the user for their MongoDB connection string. It should look like one of these formats:
+- `mongodb://username:password@host:port/database`
+- `mongodb+srv://username:password@cluster.mongodb.net/database`
+- `mongodb://host:port` (for local instances)
+
+### 3a.2: Validate Connection String
+
+Perform basic validation to ensure the connection string follows MongoDB URI format:
+- Must start with `mongodb://` or `mongodb+srv://`
+- Should contain host information
+- Warn if it doesn't look valid, but allow the user to proceed if they insist
+
+### 3a.3: Update Shell Profile
+
+Proceed to Step 4 (Update Shell Profile) with the environment variable:
+```bash
+export MDB_MCP_CONNECTION_STRING="<user-provided-connection-string>"
+```
+
+## Step 3b: Service Account Setup
+
+If the user chooses Option B:
+
+### 3b.1: Explain the Process
+
+Explain that they need to create a MongoDB Atlas Service Account to get API credentials. This involves:
+1. Logging into MongoDB Atlas
+2. Creating a service account (or using an existing one)
+3. Getting the Client ID and Client Secret
+4. Configuring appropriate permissions
+
+### 3b.2: Provide Setup Instructions
+
+Tell the user they need to follow the official MongoDB documentation to create service account credentials. Provide the link:
+
+**MongoDB MCP Server Prerequisites**: https://www.mongodb.com/docs/mcp-server/prerequisites/
+
+Offer to open this URL in their browser to make it easier.
+
+### 3b.3: Guide Through Key Steps
+
+While they work through the documentation, remind them of the key steps:
+
+1. **Navigate to MongoDB Atlas** - Go to cloud.mongodb.com and sign in
+2. **Access Organization Settings** - Find the organization where they want to create the service account
+3. **Create Service Account** - Go to Access Manager → Service Accounts → Create Service Account
+4. **Set Permissions** - Grant appropriate permissions (they'll need at least Organization Member or Project Owner for most operations)
+5. **Generate Credentials** - Create the Client ID and Secret (they can only see the secret once!)
+6. **Save Credentials** - Keep the Client ID and Secret somewhere safe
+
+### 3b.4: Collect Credentials
+
+Once they've completed the Atlas setup, ask them to provide:
+- Client ID
+- Client Secret
+
+Use the AskUserQuestion tool with appropriate input fields for these credentials.
+
+### 3b.5: Update Shell Profile
+
+Proceed to Step 4 (Update Shell Profile) with both environment variables:
+```bash
+export MDB_MCP_API_CLIENT_ID="<user-provided-client-id>"
+export MDB_MCP_API_CLIENT_SECRET="<user-provided-client-secret>"
+```
+
+## Step 4: Update Shell Profile
+
+Now that you have the environment variable(s) to configure, update the user's shell profile.
+
+**Try Interactive Mode first (4a). If Bash is denied at any point, switch to Documentation Mode (4b).**
+
+### Step 4a: Interactive Mode (Automatic Configuration)
+
+Use this mode when you have Bash access.
+
+#### 4a.1: Detect Shell and Profile
+
+**Try to detect** the user's current shell:
+```bash
+echo $SHELL
+```
+
+**If Bash is denied:** Switch immediately to Documentation Mode (Step 4b).
+
+Based on the shell, determine the appropriate profile file to update:
+
+| Shell | Profile File |
+|-------|-------------|
+| `/bin/zsh` or `/usr/bin/zsh` | `~/.zshrc` |
+| `/bin/bash` or `/usr/bin/bash` | `~/.bashrc` or `~/.bash_profile` (check which exists, prefer `~/.bashrc`) |
+| `/bin/fish` or `/usr/bin/fish` | `~/.config/fish/config.fish` |
+| Others | `~/.profile` (fallback) |
+
+**For Windows users** (if you detect Windows OS):
+- PowerShell: Use the PowerShell profile (check `$PROFILE` variable)
+- Inform them they may need to create the profile if it doesn't exist
+
+#### 4a.2: Check for Existing Configuration
+
+Before adding new environment variables, check if these variables are already defined in the profile file. If they are, offer to update them rather than adding duplicates.
+
+#### 4a.3: Add Environment Variables
+
+Add the environment variables to the appropriate profile file. Add a comment to make it clear what these are for:
+
+```bash
+# MongoDB MCP Server Configuration
+export MDB_MCP_CONNECTION_STRING="<value>"
+```
+
+or
+
+```bash
+# MongoDB MCP Server Configuration (Atlas Service Account)
+export MDB_MCP_API_CLIENT_ID="<value>"
+export MDB_MCP_API_CLIENT_SECRET="<value>"
+```
+
+Use the Edit tool to append these lines to the profile file. If the file doesn't exist, create it with Write tool.
+
+#### 4a.4: Set Permissions
+
+Ensure the profile file has appropriate permissions (especially important for files containing secrets):
+```bash
+chmod 600 ~/.zshrc  # or whatever profile file was used
+```
+
+After completing Interactive Mode, proceed to Step 5 (Apply Configuration).
+
+### Step 4b: Documentation Mode (Manual Configuration)
+
+Use this mode when Bash access is restricted or denied.
+
+**CRITICAL: Create ONLY ONE file called `SETUP.md`. Do NOT create additional files like README.md, summary.md, session_log.txt, resolution_summary.md, etc. Just SETUP.md.**
+
+#### 4b.1: Create ONE Setup File
+
+Create a single file called `SETUP.md` with concise, actionable instructions. Keep it under 100 lines. Structure:
+
+```markdown
+# MongoDB MCP Setup
+
+## What to do
+
+Add this to your shell profile (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+export MDB_MCP_CONNECTION_STRING="<their-exact-value>"
+```
+
+(or for service account, include both API credentials)
+
+## Steps
+
+1. Open your shell profile: `nano ~/.zshrc` (or vim/code)
+2. Paste the export line(s) at the end
+3. Save and run: `source ~/.zshrc`
+4. Verify: `env | grep MDB_MCP`
+5. Restart the agentic client (fully quit and reopen)
+
+## Finding your shell profile
+
+- Run `echo $SHELL` to check your shell
+- zsh → `~/.zshrc`
+- bash → `~/.bashrc` or `~/.bash_profile`
+
+## Troubleshooting
+
+If it doesn't work after restart:
+- Make sure you used the exact variable name (MDB_MCP_CONNECTION_STRING or MDB_MCP_API_CLIENT_ID/SECRET)
+- Check the variable is set: `env | grep MDB_MCP`
+- Verify the client was fully restarted, not just reloaded
+```
+
+**Keep it direct and scannable.** Don't create separate files for "overview", "architecture", "workflow guide", etc. One file with clear steps.
+
+#### 4b.2: Explain to User (Brief Summary)
+
+Tell the user in your response:
+- "I've created SETUP.md with instructions to configure the MongoDB MCP server"
+- "The key step: add this line to your ~/.zshrc file: `export MDB_MCP_CONNECTION_STRING='<value>'`"
+- "Then source the file and restart the client"
+- Point them to the SETUP.md file for full details
+
+**Do not** create multiple README files, architecture documents, comparison guides, or verbose explanations. Keep the user-facing communication concise and the documentation minimal.
+
+After completing Documentation Mode, skip Step 5 (since there's no automatic sourcing) and go to Step 6.
+
+## Step 5: Apply Configuration (Interactive Mode Only)
+
+After updating the profile, the environment variables need to be loaded into the current session.
+
+### 5.1: Source the Profile
+
+Source the profile file to load the new environment variables:
+
+```bash
+source ~/.zshrc  # or whatever profile file was used
+```
+
+This makes the variables available immediately in the current terminal session.
+
+### 5.2: Verify Configuration
+
+Verify the environment variables are now set:
+
+```bash
+env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET)"
+```
+
+Confirm that the expected variables appear in the output.
+
+## Step 6: Next Steps
+
+Inform the user about what to do next:
+
+1. **Restart the client**: The MCP server runs when the agentic client starts, so they need to fully restart it (not just reload the window) for the new environment variables to be picked up.
+
+2. **Verify MCP Server**: After restarting, they can verify the MongoDB MCP server is working by asking the agent to connect to MongoDB or perform MongoDB operations.
+
+3. **Using the Tools**:
+   - If they configured a connection string, they'll have direct database access tools available
+   - If they configured service account credentials, they'll additionally have:
+     - Atlas Admin API tools
+     - The `atlas-connect-cluster` tool to switch between clusters dynamically
+
+## Important Notes
+
+- **Security**: Environment variables containing credentials should never be committed to version control. The shell profile file should have restricted permissions (600).
+
+- **Troubleshooting**: If the MCP server still doesn't work after restart:
+  - Verify the environment variables are set in a fresh terminal: `env | grep MDB_MCP`
+  - Check that the client was fully restarted (not just reloaded)
+  - Verify the credentials are valid by testing them directly (connection string by connecting with `mongosh`, service account credentials by making an Atlas API call)
+  - Check the client's MCP server logs for error messages
+
+## Error Handling
+
+Be prepared for common issues:
+
+- **Bash permission denied**: Automatically switch to Documentation Mode (Step 4b). Don't ask the user for permission or explain why - just gracefully create documentation files instead
+- **Invalid connection string format**: Provide guidance on the correct format
+- **Profile file doesn't exist**: In Interactive Mode, create it with Write tool. In Documentation Mode, explain where it should be created
+- **Permission denied on profile file**: In Interactive Mode, help them fix file permissions. In Documentation Mode, include permission instructions in the documentation
+- **Variables not loading**: Check shell type and profile file path
+- **Service account credentials invalid**: Direct them back to Atlas to verify or regenerate credentials
