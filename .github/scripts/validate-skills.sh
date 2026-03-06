@@ -50,8 +50,11 @@ for skill in "${changed_skills[@]}"; do
   # Run validation with markdown output so the result is written to the job
   # summary in one pass. --emit-annotations works with any output format, so
   # inline PR annotations are still emitted alongside the markdown report.
+  # We use process substitution to:
+  # 1. Send all output (including ::error commands) to stdout for GitHub Actions
+  # 2. Filter out ::error/::warning/::notice lines before writing to the summary
   skill-validator check --strict --emit-annotations -o markdown "skills/$skill/" \
-    >> "${GITHUB_STEP_SUMMARY:-/dev/null}" || FAILED=1
+    | tee >(grep -v '^::' >> "${GITHUB_STEP_SUMMARY:-/dev/null}") || FAILED=1
 done
 
 if [ $FAILED -ne 0 ]; then
