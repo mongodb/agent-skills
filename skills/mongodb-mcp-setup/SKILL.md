@@ -18,13 +18,13 @@ The MongoDB MCP server requires authentication credentials to work. Users have t
 
 2. **Service Account Credentials** (Option B): MongoDB Atlas Admin API access
    - **Recommended for Atlas users** - manages authentication internally and simplifies data access
-   - Full access to Atlas Admin API
+   - Access to Atlas Admin API (limited by service account permissions)
    - Ability to connect to any cluster dynamically using the `atlas-connect-cluster` tool
-   - No need to create DB Users or manage their credentials
+   - No need to manually create DB Users or manage their credentials
    - Requires both `MDB_MCP_API_CLIENT_ID` and `MDB_MCP_API_CLIENT_SECRET` environment variables
 
 3. **Atlas Local** (Option C): Local development with Docker
-   - **Best for local development and testing** - no cloud setup required
+   - **Best for local development and testing** - no configuration required
    - Runs an Atlas cluster locally in Docker
    - No environment variables or credentials needed
    - Requires Docker to be installed
