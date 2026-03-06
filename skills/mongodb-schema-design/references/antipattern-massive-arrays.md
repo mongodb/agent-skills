@@ -128,4 +128,4 @@ db.setProfilingLevel(1, { slowms: 100 })
 // Then check db.system.profile for slow $push operations
 ```
 
-Reference: [Building with Patterns - Subset Pattern](https://mongodb.com/blog/post/building-with-patterns-the-subset-pattern)
+Reference: [Avoid Unbounded Arrays](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/unbounded-arrays/)

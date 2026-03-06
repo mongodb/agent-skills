@@ -9,23 +9,25 @@ tags: schema, patterns, attribute, sparse-fields, indexing, flexible-schema
 
 **If documents have many optional fields, move them into a key-value array.** This avoids dozens of sparse indexes and lets you query across attributes with a single multikey index.
 
-**Incorrect (many optional fields and indexes):**
+**Incorrect (separate field and index per optional attribute):**
 
 ```javascript
-// Many optional fields - most are null or missing
+// Many optional fields - most are missing on any given document
 {
   _id: 1,
   name: "Bottle",
   color: "red",
   size: "M",
   material: "glass",
-  // 20+ other optional fields
+  // 20+ other optional fields, varying per document
 }
 
-// Index explosion
-// db.items.createIndex({ color: 1 })
-// db.items.createIndex({ size: 1 })
-// db.items.createIndex({ material: 1 })
+// One partial index per optional field — correct use of partialFilterExpression,
+// but you end up maintaining dozens of indexes as attributes grow
+db.items.createIndex({ color: 1 }, { partialFilterExpression: { color: { $exists: true } } })
+db.items.createIndex({ size: 1 }, { partialFilterExpression: { size: { $exists: true } } })
+db.items.createIndex({ material: 1 }, { partialFilterExpression: { material: { $exists: true } } })
+// … repeated for every new attribute
 ```
 
 **Correct (attribute pattern):**

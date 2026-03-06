@@ -62,9 +62,7 @@ function migrateToV2(batchSize = 1000) {
   let migrated = 0
   let cursor = db.users.find({ schemaVersion: { $lt: 2 } }).limit(batchSize)
 
-  while (cursor.hasNext()) {
-    const doc = cursor.next()
-
+  for (const doc of cursor) {
     // Transform v1 → v2
     const parsed = parseAddressString(doc.address)
 

@@ -71,3 +71,5 @@ function recordPageView(articleId) {
 - **Approximation Pattern**: intentionally stores inexact values to reduce write frequency
 
 Use Approximation when staleness is acceptable. Use Computed when exact values are needed but recalculating each time is too expensive.
+
+Reference: [Use the Approximation Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/approximation-schema-pattern/)

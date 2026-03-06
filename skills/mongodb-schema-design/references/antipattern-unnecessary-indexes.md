@@ -90,3 +90,5 @@ db.orders.createIndex({ status: 1, date: 1 }) // already have {status:1,date:1,a
 // ❌ Keeping indexes that Atlas Performance Advisor flags as unused
 // → Review Advisor recommendations weekly
 ```
+
+Reference: [Remove Unnecessary Indexes](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/unnecessary-indexes/)

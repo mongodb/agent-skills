@@ -77,6 +77,17 @@ async function getPolicyAtVersion(policyId, version) {
 }
 ```
 
+### Using Transactions for Atomicity
+
+The `updatePolicy` function writes to two collections (inserting a revision **and** updating the current document). It may or may not be prudent to wrap the call in a [multi-document transaction](https://mongodb.com/docs/manual/core/transactions/) to guarantee both writes succeed or fail together, depending on the use case:
+
+```javascript
+await using session = client.startSession()
+await session.withTransaction(async () => {
+  await updatePolicy("POL-001", { premium: 475, coverage: "premium" }, session)
+})
+```
+
 ## Indexes
 
 ```javascript
@@ -91,3 +102,5 @@ db.policyRevisions.createIndex({ changedAt: 1 }, { expireAfterSeconds: 220752000
 |---------|---------|--------|
 | Schema Versioning | Handle field structure migration | `schemaVersion` field on each doc |
 | Document Versioning | Reproduce complete historical state | Full snapshots in revisions collection |
+
+Reference: [Keep a History of Document Versions](https://mongodb.com/docs/manual/data-modeling/design-patterns/data-versioning/document-versioning/)

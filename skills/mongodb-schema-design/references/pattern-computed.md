@@ -163,6 +163,16 @@ db.screenings.aggregate([
 // Then update movie.stats.last30Days
 ```
 
+**Consider on-demand materialized views:**
+
+When the computed results are best stored in a separate collection rather than embedded in the source documents, MongoDB's [on-demand materialized views](https://www.mongodb.com/docs/manual/core/materialized-views/) formalize this approach. An on-demand materialized view is an aggregation pipeline whose output is written to a separate collection using `$merge` or `$out`—the same mechanism shown in Strategy 2 above. The difference is conceptual: instead of updating a field on existing documents, you maintain a dedicated read-optimized collection that can be independently indexed. This is especially useful when:
+
+- The computed data has a different shape or granularity than the source (e.g. monthly summaries from daily records).
+- Multiple consumers need the pre-aggregated data, and a shared collection is cleaner than duplicating fields across documents.
+- You want to index the computed results independently of the source collection.
+
+On-demand materialized views are not automatically refreshed—you control when to re-run the pipeline, which gives you the same staleness trade-offs described above.
+
 **When NOT to use this pattern:**
 
 - **Rarely accessed calculations**: If stat is viewed once/day, compute on demand.
