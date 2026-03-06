@@ -9,18 +9,26 @@ This skill guides users through configuring the MongoDB MCP server for use with 
 
 ## Overview
 
-The MongoDB MCP server requires authentication credentials to work. Users have two options:
+The MongoDB MCP server requires authentication credentials to work. Users have three options:
 
 1. **Connection String** (Option A): Direct connection to a specific MongoDB cluster
-   - Simpler setup
-   - Single cluster access
+   - Quick setup for single cluster access
+   - Requires manual connection string with database credentials
    - Requires `MDB_MCP_CONNECTION_STRING` environment variable
 
 2. **Service Account Credentials** (Option B): MongoDB Atlas Admin API access
-   - More complex setup
-   - Access to Atlas Admin API
+   - **Recommended for Atlas users** - manages authentication internally and simplifies data access
+   - Full access to Atlas Admin API
    - Ability to connect to any cluster dynamically using the `atlas-connect-cluster` tool
+   - No need to create DB Users or manage their credentials
    - Requires both `MDB_MCP_API_CLIENT_ID` and `MDB_MCP_API_CLIENT_SECRET` environment variables
+
+3. **Atlas Local** (Option C): Local development with Docker
+   - **Best for local development and testing** - no cloud setup required
+   - Runs an Atlas cluster locally in Docker
+   - No environment variables or credentials needed
+   - Requires Docker to be installed
+   - No access to cloud clusters, Admin API
 
 ## Execution Modes
 
@@ -52,19 +60,24 @@ env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET)"
 
 ## Step 2: Present Configuration Options
 
-If no valid configuration exists, present both options to the user and help them understand which one suits their needs:
+If no valid configuration exists, present the options to the user and help them understand which one suits their needs:
 
 **Connection String (Option A)** is best when:
-- They want quick setup
-- They're working with a single cluster
+- They're working with a single, specific cluster
+- They already have database credentials (username/password)
 - They don't need Atlas Admin API access
-- They already have a MongoDB connection string
+- They're working with self-hosted MongoDB
 
 **Service Account Credentials (Option B)** is best when:
-- They need to access Atlas Admin API
+- They're using MongoDB Atlas (recommended approach)
 - They want to switch between multiple clusters
-- They want the full power of the MongoDB MCP server
-- They're working with MongoDB Atlas (not self-hosted)
+- They need Atlas Admin API access (cluster management, user creation, performance monitoring)
+
+**Atlas Local (Option C)** is best when:
+- They want to develop and test locally without cloud setup
+- They have Docker installed
+- They don't need real Atlas resources (just a local MongoDB instance)
+- They want the fastest setup with no credentials required
 
 Use the AskUserQuestion tool to let them choose.
 
@@ -157,9 +170,35 @@ export MDB_MCP_API_CLIENT_ID="<user-provided-client-id>"
 export MDB_MCP_API_CLIENT_SECRET="<user-provided-client-secret>"
 ```
 
+## Step 3c: Atlas Local Setup
+
+If the user chooses Option C:
+
+### 3c.1: Check Docker Installation
+
+Verify that Docker is installed and running:
+
+```bash
+docker --version
+```
+
+If Docker is not installed, inform the user they need to install Docker Desktop (or Docker Engine for Linux) before using Atlas Local. Provide the link: https://www.docker.com/get-started
+
+### 3c.2: Confirm Setup Complete
+
+Inform the user that they're all set! No environment variables or credentials are needed for Atlas Local:
+- The MongoDB MCP server is already configured to work with Atlas Local
+- They can create a local deployment using the `atlas-local-create-deployment` tool
+- Or list existing deployments they may have created with the Atlas CLI using `atlas-local-list-deployments`
+- All Atlas Local operations work out of the box with Docker installed
+
+After confirming Docker is available, **skip Step 4** (no shell profile configuration needed) and proceed directly to Step 5 (Next Steps).
+
 ## Step 4: Update Shell Profile
 
 Now that you have the environment variable(s) to configure, update the user's shell profile.
+
+**Note:** This step only applies to Option A (Connection String) and Option B (Service Account). If the user chose Option C (Atlas Local), skip this step.
 
 **Try Interactive Mode first (4a). If Bash is denied at any point, switch to Documentation Mode (4b).**
 
@@ -284,18 +323,29 @@ After completing Interactive Mode, proceed to Step 5 (Next Steps).
 
 ## Step 5: Next Steps
 
-Inform the user about what to do next:
+Inform the user about what to do next based on their chosen option:
+
+### For Option A (Connection String) and Option B (Service Account):
 
 1. **Restart the client**: The MCP server runs when the agentic client starts, so they need to fully restart it (not just reload the window) for the new environment variables to be picked up. The shell profile will be sourced when they open a new terminal or when the client starts in a new process.
 
 2. **Verify MCP Server**: After restarting, they can verify the MongoDB MCP server is working by asking the agent to connect to MongoDB or perform MongoDB operations.
 
 3. **Using the Tools**:
-   - If they configured a connection string, they'll have direct database access tools available
-   - If they configured service account credentials, they'll additionally have:
+   - If they configured a connection string (Option A), they'll have direct database access tools available
+   - If they configured service account credentials (Option B), they'll additionally have:
      - Atlas Admin API tools
      - The `atlas-connect-cluster` tool to switch between clusters dynamically
    - **Important for service account users**: Make sure their IP address is added to the service account's API Access List (found in the service account settings), otherwise all API operations will fail
+
+### For Option C (Atlas Local):
+
+1. **Ready to use**: No restart or configuration needed - the MCP server works with Atlas Local out of the box!
+
+2. **Next steps**: They can now:
+   - Create a local deployment with `atlas-local-create-deployment`
+   - List existing deployments with `atlas-local-list-deployments`
+   - Once connected to a deployment, use all standard database operations (find, insert, update, delete, aggregate, etc.)
 
 ## Important Notes
 
