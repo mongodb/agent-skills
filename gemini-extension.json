@@ -1,0 +1,34 @@
+{
+  "name": "mongodb",
+  "version": "0.1.0",
+  "description": "Official MongoDB extension for Gemini offering skills for database management and optimization, as well as the MongoDB MCP server",
+  "mcpServers": {
+    "mongodb": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server"
+      ]
+    }
+  },
+  "settings": [
+    {
+      "name": "MongoDB Connection String",
+      "description": "The connection string for your MongoDB database (e.g. mongodb+srv://...)",
+      "envVar": "MDB_MCP_CONNECTION_STRING",
+      "sensitive": true
+    },
+    {
+      "name": "MongoDB API Client ID",
+      "description": "The API Client ID for MongoDB Atlas Admin API.",
+      "envVar": "MDB_MCP_API_CLIENT_ID",
+      "sensitive": false
+    },
+    {
+      "name": "MongoDB API Client Secret",
+      "description": "The API Client Secret for MongoDB Atlas Admin API.",
+      "envVar": "MDB_MCP_API_CLIENT_SECRET",
+      "sensitive": true
+    }
+  ]
+}
