@@ -1,0 +1,82 @@
+[
+  {
+    "query": "i need to write a mongodb query that finds all users where the age is greater than 25 and the status field is 'active'. can you help me build this?",
+    "should_trigger": true
+  },
+  {
+    "query": "hey so i'm working with this customers collection in mongodb and i need to get just the email addresses for everyone who signed up last month. the date field is called registration_date",
+    "should_trigger": true
+  },
+  {
+    "query": "can you help me figure out how to query mongodb to find all products within 5 miles of latitude 37.7749 and longitude -122.4194? the location data is stored in a field called coordinates",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm trying to aggregate some sales data by region and calculate the total revenue for each. the collection is called transactions and has fields like region, amount, and date. what's the best way to write this?",
+    "should_trigger": true
+  },
+  {
+    "query": "write me a mongodb aggregation pipeline that groups orders by customer_id and returns the total spent by each customer, sorted from highest to lowest",
+    "should_trigger": true
+  },
+  {
+    "query": "ok so my boss wants a report showing how many listings we have in each city. i have a listings collection with an address.city field. not sure how to count them up by city in mongodb",
+    "should_trigger": true
+  },
+  {
+    "query": "i need to join my orders collection with the products collection based on product_id to get the product name in each order record",
+    "should_trigger": true
+  },
+  {
+    "query": "how do i filter mongodb documents where the tags array contains 'urgent' AND the priority field is greater than 5?",
+    "should_trigger": true
+  },
+  {
+    "query": "im stuck trying to write a find query for mongodb that searches for blog posts containing the word 'tutorial' in the title field (case insensitive)",
+    "should_trigger": true
+  },
+  {
+    "query": "need help translating this sql to mongodb: SELECT name, email FROM users WHERE created_at > '2023-01-01' ORDER BY name ASC LIMIT 10",
+    "should_trigger": true
+  },
+  {
+    "query": "can you show me the mongodb syntax to update all documents in the users collection where status is 'pending' to set status to 'approved'?",
+    "should_trigger": false
+  },
+  {
+    "query": "i need to set up a new mongodb atlas cluster for my production environment. what's the best configuration for a high-traffic e-commerce site?",
+    "should_trigger": false
+  },
+  {
+    "query": "help me create a compound index on my products collection with fields category, price, and rating for better query performance",
+    "should_trigger": false
+  },
+  {
+    "query": "my mongodb connection keeps timing out after 30 seconds. here's my connection string: mongodb://localhost:27017/mydb - what am I doing wrong?",
+    "should_trigger": false
+  },
+  {
+    "query": "write me a python script using pymongo to bulk insert 10000 documents into a mongodb collection with proper error handling",
+    "should_trigger": false
+  },
+  {
+    "query": "i need to export my entire mongodb database to JSON files for backup purposes. what's the best tool to use - mongodump or mongoexport?",
+    "should_trigger": false
+  },
+  {
+    "query": "can you explain the difference between mongodb replica sets and sharded clusters? when should I use each one?",
+    "should_trigger": false
+  },
+  {
+    "query": "my mongodb server is running out of disk space. the data directory is at /var/lib/mongodb and it's at 95% capacity. how do i clean up old data?",
+    "should_trigger": false
+  },
+  {
+    "query": "i want to implement full-text search in my application. should i use mongodb's text indexes or integrate with elasticsearch?",
+    "should_trigger": false
+  },
+  {
+    "query": "write a mongoose schema for a user model in nodejs with validation rules for email, password strength, and required fields",
+    "should_trigger": false
+  }
+]

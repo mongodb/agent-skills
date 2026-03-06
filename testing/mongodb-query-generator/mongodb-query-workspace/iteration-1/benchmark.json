@@ -1,0 +1,89 @@
+{
+  "skill_name": "mongodb-query",
+  "iteration": 1,
+  "date": "2026-03-04",
+  "total_tests": 8,
+  "results": [
+    {
+      "test_id": 1,
+      "name": "simple-find",
+      "status": "pass",
+      "score": 1.0,
+      "notes": "Perfect match. Correct query type, field name, and value."
+    },
+    {
+      "test_id": 2,
+      "name": "find-with-filter-projection-sort-limit",
+      "status": "partial_pass",
+      "score": 0.75,
+      "notes": "Functionally correct but uses $regex instead of $search for text matching. Missing full-text search capabilities and relevance scoring."
+    },
+    {
+      "test_id": 3,
+      "name": "geo-based-find",
+      "status": "pass",
+      "score": 1.0,
+      "notes": "Excellent. Correct geospatial operator, coordinate order, and radius calculation."
+    },
+    {
+      "test_id": 4,
+      "name": "find-translates-to-agg-mode-count",
+      "status": "pass",
+      "score": 1.0,
+      "notes": "Perfect. Correctly identified need for aggregation and generated proper pipeline."
+    },
+    {
+      "test_id": 5,
+      "name": "relative-date-find-last-year",
+      "status": "pass",
+      "score": 1.0,
+      "notes": "Correct date calculation (2026 - 1 = 2025) using current date context."
+    },
+    {
+      "test_id": 6,
+      "name": "find-with-non-english",
+      "status": "pass",
+      "score": 1.0,
+      "notes": "Correctly interprets Spanish and generates appropriate aggregation for field renaming."
+    },
+    {
+      "test_id": 7,
+      "name": "agg-complex-regex-split",
+      "status": "pass",
+      "score": 1.0,
+      "notes": "Complex pipeline correctly handles text splitting, grouping, and dual-level sorting."
+    },
+    {
+      "test_id": 8,
+      "name": "agg-join-lookup",
+      "status": "pass",
+      "score": 1.0,
+      "notes": "Proper $lookup join with correct field mapping and output shaping."
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.9375,
+    "average_score": 0.96875,
+    "total_passes": 8,
+    "total_partial": 0,
+    "total_fails": 0
+  },
+  "strengths": [
+    "Correctly chooses between find and aggregation queries",
+    "Validates field names against schema before use",
+    "Handles geospatial queries with proper coordinate order",
+    "Excellent aggregation pipeline construction",
+    "Proper handling of non-English prompts",
+    "Always fetches context (indexes, schema, samples) before generating",
+    "Recommends index creation when appropriate"
+  ],
+  "areas_for_improvement": [
+    "Should prefer Atlas Search ($search) over $regex for text matching",
+    "Consider detecting when full-text search capabilities would be beneficial"
+  ],
+  "recommendations": [
+    "Add guidance in SKILL.md about when to use $search vs $regex",
+    "Consider checking if Atlas Search index exists before choosing search method",
+    "Update test 2 assertion to expect $search instead of $regex"
+  ]
+}

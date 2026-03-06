@@ -1,0 +1,25 @@
+{
+  "eval_id": 1,
+  "eval_name": "simple-find",
+  "prompt": "find all the movies released in 1983",
+  "database": "netflix",
+  "collection": "movies",
+  "assertions": [
+    {
+      "name": "uses_find_query",
+      "description": "Should use find query, not aggregation"
+    },
+    {
+      "name": "has_year_filter",
+      "description": "Filter includes year: 1983"
+    },
+    {
+      "name": "valid_json_format",
+      "description": "Output is valid JSON string format"
+    },
+    {
+      "name": "correct_field_name",
+      "description": "Uses 'year' field (matches schema)"
+    }
+  ]
+}

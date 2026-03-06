@@ -1,0 +1,25 @@
+{
+  "eval_id": 13,
+  "eval_name": "find-with-non-english",
+  "prompt": "¿Qué alojamiento tiene el precio más bajo? devolver el número en un campo llamado \"precio\" en español",
+  "database": "airbnb",
+  "collection": "listingsAndReviews",
+  "assertions": [
+    {
+      "name": "understands_spanish",
+      "description": "Correctly interprets Spanish prompt (lowest price)"
+    },
+    {
+      "name": "sorts_ascending",
+      "description": "Sorts by price ascending (lowest first)"
+    },
+    {
+      "name": "has_limit_1",
+      "description": "Limits to 1 result"
+    },
+    {
+      "name": "renames_field_to_precio",
+      "description": "Projects price field renamed to 'precio'"
+    }
+  ]
+}
