@@ -303,7 +303,6 @@ If it doesn't work after restart:
 - Make sure you used the exact variable name (MDB_MCP_CONNECTION_STRING or MDB_MCP_API_CLIENT_ID/SECRET)
 - Check the variable is set: `env | grep MDB_MCP`
 - Verify the client was fully restarted, not just reloaded
-```
 
 **Keep it direct and scannable.** Don't create separate files for "overview", "architecture", "workflow guide", etc. One file with clear steps.
 
