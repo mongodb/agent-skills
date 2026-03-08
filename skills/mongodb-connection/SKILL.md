@@ -13,60 +13,41 @@ You are an expert in MongoDB connection management across all officially support
 
 ## Understanding How Connection Pools Work
 
-Connection pooling exists because establishing a MongoDB connection is expensive (TCP + TLS + MongoDB handshakes + SCRAM authentication = 2+ network round trips, tens to hundreds of milliseconds). Without pooling, every operation pays this cost.
+Connection pooling exists because establishing a MongoDB connection is expensive (TCP + TLS + auth = 2+ network round trips, 50-500ms). Without pooling, every operation pays this cost.
 
 ### Connection Lifecycle and Wait Queue
 
 When you execute an operation:
-1. **Borrow** connection from pool
-2. **Wait Queue**: If pool at `maxPoolSize`, request queues (triggers `MongoWaitQueueTimeoutException` if `waitQueueTimeoutMS` exceeded)
-3. **Execute** operation
-4. **Return** connection to pool
-5. **Pruning**: Idle connections exceeding `maxIdleTimeMS` are closed
+1. **Borrow** connection from pool (or wait if pool at `maxPoolSize`)
+2. **Execute** operation
+3. **Return** connection to pool
+4. **Pruning**: Idle connections exceeding `maxIdleTimeMS` are closed
 
-**The wait queue is your canary.** When operations queue, pool is exhausted—increase `maxPoolSize`, reduce operation duration, or implement rate limiting.
+**The wait queue is your canary.** When operations queue, pool is exhausted—increase `maxPoolSize`, optimize queries, or implement rate limiting.
 
 ### Synchronous vs. Asynchronous Drivers
 
-Connection pool behavior varies by driver model:
-
-- **Synchronous drivers** (PyMongo, older Java sync API): Calling thread blocks when waiting for a connection. Each active operation typically consumes both a connection and a thread.
-- **Asynchronous drivers** (Node.js, Motor, Java async API): Non-blocking—returns a Promise/Future. Can handle more concurrent operations with fewer connections due to event-loop integration.
-
-Understanding your driver's model is essential. For sync drivers, `maxPoolSize` often matches your thread pool size. For async drivers, you can efficiently utilize smaller pools.
+- **Synchronous** (PyMongo, Java sync): Thread blocks on each operation. Pool size often matches thread pool size.
+- **Asynchronous** (Node.js, Motor, Java async): Non-blocking I/O. Smaller pools suffice due to event-loop multiplexing.
 
 ### Monitoring Connections (Hidden Overhead)
 
-**In addition to your connection pool**, each MongoClient establishes **2 monitoring connections per replica set member**. These are automatic, separate from your pool, and used exclusively for:
-- Monitoring cluster topology (tracking replica set member state changes)
-- Measuring round-trip time (RTT) to each server
+**Each MongoClient establishes 2 monitoring connections per replica set member** (automatic, separate from your pool, used only for topology tracking).
 
-These monitoring connections are never used for application requests.
-
-**Critical for capacity planning**: When calculating total connections to the server, use this formula:
-
+**Capacity planning formula**:
 ```
-Total connections = (minPoolSize + 2 monitoring) × replica set members
+Total connections = (minPoolSize + 2 monitoring) × replica set members × application instances
 ```
 
-**Example**: With `minPoolSize: 5` and a 3-member replica set:
-- Pool connections: 5 × 3 = 15
-- Monitoring connections: 2 × 3 = 6
-- **Total: 21 connections** (not 15!)
+**Example**: 10 app instances, `minPoolSize: 5`, 3-member replica set:
+- Per instance: (5 + 2) × 3 = 21 connections
+- **Total: 210 server connections**
 
-If you have 10 application instances, each creates its own MongoClient, so multiply this by 10: **210 total server connections**.
-
-**Why this matters**: Users often underestimate connection counts, then hit server limits unexpectedly. Always account for monitoring connections when planning capacity.
+Always account for monitoring connections when planning capacity to avoid hitting server limits.
 
 ### Why Authentication Overhead Matters
 
-Modern MongoDB uses SCRAM authentication, which requires multiple network round trips. Connection pooling becomes even more critical because:
-
-- Authenticated connections are reused—authentication only happens once per connection
-- Without pooling, every operation would re-authenticate
-- Optimizations like speculative authentication (MongoDB 4.4+) reduce this overhead by piggybacking auth on the initial handshake
-
-This is particularly important for serverless functions where cold starts already add latency—pooling and reusing authenticated connections is essential.
+MongoDB SCRAM authentication requires multiple network round trips. Pooling is critical because authenticated connections are reused—without pooling, every operation would re-authenticate. This is especially important for serverless functions where cold starts already add latency.
 
 ## When You're Invoked
 
@@ -146,42 +127,21 @@ When you identify an infrastructure issue, clearly explain: "This appears to be 
 
 Once you understand the context, recommend configuration that makes sense for their specific scenario:
 
-#### Calculating Initial Pool Size (Formula-Based Approach)
+#### Calculating Initial Pool Size
 
-If the user knows their workload characteristics, you can calculate an optimal starting pool size using this formula:
+If the user has performance data, calculate starting pool size:
 
 ```
-Pool Size ≈ (Operations per second) × (Average operation duration in seconds) + buffer
+Pool Size ≈ (Operations/sec) × (Avg operation duration in sec) + 10-20% buffer
 ```
 
-**Example**: An API expects 10,000 operations/second with an average MongoDB query latency of 10ms (0.01 seconds):
-```
-Pool Size = 10,000 ops/sec × 0.01 sec = 100 connections
-Add 10-20% buffer = 110-120 connections
-```
+**Example**: 10,000 ops/sec, 10ms avg latency → 10,000 × 0.01 = 100, with buffer = 110-120 connections
 
-**When to use this approach**:
-- ✅ User has clear performance requirements or benchmarks
-- ✅ Average latency is known or measurable (from MongoDB Atlas metrics, APM tools, or load testing)
-- ✅ Expected traffic patterns are predictable
+**When to use**: Clear performance requirements, known latency (from Atlas metrics, APM tools), predictable traffic.
 
-**When NOT to use this**:
-- ❌ No baseline metrics available (new application)
-- ❌ Highly variable operation durations
-- ❌ Unknown traffic patterns
+**When NOT to use**: New application, highly variable durations, unknown patterns. In these cases, start conservative (10-20), monitor, and adjust iteratively.
 
-**Where to find latency metrics**:
-- **MongoDB Atlas**: Charts show average operation latency
-- **Driver metrics**: Many drivers expose operation timing
-- **APM tools**: New Relic, Datadog, etc. track database operation duration
-
-If this data isn't available, use the iterative monitoring-based approach described in section 4 (start conservative, monitor, adjust).
-
-**Important notes**:
-- This formula gives you a **starting point**, not a final answer
-- Always validate with monitoring (see section 6)
-- Bulk operations and query optimization can dramatically reduce required pool size
-- More efficient queries = lower latency = smaller pool needed
+**Note**: This gives a starting point. Always validate with monitoring and remember that query optimization can dramatically reduce required pool size.
 
 #### Serverless Environments (Lambda, Cloud Functions)
 
@@ -229,29 +189,6 @@ exports.handler = async (event, context) => {
 - Code inside the handler runs on every invocation
 - Placing client initialization outside means warm invocations reuse authenticated connections, avoiding the TCP + TLS + auth handshake overhead (~100-500ms saved per invocation)
 
-**Python (AWS Lambda with pymongo)**
-```python
-import os
-from pymongo import MongoClient
-
-# Module-level client initialization (cached across invocations)
-client = None
-
-def get_client():
-    global client
-    if client is None:
-        client = MongoClient(
-            os.environ['MONGODB_URI'],
-            maxPoolSize=3,
-            minPoolSize=0,
-            maxIdleTimeMS=10000
-        )
-    return client
-
-def lambda_handler(event, context):
-    client = get_client()
-    # Your handler logic here
-```
 
 #### Traditional Long-Running Servers (OLTP Workload)
 
@@ -271,7 +208,6 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 });
 
 await client.connect();
-module.exports = client;
 ```
 
 **Why these values?**
@@ -281,55 +217,15 @@ module.exports = client;
 - `connectTimeoutMS: 5000` - Quick failure on connection issues prevents request pile-up.
 - `socketTimeoutMS: 30000` - Protects against hanging operations while allowing time for typical queries.
 
-**Java (Spring Boot)**
-```java
-@Configuration
-public class MongoConfig {
-
-    @Bean
-    public MongoClient mongoClient() {
-        ConnectionString connString = new ConnectionString(mongoUri);
-
-        MongoClientSettings settings = MongoClientSettings.builder()
-            .applyConnectionString(connString)
-            .applyToConnectionPoolSettings(builder ->
-                builder
-                    .maxSize(50)              // Peak concurrent operations
-                    .minSize(10)              // Pre-warmed connections
-                    .maxWaitTime(2, TimeUnit.SECONDS)     // Wait for available connection
-                    .maxConnectionIdleTime(10, TimeUnit.MINUTES))
-            .applyToSocketSettings(builder ->
-                builder
-                    .connectTimeout(5, TimeUnit.SECONDS)  // Connection establishment timeout
-                    .readTimeout(30, TimeUnit.SECONDS))   // Operation timeout
-            .build();
-
-        return MongoClients.create(settings);
-    }
-}
-```
 
 #### OLAP / Analytical Workloads
 
 For fewer, longer-running queries:
+- **Smaller pool size** (10-20) - Analytical queries are resource-intensive; limit concurrency
+- **Extended timeouts** - `socketTimeoutMS: 300000` (5 minutes) for long-running aggregations
+- **Minimal pre-warmed connections** - Lower `minPoolSize` since queries are infrequent
 
-```python
-# Python analytical application
-from pymongo import MongoClient
-
-client = MongoClient(
-    mongodb_uri,
-    maxPoolSize=10,           # Smaller pool - few concurrent queries
-    minPoolSize=2,            # Maintain minimal ready connections
-    maxIdleTimeMS=600000,     # 10 min
-    connectTimeoutMS=10000,   # 10s - more tolerance for initial connection
-    socketTimeoutMS=300000,   # 5 minutes - long-running aggregations need time
-)
-```
-
-**Why these values?**
-- `maxPoolSize: 10` - Analytical queries are resource-intensive; limit concurrency to avoid overload.
-- `socketTimeoutMS: 300000` - Long-running aggregations need extended timeout (adjust based on longest expected query).
+See `references/language-patterns.md` for language-specific examples.
 
 #### High-Traffic / Bursty Workloads
 
@@ -374,22 +270,13 @@ maxPoolSize: 50,  // Start with 50. Scale between 30-100 based on concurrent tra
 
 ### 6. Design a Comprehensive Timeout Strategy
 
-Timeouts work as layers of defense against failures. Explain the purpose of each, don't just copy values:
+Timeouts work as layers of defense. Explain the purpose of each:
 
-- **`connectTimeoutMS`** (5-10s typical): How long to wait when establishing a new connection. Fail fast on unreachable servers.
+- **`connectTimeoutMS`** (5-10s): Connection establishment timeout. Fail fast on unreachable servers.
+- **`socketTimeoutMS`** (30s OLTP, 60-300s OLAP): Operation timeout. Critical—without this, hanging queries block connections forever. Always set to non-zero.
+- **`maxIdleTimeMS`** (10-30s serverless, 5-10 min long-running): How long idle connections persist. Balance reuse vs. resource cleanup.
+- **`waitQueueTimeoutMS`** (2-5s): Wait time when pool exhausted. Fail fast to trigger backpressure.
 
-- **`socketTimeoutMS`** (30s OLTP, 60-300s OLAP): How long to wait for server response on an operation. Critical—without this, hanging queries block connections forever. Set to non-zero (defaults are often infinite, dangerous for production). MongoDB 8.0+ Atlas also supports server-side `defaultMaxTimeMS`.
-
-- **`maxIdleTimeMS`** (varies by environment): How long idle connections stay in pool before closing.
-  - Serverless: 10-30s (ephemeral context)
-  - Long-running: 5-10 min (300,000-600,000ms)
-  - Balance reuse vs. resource cleanup; consider network device timeouts
-
-- **`waitQueueTimeoutMS`** (2-5s typical): How long to wait when pool is exhausted. Fail fast to trigger backpressure/alerting.
-
-**How they work together**: `connectTimeoutMS` protects connection establishment → `socketTimeoutMS` protects operations → `maxIdleTimeMS` manages resources → `waitQueueTimeoutMS` handles exhaustion. Without proper timeouts, cascading failures occur (e.g., one hanging query holds connection → pool exhausts → all operations timeout).
-
-**Example configuration**:
 ```javascript
 const client = new MongoClient(uri, {
     maxPoolSize: 50,
@@ -461,49 +348,32 @@ Wait queue + Server at capacity = Optimize queries/scale server ❌ (don't incre
 
 ### Network Compression
 
-MongoDB supports wire protocol compression. Consider for:
-- **Helps**: High-latency/cross-region networks, bandwidth constraints, large result sets, cost savings on egress
-- **Doesn't help**: Same-region with fast links, small operations, binary-heavy data, CPU-constrained clients
+MongoDB supports wire protocol compression. Use for high-latency networks (>50ms), large result sets, or bandwidth constraints. Avoid for same-region low-latency (<10ms) or CPU-constrained clients.
 
-**Algorithms**: `snappy` (best default), `zlib` (higher compression, more CPU), `zstd` (MongoDB 4.2+, good balance)
-
-**Implementation**:
 ```javascript
 const client = new MongoClient(uri, {
-    compressors: ['snappy', 'zlib'],  // Client/server negotiate best option
+    compressors: ['snappy', 'zlib'],  // snappy = best default, zlib = higher compression
 });
 ```
 
-**Rule of thumb**: High latency (>50ms) usually benefits; low latency (<10ms) may add overhead. Test with actual workload.
-
 ### Understanding Server-Side Connection Limits
 
-Client pools must respect server-side capacity:
+Client pools must respect server-side capacity. Key considerations:
+- **Multiple clients share capacity**: 10 instances × `maxPoolSize: 50` = 500 server connections
+- **Replica sets multiply**: Each client connects to all members
+- **Atlas auto-manages limits** based on tier
 
-**Key Parameters**:
-- **`net.maxIncomingConnections`**: Max client connections (default: 65,536)
-- **`net.serviceExecutor`**: `adaptive` in modern versions (dynamically adjusts thread pools)
-- **OS file descriptor limits**: Each connection needs one file descriptor
-
-**Critical Considerations**:
-- **Multiple clients share capacity**: 10 app instances × `maxPoolSize: 50` = 500 server connections
-- **Replica sets multiply**: Each client opens connections to all members
-- **Atlas auto-manages limits** based on tier; may need upgrade as you scale
-
-**Remind users**: "Your `maxPoolSize` is per instance. With N instances, total server connections = N × maxPoolSize. Monitor server-side `connections.current` to avoid approaching limits."
+**Remind users**: `maxPoolSize` is per instance. Total server connections = instances × maxPoolSize × replica set members. Monitor `connections.current` to avoid hitting limits.
 
 ## Language-Specific Considerations
 
-Each driver language has specific patterns and idioms for connection management. Key differences include:
+Each driver language has specific patterns and idioms. The examples above are Node.js-specific. **For other languages (Python, Java, Go, C#, Ruby, PHP), see `references/language-patterns.md`** which includes:
 
-- **Sync vs. async models**: Affects pool sizing (async drivers need smaller pools)
-- **Initialization patterns**: Singleton, dependency injection, module-level clients
-- **Monitoring APIs**: Language-specific ways to access pool metrics
-
-**For detailed language-specific patterns, examples, and best practices, see `references/language-patterns.md`.** Consult this when working with:
-- Node.js, Python (PyMongo/Motor), Java, Go, C#, Ruby, PHP, or other drivers
-- Questions about driver-specific configuration methods
-- Serverless patterns in specific languages
+- Sync vs. async models and how they affect pool sizing
+- Language-specific initialization patterns (singleton, dependency injection, module-level)
+- Monitoring APIs and driver-specific configuration methods
+- Serverless patterns for each language
+- Default pool sizes and when to adjust them
 
 ## Advising on Monitoring & Iteration
 
