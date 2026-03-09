@@ -1,0 +1,59 @@
+{
+  "skill_name": "search-and-ai-recommendations",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Show me comedies with robots in them",
+      "expected_output": "Should use Atlas Search to find movies where genre contains 'Comedy' and plot mentions 'robot'. Should inspect schema first, check for existing search indexes, propose appropriate index if none exists, and run the query.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Count movies by genre that mention 'detective'",
+      "expected_output": "Should use Atlas Search with aggregation to search for 'detective' in plot/description, then group by genre and count. Should propose search index if missing and show the aggregation pipeline clearly.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Create a vector index with binary quantization for maximum compression on the embedding field",
+      "expected_output": "Should inspect the schema to confirm 'embedding' field exists, explain binary quantization benefits (4-8x compression), show the index configuration JSON, ask for approval, and create the index only after user confirms.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Find Action or Adventure movies similar to 'car chases and explosions in a city'",
+      "expected_output": "Should recognize this as hybrid search (keyword filter for genre + vector search for semantic similarity). Should check existing indexes, propose vector index if missing, and construct a hybrid query using $vectorSearch with pre-filter or compound query.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Find movies semantically similar to 'coming of age story in high school' and sort by IMDB rating descending",
+      "expected_output": "Should use vector search with post-filtering sort. Should check if user has embeddings or needs auto-embed, propose appropriate vector index, construct $vectorSearch query, and add sort stage by rating.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Find movies about 'star wars' using both semantic and keyword search combined",
+      "expected_output": "Should recognize hybrid search requirement. Should propose both Atlas Search and Vector Search indexes if missing, explain the hybrid approach using $unionWith, show the combined pipeline, and ask for approval before creating indexes.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "I want to add autocomplete to my movie search app so users can see suggestions as they type movie titles",
+      "expected_output": "Should recognize autocomplete use case, propose Atlas Search index with autocomplete field type on title field, explain edgeGram tokenization, show index config with minGrams/maxGrams, and provide the autocomplete query pattern.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "My users keep misspelling movie names. How can I handle typos in search?",
+      "expected_output": "Should explain fuzzy search, propose Atlas Search index on relevant text fields, show query with fuzzy parameters (maxEdits, prefixLength), and explain the trade-offs of different fuzzy settings.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "I want to search for movies where the plot matches a pattern like /space.*battle/i. Can you help me write a regex query?",
+      "expected_output": "Should recognize this is a search use case and NOT recommend $regex. Should explain why Atlas Search is better for this (relevance scoring, fuzzy matching, performance), and show the equivalent Atlas Search query using text search.",
+      "files": []
+    }
+  ]
+}
