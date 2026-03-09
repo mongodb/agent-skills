@@ -9,7 +9,7 @@
 # so abort-on-error would conflict with the || FAILED=1 accumulator pattern.
 set -uo pipefail
 
-# Find repository root (script is at scripts/validate-skills.sh)
+# Find repository root (script is at tools/validate-skills.sh)
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Check if skill-validator is available

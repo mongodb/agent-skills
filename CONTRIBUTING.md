@@ -8,7 +8,7 @@ To add a new skill, create a new directory in the `skills` directory with the na
 
 ### Structural testing
 
-Use the `scripts/validate-skills.sh` script to test the structural validity of the skill. This script uses the [`skill-validator`](https://github.com/agent-ecosystem/skill-validator) tool to check the skill's metadata and instructions.
+Use the `tools/validate-skills.sh` script to test the structural validity of the skill. This script uses the [`skill-validator`](https://github.com/agent-ecosystem/skill-validator) tool to check the skill's metadata and instructions.
 
 ### LLM testing
 
