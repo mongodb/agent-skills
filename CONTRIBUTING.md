@@ -17,7 +17,7 @@ Use the `tools/review-skill` skill to have an agent review the skill and interpr
 Exact installation instructions depend on the client, but should be something similar to:
 
 ```bash
-mkdir -p ~/.claude/skills && ln -s **path-to-agent-skills**/tools/review-skill ~/.claude/skills/review-skill
+mkdir -p ~/.claude/skills && ln -s <path-to-agent-skills>/tools/review-skill ~/.claude/skills/review-skill
 ```
 
 This creates a symlink to the `review-skill` tool in the `~/.claude/skills` directory so that it can be used in Claude Code.
