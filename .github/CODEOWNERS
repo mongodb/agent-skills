@@ -13,6 +13,6 @@
 /assets/ @mongodb/dbx-devtools
 
 # Review tooling
-/tools/review-skill @dacharyc
+/tools/review-skill/ @dacharyc
 
 
