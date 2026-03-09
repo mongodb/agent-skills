@@ -32,8 +32,6 @@ for skill_dir in "$REPO_ROOT"/skills/*/; do
   # Check if the glob matched anything
   [ -d "$skill_dir" ] || continue
 
-  skill=$(basename "$skill_dir")
-
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     # In CI: use markdown output with annotations, filter annotations from summary
     skill-validator check --strict --emit-annotations -o markdown "$skill_dir" \
