@@ -2,6 +2,31 @@
 
 **Official examples repo**: https://github.com/mongodb/ASP_example
 
+## Connection Capabilities — Source/Sink Reference
+
+Know what each connection type can do before creating pipelines:
+
+| Connection Type | As Source ($source) | As Sink ($merge / $emit) | Mid-Pipeline | Notes |
+|-----------------|---------------------|--------------------------|--------------|-------|
+| **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
+| **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
+| **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
+| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path`, `format`, `compression` |
+| **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
+| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
+| **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
+| **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
+
+**Common connection usage mistakes to avoid:**
+- ❌ Using HTTPS connections as `$source` → HTTPS is for enrichment or sink only
+- ❌ Using `$externalFunction` as sink with `execution: "sync"` → Must use `execution: "async"` for sink stage
+- ❌ Forgetting change streams exist → Atlas Cluster is a powerful source, not just a sink
+- ❌ Using `$merge` with Kafka → Use `$emit` for Kafka sinks
+
+**$externalFunction execution modes:**
+- **Mid-pipeline:** Can use `execution: "sync"` (blocks until Lambda returns) or `execution: "async"` (non-blocking)
+- **Final sink stage:** MUST use `execution: "async"` only
+
 ## Connection Naming Best Practices
 
 **CRITICAL**: Connection names should clearly indicate their actual targets to avoid confusion and prevent writing data to wrong destinations.

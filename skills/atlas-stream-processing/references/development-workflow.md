@@ -243,3 +243,63 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 - Evaluate tier appropriateness — over-provisioned or under-provisioned?
 - Review DLQ patterns — recurring errors that need pipeline fixes?
 - Consider parallelism adjustments based on throughput trends
+
+## Troubleshooting
+
+| Symptom | Likely cause | Action |
+|---------|-------------|--------|
+| Processor FAILED on start | Invalid pipeline syntax, missing connection, `$$NOW` used | `diagnose-processor` → read error → fix pipeline |
+| DLQ filling up | Schema mismatch, `$https` failures, type errors | `find` on DLQ → fix pipeline or connection |
+| Zero output (transformation) | Connection issue, wrong topic, filter too strict | Check source health → verify connections → check `$match` |
+| Zero output (alert) | Probably normal — no anomalies detected | Verify with known test event |
+| Windows not closing | Idle Kafka partitions | Add `partitionIdleTimeout` to `$source` (e.g., `{"size": 30, "unit": "second"}`) |
+| OOM / processor crash | Tier too small for window state | `diagnose-processor` → check `memoryUsageBytes` → upgrade tier |
+| Slow throughput | Low parallelism on I/O stages | Increase `parallelism` on `$merge`/`$lookup`/`$https` |
+| 404 on workspace | Doesn't exist or misspelled | `discover` → `list-workspaces` |
+| 409 on create | Name already exists | Inspect existing resource or pick new name |
+| 402 error on start | No billing configured | Do NOT retry. Add payment method in Atlas → Billing. Use `sp.process()` in mongosh as free alternative |
+| "processor must be stopped" | Tried to modify running processor | `manage` → `stop-processor` first |
+| bootstrapServers format | Passed as array instead of string | Use comma-separated string: `"broker1:9092,broker2:9092"` |
+| "must choose at least one role" | Cluster connection without `dbRoleToExecute` | Defaults to `readWriteAnyDatabase` — or specify custom role |
+| "No cluster named X" | Cluster doesn't exist in project | `atlas-list-clusters` to verify |
+| IAM role ARN not found | ARN not registered in project | Register via Atlas → Cloud Provider Access |
+| dataProcessRegion format | Wrong region format | See region table above. If unsure, inspect an existing workspace |
+| Processor PROVISIONING for minutes | Restart cycle with exponential backoff | Wait for FAILED state, or stop → restart. Check logs for repeated error |
+| Parallelism exceeded | Tier too small for requested parallelism | Start with higher tier (see `sizing-and-parallelism.md`) |
+| Networking change needed | Networking is immutable after creation | Delete connection and recreate with new networking config |
+| 401 / 403 on API call | Invalid or expired Atlas API credentials | Verify `apiClientId`/`apiClientSecret` and project-level permissions |
+| 429 rate limit | Too many API calls | Wait and retry; avoid tight loops of discover calls |
+
+## Pre-Deploy Quality Checklist
+
+Before creating a processor, verify:
+
+### Connection Validation (MANDATORY - Always do this first)
+- [ ] **CRITICAL**: Call `atlas-streams-discover` → `action: "list-connections"` to list all connections in workspace
+- [ ] **CRITICAL**: Call `atlas-streams-discover` → `action: "inspect-connection"` for EACH connection referenced in pipeline
+- [ ] **CRITICAL**: Verify connection names clearly indicate their actual targets (avoid generic names like "atlascluster" pointing to "ClusterRestoreTest")
+- [ ] **CRITICAL**: Present connection summary to user: "Connection 'X' → Actual target 'Y'" for each connection
+- [ ] **CRITICAL**: Warn user if connection names don't match their targets and ask for confirmation
+- [ ] All connections are in READY state
+- [ ] Connection types match usage (Cluster for $source/$merge, Kafka for topics, etc.)
+
+### Pipeline Validation
+- [ ] `search-knowledge` was called to validate sink/source field names
+- [ ] Pipeline starts with `$source` and ends with `$merge`, `$emit`, `$https`, or `$externalFunction` (async)
+- [ ] No `$$NOW`, `$$ROOT`, or `$$CURRENT` in the pipeline
+- [ ] Kafka `$source` includes a `topic` field
+- [ ] Kafka `$source` with windowed pipeline includes `partitionIdleTimeout` (prevents windows from stalling on idle partitions)
+- [ ] HTTPS connections are only used in `$https` enrichment or sink stages, not in `$source`
+- [ ] DLQ is configured (recommended for production)
+- [ ] `$https` stages use `onError: "dlq"` (not `"fail"`)
+- [ ] `$externalFunction` stages use `onError: "dlq"` and `execution` is explicitly set
+- [ ] API auth is stored in connection settings, not hardcoded in the pipeline
+
+## Post-Deploy Verification Workflow
+
+After creating and starting a processor:
+1. `atlas-streams-discover` → `action: "inspect-processor"` — confirm state is STARTED
+2. `atlas-streams-discover` → `action: "diagnose-processor"` — check for errors in the health report
+3. Use MongoDB `count` tool on the DLQ collection — verify no errors accumulating
+4. Use MongoDB `find` tool on the output collection — verify documents are arriving
+5. If output is low/zero, classify processor type before assuming a problem (see Debug section)
