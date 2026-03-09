@@ -1,6 +1,18 @@
 # CODEOWNERS file for agent-skills repository
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
+* @mongodb/dbx-devtools @mongodb/apix-devtools @dacharyc
+
 # GitHub configuration and workflows
-/.github/ @mongodb/devdocs
+/.github/ @mongodb/dbx-devtools @mongodb/apix-devtools @dacharyc
+
+# Plugin packaging infrastructure
+/.claude-plugin/ @mongodb/dbx-devtools @mongodb/apix-devtools
+/.cursor-plugin/ @mongodb/dbx-devtools @mongodb/apix-devtools
+/mcp.json @mongodb/dbx-devtools @mongodb/apix-devtools
+/assets/ @mongodb/dbx-devtools
+
+# Review tooling
+/tools/review-skill @dacharyc
+
 
