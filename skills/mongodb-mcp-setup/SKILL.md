@@ -1,6 +1,6 @@
 ---
 name: mongodb-mcp-setup
-description: Guide users through configuring the MongoDB MCP server. Use this skill when a user has the MongoDB MCP server installed but hasn't configured the required environment variables, or when they ask about connecting to MongoDB/Atlas and don't have the credentials set up. Also trigger immediately after the user installs the MongoDB plugin. This skill helps users choose between direct database connection (connection string) or Atlas Admin API access (service account credentials), then walks them through the setup process.
+description: Guide users through configuring key MongoDB MCP server options. Use this skill when a user has the MongoDB MCP server installed but hasn't configured the required environment variables, or when they ask about connecting to MongoDB/Atlas and don't have the credentials set up.
 ---
 
 # MongoDB MCP Server Setup
@@ -46,15 +46,20 @@ Before starting the setup, check if the user already has the required environmen
 **Try to run** this command to check for existing configuration:
 
 ```bash
-env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET)"
+env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)"
 ```
 
-**If Bash access is denied:** Skip to Documentation Mode (see Step 4b). You can't check existing configuration interactively, so proceed with creating documentation files.
+**If Bash access is denied:** Skip to Documentation Mode (see Step 5b). You can't check existing configuration interactively, so proceed with creating documentation files.
 
 **Interpretation (if Bash succeeded):**
 - If `MDB_MCP_CONNECTION_STRING` is set, the user has connection string auth configured
 - If both `MDB_MCP_API_CLIENT_ID` and `MDB_MCP_API_CLIENT_SECRET` are set, the user has service account auth configured
 - If the user has either valid configuration, exit gracefully unless they explicitly need Atlas Admin API access but only have the connection string configured
+
+**Partial Configuration Handling:**
+- If user wants to add read-only mode to existing setup (has auth but no `MDB_MCP_READ_ONLY`), skip to Step 4
+- If user wants to switch authentication methods, explain they should remove the old variables from their shell profile first, then proceed with Steps 2-5
+- If user wants to update existing credentials, offer to update the configuration in their shell profile
 
 **Important**: If the user is asking to perform an Atlas Admin API action (like managing clusters, creating database users, getting performance advisor recommendations) but only has `MDB_MCP_CONNECTION_STRING` configured, explain that they need service account credentials for Atlas Admin API access and offer to help them set it up.
 
@@ -99,12 +104,9 @@ Perform basic validation to ensure the connection string follows MongoDB URI for
 - Should contain host information
 - Warn if it doesn't look valid, but allow the user to proceed if they insist
 
-### 3a.3: Update Shell Profile
+### 3a.3: Proceed to Configuration
 
-Proceed to Step 4 (Update Shell Profile) with the environment variable:
-```bash
-export MDB_MCP_CONNECTION_STRING="<user-provided-connection-string>"
-```
+You now have the connection string. Proceed to Step 4 (Determine Read-Only Access).
 
 ## Step 3b: Service Account Setup
 
@@ -162,13 +164,9 @@ Once they've completed the Atlas setup, ask them to provide:
 
 Use the AskUserQuestion tool with appropriate input fields for these credentials.
 
-### 3b.5: Update Shell Profile
+### 3b.5: Proceed to Configuration
 
-Proceed to Step 4 (Update Shell Profile) with both environment variables:
-```bash
-export MDB_MCP_API_CLIENT_ID="<user-provided-client-id>"
-export MDB_MCP_API_CLIENT_SECRET="<user-provided-client-secret>"
-```
+You now have the service account credentials. Proceed to Step 4 (Determine Read-Only Access).
 
 ## Step 3c: Atlas Local Setup
 
@@ -192,28 +190,46 @@ Inform the user that they're all set! No environment variables or credentials ar
 - Or list existing deployments they may have created with the Atlas CLI using `atlas-local-list-deployments`
 - All Atlas Local operations work out of the box with Docker installed
 
-After confirming Docker is available, **skip Step 4** (no shell profile configuration needed) and proceed directly to Step 5 (Next Steps).
+After confirming Docker is available, **skip Steps 4 and 5** (no configuration needed) and proceed directly to Step 6 (Next Steps).
 
-## Step 4: Update Shell Profile
+## Step 4: Determine Read-Only vs Read-Write Access
+
+**This step only applies to Option A (Connection String) and Option B (Service Account). If the user chose Option C (Atlas Local), skip to Step 6.**
+
+Ask the user whether they want to configure read-only or read-write access to their MongoDB database:
+
+- **Read-Write Access** (default): Full access to read and write data, create collections, modify documents, etc.
+  - Best for: Development environments, testing, administrative tasks, or when you need to modify data
+
+- **Read-Only Access**: Restricted to only reading data - no modifications, inserts, updates, or deletes allowed
+  - Best for: Working with production data where you want to prevent accidental modifications, analyzing or reporting on data, or complying with access control policies
+
+Use the AskUserQuestion tool to ask: "Do you want to configure read-only access or read-write access to the database?"
+
+**If the user chooses read-only**: You'll set the `MDB_MCP_READ_ONLY` environment variable to `true` in Step 5.
+
+**If the user chooses read-write or doesn't have a preference**: Do NOT set `MDB_MCP_READ_ONLY` (the server defaults to read-write when this variable is not set).
+
+Proceed to Step 5 (Update Shell Profile).
+
+## Step 5: Update Shell Profile
 
 Now that you have the environment variable(s) to configure, update the user's shell profile.
 
-**Note:** This step only applies to Option A (Connection String) and Option B (Service Account). If the user chose Option C (Atlas Local), skip this step.
+**Try Interactive Mode first (5a). If Bash is denied at any point, switch to Documentation Mode (5b).**
 
-**Try Interactive Mode first (4a). If Bash is denied at any point, switch to Documentation Mode (4b).**
-
-### Step 4a: Interactive Mode (Automatic Configuration)
+### Step 5a: Interactive Mode (Automatic Configuration)
 
 Use this mode when you have Bash access.
 
-#### 4a.1: Detect Shell and Profile
+#### 5a.1: Detect Shell and Profile
 
 **Try to detect** the user's current shell:
 ```bash
 echo $SHELL
 ```
 
-**If Bash is denied:** Switch immediately to Documentation Mode (Step 4b).
+**If Bash is denied:** Switch immediately to Documentation Mode (Step 5b).
 
 Based on the shell, determine the appropriate profile file to update:
 
@@ -228,60 +244,85 @@ Based on the shell, determine the appropriate profile file to update:
 - PowerShell: Use the PowerShell profile (check `$PROFILE` variable)
 - Inform them they may need to create the profile if it doesn't exist
 
-#### 4a.2: Check for Existing Configuration
+#### 5a.2: Check for Existing Configuration
 
 Before adding new environment variables, check if these variables are already defined in the profile file. If they are, offer to update them rather than adding duplicates.
 
-#### 4a.3: Add Environment Variables
+#### 5a.3: Add Environment Variables
 
 Add the environment variables to the appropriate profile file. Add a comment to make it clear what these are for:
 
+For Connection String (Option A):
 ```bash
 # MongoDB MCP Server Configuration
 export MDB_MCP_CONNECTION_STRING="<value>"
 ```
 
-or
-
+For Service Account (Option B):
 ```bash
 # MongoDB MCP Server Configuration (Atlas Service Account)
 export MDB_MCP_API_CLIENT_ID="<value>"
 export MDB_MCP_API_CLIENT_SECRET="<value>"
 ```
 
+**If the user chose read-only access** (Step 4), add this additional line:
+```bash
+export MDB_MCP_READ_ONLY="true"
+```
+
 Use the Edit tool to append these lines to the profile file. If the file doesn't exist, create it with Write tool.
 
-#### 4a.4: Set Permissions
+#### 5a.4: Set Permissions
 
 Ensure the profile file has appropriate permissions (especially important for files containing secrets):
 ```bash
 chmod 600 ~/.zshrc  # or whatever profile file was used
 ```
 
-After completing Interactive Mode, proceed to Step 5 (Apply Configuration).
+#### 5a.5: Verify Configuration
 
-### Step 4b: Documentation Mode (Manual Configuration)
+Test that the variables are set correctly by sourcing the profile:
+```bash
+source ~/.zshrc  # or appropriate profile file
+env | grep MDB_MCP
+```
+
+Confirm the output shows the expected environment variables. This verification ensures everything is configured before requiring a full client restart.
+
+After completing Interactive Mode, proceed to Step 6 (Next Steps).
+
+### Step 5b: Documentation Mode (Manual Configuration)
 
 Use this mode when Bash access is restricted or denied.
 
 **CRITICAL: Create ONLY ONE file called `SETUP.md`. Do NOT create additional files like README.md, summary.md, session_log.txt, resolution_summary.md, etc. Just SETUP.md.**
 
-#### 4b.1: Create ONE Setup File
+#### 5b.1: Create ONE Setup File
 
 Create a single file called `SETUP.md` with concise, actionable instructions. Keep it under 100 lines. Structure:
 
-```markdown
+````markdown
 # MongoDB MCP Setup
 
 ## What to do
 
 Add this to your shell profile (`~/.zshrc` or `~/.bashrc`):
 
+For Connection String (Option A):
 ```bash
 export MDB_MCP_CONNECTION_STRING="<their-exact-value>"
 ```
 
-(or for service account, include both API credentials)
+For Service Account (Option B):
+```bash
+export MDB_MCP_API_CLIENT_ID="<their-exact-value>"
+export MDB_MCP_API_CLIENT_SECRET="<their-exact-value>"
+```
+
+**If you chose read-only access**, also add:
+```bash
+export MDB_MCP_READ_ONLY="true"
+```
 
 ## Steps
 
@@ -300,27 +341,26 @@ export MDB_MCP_CONNECTION_STRING="<their-exact-value>"
 ## Troubleshooting
 
 If it doesn't work after restart:
-- Make sure you used the exact variable name (MDB_MCP_CONNECTION_STRING or MDB_MCP_API_CLIENT_ID/SECRET)
+- Make sure you used the exact variable names (MDB_MCP_CONNECTION_STRING, MDB_MCP_API_CLIENT_ID/SECRET, or MDB_MCP_READ_ONLY)
 - Check the variable is set: `env | grep MDB_MCP`
 - Verify the client was fully restarted, not just reloaded
+````
 
 **Keep it direct and scannable.** Don't create separate files for "overview", "architecture", "workflow guide", etc. One file with clear steps.
 
-#### 4b.2: Explain to User (Brief Summary)
+#### 5b.2: Explain to User (Brief Summary)
 
 Tell the user in your response:
 - "I've created SETUP.md with instructions to configure the MongoDB MCP server"
-- "The key step: add this line to your ~/.zshrc file: `export MDB_MCP_CONNECTION_STRING='<value>'`"
+- "The key step: add the environment variable(s) to your shell profile (e.g., `~/.zshrc` or `~/.bashrc`)"
 - "Then source the file and restart the client"
 - Point them to the SETUP.md file for full details
 
 **Do not** create multiple README files, architecture documents, comparison guides, or verbose explanations. Keep the user-facing communication concise and the documentation minimal.
 
-After completing Documentation Mode, proceed to Step 5 (Next Steps).
+After completing Documentation Mode, proceed to Step 6 (Next Steps).
 
-After completing Interactive Mode, proceed to Step 5 (Next Steps).
-
-## Step 5: Next Steps
+## Step 6: Next Steps
 
 Inform the user about what to do next based on their chosen option:
 
@@ -354,13 +394,14 @@ Inform the user about what to do next based on their chosen option:
   - Verify the environment variables are set in a fresh terminal: `env | grep MDB_MCP`
   - Check that the client was fully restarted (not just reloaded)
   - Verify the credentials are valid by testing them directly (connection string by connecting with `mongosh`, service account credentials by making an Atlas API call)
+  - If using read-only mode, verify `MDB_MCP_READ_ONLY` is set to `true`
   - Check the client's MCP server logs for error messages
 
 ## Error Handling
 
 Be prepared for common issues:
 
-- **Bash permission denied**: Automatically switch to Documentation Mode (Step 4b). Don't ask the user for permission or explain why - just gracefully create documentation files instead
+- **Bash permission denied**: Automatically switch to Documentation Mode (Step 5b). Don't ask the user for permission or explain why - just gracefully create documentation files instead
 - **Invalid connection string format**: Provide guidance on the correct format
 - **Profile file doesn't exist**: In Interactive Mode, create it with Write tool. In Documentation Mode, explain where it should be created
 - **Permission denied on profile file**: In Interactive Mode, help them fix file permissions. In Documentation Mode, include permission instructions in the documentation
