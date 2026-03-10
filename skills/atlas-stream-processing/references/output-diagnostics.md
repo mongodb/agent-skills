@@ -112,6 +112,24 @@ Ask the user what the processor does, or inspect the pipeline:
 | **Transformation** | Problem — check connections, DLQ | Problem — check filters, DLQ | Debug pipeline and connections |
 | **Filter** | Could be normal if no data matches | Could be normal | Verify filter criteria against actual source data |
 
+## Common Diagnostic Patterns
+
+After running `diagnose-processor` and `get-logs`, match the symptoms to these patterns:
+
+| Symptom | Root Cause | Fix |
+|---------|------------|-----|
+| **Error 419 + "no partitions found"** | Kafka topic doesn't exist or is misspelled | Verify topic name with Kafka broker; check connection config |
+| **State: FAILED + multiple restarts** | Connection-level error (bypasses DLQ) | Check operational logs for repeated error; fix connection config or pipeline |
+| **State: STARTED + zero output + windowed pipeline** | Idle Kafka partitions blocking window closure | Add `partitionIdleTimeout` to Kafka `$source` (e.g., `{"size": 30, "unit": "second"}`) |
+| **State: STARTED + zero output + non-windowed** | Source has no data or filter too strict | Check if source (Kafka topic, collection) has data; review `$match` filters |
+| **High memoryUsageBytes approaching tier limit** | OOM risk — window state or pipeline too large | Upgrade to higher tier (see sizing-and-parallelism.md) |
+| **DLQ count increasing** | Per-document processing errors | Use MongoDB `find` on DLQ collection to inspect failed documents and error messages |
+
+**When providing fix steps:**
+- Commit to a specific root cause based on the evidence
+- Do NOT present a list of hypothetical scenarios
+- Provide concrete, ordered steps (e.g., "stop → modify pipeline to add partitionIdleTimeout → restart with resumeFromCheckpoint: false")
+
 ## Contextual Factors
 
 Before concluding there's a problem, consider:

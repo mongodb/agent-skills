@@ -89,7 +89,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing:
 **Teardown safety checks:**
 - **Processor deletion** → auto-stops before deleting (no need to stop manually first)
 - **Connection deletion** → blocks if any running processor references it. Stop/delete referencing processors first.
-- **Workspace deletion** → YOU must inspect first with `atlas-streams-discover` to count connections and processors, then present this to the user before calling teardown.
+- **Workspace deletion** → See detailed workflow below (lines 108-111).
 
 ### atlas-streams-teardown — ALL delete operations
 | Resource | Safety behavior |
@@ -131,7 +131,7 @@ Key quickstarts:
 
 **Invalid constructs** — these are NOT valid in streaming pipelines:
 - **`$$NOW`**, **`$$ROOT`**, **`$$CURRENT`** — NOT available in stream processing. NEVER use these. Use the document's own timestamp field or `_stream_meta` metadata for event time instead of `$$NOW`.
-- **HTTPS connections as `$source`** — HTTPS is for `$https` enrichment only
+- **HTTPS connections as `$source`** — HTTPS is for `$https` enrichment or sink only, NOT as a data source
 - **Kafka `$source` without `topic`** — topic field is required
 - **Pipelines without a sink** — terminal stage (`$merge`, `$emit`, `$https`, or `$externalFunction` async) required for deployed processors (sinkless only works via `sp.process()`)
 - **Lambda as `$emit` target** — Lambda uses `$externalFunction` (mid-pipeline enrichment), not `$emit`
@@ -139,14 +139,16 @@ Key quickstarts:
 
 **Required fields by stage:**
 - **`$source` (change stream)**: include `fullDocument: "updateLookup"` to get the full document content
-- **`$source` (Kinesis)**: use `stream` (NOT `streamName` or `topic`) for the Kinesis stream name. Example: `{"$source": {"connectionName": "my-kinesis", "stream": "my-stream"}}`
-- **`$emit` (Kinesis)**: MUST include `partitionKey`. Example: `{"$emit": {"connectionName": "my-kinesis", "stream": "my-stream", "partitionKey": "$fieldName"}}`
-- **`$emit` (S3)**: use `path` (NOT `prefix`). Example: `{"$emit": {"connectionName": "my-s3", "bucket": "my-bucket", "path": "data/year={$year}", "config": {"outputFormat": {"name": "json"}}}}`
-- **`$https`**: must include `connectionName`, `path`, `method` (GET/POST), `as`, and `onError: "dlq"`
-- **`$externalFunction`**: must include `connectionName`, `functionName`, `execution` ("sync"/"async"), `as`, `onError: "dlq"`
+- **`$source` (Kinesis)**: use `stream` (NOT `streamName` or `topic`)
+- **`$emit` (Kinesis)**: MUST include `partitionKey`
+- **`$emit` (S3)**: use `path` (NOT `prefix`)
+- **`$https`**: must include `connectionName`, `path`, `method`, `as`, `onError: "dlq"`
+- **`$externalFunction`**: must include `connectionName`, `functionName`, `execution`, `as`, `onError: "dlq"`
 - **`$validate`**: must include `validator` with `$jsonSchema` and `validationAction: "dlq"`
 - **`$lookup`**: include `parallelism` setting (e.g., `parallelism: 2`) for concurrent I/O
-- **AWS connections** (S3, Kinesis, Lambda): IAM role ARN must be **registered in the Atlas project via Cloud Provider Access** before creating the connection. This is a prerequisite — the connection creation will fail without it. **Always mention this prerequisite** in your response, even if the user says connections already exist. Confirm: "IAM role ARNs are registered via Atlas Cloud Provider Access" or "Ensure IAM role ARNs are registered via Atlas Cloud Provider Access before creating connections."
+- **AWS connections** (S3, Kinesis, Lambda): IAM role ARN must be registered via Atlas Cloud Provider Access first. Always confirm this with user. See [references/connection-configs.md](references/connection-configs.md) for details.
+
+See [references/pipeline-patterns.md](references/pipeline-patterns.md) for stage field examples with JSON syntax.
 
 **SchemaRegistry connection:** `connectionType` must be `"SchemaRegistry"` (not `"Kafka"`). See [references/connection-configs.md](references/connection-configs.md#schemaregistry) for required fields and auth types.
 
@@ -167,21 +169,12 @@ Key quickstarts:
 |----------|-------------|---------------------|
 | **AWS** | us-east-1 | `VIRGINIA_USA` |
 | **AWS** | us-east-2 | `US_EAST_2` |
-| **AWS** | us-west-2 | `OREGON_USA` |
-| **AWS** | ca-central-1 | `CA_CENTRAL_1` |
-| **AWS** | sa-east-1 | `SA_EAST_1` |
-| **AWS** | eu-west-1 | `IRELAND_IRL` |
 | **GCP** | us-central1 | `US_CENTRAL1` |
 | **GCP** | europe-west1 | `WESTERN_EUROPE` |
 | **Azure** | eastus | `US_EAST_1` |
-| **Azure** | eastus2 | `US_EAST_2` |
-| **Azure** | westus | `US_WEST` |
 | **Azure** | westeurope | `EUROPE_WEST` |
-| **AWS** | ap-southeast-1 | `AP_SOUTHEAST_1` |
-| **AWS** | ap-south-1 | `AP_SOUTH_1` |
-| **AWS** | ap-northeast-1 | `AP_NORTHEAST_1` |
 
-This is a partial list. If unsure, inspect an existing workspace with `atlas-streams-discover` → `inspect-workspace` and check `dataProcessRegion.region`.
+See [references/connection-configs.md](references/connection-configs.md) for the full region mapping table. If unsure, inspect an existing workspace with `atlas-streams-discover` → `inspect-workspace` and check `dataProcessRegion.region`.
 
 ## Connection Capabilities — Source/Sink Reference
 
@@ -199,14 +192,9 @@ Know what each connection type can do before creating pipelines:
 | **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
 
 **Common connection usage mistakes to avoid:**
-- ❌ Using HTTPS connections as `$source` → HTTPS is for enrichment or sink only
 - ❌ Using `$externalFunction` as sink with `execution: "sync"` → Must use `execution: "async"` for sink stage
 - ❌ Forgetting change streams exist → Atlas Cluster is a powerful source, not just a sink
 - ❌ Using `$merge` with Kafka → Use `$emit` for Kafka sinks
-
-**$externalFunction execution modes:**
-- **Mid-pipeline:** Can use `execution: "sync"` (blocks until Lambda returns) or `execution: "async"` (non-blocking)
-- **Final sink stage:** MUST use `execution: "async"` only
 
 See [references/connection-configs.md](references/connection-configs.md) for detailed connection configuration schemas by type.
 
@@ -237,30 +225,15 @@ See [references/development-workflow.md](references/development-workflow.md) for
 3. `atlas-streams-manage` → `action: "start-processor"` — restart
 
 **Debug a failing processor:**
-See [references/output-diagnostics.md](references/output-diagnostics.md) for the full decision framework.
 1. `atlas-streams-discover` → `diagnose-processor` — one-shot health report. Always call this first.
-2. `atlas-streams-discover` → `get-logs` (`logType: "operational"`) — runtime errors, Kafka failures, schema issues, OOM messages. Filter by `resourceName` for a specific processor. Always call this second.
-3. **Commit to a specific root cause.** After reviewing the diagnose output and logs, identify THE primary issue — do not present a list of hypothetical scenarios. Common patterns:
-   - **Error 419 + "no partitions found"** → Kafka topic doesn't exist or is misspelled
-   - **State: FAILED + multiple restarts** → connection-level error (bypasses DLQ), check logs for the repeated error
-   - **State: STARTED + zero output + windowed pipeline** → likely idle Kafka partitions blocking window closure; check for missing `partitionIdleTimeout`
-   - **State: STARTED + zero output + non-windowed** → check if source has data; inspect Kafka offset lag
-   - **High memoryUsageBytes approaching tier limit** → OOM risk; recommend higher tier
-   - **DLQ count increasing** → per-document processing errors; use MongoDB `find` on DLQ collection
-4. Classify processor type before interpreting output volume:
-   - **Alert/anomaly processors**: low or zero output is NORMAL and healthy
-   - **Data transformation processors**: low output is a RED FLAG
-   - **Filter processors**: variable output depending on data match rate
-5. Provide concrete, ordered fix steps specific to the diagnosed root cause (e.g., "stop → modify pipeline to add partitionIdleTimeout → restart with resumeFromCheckpoint: false").
-6. If lifecycle event history needed → `atlas-streams-discover` → `get-logs`, `logType: "audit"` — shows start/stop events
+2. `atlas-streams-discover` → `get-logs` (`logType: "operational"`) — runtime errors, Kafka failures, schema issues, OOM messages. Always call this second.
+3. **Commit to a specific root cause.** Match symptoms to diagnostic patterns (Error 419, idle partitions, OOM, DLQ errors, etc.) — see [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table.
+4. Classify processor type before interpreting output volume (alert vs transformation vs filter).
+5. Provide concrete, ordered fix steps specific to the diagnosed root cause.
+6. If lifecycle event history needed → `atlas-streams-discover` → `get-logs`, `logType: "audit"`
 
 ### Chained processors (multi-sink pattern)
-**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). You CANNOT have both `$merge` and `$emit` as terminal stages. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
-1. **Acknowledge** the single-sink constraint explicitly in your response
-2. **Propose chained processors**: Processor A reads source → enriches → writes to intermediate via `$merge` (Atlas) or `$emit` (Kafka). Processor B reads from that intermediate (change stream or Kafka topic) → emits to second destination. Kafka-as-intermediate is lower latency; Atlas-as-intermediate is simpler to inspect.
-3. **Show both processor pipelines** including any `$lookup` enrichment stages with `parallelism` settings.
-
-Note: `$externalFunction` (Lambda) is a mid-pipeline stage, NOT a terminal sink. A pipeline can use `$externalFunction` AND still have a terminal `$merge`/`$emit` — this is a valid single-sink pattern, but explain WHY it works (Lambda is invoked mid-pipeline, not as a sink).
+**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). When users request multiple output destinations (e.g., "write to Atlas AND emit to Kafka"), you MUST acknowledge the single-sink constraint and propose chained processors using an intermediate destination. See [references/pipeline-patterns.md](references/pipeline-patterns.md) for the full pattern with examples.
 
 ## Pre-Deploy & Post-Deploy Checklists
 
@@ -280,7 +253,6 @@ See [references/development-workflow.md](references/development-workflow.md) for
 
 - Charges are per-hour, calculated per-second, only while the processor is running
 - `stop-processor` stops billing; stopped processors retain state for 45 days at no charge
-- Always confirm billing setup before starting processors
 - **For prototyping without billing:** Use `sp.process()` in mongosh — runs pipelines ephemerally without deploying a processor
 - See `references/sizing-and-parallelism.md` for tier pricing and cost optimization strategies
 
@@ -290,8 +262,7 @@ See [references/development-workflow.md](references/development-workflow.md) for
 - **BEFORE calling `atlas-streams-teardown` for a workspace**, you MUST first inspect the workspace with `atlas-streams-discover` to count connections and processors, then present this information to the user before requesting confirmation
 - **BEFORE creating any processor**, you MUST validate all connections per the "Pre-Deployment Validation" section in [references/development-workflow.md](references/development-workflow.md)
 - Deleting a workspace removes ALL connections and processors permanently
-- Processors must be STOPPED before modifying their pipeline
-- After stopping, state is preserved 45 days — then checkpoints are discarded
+- After stopping a processor, state is preserved 45 days — then checkpoints are discarded
 - `resumeFromCheckpoint: false` drops all window state — warn user first
 - Moving processors between workspaces is not supported (must recreate)
 - Dry-run / simulation is not supported — explain what you would do and ask for confirmation

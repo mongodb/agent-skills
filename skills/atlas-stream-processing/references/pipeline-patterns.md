@@ -396,3 +396,36 @@ DLQ documents include: original document, error message, stage info, timestamp.
 | `sampleiot` | Generic IoT sensor data |
 | `samplelog` | Application log events |
 | `samplecommerce` | E-commerce transaction data |
+
+## Chained Processors (Multi-Sink Pattern)
+
+**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). You CANNOT have both `$merge` and `$emit` as terminal stages. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
+
+1. **Acknowledge** the single-sink constraint explicitly in your response
+2. **Propose chained processors**: Processor A reads source → enriches → writes to intermediate via `$merge` (Atlas) or `$emit` (Kafka). Processor B reads from that intermediate (change stream or Kafka topic) → emits to second destination. Kafka-as-intermediate is lower latency; Atlas-as-intermediate is simpler to inspect.
+3. **Show both processor pipelines** including any `$lookup` enrichment stages with `parallelism` settings.
+
+Note: `$externalFunction` (Lambda) can be used mid-pipeline OR as a terminal sink (with `execution: "async"`). A pipeline with mid-pipeline `$externalFunction` AND a terminal `$merge`/`$emit` is a valid single-sink pattern (Lambda enriches, then the result is written to the sink).
+
+## Required Field Examples by Stage
+
+### $source (Kinesis)
+Use `stream` (NOT `streamName` or `topic`) for the Kinesis stream name.
+```json
+{"$source": {"connectionName": "my-kinesis", "stream": "my-stream"}}
+```
+
+### $source (change stream)
+Include `fullDocument: "updateLookup"` to get the full document content.
+
+### $emit (Kinesis)
+MUST include `partitionKey`.
+```json
+{"$emit": {"connectionName": "my-kinesis", "stream": "my-stream", "partitionKey": "$fieldName"}}
+```
+
+### $emit (S3)
+Use `path` (NOT `prefix`).
+```json
+{"$emit": {"connectionName": "my-s3", "bucket": "my-bucket", "path": "data/year={$year}", "config": {"outputFormat": {"name": "json"}}}}
+```

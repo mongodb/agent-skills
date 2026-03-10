@@ -72,6 +72,40 @@ See [development-workflow.md](development-workflow.md) "Pre-Deployment Connectio
 - AWS connections (S3, Kinesis, Lambda) require IAM role ARN registered via Atlas Cloud Provider Access first
 - Supported `connectionType` values: `Kafka`, `Cluster`, `S3`, `Https`, `AWSKinesisDataStreams`, `AWSLambda`, `SchemaRegistry`, `Sample`
 
+## AWS Cloud Provider Access Prerequisites
+
+**For S3, Kinesis, and Lambda connections:**
+
+AWS connections (S3, Kinesis, Lambda) require that the IAM role ARN be **registered in the Atlas project via Cloud Provider Access** before creating the connection. This is a prerequisite — the connection creation will fail without it.
+
+**Always mention this prerequisite** in your response when the user wants to create AWS connections, even if the user says connections already exist. Confirm with language like:
+- "IAM role ARNs are registered via Atlas Cloud Provider Access"
+- "Ensure IAM role ARNs are registered via Atlas Cloud Provider Access before creating connections"
+
+## Region Mapping Reference
+
+The `region` field for workspace creation uses Atlas-specific names that differ by cloud provider. Using the wrong format returns a cryptic `dataProcessRegion` error.
+
+| Provider | Cloud Region | Atlas `region` Value |
+|----------|-------------|---------------------|
+| **AWS** | us-east-1 | `VIRGINIA_USA` |
+| **AWS** | us-east-2 | `US_EAST_2` |
+| **AWS** | us-west-2 | `OREGON_USA` |
+| **AWS** | ca-central-1 | `CA_CENTRAL_1` |
+| **AWS** | sa-east-1 | `SA_EAST_1` |
+| **AWS** | eu-west-1 | `IRELAND_IRL` |
+| **GCP** | us-central1 | `US_CENTRAL1` |
+| **GCP** | europe-west1 | `WESTERN_EUROPE` |
+| **Azure** | eastus | `US_EAST_1` |
+| **Azure** | eastus2 | `US_EAST_2` |
+| **Azure** | westus | `US_WEST` |
+| **Azure** | westeurope | `EUROPE_WEST` |
+| **AWS** | ap-southeast-1 | `AP_SOUTHEAST_1` |
+| **AWS** | ap-south-1 | `AP_SOUTH_1` |
+| **AWS** | ap-northeast-1 | `AP_NORTHEAST_1` |
+
+This is a partial list. If unsure, inspect an existing workspace with `atlas-streams-discover` → `inspect-workspace` and check `dataProcessRegion.region`.
+
 ## MCP Tool Behaviors for Connections
 
 **Elicitation:** When required fields are missing, the build tool auto-prompts for them via an interactive form (MCP elicitation protocol). Do NOT manually ask the user for passwords or bootstrap servers — let the tool collect them.
