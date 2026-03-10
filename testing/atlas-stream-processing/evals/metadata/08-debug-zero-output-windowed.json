@@ -1,0 +1,63 @@
+{
+  "eval_id": 8,
+  "eval_name": "debug-zero-output-windowed",
+  "prompt": "My windowed Kafka processor has been running for an hour but produced no output. State is STARTED and connections are healthy",
+  "assertions": [
+    {
+      "name": "identifies_idle_partition_issue",
+      "description": "Response identifies idle Kafka partitions as the likely root cause",
+      "critical": true,
+      "reason": "This is the most common cause of windowed processors producing no output when healthy"
+    },
+    {
+      "name": "recommends_partitionIdleTimeout",
+      "description": "Response recommends adding partitionIdleTimeout to Kafka $source",
+      "critical": true
+    },
+    {
+      "name": "provides_specific_syntax",
+      "description": "Response provides specific JSON syntax for partitionIdleTimeout configuration",
+      "critical": true
+    },
+    {
+      "name": "explains_window_closure_dependency",
+      "description": "Response explains that windows won't close if a partition has no data"
+    },
+    {
+      "name": "provides_fix_steps",
+      "description": "Response provides ordered steps: stop processor → modify pipeline → restart"
+    },
+    {
+      "name": "does_not_assume_connection_problem",
+      "description": "Does NOT suggest connection issues (prompt states connections are healthy)",
+      "critical": true
+    },
+    {
+      "name": "does_not_assume_source_has_no_data",
+      "description": "Does NOT suggest source has no data (running for an hour implies data exists)"
+    }
+  ],
+  "root_cause": "Idle Kafka partitions blocking window closure",
+  "explanation": "Windowed processors wait for data from ALL partitions before closing a window. If any partition goes idle (no new data), the window never closes and no output is produced.",
+  "solution": {
+    "field": "partitionIdleTimeout",
+    "location": "$source stage (Kafka)",
+    "syntax": {
+      "$source": {
+        "connectionName": "<kafka-connection>",
+        "topic": "<topic>",
+        "partitionIdleTimeout": {
+          "size": 30,
+          "unit": "second"
+        }
+      }
+    },
+    "explanation": "After 30 seconds of no data from a partition, treat it as idle and allow window to close"
+  },
+  "fix_steps": [
+    "Stop the processor: atlas-streams-manage action='stop-processor'",
+    "Modify pipeline to add partitionIdleTimeout to $source",
+    "Restart processor: atlas-streams-manage action='start-processor' with resumeFromCheckpoint=false to reprocess"
+  ],
+  "diagnostic_pattern": "State: STARTED + zero output + windowed pipeline → likely idle Kafka partitions blocking window closure"
+}
