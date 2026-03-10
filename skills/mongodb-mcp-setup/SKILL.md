@@ -84,7 +84,7 @@ If no valid configuration exists, present the options to the user and help them 
 - They don't need real Atlas resources (just a local MongoDB instance)
 - They want the fastest setup with no credentials required
 
-Use the AskUserQuestion tool to let them choose.
+Use the agent's interactive question/choice capability to let them choose.
 
 ## Step 3a: Connection String Setup
 
@@ -162,7 +162,7 @@ Once they've completed the Atlas setup, ask them to provide:
 - Client ID
 - Client Secret
 
-Use the AskUserQuestion tool with appropriate input fields for these credentials.
+Use the agent's user-input capability with appropriate fields for these credentials.
 
 ### 3b.5: Proceed to Configuration
 
@@ -204,7 +204,7 @@ Ask the user whether they want to configure read-only or read-write access to th
 - **Read-Only Access**: Restricted to only reading data - no modifications, inserts, updates, or deletes allowed
   - Best for: Working with production data where you want to prevent accidental modifications, analyzing or reporting on data, or complying with access control policies
 
-Use the AskUserQuestion tool to ask: "Do you want to configure read-only access or read-write access to the database?"
+Use the agent's interactive question capability to ask: "Do you want to configure read-only access or read-write access to the database?"
 
 **If the user chooses read-only**: You'll set the `MDB_MCP_READ_ONLY` environment variable to `true` in Step 5.
 
@@ -236,9 +236,14 @@ Based on the shell, determine the appropriate profile file to update:
 | Shell | Profile File |
 |-------|-------------|
 | `/bin/zsh` or `/usr/bin/zsh` | `~/.zshrc` |
-| `/bin/bash` or `/usr/bin/bash` | `~/.bashrc` or `~/.bash_profile` (check which exists, prefer `~/.bashrc`) |
+| `/bin/bash` or `/usr/bin/bash` | Use the startup file that is actually loaded in their environment (often `~/.bash_profile` on macOS login shells, `~/.bashrc` on non-login interactive shells) |
 | `/bin/fish` or `/usr/bin/fish` | `~/.config/fish/config.fish` |
 | Others | `~/.profile` (fallback) |
+
+For Bash specifically:
+- If both files exist, update the one that is currently sourced by their shell/session.
+- On macOS, prefer `~/.bash_profile` unless you can confirm `~/.bashrc` is sourced.
+- Avoid writing only to `~/.bashrc` when the environment uses login-shell startup files.
 
 **For Windows users** (if you detect Windows OS):
 - PowerShell: Use the PowerShell profile (check `$PROFILE` variable)
@@ -270,7 +275,7 @@ export MDB_MCP_API_CLIENT_SECRET="<value>"
 export MDB_MCP_READ_ONLY="true"
 ```
 
-Use the Edit tool to append these lines to the profile file. If the file doesn't exist, create it with Write tool.
+Use available file-editing capabilities to append these lines to the profile file. If the file doesn't exist, create it with file-creation capabilities.
 
 #### 5a.4: Set Permissions
 
@@ -299,7 +304,11 @@ Use this mode when Bash access is restricted or denied.
 
 #### 5b.1: Create ONE Setup File
 
-Create a single file called `SETUP.md` with concise, actionable instructions. Keep it under 100 lines. Structure:
+Create a single file called `SETUP.md` with concise, actionable instructions. Keep it under 100 lines.
+
+**Security rule:** Never write the user's real credentials into `SETUP.md` (or any workspace file). Use placeholders only, and tell the user to paste their real values manually in their shell profile.
+
+Structure:
 
 ````markdown
 # MongoDB MCP Setup
@@ -310,13 +319,13 @@ Add this to your shell profile (`~/.zshrc` or `~/.bashrc`):
 
 For Connection String (Option A):
 ```bash
-export MDB_MCP_CONNECTION_STRING="<their-exact-value>"
+export MDB_MCP_CONNECTION_STRING="<paste-your-connection-string-here>"
 ```
 
 For Service Account (Option B):
 ```bash
-export MDB_MCP_API_CLIENT_ID="<their-exact-value>"
-export MDB_MCP_API_CLIENT_SECRET="<their-exact-value>"
+export MDB_MCP_API_CLIENT_ID="<paste-your-client-id-here>"
+export MDB_MCP_API_CLIENT_SECRET="<paste-your-client-secret-here>"
 ```
 
 **If you chose read-only access**, also add:
@@ -344,6 +353,11 @@ If it doesn't work after restart:
 - Make sure you used the exact variable names (MDB_MCP_CONNECTION_STRING, MDB_MCP_API_CLIENT_ID/SECRET, or MDB_MCP_READ_ONLY)
 - Check the variable is set: `env | grep MDB_MCP`
 - Verify the client was fully restarted, not just reloaded
+
+## Security reminder
+
+- Never commit credentials to git
+- Keep secrets in your shell profile only (not in project files)
 ````
 
 **Keep it direct and scannable.** Don't create separate files for "overview", "architecture", "workflow guide", etc. One file with clear steps.
@@ -403,7 +417,7 @@ Be prepared for common issues:
 
 - **Bash permission denied**: Automatically switch to Documentation Mode (Step 5b). Don't ask the user for permission or explain why - just gracefully create documentation files instead
 - **Invalid connection string format**: Provide guidance on the correct format
-- **Profile file doesn't exist**: In Interactive Mode, create it with Write tool. In Documentation Mode, explain where it should be created
+- **Profile file doesn't exist**: In Interactive Mode, create it with available file-creation capabilities. In Documentation Mode, explain where it should be created
 - **Permission denied on profile file**: In Interactive Mode, help them fix file permissions. In Documentation Mode, include permission instructions in the documentation
 - **Variables not loading**: Check shell type and profile file path
 - **Service account credentials invalid**: Direct them back to Atlas to verify or regenerate credentials
