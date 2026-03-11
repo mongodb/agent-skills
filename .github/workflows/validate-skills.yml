@@ -34,4 +34,4 @@ jobs:
         run: |
           echo "## All Skills" >> "$GITHUB_STEP_SUMMARY"
           skill-validator-ent check --strict --emit-annotations -o markdown skills/ \
-            | tee >(grep -v '^::' >> "$GITHUB_STEP_SUMMARY")
+            2>&1 | tee >(grep -v '^::' >> "$GITHUB_STEP_SUMMARY")

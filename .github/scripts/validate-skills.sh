@@ -33,9 +33,14 @@ fi
 # Find unique skill directories containing files changed in this PR.
 # The three-dot diff requires fetch-depth: 0 and a properly configured remote,
 # which is always the case on GitHub Actions.
+diff_output="$(git diff --name-only "origin/${BASE_REF}...HEAD" -- skills/)" || {
+  echo "Error: git diff against origin/${BASE_REF} failed."
+  echo "Ensure the base branch has been fetched (fetch-depth: 0 in the workflow)."
+  exit 1
+}
+
 changed_skills=()
-mapfile -t changed_skills < <(git diff --name-only "origin/${BASE_REF}...HEAD" -- skills/ \
-  2>/dev/null \
+mapfile -t changed_skills < <(echo "$diff_output" \
   | cut -d'/' -f2 \
   | sort -u \
   | grep -v '^$')
