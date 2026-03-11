@@ -164,10 +164,10 @@ Check if a search index exists using `collection-indexes` before choosing approa
 ## 📁 Files Created
 
 ### Test Infrastructure
-- `mongodb-query-generator/mongodb-query-workspace/fixtures/` - Test data (5 TypeScript files)
-- `mongodb-query-generator/mongodb-query-workspace/load-fixtures.ts` - Fixture loader script
-- `mongodb-query-generator/mongodb-query-workspace/package.json` - Dependencies
-- `mongodb-query-generator/mongodb-query-workspace/README.md` - Setup documentation
+- `mongodb-natural-language-querying/mongodb-query-workspace/fixtures/` - Test data (5 TypeScript files)
+- `mongodb-natural-language-querying/mongodb-query-workspace/load-fixtures.ts` - Fixture loader script
+- `mongodb-natural-language-querying/mongodb-query-workspace/package.json` - Dependencies
+- `mongodb-natural-language-querying/mongodb-query-workspace/README.md` - Setup documentation
 
 ### Test Results
 - `iteration-1/test-results.md` - Detailed test comparison
@@ -198,7 +198,7 @@ Check if a search index exists using `collection-indexes` before choosing approa
 
 ## 📦 Portability
 
-Everything in `mongodb-query-generator/mongodb-query-workspace/` is self-contained:
+Everything in `mongodb-natural-language-querying/mongodb-query-workspace/` is self-contained:
 - Fixtures can be loaded into any MongoDB instance
 - Scripts work with local MongoDB, Atlas, or Atlas Local
 - No dependencies on Compass repository
@@ -240,6 +240,6 @@ The mongodb-query skill is **production-ready** with excellent performance acros
 
 ## 📞 Support
 
-**Test Data Location:** `testing/mongodb-query-generator/mongodb-query-workspace/`
-**Skill Location:** `skills/mongodb-query-generator/`
+**Test Data Location:** `testing/mongodb-natural-language-querying/mongodb-query-workspace/`
+**Skill Location:** `skills/mongodb-natural-language-querying/`
 **Atlas Connection:** Configured in `.mcp.json`
