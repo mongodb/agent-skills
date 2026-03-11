@@ -12,7 +12,7 @@
       "id": 2,
       "name": "find-with-filter-projection-sort-limit",
       "prompt": "find three movies with alien in the title, show earliest movies first, only the _id, title and year",
-      "expected_output": "Find query with regex filter on title, sort by year ascending, limit 3, project _id/title/year",
+      "expected_output": "Find query that uses Atlas Search ($search) on the title field when available (regex filter on title is an acceptable fallback/partial pass), sort by year ascending, limit 3, project _id/title/year",
       "files": []
     },
     {
