@@ -19,6 +19,18 @@
 
 set -euo pipefail
 
+if ! command -v skill-validator-ent &>/dev/null; then
+  echo "Error: skill-validator-ent is not installed."
+  echo ""
+  echo "Install via Homebrew (recommended):"
+  echo "  brew tap agent-ecosystem/homebrew-tap"
+  echo "  brew install skill-validator-ent"
+  echo ""
+  echo "Or from source (requires Go 1.25.5+):"
+  echo "  go install github.com/agent-ecosystem/skill-validator-ent/cmd/skill-validator-ent@latest"
+  exit 1
+fi
+
 # Resolve and cd to the repo root so relative paths always work,
 # regardless of where the script is invoked from.
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
