@@ -16,7 +16,7 @@ mongodb-query-generator/mongodb-query-workspace/
 │   ├── simple-find/
 │   ├── find-with-filter-projection-sort-limit/
 │   └── ...
-├── load-fixtures.js       # Script to load fixtures into MongoDB
+├── load-fixtures.ts       # Script to load fixtures into MongoDB
 └── README.md             # This file
 ```
 
@@ -135,7 +135,7 @@ db.dropDatabase()
 
 ## Notes
 
-- The fixture files are in TypeScript format and are parsed by the load script
+- The fixture files are in TypeScript format and are imported directly by `load-fixtures.ts`
 - ObjectId fields are automatically converted during loading
 - Test data is intentionally small to keep tests fast
 - Fixtures are copied from the Compass repository for portability
