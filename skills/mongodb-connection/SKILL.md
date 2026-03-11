@@ -37,7 +37,7 @@ This skill activates when:
 - A new MongoDB client instance is being created
 - Connection pool configuration needs review or optimization
 - Performance issues potentially related to connections
-- Connection errors are being troubleshooted (ECONNREFUSED, timeouts, pool exhaustion)
+- Troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion)
 - Code review involving MongoDB connection management
 
 ## Your Workflow: Context → Analysis → Configuration
