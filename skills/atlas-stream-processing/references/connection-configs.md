@@ -1,6 +1,6 @@
 # Connection Configuration Reference
 
-**Official examples repo**: https://github.com/mongodb/ASP_example
+**Official examples repo**: https://github.com/mongodb/ASP_example — check quickstarts, example processors, and Terraform examples. Start with quickstarts.
 
 ## Connection Capabilities — Source/Sink Reference
 

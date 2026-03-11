@@ -1,6 +1,6 @@
 # Pipeline Patterns Reference
 
-**Official examples repo**: https://github.com/mongodb/ASP_example
+**Official examples repo**: https://github.com/mongodb/ASP_example (quickstarts, example processors, Terraform examples). Start with example_processors/README.md for the full pattern catalog.
 Always consult the official repo for the latest validated patterns before creating processors.
 
 ## Stage Quick-Reference
