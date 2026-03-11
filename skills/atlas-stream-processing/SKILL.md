@@ -22,11 +22,7 @@ The 4 tools: `atlas-streams-discover`, `atlas-streams-build`, `atlas-streams-man
 
 ## If MCP tools are unavailable
 
-If the MongoDB MCP Server is not connected or the streams tools are missing:
-1. Verify MCP server config has `previewFeatures: ["streams"]` enabled
-2. For read-only exploration: use `atlas streams` CLI commands (requires Atlas CLI installed)
-3. For pipeline prototyping: use `sp.process()` in mongosh (runs pipelines ephemerally, no billing)
-4. Full CRUD operations require the MCP server — help the user fix their setup
+If the MongoDB MCP Server is not connected or the streams tools are missing, see [references/mcp-troubleshooting.md](references/mcp-troubleshooting.md) for diagnostic steps and fallback options.
 
 ## Tool Selection Matrix
 
