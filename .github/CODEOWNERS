@@ -1,10 +1,10 @@
 # CODEOWNERS file for agent-skills repository
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-* @mongodb/dbx-devtools @mongodb/apix-devtools @dacharyc
+* @mongodb/dbx-devtools @mongodb/apix-devtools @mongodb/devdocs
 
 # GitHub configuration and workflows
-/.github/ @mongodb/dbx-devtools @mongodb/apix-devtools @dacharyc
+/.github/ @mongodb/dbx-devtools @mongodb/apix-devtools @mongodb/devdocs
 
 # Plugin packaging infrastructure
 /.claude-plugin/ @mongodb/dbx-devtools @mongodb/apix-devtools
@@ -13,6 +13,8 @@
 /assets/ @mongodb/dbx-devtools
 
 # Review tooling
-/tools/review-skill/ @dacharyc
+/tools/review-skill/ @mongodb/devdocs
 
+# Skill content
+/skills/ @mongodb/devdocs
 
