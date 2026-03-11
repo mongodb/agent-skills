@@ -1,12 +1,16 @@
 // Script to load test fixtures into MongoDB for skill evaluation
 
-const { MongoClient, ObjectId } = require('mongodb');
-const path = require('path');
+import { MongoClient, ObjectId } from 'mongodb';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 
 // Import fixture files (we'll need to parse them since they're TypeScript)
-const fs = require('fs');
 
 // Helper to convert fixture format to MongoDB documents
 function parseFixture(filePath) {
