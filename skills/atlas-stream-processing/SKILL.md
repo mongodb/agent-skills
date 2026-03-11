@@ -18,6 +18,8 @@ This skill requires the **MongoDB MCP Server** connected with:
 
 The 4 tools: `atlas-streams-discover`, `atlas-streams-build`, `atlas-streams-manage`, `atlas-streams-teardown`.
 
+**All operations require an Atlas project ID.** If unknown, call `atlas-list-projects` first to find your project ID.
+
 ## If MCP tools are unavailable
 
 If the MongoDB MCP Server is not connected or the streams tools are missing:
@@ -27,8 +29,6 @@ If the MongoDB MCP Server is not connected or the streams tools are missing:
 4. Full CRUD operations require the MCP server — help the user fix their setup
 
 ## Tool Selection Matrix
-
-**Every tool call requires `projectId`.** If unknown, call `atlas-list-projects` first.
 
 ### atlas-streams-discover — ALL read operations
 | Action | Use when |
