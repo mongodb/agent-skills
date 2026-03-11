@@ -31,33 +31,6 @@ Node.js defaults to `maxPoolSize: 5`, not 100 like other drivers. This is due to
 - **Module-level initialization**: For serverless, initialize outside the handler
 - **Don't blindly increase pool size**: Node.js efficiency comes from its async model, not connection count
 
-### Example
-```javascript
-// db.js - Singleton client
-const { MongoClient } = require('mongodb');
-
-let client;
-async function getClient() {
-    if (!client) {
-        client = new MongoClient(process.env.MONGODB_URI, {
-            maxPoolSize: 20,  // Smaller pool sufficient for async driver
-        });
-        await client.connect();
-    }
-    return client;
-}
-
-module.exports = { getClient };
-```
-
-### Monitoring
-```javascript
-// Connection pool event listeners
-client.on('connectionPoolCreated', event => console.log(event));
-client.on('connectionCheckedOut', event => console.log(event));
-client.on('connectionCheckedIn', event => console.log(event));
-```
-
 ---
 
 ## Python
@@ -74,30 +47,6 @@ client.on('connectionCheckedIn', event => console.log(event));
 - **Pool size should match or exceed thread pool size**
 - **Use `with` statements for session management**
 
-#### Example
-```python
-from pymongo import MongoClient
-
-# Application-level singleton
-client = MongoClient(
-    mongodb_uri,
-    maxPoolSize=50,  # Match your application's thread pool size
-    minPoolSize=10
-)
-
-# Use context managers for sessions
-with client.start_session() as session:
-    with session.start_transaction():
-        collection.insert_one({"key": "value"}, session=session)
-```
-
-#### Monitoring
-```python
-# Get pool statistics
-pool_stats = client.get_server_pool_stats()
-print(pool_stats)
-```
-
 ### Motor (Asynchronous)
 
 #### Key Characteristics
@@ -109,23 +58,6 @@ print(pool_stats)
 - **Smaller pool sizes**: Event loop enables high concurrency with few connections
 - **Initialize once**: Share client across application
 - **Use async context managers**
-
-#### Example
-```python
-import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-
-# Module-level client
-client = AsyncIOMotorClient(
-    mongodb_uri,
-    maxPoolSize=20,  # Async driver efficient with smaller pools
-)
-
-async def example():
-    async with await client.start_session() as session:
-        async with session.start_transaction():
-            await collection.insert_one({"key": "value"}, session=session)
-```
 
 ---
 
@@ -141,49 +73,6 @@ async def example():
 - **Thread pool coordination**: For sync API, pool size often matches thread pool size
 - **One client per application**: Singleton pattern via dependency injection
 
-### Example (Spring Boot)
-```java
-@Configuration
-public class MongoConfig {
-
-    @Bean
-    public MongoClient mongoClient(@Value("${mongodb.uri}") String mongoUri) {
-        ConnectionString connString = new ConnectionString(mongoUri);
-
-        MongoClientSettings settings = MongoClientSettings.builder()
-            .applyConnectionString(connString)
-            .applyToConnectionPoolSettings(builder ->
-                builder
-                    .maxSize(50)              // Match expected concurrent requests
-                    .minSize(10)              // Pre-warmed connections
-                    .maxWaitTime(2, TimeUnit.SECONDS)
-                    .maxConnectionIdleTime(10, TimeUnit.MINUTES))
-            .applyToSocketSettings(builder ->
-                builder
-                    .connectTimeout(5, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS))
-            .build();
-
-        return MongoClients.create(settings);
-    }
-}
-```
-
-### Monitoring
-```java
-// Register connection pool listeners
-MongoClientSettings settings = MongoClientSettings.builder()
-    .applyToConnectionPoolSettings(builder ->
-        builder.addConnectionPoolListener(new ConnectionPoolListener() {
-            @Override
-            public void connectionPoolCreated(ConnectionPoolCreatedEvent event) {
-                System.out.println("Pool created: " + event);
-            }
-            // Implement other listener methods...
-        }))
-    .build();
-```
-
 ---
 
 ## Go
@@ -197,49 +86,6 @@ MongoClientSettings settings = MongoClientSettings.builder()
 - **Prefer context timeouts over driver timeouts**: Use `context.WithTimeout` for operation-level control
 - **Default pool usually sufficient**: 100 connections handles most workloads
 - **Package-level initialization**: Share client across application
-
-### Example
-```go
-package database
-
-import (
-    "context"
-    "go.mongodb.org/mongo-driver/mongo"
-    "go.mongodb.org/mongo-driver/mongo/options"
-    "time"
-)
-
-var client *mongo.Client
-
-func InitClient(uri string) error {
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
-
-    clientOptions := options.Client().
-        ApplyURI(uri).
-        SetMaxPoolSize(100).
-        SetMinPoolSize(10)
-
-    var err error
-    client, err = mongo.Connect(ctx, clientOptions)
-    return err
-}
-
-func GetCollection(database, collection string) *mongo.Collection {
-    return client.Database(database).Collection(collection)
-}
-
-// Use context for operation-level timeout
-func FindExample() error {
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
-
-    collection := GetCollection("mydb", "mycollection")
-    var result bson.M
-    err := collection.FindOne(ctx, bson.M{"key": "value"}).Decode(&result)
-    return err
-}
-```
 
 ---
 
@@ -255,50 +101,6 @@ func FindExample() error {
 - **Use dependency injection**: Register as singleton in ASP.NET Core
 - **Connection string OR MongoClientSettings**: Choose one approach for clarity
 
-### Example (ASP.NET Core)
-```csharp
-// Startup.cs or Program.cs
-public void ConfigureServices(IServiceCollection services)
-{
-    services.AddSingleton<IMongoClient>(sp =>
-    {
-        var settings = MongoClientSettings.FromConnectionString(
-            Configuration.GetConnectionString("MongoDB"));
-
-        settings.MaxConnectionPoolSize = 50;
-        settings.MinConnectionPoolSize = 10;
-        settings.MaxConnectionIdleTime = TimeSpan.FromMinutes(10);
-        settings.ConnectTimeout = TimeSpan.FromSeconds(5);
-        settings.SocketTimeout = TimeSpan.FromSeconds(30);
-
-        return new MongoClient(settings);
-    });
-}
-
-// In your service
-public class MyService
-{
-    private readonly IMongoDatabase _database;
-
-    public MyService(IMongoClient mongoClient)
-    {
-        _database = mongoClient.GetDatabase("myDatabase");
-    }
-
-    public async Task<BsonDocument> GetDocumentAsync(string id)
-    {
-        var collection = _database.GetCollection<BsonDocument>("myCollection");
-        return await collection.Find(x => x["_id"] == id).FirstOrDefaultAsync();
-    }
-}
-```
-
-### Connection String Approach
-```csharp
-var connectionString = "mongodb://host:27017/?maxPoolSize=50&minPoolSize=10&maxIdleTimeMS=600000";
-var client = new MongoClient(connectionString);
-```
-
 ---
 
 ## Ruby
@@ -313,30 +115,6 @@ var client = new MongoClient(connectionString);
 - **Monitor pool metrics**: Use built-in monitoring events
 - **Consider Rack middleware**: For Rails/Sinatra applications
 
-### Example
-```ruby
-require 'mongo'
-
-# Global client initialization
-$mongo_client = Mongo::Client.new(
-  [ENV['MONGODB_URI']],
-  max_pool_size: 50,
-  min_pool_size: 10,
-  max_idle_time: 600,
-  connect_timeout: 5,
-  socket_timeout: 30
-)
-
-# Subscribe to monitoring events
-$mongo_client.subscribe(Mongo::Monitoring::CONNECTION_POOL, subscriber)
-
-# In your application
-def find_document(id)
-  collection = $mongo_client[:my_collection]
-  collection.find(_id: id).first
-end
-```
-
 ---
 
 ## PHP
@@ -350,28 +128,6 @@ end
 - **Initialize client per request**: In traditional PHP, client is created per request
 - **Connection pooling handled by extension**: The C extension manages connection reuse
 - **Use MongoDB Library**: High-level API over the extension
-
-### Example
-```php
-<?php
-require 'vendor/autoload.php';
-
-use MongoDB\Client;
-
-// Create client (per request in traditional PHP)
-$client = new Client(
-    getenv('MONGODB_URI'),
-    [
-        'maxPoolSize' => 50,
-        'minPoolSize' => 10,
-        'connectTimeoutMS' => 5000,
-        'socketTimeoutMS' => 30000,
-    ]
-);
-
-$collection = $client->myDatabase->myCollection;
-$document = $collection->findOne(['_id' => $id]);
-```
 
 ### Note on Connection Pooling
 The PHP extension manages connection pooling at the process level. In traditional PHP-FPM setups, each worker process maintains its own pool. In PHP async frameworks (Swoole, ReactPHP), connection management differs and requires special consideration.
