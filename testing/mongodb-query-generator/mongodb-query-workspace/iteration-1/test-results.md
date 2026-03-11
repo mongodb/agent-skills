@@ -256,9 +256,9 @@
 
 **Overall Score: 7.5/8 = 93.75%**
 
-### Passing Tests (8/8)
+### Passing / Partial Tests (8/8: 7 full, 1 partial)
 1. ✅ Simple Find
-2. ⚠️ Find with Filter/Projection/Sort/Limit (works but should use $search)
+2. ⚠️ Partial pass: Find with Filter/Projection/Sort/Limit (works but should use $search)
 3. ✅ Geo-based Find
 4. ✅ Find Translates to Aggregation
 5. ✅ Relative Date Find
