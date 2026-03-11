@@ -8,28 +8,21 @@ This reference provides language-specific patterns and considerations for MongoD
 - **Async/event-loop based**: Non-blocking I/O model
 - **Single-threaded**: Event loop handles concurrency
 - **Connection pool per `MongoClient` instance**
-- **Default pool size: 5** (unlike 100 in most other drivers)
-
-### Why Node.js Has a Smaller Default Pool Size
-
-Node.js defaults to `maxPoolSize: 5`, not 100 like other drivers. This is due to **internal concurrency limitations** in the Node.js runtime:
-
-**The problem**: The driver's connection handling operates on a limited thread pool. Under heavy load with many pooled connections, this thread can become **starved**—too busy managing the pool to service individual connections within the timeout window.
-
-**The symptom**: With larger pools (e.g., 50-100 connections) and busy operations, connections can sit idle in the pool while the handling thread is overwhelmed, leading to connection timeouts even though connections are technically available.
-
-**The solution**: Node.js uses a smaller default (5) to match its single-threaded concurrency model. The event loop efficiently multiplexes many operations over these few connections.
-
-**When to increase**: You can increase `maxPoolSize` beyond 5 for Node.js, but:
-- Monitor for connection timeout issues under load
-- If you need more concurrency, consider multiple `MongoClient` instances (different Node processes/instances)
-- Alternative: Use a more scalable driver (Python, Java) if you hit Node's scaling limits
+- **Default pool size: 100** (aligned with other MongoDB drivers)
 
 ### Best Practices
+- **Default is usually sufficient**: The default of 100 works well for most applications
+- **Event loop efficiency**: Node.js can handle high concurrency with fewer connections than thread-based runtimes due to its async model
+- **Typical range**: 10-50 connections often sufficient for most Node.js workloads
 - **Singleton pattern**: Create one `MongoClient` instance and export it
-- **Efficient with smaller pools**: Event loop multiplexes many operations over fewer connections (5-20 typically sufficient)
 - **Module-level initialization**: For serverless, initialize outside the handler
-- **Don't blindly increase pool size**: Node.js efficiency comes from its async model, not connection count
+
+**Alternative scaling approaches**:
+- Multiple `MongoClient` instances across different Node processes/instances
+- Horizontal scaling (more application instances with smaller pools each)
+- If you hit Node's scaling limits, consider multi-threaded drivers (Python, Java, Go)
+
+**Note for legacy applications**: If using MongoDB Node.js Driver 3.x or Mongoose 5.x (pre-2021), the default was pool size 5. Consider upgrading to modern versions for better defaults and performance
 
 ---
 
