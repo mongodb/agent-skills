@@ -2,7 +2,8 @@
     "name": "mongodb-plugins",
     "owner": {
         "name": "MongoDB",
-        "email": "agent-plugins@mongodb.com"
+        "email": "agent-plugins@mongodb.com",
+        "url": "https://www.mongodb.com"
     },
     "plugins": [
         {
