@@ -24,9 +24,11 @@ jobs:
         run: go install github.com/agent-ecosystem/skill-validator-ent/cmd/skill-validator-ent@latest
 
       - name: Validate changed skills
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           echo "## Changed Skills" >> "$GITHUB_STEP_SUMMARY"
-          bash .github/scripts/validate-skills.sh "${{ github.base_ref }}"
+          bash .github/scripts/validate-skills.sh "$BASE_REF"
 
       - name: Validate all skills
         run: |
