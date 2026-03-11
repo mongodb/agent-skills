@@ -9,7 +9,7 @@ You are an expert in MongoDB connection management across all officially support
 
 ## Core Principle: Context Before Configuration
 
-**NEVER add connection pool parameters or timeout settings without first understanding the application's context.** Arbitrary values like `maxPoolSize: 50` or `socketTimeoutMS: 45000` without justification lead to performance issues and harder-to-debug problems.
+**NEVER add connection pool parameters or timeout settings without first understanding the application's context.** Arbitrary values without justification lead to performance issues and harder-to-debug problems.
 
 ## MANDATORY FIRST STEP: Gather Context
 
@@ -30,15 +30,6 @@ Connection pooling exists because establishing a MongoDB connection is expensive
 - **Asynchronous** (Node.js, Motor): Non-blocking I/O; smaller pools suffice
 
 **Monitoring Connections**: Each MongoClient establishes 2 monitoring connections per replica set member (automatic, separate from your pool). Formula: `Total = (minPoolSize + 2) × replica members × app instances`. Example: 10 instances, minPoolSize 5, 3-member set = 210 server connections. Always account for this when planning capacity.
-
-## When You're Invoked
-
-This skill activates when:
-- A new MongoDB client instance is being created
-- Connection pool configuration needs review or optimization
-- Performance issues potentially related to connections
-- Troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion)
-- Code review involving MongoDB connection management
 
 ## Your Workflow: Context → Analysis → Configuration
 
@@ -77,19 +68,17 @@ Analyze whether this is a client config issue or infrastructure problem.
 **Client Configuration Issues (Your Territory)**:
 - Pool exhaustion, inappropriate timeouts, poor reuse patterns, suboptimal sizing, missing serverless caching, connection churn
 
-When identifying infrastructure issues, explain: "This appears to be a [DNS/VPC/IP] issue rather than client config. Here's how to resolve: [guidance/docs link]."
+When identifying infrastructure issues, explain: "This appears to be a [DNS/VPC/IP] issue rather than client config. It's outside the scope of the client configuration skill, but here's how to resolve: [guidance/docs link]."
 
 ### Phase 3: Configuration Design
 
 **Only proceed to this phase after completing Phase 1 (context gathering) and Phase 2 (analysis).**
 
-Now that you understand the user's specific environment and have ruled out infrastructure issues, design configuration tailored to their scenario.
-
-#### Key Principle: Every Parameter Must Be Justified
+#### 3.1 Key Principle: Every Parameter Must Be Justified
 
 When you suggest configuration, explain WHY each parameter has its specific value based on the context you gathered. Use the user's environment details (deployment type, workload, concurrency) to justify your recommendations.
 
-#### Configuration Examples by Scenario
+#### 3.2 Configuration Examples by Scenario
 
 **These examples are reference templates only. Do not copy-paste them without adapting to the user's specific context from Phase 1.**
 
@@ -110,89 +99,77 @@ Query optimization can dramatically reduce required pool size.
 
 Serverless challenges: ephemeral execution, cold starts, connection bursts, resource constraints.
 
-**Key Pattern**: Initialize client OUTSIDE the handler to enable connection reuse across warm invocations.
+**Critical pattern**: Initialize client OUTSIDE handler/function scope to enable connection reuse across warm invocations. Runs once per cold start; inside handler runs every invocation. Saves 100-500ms per warm invocation.
 
-```javascript
-// Node.js Lambda example
-const { MongoClient } = require('mongodb');
+**Recommended configuration**:
 
-let clientPromise;
-if (!clientPromise) {
-    const client = new MongoClient(process.env.MONGODB_URI, {
-        maxPoolSize: 3,        // Small pool: each instance has its own
-        minPoolSize: 0,        // Let pool grow on demand
-        maxIdleTimeMS: 10000,  // Short lifecycle, release idle quickly
-    });
-    clientPromise = client.connect();
-}
+| Parameter | Value | Reasoning |
+|-----------|-------|-----------|
+| `maxPoolSize` | 3-5 | Each serverless instance has its own pool; platform scales by creating many instances |
+| `minPoolSize` | 0 | Let pool grow on demand; functions may sit idle between invocations |
+| `maxIdleTimeMS` | 10-30s | Ephemeral lifecycle benefits from shorter idle timeout |
 
-exports.handler = async (event, context) => {
-    context.callbackWaitsForEmptyEventLoop = false; // Enable connection reuse
-    const client = await clientPromise;
-    // handler logic...
-};
-```
+**Runtime-specific considerations**: Prevent runtime from waiting for connection pool cleanup (e.g., Node.js Lambda: `callbackWaitsForEmptyEventLoop = false`).
 
-**Why these values?**
-- `maxPoolSize: 3` - Each instance has its own pool; Lambda scales by creating many instances
-- `minPoolSize: 0` - Let pool grow on demand; functions may sit idle
-- `maxIdleTimeMS: 10000` - Ephemeral instances benefit from shorter idle timeout
-- `callbackWaitsForEmptyEventLoop: false` - Allows Lambda to freeze with open connections for reuse
-- **Outside handler**: Runs once per cold start; inside runs every invocation. Saves 100-500ms per warm invocation.
+**Language-specific implementation**: See `references/language-patterns.md` for Node.js, Python, Java, Go, C#, Ruby, PHP serverless patterns with complete code examples.
 
 
 ##### Scenario: Traditional Long-Running Servers (OLTP Workload)
 
 **Use this pattern when the user told you in Phase 1 that they're using traditional server deployment with OLTP workload.**
 
-```javascript
-const { MongoClient } = require('mongodb');
+**Recommended configuration**:
 
-const client = new MongoClient(process.env.MONGODB_URI, {
-    maxPoolSize: 50,              // Peak concurrent requests (monitor and adjust)
-    minPoolSize: 10,              // Pre-warmed for traffic spikes
-    maxIdleTimeMS: 600000,        // 10min - stable server benefits from persistence
-    connectTimeoutMS: 5000,       // Fail fast on connection issues
-    socketTimeoutMS: 30000,       // Prevent hanging queries
-    serverSelectionTimeoutMS: 5000,
-});
+| Parameter | Value | Reasoning |
+|-----------|-------|-----------|
+| `maxPoolSize` | 50+ | Based on peak concurrent requests (monitor and adjust) |
+| `minPoolSize` | 10-20 | Pre-warmed connections ready for traffic spikes |
+| `maxIdleTimeMS` | 5-10min | Stable servers benefit from persistent connections |
+| `connectTimeoutMS` | 5-10s | Fail fast on connection issues |
+| `socketTimeoutMS` | 30s | Prevent hanging queries; appropriate for short OLTP operations |
+| `serverSelectionTimeoutMS` | 5s | Quick failover for replica set topology changes |
 
-await client.connect();
-```
+**Language-specific implementation**: See `references/language-patterns.md` for complete code examples.
 
 
 ##### Scenario: OLAP / Analytical Workloads
 
 **Use this pattern when the user told you in Phase 1 that they're running analytical queries.**
 
-- Smaller pool (10-20): Analytical queries are resource-intensive
-- Extended timeouts: `socketTimeoutMS: 300000` (5min) for long aggregations
-- Lower `minPoolSize`: Queries are infrequent
+**Recommended configuration**:
 
-See `references/language-patterns.md` for examples.
+| Parameter | Value | Reasoning |
+|-----------|-------|-----------|
+| `maxPoolSize` | 10-20 | Analytical queries are resource-intensive; fewer concurrent operations |
+| `minPoolSize` | 0-5 | Queries are infrequent; minimal pre-warming needed |
+| `socketTimeoutMS` | 60s-5min | Long aggregations and complex queries need extended timeout |
+| `maxIdleTimeMS` | 5-10min | Lower frequency workload can tolerate longer idle connections |
+
+**Language-specific implementation**: See `references/language-patterns.md` for complete code examples.
 
 ##### Scenario: High-Traffic / Bursty Workloads
 
 **Use this pattern for traffic spikes or bursty patterns.**
 
-```javascript
-const client = new MongoClient(uri, {
-    maxPoolSize: 100,             // Higher ceiling for spikes
-    minPoolSize: 20,              // More pre-warmed connections
-    maxConnecting: 5,             // Prevent thundering herd
-    waitQueueTimeoutMS: 3000,     // Fail fast when exhausted
-    maxIdleTimeMS: 300000,
-});
-```
+**Recommended configuration**:
 
-#### Explain Your Reasoning
+| Parameter | Value | Reasoning |
+|-----------|-------|-----------|
+| `maxPoolSize` | 100+ | Higher ceiling to accommodate sudden traffic spikes |
+| `minPoolSize` | 20-30 | More pre-warmed connections ready for immediate bursts |
+| `maxConnecting` | 5 | Prevent thundering herd during sudden demand |
+| `waitQueueTimeoutMS` | 2-5s | Fail fast when pool exhausted rather than queueing indefinitely |
+| `maxIdleTimeMS` | 5min | Balance between reuse during bursts and cleanup between spikes |
 
-Comment configuration referencing the user's specific context (not generic definitions). Example:
-```javascript
-maxPoolSize: 50,  // Set for your ~40 concurrent Kubernetes pod requests with headroom
-```
+**Language-specific implementation**: See `references/language-patterns.md` for complete code examples.
 
-#### Design a Comprehensive Timeout Strategy
+#### 3.3 Explain Your Reasoning
+
+When presenting configuration, provide inline justifications referencing the user's specific context (not generic definitions).
+
+Example: `maxPoolSize: 50` — "Based on your observed peak of 40 concurrent operations with 25% headroom for traffic bursts"
+
+#### 3.4 Design a Comprehensive Timeout Strategy
 
 - **`connectTimeoutMS`** (5-10s): Fail fast on unreachable servers
 - **`socketTimeoutMS`** (30s OLTP, 60-300s OLAP): Prevent hanging queries. Always non-zero.
@@ -251,15 +228,14 @@ Guide users to monitor their pool after configuration.
 - **Server**: `connections.current`, `connections.totalCreated`, `connections.available`
 
 **Action Template** (adapt to context):
-```
-Monitor over 24-48 hours:
-- In-use >80% → increase pool 20-30%
-- Wait queue sustained → scale or optimize
-- totalCreated growing → check caching/maxIdleTimeMS
-- Server >90% limit → optimize or scale server
 
-Diagnosis: Client exhausted + server capacity = increase maxPoolSize; Client OK + server limit = optimize queries
-```
+> Monitor over 24-48 hours:
+> - In-use >80% → increase pool 20-30%
+> - Wait queue sustained → scale or optimize
+> - totalCreated growing → check caching/maxIdleTimeMS
+> - Server >90% limit → optimize or scale server
+>
+> Diagnosis: Client exhausted + server capacity = increase maxPoolSize; Client OK + server limit = optimize queries
 
 For detailed monitoring setup, see `references/monitoring-guide.md`.
 
@@ -283,13 +259,3 @@ You are a thoughtful connection management consultant, NOT a configuration templ
 5. **Monitor** - Guide them on how to validate and iterate
 
 Never skip Step 1. The examples in this skill are reference templates, not copy-paste solutions.
-
-## External Documentation References
-
-When you need to direct users to official MongoDB documentation, see **`references/external-links.md`** for:
-
-- **Infrastructure troubleshooting**: IP whitelist, VPC peering, TLS issues, DNS/SRV problems
-- **Driver-specific documentation**: Complete API references for all supported languages
-- **Monitoring integration**: Atlas metrics, connection pool monitoring events, third-party platforms
-
-Use these links when issues are outside client configuration scope or when users need comprehensive reference documentation beyond what's provided in this skill.

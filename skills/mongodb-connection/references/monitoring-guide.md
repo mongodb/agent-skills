@@ -2,13 +2,6 @@
 
 This reference provides detailed guidance on monitoring connection pool health, interpreting metrics, and taking action based on what you observe. Consult this when users need to verify their configuration is working or troubleshoot connection-related issues.
 
-## Table of Contents
-- [Driver-Level Metrics](#driver-level-metrics-client-side)
-- [Server-Level Metrics](#server-level-metrics-mongodb-side)
-- [Practical Monitoring Guidance](#practical-monitoring-guidance)
-- [Connection Churn Diagnosis](#connection-churn-diagnosis)
-- [Setting Up Monitoring](#setting-up-monitoring)
-
 ---
 
 ## Driver-Level Metrics (Client-Side)
@@ -185,16 +178,12 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 - **Client pool healthy + Server tickets exhausted**: Server-side bottleneck; optimize queries or scale server
 - **Both exhausted**: Need both client pool increase AND server capacity/optimization
 
-**How to check**:
-```javascript
-db.serverStatus().wiredTiger.concurrentTransactions
+**How to check**: Query `db.serverStatus().wiredTiger.concurrentTransactions` to see:
+- `read.available` / `write.available` - Tickets currently available
+- `read.out` / `write.out` - Tickets currently in use
+- `read.totalTickets` / `write.totalTickets` - Total ticket count (typically 128 each)
 
-// Output includes:
-// {
-//   "read": { "out": 5, "available": 123, "totalTickets": 128 },
-//   "write": { "out": 12, "available": 116, "totalTickets": 128 }
-// }
-```
+**Reference**: [WiredTiger concurrentTransactions](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#mongodb-serverstatus-serverstatus.wiredTiger.concurrentTransactions)
 
 ---
 
@@ -202,54 +191,53 @@ db.serverStatus().wiredTiger.concurrentTransactions
 
 Use this template when advising users on what to monitor after implementing configuration:
 
-```
-Monitor your connection pool over the next 24-48 hours:
 
-### Driver-Side Metrics (from your application)
-
-1. Connections In-Use:
-   - If consistently >80% of maxPoolSize → increase maxPoolSize by 20-30%
-   - Track peak usage to determine appropriate sizing
-
-2. Wait Queue:
-   - If size >0 during normal traffic → pool exhausted, scale up or optimize operations
-   - If wait time >50ms → investigate immediately
-
-3. Connections Created (totalCreated):
-   - If growing rapidly (+100/hour in steady state) → connection churn issue
-   - Compare growth rate to application restart frequency
-
-### Server-Side Metrics (from MongoDB)
-
-1. connections.current:
-   - Should be stable and match expected (instances × maxPoolSize)
-   - If approaching 90% of maxIncomingConnections → coordinate with DBA about server limits or scaling
-
-2. connections.totalCreated:
-   - Compare rate of increase over time
-   - If increasing much faster than app deployment/restart cycle → check client connection caching
-
-### Cross-Reference Patterns (Critical for Diagnosing Pool Issues)
-
-Before increasing `maxPoolSize`, always cross-reference client and server metrics. A wait queue doesn't automatically mean you need more connections.
-
-- **Driver shows pool exhaustion (wait queue >0) + Server has available capacity (low CPU, tickets available, connections well below limit)**
+> Monitor your connection pool over the next 24-48 hours:
+>
+> ### Driver-Side Metrics (from your application)
+> 
+> 1. Connections In-Use:
+>   - If consistently >80% of maxPoolSize → increase maxPoolSize by 20-30%
+>   - Track peak usage to determine appropriate sizing
+>
+> 2. Wait Queue:
+>   - If size >0 during normal traffic → pool exhausted, scale up or optimize operations
+>   - If wait time >50ms → investigate immediately
+>
+> 3. Connections Created (totalCreated):
+>   - If growing rapidly (+100/hour in steady state) → connection churn issue
+>   - Compare growth rate to application restart frequency
+>
+> ### Server-Side Metrics (from MongoDB)
+>
+> 1. connections.current:
+>   - Should be stable and match expected (instances × maxPoolSize)
+>   - If approaching 90% of maxIncomingConnections → coordinate with DBA about server limits or scaling
+>
+> 2. connections.totalCreated:
+>   - Compare rate of increase over time
+>   - If increasing much faster than app deployment/restart cycle → check client connection caching
+>
+> ### Cross-Reference Patterns (Critical for Diagnosing Pool Issues)
+>
+> Before increasing `maxPoolSize`, always cross-reference client and server metrics. A wait queue doesn't automatically mean you need more connections.
+> 
+> - **Driver shows pool exhaustion (wait queue >0) + Server has available capacity (low CPU, tickets available, connections well below limit)**
   → ✅ **Safe to increase client maxPoolSize**—server can handle more connections
-
-- **Driver shows pool exhaustion + Server at capacity (tickets exhausted, high CPU, or >90% of connection limit)**
+>
+> - **Driver shows pool exhaustion + Server at capacity (tickets exhausted, high CPU, or >90% of connection limit)**
   → ❌ **Don't increase pool**—optimize queries or scale server tier instead
-
-- **Driver shows healthy pool + Server at capacity limits**
+>
+> - **Driver shows healthy pool + Server at capacity limits**
   → Need to optimize connection usage or scale server tier (not a pool sizing issue)
-
-- **Both show high connection creation (totalCreated growing rapidly)**
+>
+> - **Both show high connection creation (totalCreated growing rapidly)**
   → Investigate client caching, maxIdleTimeMS settings, or network stability
-
-- **Wait queue grows but server metrics show available capacity**
+>
+> - **Wait queue grows but server metrics show available capacity**
   → Client pool undersized; increase maxPoolSize
-
-**Key insight from MongoDB best practices**: Only increase `maxPoolSize` when you observe a request queue in the application **AND** MongoDB server metrics show low utilization. This prevents the common mistake of increasing pool size when the actual bottleneck is server capacity or query performance.
-```
+>
+> **Key insight from MongoDB best practices**: Only increase `maxPoolSize` when you observe a request queue in the application **AND** MongoDB server metrics show low utilization. This prevents the common mistake of increasing pool size when the actual bottleneck is server capacity or query performance.
 
 ---
 
@@ -275,23 +263,7 @@ Connection churn—rapid creation and destruction of connections—wastes resour
 - Connection count never stabilizes
 - Code review reveals client creation in request handlers
 
-**Solution**:
-```javascript
-// ❌ BAD: Creating client per request
-app.get('/data', async (req, res) => {
-    const client = new MongoClient(uri);  // DON'T DO THIS
-    await client.connect();
-    // ...
-});
-
-// ✅ GOOD: Singleton client
-const client = new MongoClient(uri);
-await client.connect();
-
-app.get('/data', async (req, res) => {
-    // Reuse the client
-});
-```
+**Solution**: Create the MongoClient once at application initialization and reuse it throughout the application lifecycle. The client manages the connection pool internally—creating a new client for each operation bypasses pooling entirely and forces new connection establishment every time.
 
 #### 2. Serverless Functions Not Caching Client
 
@@ -302,21 +274,7 @@ app.get('/data', async (req, res) => {
 - Warm invocations also show new connection creation
 - Connection count increases with invocation count, not instance count
 
-**Solution**:
-```javascript
-// ❌ BAD: Inside handler
-exports.handler = async (event) => {
-    const client = new MongoClient(uri);  // DON'T DO THIS
-    await client.connect();
-};
-
-// ✅ GOOD: Outside handler
-const clientPromise = new MongoClient(uri).connect();
-
-exports.handler = async (event) => {
-    const client = await clientPromise;  // Reused across warm invocations
-};
-```
+**Solution**: Initialize the MongoClient **outside** the handler function (at module/global scope). This allows the client to be reused across warm invocations of the same function instance. Clients created inside the handler are recreated on every invocation, defeating connection pooling entirely.
 
 #### 3. `maxIdleTimeMS` Set Too Low
 
@@ -364,95 +322,40 @@ exports.handler = async (event) => {
 
 ### Application-Level Monitoring
 
-#### Node.js Example
-```javascript
-const { MongoClient } = require('mongodb');
-const client = new MongoClient(uri);
+#### Event-Based Monitoring
 
-// Subscribe to connection pool events
-client.on('connectionPoolCreated', e => {
-    console.log('Pool created:', e);
-});
+All MongoDB drivers implement the [Connection Monitoring and Pooling specification](https://github.com/mongodb/specifications/blob/master/source/connection-monitoring-and-pooling/connection-monitoring-and-pooling.md), which defines standard events for tracking pool lifecycle and connection state:
 
-client.on('connectionPoolClosed', e => {
-    console.log('Pool closed:', e);
-});
+**Pool lifecycle events**:
+- `connectionPoolCreated` / `connectionPoolClosed` - Track when pools are initialized or shut down
 
-client.on('connectionCreated', e => {
-    console.log('Connection created:', e.connectionId);
-    // Send to your monitoring system
-});
+**Connection lifecycle events**:
+- `connectionCreated` / `connectionClosed` - Monitor connection churn (rapid creation = pooling issues)
 
-client.on('connectionClosed', e => {
-    console.log('Connection closed:', e.connectionId, e.reason);
-});
+**Check-out events**:
+- `connectionCheckOutStarted` - Operation requests a connection
+- `connectionCheckedOut` / `connectionCheckedIn` - Track when connections are borrowed/returned
+- `connectionCheckOutFailed` - **Critical alert signal** - indicates pool exhaustion
 
-client.on('connectionCheckOutStarted', e => {
-    console.log('Connection check-out started');
-});
+**What to instrument**: Send `connectionCheckOutFailed` events and rapid `connectionCreated` events to your monitoring system immediately.
 
-client.on('connectionCheckOutFailed', e => {
-    console.error('Connection check-out failed:', e.reason);
-    // Alert on this - indicates pool exhaustion
-});
-
-client.on('connectionCheckedOut', e => {
-    console.log('Connection checked out:', e.connectionId);
-});
-
-client.on('connectionCheckedIn', e => {
-    console.log('Connection checked in:', e.connectionId);
-});
-```
-
-#### Python Example
-```python
-from pymongo import MongoClient, monitoring
-
-class ConnectionPoolMonitor(monitoring.ConnectionPoolListener):
-    def connection_created(self, event):
-        print(f"Connection created: {event.connection_id}")
-
-    def connection_closed(self, event):
-        print(f"Connection closed: {event.connection_id}")
-
-    def connection_checked_out(self, event):
-        print(f"Connection checked out: {event.connection_id}")
-
-    def connection_checked_in(self, event):
-        print(f"Connection checked in: {event.connection_id}")
-
-    def connection_check_out_failed(self, event):
-        print(f"Connection checkout failed: {event.reason}")
-
-# Register listener
-monitoring.register(ConnectionPoolMonitor())
-
-client = MongoClient(uri)
-
-# Get current stats
-stats = client.get_server_pool_stats()
-print(stats)
-```
+**Implementation**: Consult your driver's documentation for how to subscribe to these standard events. Search for "connection pool monitoring" or "connection pool events" in your driver's API documentation. This is the official driver documentation url: https://www.mongodb.com/docs/drivers/
 
 ### Server-Level Monitoring
 
-#### MongoDB Shell
-```javascript
-// Get current connection metrics
-db.serverStatus().connections
+#### Querying Server Status
 
-// Output:
-// {
-//   "current": 325,
-//   "available": 51175,
-//   "totalCreated": 1850,
-//   "active": 112,
-//   "exhaustIsMaster": 0,
-//   "exhaustHello": 0,
-//   "awaitingTopologyChanges": 0
-// }
-```
+Use `db.serverStatus().connections` (via MongoDB shell or driver equivalent) to retrieve server-side connection metrics:
+
+**Available fields**:
+- `current` - Total active client connections
+- `available` - Remaining capacity before hitting `maxIncomingConnections`
+- `totalCreated` - Cumulative connections created since server start
+- `active` - Connections currently executing operations
+- `exhaustIsMaster` / `exhaustHello` - Streaming topology monitoring connections
+- `awaitingTopologyChanges` - Connections waiting for topology updates
+
+**Reference**: [db.serverStatus() documentation](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#connections)
 
 #### Monitoring Integration
 
