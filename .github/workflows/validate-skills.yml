@@ -29,7 +29,6 @@ jobs:
           bash .github/scripts/validate-skills.sh "${{ github.base_ref }}"
 
       - name: Validate all skills
-        continue-on-error: true
         run: |
           echo "## All Skills" >> "$GITHUB_STEP_SUMMARY"
           skill-validator-ent check --strict --emit-annotations -o markdown skills/ \

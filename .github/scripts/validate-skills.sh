@@ -4,11 +4,13 @@
 # This script handles only the changed-skill check. A separate workflow step
 # validates all skills (see .github/workflows/validate-skills.yml).
 #
-# NOTE: This script mirrors the validation logic in tools/validate-skills.sh
-# (the local version). If you update the validation logic here, update it there
-# too, and vice versa. The two scripts differ only in output format:
-#   - CI script:    uses --emit-annotations and -o markdown for GitHub Actions
-#   - Local script: uses default output for human-readable terminal viewing
+# NOTE: The validator flags used here (e.g. --strict) should stay aligned with
+# tools/validate-skills.sh (the local version). If you change which checks are
+# run or how strictly they're enforced, update both scripts. The scripts otherwise
+# differ by design:
+#   - CI script:    diffs changed skills, uses --emit-annotations and -o markdown
+#   - Local script: accepts an optional path or validates all skills, uses default
+#                   terminal output
 #
 # Usage: validate-skills.sh <base-ref>
 #   base-ref  The base branch name to diff against (e.g. "main").
@@ -58,7 +60,7 @@ for skill in "${changed_skills[@]}"; do
   # 1. Send all output (including ::error commands) to stdout for GitHub Actions
   # 2. Filter out ::error/::warning/::notice lines before writing to the summary
   skill-validator-ent check --strict --emit-annotations -o markdown "skills/$skill/" \
-    | tee >(grep -v '^::' >> "${GITHUB_STEP_SUMMARY:-/dev/null}") || FAILED=1
+    > >(tee >(grep -v '^::' >> "${GITHUB_STEP_SUMMARY:-/dev/null}")) 2>&1 || FAILED=1
 done
 
 if [ $FAILED -ne 0 ]; then
