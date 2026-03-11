@@ -240,6 +240,6 @@ The mongodb-query skill is **production-ready** with excellent performance acros
 
 ## 📞 Support
 
-**Test Data Location:** `/Users/elizabeth.button/devTools/agent-skills/testing/mongodb-query-generator/mongodb-query-workspace/`
-**Skill Location:** `/Users/elizabeth.button/devTools/agent-skills/skills/mongodb-query-generator/`
+**Test Data Location:** `testing/mongodb-query-generator/mongodb-query-workspace/`
+**Skill Location:** `skills/mongodb-query-generator/`
 **Atlas Connection:** Configured in `.mcp.json`
