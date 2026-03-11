@@ -1,7 +1,5 @@
 # Sizing & Parallelism Reference
 
-Adapted from [kgorman/asp_claude](https://github.com/kgorman/asp_claude) sizing and parallelism guides, translated for the MongoDB MCP Server streams tools.
-
 ## Tier Hardware Specs
 
 | Tier | vCPU | RAM | Bandwidth | Max Parallelism | Kafka Partitions | Use case |

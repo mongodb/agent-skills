@@ -1,6 +1,6 @@
 ---
 name: atlas-stream-processing
-description: "Manages MongoDB Atlas Stream Processing (ASP) workflows including workspace provisioning, data source/sink connections, and real-time pipeline deployment. Handles processor lifecycle operations, debugging diagnostics, and tier sizing through MongoDB MCP Server tools. Supports Kafka, Atlas clusters, S3, HTTPS, and Lambda integrations for streaming data workloads and event processing. NOT for general MongoDB queries or Atlas cluster management."
+description: "Manages MongoDB Atlas Stream Processing (ASP) workflows. Requires MongoDB MCP Server with Atlas API credentials. Handles workspace provisioning, data source/sink connections, processor lifecycle operations, debugging diagnostics, and tier sizing. Supports Kafka, Atlas clusters, S3, HTTPS, and Lambda integrations for streaming data workloads and event processing. NOT for general MongoDB queries or Atlas cluster management."
 metadata:
   version: 1.0.0
   user-invocable: "true"

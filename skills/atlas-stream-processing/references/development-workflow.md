@@ -1,7 +1,5 @@
 # Development Workflow Reference
 
-Adapted from [kgorman/asp_claude](https://github.com/kgorman/asp_claude) development workflow, translated for the MongoDB MCP Server streams tools.
-
 ## Pipeline Stage Categories
 
 Understanding stage categories helps compose valid pipelines. Stages must appear in this order:

@@ -1,7 +1,5 @@
 # Processor Output Diagnostics Reference
 
-Adapted from [kgorman/asp_claude](https://github.com/kgorman/asp_claude) output patterns guide, translated for the MongoDB MCP Server streams tools.
-
 ## The Problem
 
 A user says "my processor isn't outputting anything" or "output seems low." Before assuming something is broken, you must **classify the processor type** — low output may be perfectly normal.
