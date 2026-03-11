@@ -179,7 +179,7 @@ Example: `maxPoolSize: 50` — "Based on your observed peak of 40 concurrent ope
 ## Troubleshooting Connection Issues
 
 ### Pool Exhaustion
-**Symptoms**: `MongoWaitQueueTimeoutError` or `MongoTimeoutException`, increased latency, operations waiting
+**Symptoms**: `MongoWaitQueueTimeoutError`, `WaitQueueTimeoutError` or `MongoTimeoutException`, increased latency, operations waiting
 
 **Diagnosis**: Current `maxPoolSize`? Concurrent operations? Long-running queries or unclosed cursors?
 
