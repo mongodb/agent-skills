@@ -30,7 +30,7 @@ The MongoDB MCP server requires authentication credentials to work. Users have t
    - Requires Docker to be installed
    - No access to cloud clusters, Admin API
 
-**Important**: This skill includes code snippets that are valid in bash/zsh shells. If the user is on a different shell (e.g. PowerShell, fish), adjust the commands and environment variable syntax accordingly. A table of common shells and their profile locations/commands can be found in the `resources/shells.md` file.
+**Important**: This skill includes code snippets that are valid in bash/zsh shells. If the user is on a different shell (e.g. PowerShell, fish), adjust the commands and environment variable syntax accordingly. A table of common shells and their profile locations/commands can be found in the `references/shells.md` file.
 
 ## Execution Modes
 
@@ -244,7 +244,7 @@ echo $SHELL
 
 **If Bash is denied:** Switch immediately to Documentation Mode (Step 5b).
 
-Based on the shell, determine the appropriate profile file to update - if necessary, reference the `resources/shells.md` file
+Based on the shell, determine the appropriate profile file to update - if necessary, reference the `references/shells.md` file
 
 #### 5a.2: Check for Existing Configuration
 
@@ -312,7 +312,7 @@ Create a single file called `SETUP.md` with concise, actionable instructions. Ke
 
 **Security rule:** Never write the user's real credentials into `SETUP.md` (or any workspace file). Use placeholders only, and tell the user to paste their real values manually in their shell profile.
 
-The file should have the following structure. If you know the user's shell, adapt all instructions to that shell (e.g., use PowerShell syntax if they're on PowerShell). If you don't know the shell, use bash syntax as a default on Unix and Powershell syntax on Windows and include a note about adapting the instructions to the corresponding shell. Add a section on "Finding your shell" with some common shells and their profile locations (you can reference the `resources/shells.md` file).
+The file should have the following structure. If you know the user's shell, adapt all instructions to that shell (e.g., use PowerShell syntax if they're on PowerShell). If you don't know the shell, use bash syntax as a default on Unix and Powershell syntax on Windows and include a note about adapting the instructions to the corresponding shell. Add a section on "Finding your shell" with some common shells and their profile locations (you can reference the `references/shells.md` file).
 
 ````markdown
 # MongoDB MCP Setup
