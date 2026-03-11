@@ -255,7 +255,9 @@ Before adding new environment variables, check if these variables are already de
 
 #### 5a.3: Add Environment Variables
 
-Add the environment variables to the appropriate profile file. Add a comment to make it clear what these are for:
+Add the environment variables to the appropriate profile file. Add a comment to make it clear what these are for. Use the syntax that matches the detected shell:
+
+**bash / zsh** (`~/.zshrc`, `~/.bashrc`, `~/.bash_profile`):
 
 For Connection String (Option A):
 ```bash
@@ -274,6 +276,52 @@ export MDB_MCP_API_CLIENT_SECRET="<value>"
 ```bash
 export MDB_MCP_READ_ONLY="true"
 ```
+
+---
+
+**fish** (`~/.config/fish/config.fish`):
+
+For Connection String (Option A):
+```fish
+# MongoDB MCP Server Configuration
+set -gx MDB_MCP_CONNECTION_STRING "<value>"
+```
+
+For Service Account (Option B):
+```fish
+# MongoDB MCP Server Configuration (Atlas Service Account)
+set -gx MDB_MCP_API_CLIENT_ID "<value>"
+set -gx MDB_MCP_API_CLIENT_SECRET "<value>"
+```
+
+**If the user chose read-only access** (Step 4), add this additional line:
+```fish
+set -gx MDB_MCP_READ_ONLY "true"
+```
+
+---
+
+**PowerShell** (profile file found via `$PROFILE`):
+
+For Connection String (Option A):
+```powershell
+# MongoDB MCP Server Configuration
+$env:MDB_MCP_CONNECTION_STRING = "<value>"
+```
+
+For Service Account (Option B):
+```powershell
+# MongoDB MCP Server Configuration (Atlas Service Account)
+$env:MDB_MCP_API_CLIENT_ID = "<value>"
+$env:MDB_MCP_API_CLIENT_SECRET = "<value>"
+```
+
+**If the user chose read-only access** (Step 4), add this additional line:
+```powershell
+$env:MDB_MCP_READ_ONLY = "true"
+```
+
+---
 
 Use available file-editing capabilities to append these lines to the profile file. If the file doesn't exist, create it with file-creation capabilities.
 
