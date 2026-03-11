@@ -1,11 +1,7 @@
 ---
 name: search-and-ai-recommendations
 description: |
-  Helps MongoDB users implement and optimize Atlas Search (full-text), Vector Search (semantic similarity), and Hybrid Search (combined).                                               
-
-  Trigger this skill when users need search functionality - whether text-based (autocomplete, fuzzy matching, facets, filters), semantic (finding similar documents, embeddings, RAG), or hybrid approaches. Also use for search optimization tasks like index creation, query tuning, relevance scoring, or troubleshooting existing search implementations.                
-
-  Works with MongoDB's MCP server to inspect schemas, create indexes, and run queries. 
+  Guides MongoDB users through implementing and optimizing Atlas Search (full-text), Vector Search (semantic), and Hybrid Search solutions. Use this skill when users need to build search functionality, whether for text-based queries (autocomplete, fuzzy matching, faceted search), semantic similarity (embeddings, RAG applications), or combined approaches. Provides workflows for selecting the right search type, creating indexes, constructing queries, and optimizing performance using MongoDB's MCP server. 
 ---
 
 # MongoDB Search and AI Recommendations Skill
@@ -14,11 +10,11 @@ You are helping MongoDB users implement, optimize, and troubleshoot Atlas Search
 
 ## Core Principles
 
-1. **Understand before building** - Even when the user's request seems specific, validate the use case to ensure you're recommending the right solution
+1. **Understand before building** - Validate the use case to ensure you recommend the right solution
 2. **Always inspect first** - Check existing indexes and schema before making recommendations
-3. **Explain before executing** - Clearly describe what indexes will be created and require explicit approval before creating them
-4. **Optimize for the use case** - Different use cases (autocomplete, faceted search, semantic similarity) require different index configurations and query patterns
-5. **Handle read-only scenarios** - Users may have --readOnly flag set; in these cases, explain optimal configurations without creating indexes
+3. **Explain before executing** - Describe what indexes will be created and require explicit approval
+4. **Optimize for the use case** - Different use cases require different index configurations and query patterns
+5. **Handle read-only scenarios** - If users have --readOnly flag set, explain optimal configurations without creating indexes
 
 ## Workflow
 
@@ -30,10 +26,10 @@ You are helping MongoDB users implement, optimize, and troubleshoot Atlas Search
 - Use `collection-indexes` to see existing indexes
 
 **Understand the use case:**
-If the user's request is vague or lacks detail:
-- Ask clarifying questions about their application needs
-- Infer the most likely collection and fields based on schema inspection
-- Confirm your understanding before proceeding
+If the user's request is vague:
+- Ask clarifying questions about their needs
+- Infer likely collection and fields from schema
+- Confirm understanding before proceeding
 
 Common questions to ask:
 - What are users searching for? (products, movies, documents, etc.)
@@ -64,9 +60,9 @@ Use when users need:
 
 **Hybrid Search:**
 Use when users need:
-- Best of both worlds (keywords + semantics)
-- Queries like "find action movies similar to 'epic space battles'" (keyword: action, semantic: epic space battles)
-- Combining exact matching with semantic understanding
+- Combining keywords and semantics
+- Queries like "find action movies similar to 'epic space battles'"
+- Exact matching with semantic understanding
 
 ### 3. Index Recommendations
 
@@ -83,7 +79,7 @@ Use when users need:
   }
 }
 ```
-*Use `lucene.keyword` for exact matching (genres, categories), `lucene.standard` for full-text. See `references/search-common-patterns.md` for autocomplete, facets, and other field types.*
+*Use `lucene.keyword` for exact matching (genres, categories), `lucene.standard` for full-text.*
 
 **For Vector Search indexes (classic with embeddings):**
 ```javascript
@@ -101,7 +97,6 @@ Use when users need:
   ]
 }
 ```
-*See `references/optimization-vector.md` for quantization options and similarity function details.*
 
 **For Vector Search indexes (auto-embed):**
 ```javascript
@@ -118,13 +113,13 @@ Use when users need:
   ]
 }
 ```
-*Auto-embed generates embeddings automatically. See `references/optimization-vector.md` for model options.*
+*Auto-embed generates embeddings automatically.*
 
 ### 4. Query Construction
 
 **When to use $search vs $searchMeta:**
-- Use `$search` when you need both results and metadata
-- Use `$searchMeta` when you only need metadata (counts, facets) without documents - more efficient
+- Use `$search` for results and metadata
+- Use `$searchMeta` for metadata only (counts, facets) - more efficient
 
 **Compound query clauses:**
 - `must`: Required matches that affect scoring
@@ -147,7 +142,6 @@ db.collection.aggregate([
   }
 ])
 ```
-*See `references/search-common-patterns.md` for autocomplete, facets, pagination, fuzzy search, relevance boosting, filters, and analytics patterns.*
 
 **Vector Search queries ($vectorSearch):**
 ```javascript
@@ -201,16 +195,16 @@ db.collection.aggregate([
 
 ### 5. Optimization Considerations
 
-Before finalizing recommendations, consider:
+Before finalizing recommendations, review:
 
-- **numCandidates**: For vector search, use 10-20x the limit for good recall/performance balance
-- **Quantization**: Binary quantization for max compression (4-8x, must use euclidean), scalar for 4x compression with better accuracy (any similarity function)
-- **Filters**: Three options for filtering vector search results - use index filter fields for exact/range matches (fastest), lexical prefilters for text search criteria, or $match for post-filtering (slowest). In compound queries, use `filter` clause instead of `must` when exact matching doesn't need to affect scoring. See `references/optimization-vector.md` for detailed comparison
-- **Analyzers**: Match analyzer to language and use case (standard for general text, keyword for exact matching)
-- **Embedding dimensions**: Higher dimensions = better accuracy but slower/more storage
-- **storedSource**: Consider storing frequently projected/filtered fields in the search index to avoid full document lookups (significant performance boost)
-- **exact: true**: For vector search on small collections (<10K docs) or accuracy-critical queries, mention exact nearest neighbor as an option
-- **Search Nodes**: For very large collections with millions of documents and heavy search workloads, recommend dedicated search nodes
+- **numCandidates**: Use 10-20x the limit for optimal recall/performance balance
+- **Quantization**: Binary (4-8x compression, requires euclidean), scalar (4x compression, any similarity function)
+- **Filters**: Index filter fields for exact/range matches (fastest), lexical prefilters for text criteria, or $match for post-filtering (slowest). Use `filter` clause instead of `must` when exact matching shouldn't affect scoring
+- **Analyzers**: Match to language and use case (standard for general text, keyword for exact matching)
+- **Embedding dimensions**: Higher = better accuracy but slower and more storage
+- **storedSource**: Store frequently projected/filtered fields in the index to avoid full document lookups
+- **exact: true**: For small collections (<10K docs) or accuracy-critical queries, use exact nearest neighbor
+- **Search Nodes**: For large collections (millions of docs) with heavy search workloads, recommend dedicated search nodes
 
 ### 6. Execution and Validation
 
@@ -218,9 +212,9 @@ Before finalizing recommendations, consider:
 1. Explain the index configuration in plain language
 2. Show the JSON structure
 3. Ask what the user wants to name the index
-4. Ask for explicit approval: "Should I create this index?"
-5. Use MCP's `create-index` tool only after approval
-6. If read-only mode, provide the complete index JSON and mention it can be created via the Atlas UI
+4. Get explicit approval: "Should I create this index?"
+5. Use MCP's `create-index` tool after approval
+6. In read-only mode, provide the complete index JSON for creation via the Atlas UI
 
 **Running queries:**
 1. Show the aggregation pipeline
@@ -255,33 +249,33 @@ For detailed patterns, refer to:
 
 **User has read-only access:**
 - Don't attempt to create indexes
-- Provide complete index JSON for manual creation (can be created via Atlas UI)
+- Provide complete index JSON for creation via Atlas UI
 - Explain why current setup isn't optimal
 
-**User mentions specific fields but you can't find them:**
+**User mentions fields you can't find:**
 - Use `collection-schema` to inspect available fields
 - Suggest alternatives or ask for clarification
 
-**Field doesn't exist for proposed index:**
-- If required field (e.g., embedding field for vector search) doesn't exist in schema, explain what needs to be added and how
+**Required field doesn't exist:**
+- Explain what needs to be added and how (e.g., embedding field for vector search)
 
 **Query fails or index missing:**
-- Use `collection-indexes` to verify index exists. If query fails due to missing index, explain index needs to be created first
+- Use `collection-indexes` to verify index exists
+- If missing, explain index needs to be created first
 
 **User wants to refine existing query:**
-- Ask them to share current code or check their codebase
+- Ask them to share current code
 - Use `collection-indexes` to see available indexes
 - Propose specific improvements
 
-**Multiple collections might be relevant:**
+**Multiple collections are relevant:**
 - List options and ask which one they mean
 - If context makes it obvious, confirm your assumption
 
 **User wants to search on views:**
 - Atlas Search indexes can be created on MongoDB views
-- Useful for pre-filtered data (recent documents) or pre-joined collections
+- Useful for pre-filtered data or pre-joined collections
 - Trade-off: Views add overhead vs indexing base collection
-- See `references/optimization-general.md` for details on when to use views
 
 ## Remember
 
