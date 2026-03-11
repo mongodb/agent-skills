@@ -18,9 +18,10 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: stable
+          cache: false
 
       - name: Install skill-validator
-        run: go install github.com/dacharyc/skill-validator@latest
+        run: go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest
 
       - name: Validate changed skills
         run: bash .github/scripts/validate-skills.sh "${{ github.base_ref }}"

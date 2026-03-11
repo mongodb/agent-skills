@@ -39,13 +39,10 @@
 
 ## Author Self-Validation
 
-<!-- Confirm you have completed the Author Self-Validation Checklist from the Author's Guide -->
+<!-- Confirm you have used the `review-skill` skill to perform a self-review of this skill. -->
 
-- [ ] Verified structure and format requirements
+- [ ] Ran `review-skill` skill to self-review structure, format, content quality, and novelty
 - [ ] Tested skill with LLMs using the five prompts above
-- [ ] Checked content quality and novelty
-- [ ] Validated all links and file references
-- [ ] (Optional but recommended) Ran [`skill-validator`](https://github.com/dacharyc/skill-validator) locally
 
 ## SME Review
 
