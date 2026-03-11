@@ -80,7 +80,7 @@ Node.js defaults to `maxPoolSize: 5`, not 100 like other drivers. This is due to
 ### Key Characteristics
 - **Context-based timeouts**: Idiomatic Go pattern for cancellation and timeouts
 - **Goroutine-safe**: Client can be shared across goroutines
-- **Small default pool**: Default `maxPoolSize` is 100
+- **Default pool size**: `maxPoolSize` defaults to 100 connections
 
 ### Best Practices
 - **Prefer context timeouts over driver timeouts**: Use `context.WithTimeout` for operation-level control
