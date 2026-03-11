@@ -46,7 +46,7 @@ Also review the available indexes to understand which query patterns will perfor
 
 ### 3. Choose Query Type: Find vs Aggregation
 
-Prefer find queries over aggregation pipelines because find queries are simpler, faster, and easier for other developers to understand. Find queries also have better performance characteristics for simple filtering and sorting since they avoid the aggregation framework overhead.
+Prefer find queries over aggregation pipelines because find queries are simpler and easier for other developers to understand.
 
 **For Find Queries**, generate responses with these fields:
 - `filter` - The query filter (required)
@@ -110,31 +110,36 @@ For aggregation pipelines:
 ### Query Quality
 1. **Use indexes efficiently** - Structure filters to leverage available indexes:
    - Check collection indexes before generating the query
-   - Order filter fields to match index key order when possible
-   - Use equality matches before range queries (matches index prefix behavior)
-   - Avoid operators that prevent index usage: `$where`, `$text` without text index, `$ne`, `$nin` (use sparingly)
+   - Avoid operators that prevent index usage: `$where`
+   - Do not use `$text` without a text index
+   - `$expr` should only be used when necessary (use sparingly)
    - For compound indexes, use leftmost prefix when possible
    - If no relevant index exists, mention this in your response (user may want to create one)
-2. **Project only needed fields** - Reduce data transfer with projections
-3. **Validate field names** against the schema before using them
-4. **Handle edge cases** - Consider null values, missing fields, type mismatches
+2. **Avoid redundant operators** - Never add operators that are already implied by other conditions:
+   - Don't add `$exists: true` when you already have an equality check (e.g., `status: "active"` already implies the field exists)
+   - Don't add overlapping range conditions (e.g., don't use both `$gte: 0` and `$gt: -1`)
+   - Don't combine `$eq` with `$in` for the same field
+   - Each condition should add meaningful filtering that isn't already covered
+3. **Project only needed fields** - Reduce data transfer with projections
+4. **Validate field names** against the schema before using them
+5. **Handle edge cases** - Consider null values, missing fields, type mismatches
 5. **Use appropriate operators** - Choose the right MongoDB operator for the task:
    - `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte` for comparisons
-   - `$in`, `$nin` for membership tests
+   - `$in`, `$nin` for matching values within arrays or lists
    - `$and`, `$or`, `$not`, `$nor` for logical operations
-   - `$regex` for text pattern matching
+   - `$regex` for text pattern matching (prefer left-anchored patterns like `/^prefix/` when possible, as they can use indexes efficiently)
    - `$exists` for field existence checks
    - `$type` for type validation
 
 ### Aggregation Pipeline Quality
 1. **Filter early** - Use `$match` as early as possible to reduce documents
-2. **Project early** - Use `$project` to reduce field set before expensive operations
+2. **Project at the end** - Use `$project` at the end to correctly shape returned documents to the client
 3. **Limit when possible** - Add `$limit` after `$sort` when appropriate
 4. **Use indexes** - Ensure `$match` and `$sort` stages can use indexes:
    - Place `$match` stages at the beginning of the pipeline
    - Initial `$match` and `$sort` stages can use indexes if they precede any stage that modifies documents
    - Structure `$match` filters to align with available indexes
-   - Avoid `$project`, `$unwind`, or other transformations before `$match` when possible
+   - Avoid `$unwind` or other transformations before `$match` when possible
 5. **Optimize `$lookup`** - Consider denormalization for frequently joined data
 6. **Group efficiently** - Use accumulators appropriately: `$sum`, `$avg`, `$min`, `$max`, `$push`, `$addToSet`
 
@@ -168,9 +173,8 @@ Use sample documents to:
 
 1. **Using nonexistent field names** - Always validate against schema first. MongoDB won't error; it just returns no results.
 2. **Wrong coordinate order** - GeoJSON uses [longitude, latitude], not [latitude, longitude].
-3. **Choosing aggregation when find suffices** - Aggregation adds overhead; use find for simple queries.
-4. **Missing index awareness** - Structure queries to leverage indexes. If no index exists for key filters, mention this to the user.
-5. **Type mismatches** - Check schema to ensure operators match field types (e.g., don't use `$gt` on strings when comparing alphabetically).
+3. **Missing index awareness** - Structure queries to leverage indexes. If no index exists for key filters, mention this to the user.
+4. **Type mismatches** - Check schema to ensure field values in queries match actual field types.
 
 ## Error Handling
 
@@ -187,7 +191,12 @@ If you cannot generate a query:
 **Your Process:**
 1. Check schema for fields: `status`, `age`, `registrationDate` or similar
 2. Verify field types match the query requirements
-3. Generate query:
+3. Check available indexes to optimize the query
+4. Generate query
+5. Suggest creating an index if no appropriate index exists for the query filters
+6. Suggest adding a limit if the collection is large or size is unknown
+
+**Generated Query:**
 ```json
 {
   "query": {
