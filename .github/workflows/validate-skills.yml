@@ -20,8 +20,17 @@ jobs:
           go-version: stable
           cache: false
 
-      - name: Install skill-validator
-        run: go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest
+      - name: Install skill-validator-ent
+        run: go install github.com/agent-ecosystem/skill-validator-ent/cmd/skill-validator-ent@latest
 
       - name: Validate changed skills
-        run: bash .github/scripts/validate-skills.sh "${{ github.base_ref }}"
+        run: |
+          echo "## Changed Skills" >> "$GITHUB_STEP_SUMMARY"
+          bash .github/scripts/validate-skills.sh "${{ github.base_ref }}"
+
+      - name: Validate all skills
+        continue-on-error: true
+        run: |
+          echo "## All Skills" >> "$GITHUB_STEP_SUMMARY"
+          skill-validator-ent check --strict --emit-annotations -o markdown skills/ \
+            | tee >(grep -v '^::' >> "$GITHUB_STEP_SUMMARY")
