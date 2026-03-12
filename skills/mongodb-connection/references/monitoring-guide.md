@@ -109,7 +109,7 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 
 **What it is**: The number of active client connections currently established to the MongoDB server.
 
-**What to watch for**: Approaching `maxIncomingConnections` (default: 65,536) indicates server-side saturation.
+**What to watch for**: Approaching `maxIncomingConnections` (default: 1,000,000 for MongoDB >3.0.0; 65,536 for versions 2.6.0-3.0.0) indicates server-side saturation.
 
 **Healthy pattern**: Stable value with headroom for growth. Should roughly match the sum of all client pool sizes across all application instances.
 
@@ -160,9 +160,9 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 
 **What it is**: MongoDB's WiredTiger storage engine uses a ticket-based concurrency control system. Tickets represent slots for concurrent read and write operations. When all tickets are in use, additional operations must wait.
 
-**Default ticket counts** (MongoDB 3.6+):
-- Read tickets: 128
-- Write tickets: 128
+**Default ticket counts**:
+  - **MongoDB 3.6 - 6.x**: Fixed at 128 read tickets and 128 write tickets
+  - **MongoDB 7.0+**: Starts at 128 but uses dynamic adjustment algorithm (may vary based on workload)
 
 **What to watch for**: Low available tickets indicate the server is at maximum concurrency capacity, regardless of connection availability.
 
