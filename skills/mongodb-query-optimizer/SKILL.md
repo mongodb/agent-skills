@@ -33,32 +33,43 @@ Do **not** invoke for routine CRUD/query authoring without an optimization or sl
 
 ## MCP: what to call and when
 
+**How to invoke.** Your host (e.g. Cursor) provides a way to call MCP tools—for example a tool that takes `server`, `toolName`, and `arguments`. You must call the **MongoDB MCP server** (the server name your host shows for MongoDB, e.g. `user-MongoDB` or `user-mongodb`) with the **exact tool name** as `toolName` and a single **arguments object** as `arguments`. Do not pass the tool name as an option, query param, or nested key; pass it as the MCP tool name and the parameters as the arguments object. If your host tells you to check the tool schema first, do that. Full reference: [MongoDB MCP Server Tools](https://www.mongodb.com/docs/mcp-server/tools/).
+
+**Database tools** (when the MCP connection to the cluster works):
+
+| Tool name (exact) | Arguments object |
+|-------------------|------------------|
+| `collection-indexes` | `{ "database": "<db>", "collection": "<coll>" }` — both required strings. |
+| `explain` | `{ "database": "<db>", "collection": "<coll>", "method": [ { "name": "find", "arguments": { "filter": {...}, "sort": {...}, "limit": N } } ], "verbosity": "executionStats" }`. `method` is an array of one object: `name` is `"find"`, `"aggregate"`, or `"count"`; `arguments` holds that method's params (e.g. find: `filter`, `sort`, `limit`; aggregate: `pipeline`; count: `query`). Optional `verbosity`: `"queryPlanner"` (default), `"executionStats"`, `"queryPlannerExtended"`, `"allPlansExecution"`. |
+
+**Atlas tools** (when Atlas API credentials are configured):
+
+| Tool name (exact) | Arguments object |
+|-------------------|------------------|
+| `atlas-list-projects` | `{}` or `{ "orgId": "<24-char hex>" }`. Returns projects with their IDs; use to get `projectId` for Performance Advisor. |
+| `atlas-get-performance-advisor` | **Required:** `"projectId"` (24-character hex string), `"clusterName"` (string, 1–64 chars, alphanumeric/underscore/dash). **Optional:** `"operations"` — array of strings from `"suggestedIndexes"`, `"dropIndexSuggestions"`, `"slowQueryLogs"`, `"schemaSuggestions"` (request only what you need); for slowQueryLogs only: `"since"` (ISO 8601 date-time), `"namespaces"` (array of `"db.coll"` strings). |
+
 Branch in this order:
 
 ### 1. Connection string works (driver/MCP can reach the DB)
 
-- **`collection-indexes`** — List existing indexes on the target `database` + `collection`.
-  Use this to see if a query can already use an index (left-prefix, ESR).
-- **`explain`** — Run explain on the same find/aggregate/count shape the user cares about.
-  Use to confirm the winning plan uses an index (`IXSCAN` etc.) or to spot full collection
-  scans. Prefer `verbosity: "executionStats"` when they care about relative cost; otherwise
-  `queryPlanner` or `queryPlannerExtended` is enough to see index usage.
+- **`collection-indexes`** — Invoke with server = MongoDB MCP server, toolName = `collection-indexes`, arguments = `{ "database": "<db>", "collection": "<coll>" }`. Use the result's `classicIndexes` (each has `name`, `key`) to see if the query can use an index (left-prefix, ESR).
+- **`explain`** — Invoke with server = MongoDB MCP server, toolName = `explain`, arguments = object with `database`, `collection`, `method` (one find/aggregate/count shape), and optional `verbosity`. Use to confirm the winning plan uses an index (`IXSCAN`) or a full collection scan. Prefer `verbosity: "executionStats"` when the user cares about cost; otherwise `"queryPlanner"` or `"queryPlannerExtended"`.
 
-If both are available, typical flow: indexes first, then explain to validate the plan.
+If both are available, typical flow: call `collection-indexes` first, then `explain` to validate the plan.
 
 ### 2. Atlas API access works (MCP configured with Atlas; PA enabled)
 
-Use **`atlas-get-performance-advisor`** with `projectId` and `clusterName` (resolve project
-via `atlas-list-projects` if needed). Pass `operations` selectively:
+If you need a project ID, invoke **`atlas-list-projects`**: server = MongoDB MCP server, toolName = `atlas-list-projects`, arguments = `{}` (or `{ "orgId": "<24-char hex>" }`). Then invoke **`atlas-get-performance-advisor`**: toolName = `atlas-get-performance-advisor`, arguments = `{ "projectId": "<24-char hex>", "clusterName": "<name>", "operations": ["..."] }`. The `operations` array must contain only the string values below (not the tool name); choose only what you need:
 
-| Operation | Use when |
-|-----------|----------|
+| Operation value | Use when |
+|----------------|----------|
 | `slowQueryLogs` | User asks what’s slow on the cluster, which queries to fix first—**prioritize by slowest and most frequent** when the response exposes those dimensions. Optional: `namespaces` to scope to a collection; `since` for a time window. |
 | `suggestedIndexes` | PA index recommendations—**validate** they apply to the user’s query and will have good impact before recommending creation. |
 | `dropIndexSuggestions` | User asks what to remove or reduce index overhead. |
 | `schemaSuggestions` | User asks for schema/query-structure advice alongside indexes (PA schema suggestions). |
 
-Default is to request only what you need to avoid noise.
+Do not pass the MCP tool name (e.g. `atlas-get-performance-advisor`) as an operation—the tool name is used when invoking the tool; `operations` is a separate argument for this tool only.
 
 ### 3. Neither connection nor Atlas is available
 
