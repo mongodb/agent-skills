@@ -1,5 +1,5 @@
 {
-  "skill_name": "connection-pool-sizing",
+  "skill_name": "mongodb-connection",
   "evals": [
     {
       "id": 1,

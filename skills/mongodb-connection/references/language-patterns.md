@@ -8,7 +8,8 @@ This reference provides language-specific patterns and considerations for MongoD
 - **Async/event-loop based**: Non-blocking I/O model
 - **Single-threaded**: Event loop handles concurrency
 - **Connection pool per `MongoClient` instance**
-- **Default pool size: 100** (aligned with other MongoDB drivers)
+- **Default pool size: 100** (modern drivers: Node.js Driver 4.x+, Mongoose 6.x+, released 2021+)
+  - Legacy versions (Node.js Driver 3.x, Mongoose 5.x, pre-2021) defaulted to 5
 
 ### Best Practices
 - **Default is usually sufficient**: The default of 100 works well for most applications
@@ -22,7 +23,7 @@ This reference provides language-specific patterns and considerations for MongoD
 - Horizontal scaling (more application instances with smaller pools each)
 - If you hit Node's scaling limits, consider multi-threaded drivers (Python, Java, Go)
 
-**Note for legacy applications**: If using MongoDB Node.js Driver 3.x or Mongoose 5.x (pre-2021), the default was pool size 5. Consider upgrading to modern versions for better defaults and performance
+**Note for legacy applications**: If you're maintaining older code with Node.js Driver 3.x or Mongoose 5.x, remember these versions defaulted to pool size 5. Consider upgrading to modern versions (4.x+/6.x+) for the improved default of 100 and better performance
 
 ---
 
@@ -135,7 +136,7 @@ All modern MongoDB drivers default to **`maxPoolSize: 100`** (Node.js, Python, J
 
 **When defaults are appropriate**:
 - For most applications, the default of 100 is a reasonable starting point
-- Async drivers (Node.js, Motor) can handle high concurrency with fewer connections due to non-blocking I/O
+- Modern async drivers (Node.js 4.x+, Motor) can handle high concurrency with fewer connections due to non-blocking I/O
 - Sync drivers' default of 100 handles moderate traffic well
 
 **When to adjust**:
