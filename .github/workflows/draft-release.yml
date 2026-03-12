@@ -1,0 +1,66 @@
+name: Draft Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".cursor-plugin/plugin.json"
+      - ".claude-plugin/plugin.json"
+      - "gemini-extension.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository with tags
+        uses: actions/checkout@v6
+
+      - name: Read and validate plugin versions
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_version="$(jq -r '.version' .cursor-plugin/plugin.json)"
+          claude_version="$(jq -r '.version' .claude-plugin/plugin.json)"
+          gemini_version="$(jq -r '.version' gemini-extension.json)"
+
+          if [[ "$release_version" != "$claude_version" || "$release_version" != "$gemini_version" ]]; then
+            echo "Plugin version mismatch detected; refusing to create release." >&2
+            exit 1
+          fi
+
+          echo "release_tag=v$release_version" >> "$GITHUB_OUTPUT"
+
+      - name: Skip when release already exists
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gh release view "${{ steps.version.outputs.release_tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create draft release with generated notes
+        if: ${{ steps.exists.outputs.exists == 'false' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh release create "${{ steps.version.outputs.release_tag }}" \
+            --title "${{ steps.version.outputs.release_tag }}" \
+            --target "$GITHUB_SHA" \
+            --draft \
+            --generate-notes
