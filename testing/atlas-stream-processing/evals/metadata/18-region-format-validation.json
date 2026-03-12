@@ -1,0 +1,90 @@
+{
+  "eval_id": 18,
+  "eval_name": "region-format-validation",
+  "prompt": "Create a workspace in GCP us-central1",
+  "resource_naming_strategy": {
+    "type": "timestamp",
+    "pattern": "gcp-test-{timestamp}",
+    "note": "Appends Unix timestamp to workspace name"
+  },
+  "pre_test_setup": [
+    {
+      "step": "check_gcp_workspaces",
+      "action": "Call atlas-streams-discover action='list-workspaces' to check for name conflicts",
+      "optional": true
+    }
+  ],
+  "post_test_validation": [
+    {
+      "step": "verify_workspace_created",
+      "action": "Call atlas-streams-discover action='inspect-workspace'",
+      "expected": "Workspace exists with cloudProvider='GCP' and region='US_CENTRAL1'",
+      "critical": true
+    }
+  ],
+  "post_test_cleanup": [
+    {
+      "step": "delete_test_workspace",
+      "action": "Call atlas-streams-teardown resource='workspace'",
+      "when": "test_complete"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "calls_atlas_streams_build",
+      "description": "Uses atlas-streams-build tool"
+    },
+    {
+      "name": "resource_type_workspace",
+      "description": "resource='workspace'"
+    },
+    {
+      "name": "cloud_provider_gcp",
+      "description": "cloudProvider='GCP'",
+      "critical": true
+    },
+    {
+      "name": "region_uses_atlas_format",
+      "description": "region='US_CENTRAL1' (uppercase with underscores, not 'us-central1')",
+      "critical": true,
+      "reason": "Using cloud provider format instead of Atlas format causes cryptic 'dataProcessRegion' error"
+    },
+    {
+      "name": "does_not_use_cloud_format",
+      "description": "Does NOT use region='us-central1' (cloud provider format)",
+      "critical": true
+    }
+  ],
+  "expected_tool_call": {
+    "tool": "atlas-streams-build",
+    "parameters": {
+      "projectId": "<any-valid-24-char-hex>",
+      "resource": "workspace",
+      "workspaceName": "<any-name>",
+      "cloudProvider": "GCP",
+      "region": "US_CENTRAL1",
+      "tier": "<any-tier>"
+    }
+  },
+  "common_mistakes": [
+    {
+      "mistake": "region='us-central1'",
+      "error": "dataProcessRegion validation error",
+      "fix": "Use Atlas region format: 'US_CENTRAL1'"
+    }
+  ],
+  "region_format_examples": {
+    "AWS": {
+      "cloud_format": "us-east-1",
+      "atlas_format": "VIRGINIA_USA"
+    },
+    "GCP": {
+      "cloud_format": "us-central1",
+      "atlas_format": "US_CENTRAL1"
+    },
+    "Azure": {
+      "cloud_format": "eastus2",
+      "atlas_format": "US_EAST_2"
+    }
+  }
+}

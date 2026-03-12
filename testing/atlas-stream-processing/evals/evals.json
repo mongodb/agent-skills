@@ -1,0 +1,180 @@
+{
+  "skill_name": "atlas-stream-processing",
+  "evals": [
+    {
+      "id": 1,
+      "name": "create-workspace-basic",
+      "prompt": "Create a new Atlas Stream Processing workspace called 'dev-streams' in AWS us-east-1 with an SP10 tier",
+      "expected_output": "Calls atlas-streams-build with resource='workspace', workspaceName='dev-streams', cloudProvider='AWS', region='VIRGINIA_USA', tier='SP10'",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "add-kafka-connection",
+      "prompt": "Add a Kafka connection named 'events-kafka' to my 'production-streams' workspace",
+      "expected_output": "Calls atlas-streams-build with resource='connection', connectionType='Kafka', connectionName='events-kafka', allows MCP elicitation for bootstrap servers",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "list-workspaces",
+      "prompt": "Show me all my stream processing workspaces",
+      "expected_output": "Calls atlas-streams-discover with action='list-workspaces'",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "inspect-processor-health",
+      "prompt": "Check the health of processor 'user-aggregator' in workspace 'prod-streams'",
+      "expected_output": "Calls atlas-streams-discover with action='diagnose-processor', workspaceName='prod-streams', resourceName='user-aggregator'",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "create-simple-kafka-to-mongo",
+      "prompt": "Create a processor that reads from Kafka topic 'orders' and writes to Atlas collection 'analytics.orders'",
+      "expected_output": "Validates connections first with list-connections and inspect-connection, then calls atlas-streams-build with resource='processor', pipeline with $source (Kafka connection + topic), $merge (Atlas connection + db/collection), includes DLQ configuration",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "create-windowed-aggregation",
+      "prompt": "Build a processor that counts events per user_id in 5-minute windows from Kafka topic 'events' and writes to 'metrics.user_activity'",
+      "expected_output": "Pipeline with $source (Kafka + topic), tumbling window (size: 5, unit: minute, pipeline with $group by user_id and $count), $merge with Atlas connection, includes partitionIdleTimeout in Kafka $source",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "debug-failed-processor",
+      "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
+      "expected_output": "Calls diagnose-processor first, then get-logs with logType='operational', analyzes error patterns, identifies root cause (e.g., connection issue, schema mismatch, OOM), provides specific fix steps",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "debug-zero-output-windowed",
+      "prompt": "My windowed Kafka processor has been running for an hour but produced no output. State is STARTED and connections are healthy",
+      "expected_output": "Identifies idle Kafka partitions issue, recommends adding partitionIdleTimeout to Kafka $source configuration, provides specific syntax",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "stop-processor",
+      "prompt": "Stop the processor named 'test-processor' in workspace 'dev-streams'",
+      "expected_output": "Calls atlas-streams-manage with action='stop-processor', workspaceName='dev-streams', resourceName='test-processor'",
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "modify-processor-pipeline",
+      "prompt": "Change the pipeline for 'data-transformer' to add a $match stage filtering active=true",
+      "expected_output": "Stops processor first with stop-processor, then calls modify-processor with updated pipeline including $match stage, then offers to restart",
+      "files": []
+    },
+    {
+      "id": 11,
+      "name": "create-changestream-to-kafka",
+      "prompt": "Create a processor that monitors the 'users' collection for changes and emits them to Kafka topic 'user-changes'",
+      "expected_output": "Pipeline with $source (Atlas cluster connection, database, collection, changestream config), $emit (Kafka connection, topic), DLQ configured",
+      "files": []
+    },
+    {
+      "id": 12,
+      "name": "tier-sizing-complex-pipeline",
+      "prompt": "I need to process Kafka data with a $lookup (parallelism 3), tumbling window, and $merge (parallelism 4). What tier should I use?",
+      "expected_output": "Calculates parallelism needs: (3-1) + (4-1) = 5 excess parallelism, recommends SP10 (max 8 parallelism), explains calculation",
+      "files": []
+    },
+    {
+      "id": 13,
+      "name": "create-https-enrichment",
+      "prompt": "Build a processor that reads from Kafka 'transactions', enriches with an external API call, and writes to 'enriched.transactions'",
+      "expected_output": "Pipeline with $source (Kafka), $https stage with HTTPS connection (onError: 'dlq', execution mode), $merge (Atlas), full DLQ configuration",
+      "files": []
+    },
+    {
+      "id": 14,
+      "name": "validate-connections-before-deploy",
+      "prompt": "I want to create a processor using connections 'kafka-prod' and 'atlas-main'. Can you verify they're ready?",
+      "expected_output": "Calls list-connections first, then inspect-connection for each named connection, checks state=READY, verifies connection types match intended usage, presents summary before proceeding",
+      "files": []
+    },
+    {
+      "id": 15,
+      "name": "create-lambda-integration",
+      "prompt": "Set up a processor that sends Kafka events to AWS Lambda function for processing asynchronously",
+      "expected_output": "Pipeline with $source (Kafka), $externalFunction with AWSLambda connection (execution: 'async', onError: 'dlq'), proper async sink configuration",
+      "files": []
+    },
+    {
+      "id": 16,
+      "name": "delete-workspace-safely",
+      "prompt": "Delete workspace 'old-test-workspace'",
+      "expected_output": "Calls inspect-workspace first to count connections and processors, presents summary to user (e.g., '2 connections, 3 processors will be deleted'), asks for confirmation before calling teardown",
+      "files": []
+    },
+    {
+      "id": 17,
+      "name": "get-operational-logs",
+      "prompt": "Show me the operational logs for processor 'fraud-detector' in workspace 'security-streams'",
+      "expected_output": "Calls atlas-streams-discover with action='get-logs', logType='operational', workspaceName='security-streams', resourceName='fraud-detector'",
+      "files": []
+    },
+    {
+      "id": 18,
+      "name": "region-format-validation",
+      "prompt": "Create a workspace in GCP us-central1",
+      "expected_output": "Uses correct Atlas region format 'US_CENTRAL1' for GCP (not 'us-central1'), cloudProvider='GCP'",
+      "files": []
+    },
+    {
+      "id": 19,
+      "name": "billing-warning-before-start",
+      "prompt": "Start processor 'analytics-pipeline' in workspace 'prod-streams'",
+      "expected_output": "Warns about billing costs before starting, mentions per-second charging, confirms user has payment method, then calls atlas-streams-manage with action='start-processor'",
+      "files": []
+    },
+    {
+      "id": 20,
+      "name": "create-s3-sink",
+      "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
+      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection (with path, format, compression fields), DLQ configured",
+      "files": []
+    },
+    {
+      "id": 21,
+      "name": "search-knowledge-before-processor",
+      "prompt": "Create a processor that emits to S3",
+      "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, format, compression) before building processor, references ASP_example repo if needed",
+      "files": []
+    },
+    {
+      "id": 22,
+      "name": "classify-processor-output",
+      "prompt": "My anomaly detection processor has zero output. Is this a problem?",
+      "expected_output": "Classifies processor as alert/anomaly type, explains zero output is NORMAL and healthy for this pattern, differentiates from data transformation processors",
+      "files": []
+    },
+    {
+      "id": 23,
+      "name": "handle-402-billing-error",
+      "prompt": "I got a 402 error when starting my processor",
+      "expected_output": "Explains no payment method configured, directs to Atlas → Organization → Billing, offers sp.process() in mongosh as free alternative, does NOT retry the start command",
+      "files": []
+    },
+    {
+      "id": 24,
+      "name": "multi-connection-setup",
+      "prompt": "Set up workspace 'multi-source' with both Kafka and Atlas cluster connections",
+      "expected_output": "Creates workspace first, then calls atlas-streams-build twice (once for Kafka connection, once for Cluster connection), validates each connection after creation",
+      "files": []
+    },
+    {
+      "id": 25,
+      "name": "chained-processors",
+      "prompt": "How do I chain two processors together?",
+      "expected_output": "Explains processor A writes to Atlas collection via $merge, processor B reads from that collection via change stream $source, provides example pipeline snippets for both",
+      "files": []
+    }
+  ]
+}
