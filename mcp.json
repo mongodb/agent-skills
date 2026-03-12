@@ -2,13 +2,7 @@
   "mcpServers": {
     "mongodb": {
       "command": "npx",
-      "args": ["-y", "mongodb-mcp-server"],
-      "env": {
-        "MDB_MCP_CONNECTION_STRING": "${MDB_MCP_CONNECTION_STRING}",
-        "MDB_MCP_API_CLIENT_ID": "${MDB_MCP_API_CLIENT_ID}",
-        "MDB_MCP_API_CLIENT_SECRET": "${MDB_MCP_API_CLIENT_SECRET}",
-        "MDB_MCP_READ_ONLY": "${MDB_MCP_READ_ONLY}"
-      }
+      "args": ["-y", "mongodb-mcp-server"]
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "mongodb",
   "version": "0.1.0",
-  "description": "Official MongoDB extension for Gemini offering skills for database management and optimization, as well as the MongoDB MCP server",
+  "description": "Official Gemini extension for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
   "mcpServers": {
     "mongodb": {
       "command": "npx",
