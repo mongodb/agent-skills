@@ -1,0 +1,7 @@
+{
+  "id": "fix-slow-queries",
+  "prompt": "Can you fix my slow queries? I have indexes but things are still slow.",
+  "expect_skill_invocation": true,
+  "rationale": "Explicit fix slow queries — skill should run; PA suggestedIndexes/dropIndexSuggestions/schemaSuggestions as available.",
+  "optional_mcp": ["collection-indexes", "explain", "atlas-get-performance-advisor"]
+}

@@ -1,0 +1,7 @@
+{
+  "id": "how-to-index",
+  "prompt": "How should I index this aggregation $match so it uses an index? $match: { shopId: ObjectId('...'), date: { $gte: ISODate('2024-01-01') } }",
+  "expect_skill_invocation": true,
+  "rationale": "Explicit indexing ask for a pipeline — skill should run; ESR-aware compound suggestion.",
+  "optional_mcp": ["collection-indexes", "explain"]
+}

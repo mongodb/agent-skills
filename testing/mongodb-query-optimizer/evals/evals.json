@@ -1,0 +1,54 @@
+{
+  "skill": "mongodb-query-optimizer",
+  "description": "Eval cases: skill should be invoked for explicit optimization/performance asks; description and body are aligned with PR #2 testing pattern.",
+  "cases": [
+    {
+      "id": "optimize-this-query",
+      "iteration": "iteration-1",
+      "path": "iteration-1/optimize-this-query",
+      "prompt": "How do I optimize this MongoDB find? db.orders.find({ status: 'open' }).sort({ createdAt: -1 })",
+      "expect_invoke": true,
+      "tags": ["optimization", "find", "index"]
+    },
+    {
+      "id": "how-to-index",
+      "iteration": "iteration-1",
+      "path": "iteration-1/how-to-index",
+      "prompt": "How should I index this aggregation $match so it uses an index? $match: { shopId: ObjectId('...'), date: { $gte: ISODate('2024-01-01') } }",
+      "expect_invoke": true,
+      "tags": ["index", "aggregation", "ESR"]
+    },
+    {
+      "id": "why-slow",
+      "iteration": "iteration-1",
+      "path": "iteration-1/why-slow",
+      "prompt": "Why is this query performing badly on my cluster? It's a find with filter on serialCode and sort by _id.",
+      "expect_invoke": true,
+      "tags": ["slow", "performance"]
+    },
+    {
+      "id": "slow-queries-cluster",
+      "iteration": "iteration-1",
+      "path": "iteration-1/slow-queries-cluster",
+      "prompt": "What are the slow queries on my cluster? Which should I fix first?",
+      "expect_invoke": true,
+      "tags": ["slow-query-logs", "atlas", "prioritization"]
+    },
+    {
+      "id": "fix-slow-queries",
+      "iteration": "iteration-1",
+      "path": "iteration-1/fix-slow-queries",
+      "prompt": "Can you fix my slow queries? I have indexes but things are still slow.",
+      "expect_invoke": true,
+      "tags": ["slow", "indexes"]
+    },
+    {
+      "id": "negative-routine-find",
+      "iteration": "iteration-1",
+      "path": "iteration-1/negative-routine-find",
+      "prompt": "Write a find query for users where status is active and limit 10.",
+      "expect_invoke": false,
+      "tags": ["negative", "nlq-boundary"]
+    }
+  ]
+}

@@ -1,45 +1,88 @@
 ---
 name: mongodb-query-optimizer
-description: Ensure MongoDB queries have good performance and are indexed. Use this skill whenever the user is writing or modifying MongoDB queries (find, aggregate, count), adding new query fields or filters, debugging slow queries, or changing application code that hits MongoDB — even if they don't mention "index" or "performance". Check existing indexes via MongoDB MCP and suggest or reuse an index so queries are not unoptimized.
-compatibility: Requires MongoDB MCP server with collection-indexes tool. Connection to the target cluster must be available.
+description: >-
+  Help with MongoDB query optimization and indexing. Use only when the user explicitly
+  asks for optimization or performance—e.g. "How do I optimize this query?", "How do I
+  index this?", "Why is this query slow?", "Can you fix my slow queries?", "What are the
+  slow queries on my cluster?", "Which indexes should I add?". Do not invoke for general
+  MongoDB query writing unless they ask for performance/indexing. When invoked, prefer
+  indexes—reuse existing indexes or suggest new ones—and use MCP when available (see body).
+compatibility: >-
+  Best with MongoDB MCP server. Uses collection-indexes and explain when the connection
+  string works; uses Atlas Performance Advisor when Atlas API is configured. Without either,
+  suggest indexes from query shape only. User creates indexes in Atlas or migrations unless
+  tooling allows otherwise.
 ---
 
-# MongoDB query index optimization
+# MongoDB query optimizer
 
-When you write or change a MongoDB query (in code or from a direct prompt), ensure it can use an index. Use the MongoDB MCP to inspect indexes and either align the query with an existing index or recommend creating one.
+Focus: **optimize through indexes** (existing or new) and **cluster/collection performance**
+(slow queries, index suggestions). Do not conflate with natural-language query generation;
+that is a different skill.
 
-## Workflow
+## When this skill is invoked
 
-1. **Identify** the operation's target: database, collection, and which fields are used in:
-   - filter / predicate
-   - sort
-   - aggregation `$match`, `$group`, `$sort`, etc.
+Invoke **only** when the user clearly wants:
 
-2. **Inspect existing indexes**  
-   Call the MCP tool `collection-indexes` (server `user-MongoDB`) with the `database` and `collection` for that query. You get `classicIndexes` (each has `name` and `key`). Use this to see what's already there.
+- Query/index **optimization** or **performance** help
+- **Why** a query is slow or **how to speed it up**
+- **Slow queries** on their cluster or **what to index**
+- **Fix** slow queries or **review** index usage
 
-3. **Match or suggest an index**
-   - **If an existing index can support the query**  
-     - Prefer equality on indexed fields, then range, then sort; compound indexes follow left-prefix.  
-     - Shape the query so the planner can use that index (e.g. filter/sort order consistent with the index key).  
-     - In your reply, state briefly that the query is covered by an existing index (e.g. "Query uses index `idx_serialCode`").
-   - **If no suitable index exists**  
-     - Propose a concrete index key, e.g. `{ serialCode: 1 }` or compound `{ status: 1, createdAt: -1 }`.  
-     - If the codebase has an index/migration pattern (e.g. migrations folder, schema file that defines indexes), add the new index there.  
-     - If there is no such pattern, clearly tell the user the query is unoptimized and that they should create the index (e.g. "Create index `{ serialCode: 1 }` on `db.collection`"), and optionally note they can create it in Atlas or via the driver.
+Do **not** invoke for routine CRUD/query authoring without an optimization or slowness angle.
 
-4. **Keep output short**  
-   One or two sentences on index usage or the suggested index; no long essays. Rely on standard MongoDB index behavior (left-prefix, equality before range, sort order).
+## MCP: what to call and when
 
-## MCP usage
+Branch in this order:
 
-- **Tool**: `collection-indexes`  
-- **Server**: `user-MongoDB`  
-- **Arguments**: `database` (string), `collection` (string)  
-- **Use**: Call after you know the target db and collection from the user's query or code. Use the returned `classicIndexes[].key` to see index key patterns; ignore search indexes unless the query is a search query.
+### 1. Connection string works (driver/MCP can reach the DB)
 
-## Out of scope (for this skill)
+- **`collection-indexes`** — List existing indexes on the target `database` + `collection`.
+  Use this to see if a query can already use an index (left-prefix, ESR).
+- **`explain`** — Run explain on the same find/aggregate/count shape the user cares about.
+  Use to confirm the winning plan uses an index (`IXSCAN` etc.) or to spot full collection
+  scans. Prefer `verbosity: "executionStats"` when they care about relative cost; otherwise
+  `queryPlanner` or `queryPlannerExtended` is enough to see index usage.
 
-- Performance Advisor / slow query logs
-- Suggesting or applying non-index optimizations (e.g. schema design, sharding)
-- Creating indexes directly via MCP (only suggest; user creates in Atlas or via migrations)
+If both are available, typical flow: indexes first, then explain to validate the plan.
+
+### 2. Atlas API access works (MCP configured with Atlas; PA enabled)
+
+Use **`atlas-get-performance-advisor`** with `projectId` and `clusterName` (resolve project
+via `atlas-list-projects` if needed). Pass `operations` selectively:
+
+| Operation | Use when |
+|-----------|----------|
+| `slowQueryLogs` | User asks what’s slow on the cluster, which queries to fix first—**prioritize by slowest and most frequent** when the response exposes those dimensions. Optional: `namespaces` to scope to a collection; `since` for a time window. |
+| `suggestedIndexes` | PA index recommendations—**validate** they apply to the user’s query and will have good impact before recommending creation. |
+| `dropIndexSuggestions` | User asks what to remove or reduce index overhead. |
+| `schemaSuggestions` | User asks for schema/query-structure advice alongside indexes (PA schema suggestions). |
+
+Default is to request only what you need to avoid noise.
+
+### 3. Neither connection nor Atlas is available
+
+- If they only need an index idea from a described filter/sort/pipeline, **suggest a concrete
+  index key** (ESR: equality → sort → range) and note they should create it in Atlas or via
+  migrations and re-check with explain when connected.
+
+## Index matching (short)
+
+- Compound indexes: prefer **equality → sort → range** (ESR); left-prefix still applies;
+  range on a field can block later keys for sort.
+- **Filter/predicate order in the query does not matter** to the planner.
+- **Sort direction** should align with the index when the query uses the index for sort.
+
+## Output
+
+- Keep answers short: one or two sentences on index usage or the suggested index when
+  appropriate; expand only when summarizing slow-query lists or PA tradeoffs.
+- Do not create indexes directly via MCP unless the environment explicitly supports it;
+  otherwise tell the user to create in Atlas or migrations.
+
+## Out of scope
+
+- Writing queries from natural language without an optimization ask (use the NLQ skill).
+- Non-index optimizations (sharding, hardware) except where `schemaSuggestions` already
+  surfaces PA advice—still frame around query/index impact.
+- Running destructive operations without explicit user intent.
