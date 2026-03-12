@@ -1,0 +1,25 @@
+{
+  "eval_id": 3,
+  "eval_name": "geo-based-find",
+  "prompt": "find all the listings within 10km from the istanbul center",
+  "database": "airbnb",
+  "collection": "listingsAndReviews",
+  "assertions": [
+    {
+      "name": "uses_geo_operator",
+      "description": "Uses geospatial operator ($geoWithin, $near, $nearSphere)"
+    },
+    {
+      "name": "correct_distance",
+      "description": "Distance calculation for 10km (accounts for earth radius)"
+    },
+    {
+      "name": "has_location_field",
+      "description": "References correct location field from schema"
+    },
+    {
+      "name": "coordinates_format",
+      "description": "Coordinates in correct order [longitude, latitude]"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "eval_id": 34,
+  "eval_name": "agg-join-lookup",
+  "prompt": "join with \"movies\" based on a movie_id and return one document for each comment with movie_title (from movie.title) and comment_text",
+  "database": "netflix",
+  "collection": "comments",
+  "assertions": [
+    {
+      "name": "uses_aggregation",
+      "description": "Uses aggregation (required for $lookup)"
+    },
+    {
+      "name": "has_lookup_stage",
+      "description": "Includes $lookup to join with movies collection"
+    },
+    {
+      "name": "correct_join_fields",
+      "description": "Joins on movie_id (local) to _id (foreign)"
+    },
+    {
+      "name": "has_unwind",
+      "description": "Unwinds the joined array to get one doc per comment"
+    },
+    {
+      "name": "projects_movie_title",
+      "description": "Extracts movie.title as movie_title"
+    },
+    {
+      "name": "projects_comment_text",
+      "description": "Includes comment text field"
+    }
+  ]
+}

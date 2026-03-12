@@ -1,0 +1,33 @@
+{
+  "eval_id": 2,
+  "eval_name": "find-with-filter-projection-sort-limit",
+  "prompt": "find three movies with alien in the title, show earliest movies first, only the _id, title and year",
+  "database": "netflix",
+  "collection": "movies",
+  "assertions": [
+    {
+      "name": "uses_aggregation_with_search",
+      "description": "Should use aggregation with $search stage for full text search, not regex"
+    },
+    {
+      "name": "has_search_stage",
+      "description": "Pipeline includes $search stage"
+    },
+    {
+      "name": "searches_title_field",
+      "description": "$search targets title field"
+    },
+    {
+      "name": "has_projection",
+      "description": "Includes $project stage with _id, title, year"
+    },
+    {
+      "name": "has_sort_ascending",
+      "description": "Sort by year ascending (1)"
+    },
+    {
+      "name": "has_limit_3",
+      "description": "Limit set to 3"
+    }
+  ]
+}
