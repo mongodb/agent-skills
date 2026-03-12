@@ -1,0 +1,102 @@
+{
+  "skill": "mongodb-query-optimizer",
+  "description": "Eval cases: skill should be invoked for explicit optimization/performance asks; description and body are aligned with PR #2 testing pattern.",
+  "cases": [
+    {
+      "id": "optimize-this-query",
+      "iteration": "iteration-1",
+      "path": "iteration-1/optimize-this-query",
+      "prompt": "How do I optimize this MongoDB find? db.orders.find({ status: 'open' }).sort({ createdAt: -1 })",
+      "expect_invoke": true,
+      "tags": ["optimization", "find", "index"]
+    },
+    {
+      "id": "how-to-index",
+      "iteration": "iteration-1",
+      "path": "iteration-1/how-to-index",
+      "prompt": "How should I index this aggregation $match so it uses an index? $match: { shopId: ObjectId('...'), date: { $gte: ISODate('2024-01-01') } }",
+      "expect_invoke": true,
+      "tags": ["index", "aggregation", "ESR"]
+    },
+    {
+      "id": "why-slow",
+      "iteration": "iteration-1",
+      "path": "iteration-1/why-slow",
+      "prompt": "Why is this query performing badly on my cluster? It's a find with filter on serialCode and sort by _id.",
+      "expect_invoke": true,
+      "tags": ["slow", "performance"]
+    },
+    {
+      "id": "slow-queries-cluster",
+      "iteration": "iteration-1",
+      "path": "iteration-1/slow-queries-cluster",
+      "prompt": "What are the slow queries on my cluster? Which should I fix first?",
+      "expect_invoke": true,
+      "tags": ["slow-query-logs", "atlas", "prioritization"]
+    },
+    {
+      "id": "fix-slow-queries",
+      "iteration": "iteration-1",
+      "path": "iteration-1/fix-slow-queries",
+      "prompt": "Can you fix my slow queries? I have indexes but things are still slow.",
+      "expect_invoke": true,
+      "tags": ["slow", "indexes"]
+    },
+    {
+      "id": "negative-routine-find",
+      "iteration": "iteration-1",
+      "path": "iteration-1/negative-routine-find",
+      "prompt": "Write a find query for users where status is active and limit 10.",
+      "expect_invoke": false,
+      "tags": ["negative", "nlq-boundary"]
+    },
+    {
+      "id": "optimize-aggregation-pipeline",
+      "iteration": "iteration-1",
+      "path": "iteration-1/optimize-aggregation-pipeline",
+      "prompt": "Can you optimize this aggregation pipeline? It's running slow: db.orders.aggregate([{ $lookup: { from: 'customers', localField: 'customerId', foreignField: '_id', as: 'customer' } }, { $match: { status: 'shipped' } }, { $group: { _id: '$customer.region', total: { $sum: '$amount' } } }])",
+      "expect_invoke": true,
+      "tags": ["aggregation", "pipeline", "optimization", "lookup", "references"]
+    },
+    {
+      "id": "array-field-query",
+      "iteration": "iteration-1",
+      "path": "iteration-1/array-field-query",
+      "prompt": "How do I optimize a query on an array field? db.products.find({ tags: 'electronics', 'specs.features': { $all: ['wifi', 'bluetooth'] } }). The tags array has hundreds of values per document.",
+      "expect_invoke": true,
+      "tags": ["array", "multikey", "optimization", "references"]
+    },
+    {
+      "id": "covered-query-optimization",
+      "iteration": "iteration-1",
+      "path": "iteration-1/covered-query-optimization",
+      "prompt": "I want to make this query as fast as possible without reading documents. Query: db.users.find({ status: 'active', plan: 'premium' }, { status: 1, plan: 1, email: 1, _id: 0 }).sort({ email: 1 }). Can this be a covered query?",
+      "expect_invoke": true,
+      "tags": ["covered", "optimization", "projection", "references"]
+    },
+    {
+      "id": "explain-interpretation",
+      "iteration": "iteration-1",
+      "path": "iteration-1/explain-interpretation",
+      "prompt": "I ran explain on my query and got totalKeysExamined: 5000, nReturned: 50, totalDocsExamined: 5000. Is this good performance? What does this mean?",
+      "expect_invoke": true,
+      "tags": ["explain", "diagnosis", "performance", "references"]
+    },
+    {
+      "id": "elemMatch-array-query",
+      "iteration": "iteration-1",
+      "path": "iteration-1/elemMatch-array-query",
+      "prompt": "Why is my array query returning wrong results? db.orders.find({ 'items.sku': 'ABC123', 'items.quantity': { $gte: 5 } }). Sometimes it matches orders where ABC123 has quantity 2 and a different item has quantity 10.",
+      "expect_invoke": true,
+      "tags": ["array", "elemMatch", "multikey", "correctness", "references"]
+    },
+    {
+      "id": "aggregation-unwind-performance",
+      "iteration": "iteration-1",
+      "path": "iteration-1/aggregation-unwind-performance",
+      "prompt": "My aggregation is timing out. It uses $unwind on an array with thousands of elements per document. Pipeline: [{ $unwind: '$events' }, { $match: { 'events.type': 'purchase' } }, { $group: { _id: '$userId', count: { $sum: 1 } } }]. How do I fix this?",
+      "expect_invoke": true,
+      "tags": ["aggregation", "unwind", "performance", "optimization", "references"]
+    }
+  ]
+}

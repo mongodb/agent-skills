@@ -1,0 +1,7 @@
+{
+  "id": "covered-query-optimization",
+  "prompt": "I want to make this query as fast as possible without reading documents. Query: db.users.find({ status: 'active', plan: 'premium' }, { status: 1, plan: 1, email: 1, _id: 0 }).sort({ email: 1 }). Can this be a covered query?",
+  "expect_skill_invocation": true,
+  "rationale": "User asks about covered query optimization explicitly. Skill should invoke and load references/covered-queries.md. Should explain requirements (all fields in index, _id: 0), suggest compound index { status: 1, plan: 1, email: 1 } following ESR, verify with explain showing totalDocsExamined: 0.",
+  "optional_mcp": ["collection-indexes", "explain"]
+}

@@ -1,0 +1,7 @@
+{
+  "id": "array-field-query",
+  "prompt": "How do I optimize a query on an array field? db.products.find({ tags: 'electronics', 'specs.features': { $all: ['wifi', 'bluetooth'] } }). The tags array has hundreds of values per document.",
+  "expect_skill_invocation": true,
+  "rationale": "Explicit 'optimize' + array field query — skill should invoke and load references/multikey-arrays.md. Should discuss multikey index implications, large array performance impact, and potential compound index on tags + other fields. May suggest alternatives to large multikey indexes.",
+  "optional_mcp": ["collection-indexes", "explain"]
+}

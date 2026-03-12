@@ -1,0 +1,7 @@
+{
+  "id": "aggregation-unwind-performance",
+  "prompt": "My aggregation is timing out. It uses $unwind on an array with thousands of elements per document. Pipeline: [{ $unwind: '$events' }, { $match: { 'events.type': 'purchase' } }, { $group: { _id: '$userId', count: { $sum: 1 } } }]. How do I fix this?",
+  "expect_skill_invocation": true,
+  "rationale": "Performance issue with aggregation pipeline — skill should invoke and load references/aggregation-optimization.md. Key problem: $unwind multiplies document count before filtering. Should suggest: 1) Add $match before $unwind to reduce documents, 2) Consider $filter array operator instead of $unwind + $match, 3) May need index on userId for $group, 4) Discuss allowDiskUse if needed. Should explain $unwind performance implications with large arrays.",
+  "optional_mcp": ["collection-indexes", "explain"]
+}
