@@ -1,0 +1,23 @@
+{
+  "skill_name": "mongodb-mcp-setup",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Hey, I just installed the MongoDB plugin for Claude Code but when I try to ask about my database it says it can't connect. I have a MongoDB Atlas cluster at mongodb+srv://myuser:mypass123@cluster0.abcd1.mongodb.net/mydb - can you help me get this working?",
+      "expected_output": "Updated shell profile (~/.zshrc or equivalent) with MDB_MCP_CONNECTION_STRING, sourced the profile, verified the environment variable is set, and instructed user to restart Claude Code",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "i need to set up mongodb access for claude code. i want to be able to switch between different atlas clusters - i have like 3 or 4 different projects. what's the best way to configure this?",
+      "expected_output": "Recommended service account credentials (Option B) for multi-cluster access, provided link to Atlas service account setup docs, offered to open the URL, collected client ID and secret from user, updated shell profile with both MDB_MCP_API_CLIENT_ID and MDB_MCP_API_CLIENT_SECRET, sourced profile, and instructed to restart Claude Code",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I'm trying to use the MongoDB MCP tools to manage my Atlas clusters but I keep getting authentication errors. I already have my connection string set up at mongodb+srv://admin:password@prod-cluster.mongodb.net/analytics but when I ask Claude to list my Atlas projects it says it doesn't have access to the Admin API. How do I fix this?",
+      "expected_output": "Detected that user has MDB_MCP_CONNECTION_STRING but needs Atlas Admin API access, explained that connection string doesn't provide Admin API access, recommended setting up service account credentials (while keeping or replacing the connection string based on user preference), guided through service account setup, updated profile with API credentials, sourced profile, and instructed to restart Claude Code",
+      "files": []
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "mongodb",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "Official Gemini extension for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
   "mcpServers": {
     "mongodb": {
@@ -8,27 +8,13 @@
       "args": [
         "-y",
         "mongodb-mcp-server"
-      ]
+      ],
+      "env": {
+        "MDB_MCP_CONNECTION_STRING": "${MDB_MCP_CONNECTION_STRING}",
+        "MDB_MCP_API_CLIENT_ID": "${MDB_MCP_API_CLIENT_ID}",
+        "MDB_MCP_API_CLIENT_SECRET": "${MDB_MCP_API_CLIENT_SECRET}",
+        "MDB_MCP_READ_ONLY": "${MDB_MCP_READ_ONLY}"
+      }
     }
-  },
-  "settings": [
-    {
-      "name": "MongoDB Connection String (optional)",
-      "description": "The connection string for your MongoDB database (e.g. mongodb+srv://...)",
-      "envVar": "MDB_MCP_CONNECTION_STRING",
-      "sensitive": true
-    },
-    {
-      "name": "MongoDB API Client ID (optional)",
-      "description": "The API Client ID for MongoDB Atlas Admin API.",
-      "envVar": "MDB_MCP_API_CLIENT_ID",
-      "sensitive": false
-    },
-    {
-      "name": "MongoDB API Client Secret (optional)",
-      "description": "The API Client Secret for MongoDB Atlas Admin API.",
-      "envVar": "MDB_MCP_API_CLIENT_SECRET",
-      "sensitive": true
-    }
-  ]
+  }
 }
