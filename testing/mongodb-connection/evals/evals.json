@@ -1,0 +1,220 @@
+{
+  "skill_name": "connection-pool-sizing",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "My Node.js app is getting connection timeout errors connecting to MongoDB Atlas. We have a 3-node replica set on M30 and about 12 app instances running in Kubernetes.",
+      "expected_output": "Should ask about current poolSize config, ops rate, and whether timeouts correlate with load. Should explain Node.js default pool size of 5 and its limitations. Should mention monitoring connections and calculate baseline connection count.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "asks_diagnostic_questions",
+          "description": "Asks diagnostic questions about current config, ops rate, or load patterns before prescribing solutions",
+          "rationale": "Core skill principle: understand context before configuration. Should ask about current poolSize, ops rate, or whether timeouts correlate with load."
+        },
+        {
+          "name": "explains_driver_defaults",
+          "description": "Explains Node.js MongoDB driver default pool size (100 in v4+, or 5 in older versions) and why it might be insufficient",
+          "rationale": "Educational value: users should understand what defaults they're working with and why they might cause issues."
+        },
+        {
+          "name": "calculates_connection_footprint",
+          "description": "Calculates total connections to the cluster accounting for: instances × (poolSize + 2 monitoring) × replica set members",
+          "rationale": "Critical for capacity planning. With 12 instances and 3-node RS, should show the multiplication effect."
+        },
+        {
+          "name": "provides_monitoring_guidance",
+          "description": "Mentions monitoring connection pool metrics (connections in-use, wait queue, or server-side connections.current)",
+          "rationale": "After configuration changes, users need to verify the fix worked. Should guide on what to monitor."
+        },
+        {
+          "name": "avoids_arbitrary_parameters",
+          "description": "Does NOT add arbitrary timeout or pool parameters without justification based on the user's context",
+          "rationale": "Core anti-pattern from findings: avoid blind parameter application. Any parameters suggested should be justified by the scenario."
+        },
+        {
+          "name": "addresses_timeout_specifically",
+          "description": "Addresses the connection timeout error directly - either by asking for more details or explaining likely causes (pool exhaustion, network issues, etc.)",
+          "rationale": "User reported 'connection timeout errors' - response should acknowledge and diagnose this specific symptom."
+        },
+        {
+          "name": "identifies_infrastructure_issues",
+          "description": "Identifies when the problem is infrastructure-related (VPC, network, security groups, IP whitelist, DNS) rather than client configuration, and redirects user to proper support channel instead of suggesting connection pool parameters",
+          "rationale": "Core skill boundary: should not attempt to fix infrastructure problems with client config. Should recognize symptoms like connection refusal, network unreachable, or DNS errors and guide users to infrastructure troubleshooting."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We're getting ECONNREFUSED errors when trying to connect to our MongoDB Atlas cluster from our Node.js application running in AWS Lambda. The connection string is correct and we're using the latest driver. We've tried increasing maxPoolSize to 100 and adding various timeout parameters but nothing helps. The error message is: MongoServerSelectionError: connect ECONNREFUSED. This started happening after we moved the Lambda functions to a new VPC for security compliance. What connection pool settings should we use to fix this?",
+      "expected_output": "Should identify this as an infrastructure/VPC networking issue, not a connection pool problem. Should NOT suggest connection pool parameters. Should ask about VPC configuration (NAT Gateway, security groups, route tables). Should explain that ECONNREFUSED means TCP can't connect. Should guide to AWS/Atlas infrastructure troubleshooting.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "asks_diagnostic_questions",
+          "description": "Asks diagnostic questions about infrastructure setup (VPC, NAT Gateway, security groups) rather than connection pool settings",
+          "rationale": "Should recognize infrastructure scope and ask relevant networking questions, not pool configuration questions."
+        },
+        {
+          "name": "explains_driver_defaults",
+          "description": "If mentioned, explains driver defaults but clarifies they are irrelevant until network connectivity works",
+          "rationale": "May mention Node.js defaults but should contextualize that pool settings don't matter when TCP can't connect."
+        },
+        {
+          "name": "calculates_connection_footprint",
+          "description": "Does NOT calculate connection footprint since infrastructure is the issue",
+          "rationale": "Connection footprint calculation is premature when basic connectivity doesn't work. Should skip this entirely or defer until after network is fixed."
+        },
+        {
+          "name": "provides_monitoring_guidance",
+          "description": "Provides infrastructure monitoring guidance (connectivity tests, VPC flow logs) rather than pool metrics",
+          "rationale": "Should guide toward network diagnostics, not connection pool monitoring."
+        },
+        {
+          "name": "avoids_arbitrary_parameters",
+          "description": "Does NOT suggest connection pool parameters or timeouts as a solution to infrastructure problems",
+          "rationale": "Core boundary: must recognize that maxPoolSize/timeouts won't fix VPC networking issues. Should explicitly state why pool config is irrelevant here."
+        },
+        {
+          "name": "addresses_timeout_specifically",
+          "description": "Addresses the ECONNREFUSED error and explains it's different from timeout errors - indicates active connection refusal at network level",
+          "rationale": "User mentioned 'tried timeouts' - should explain why timeout parameters won't help with ECONNREFUSED."
+        },
+        {
+          "name": "identifies_infrastructure_issues",
+          "description": "Clearly identifies this as a VPC/networking infrastructure problem and redirects to proper troubleshooting (AWS docs, Atlas network access)",
+          "rationale": "Core test objective: should recognize VPC migration + ECONNREFUSED = infrastructure issue. Must avoid suggesting client config as solution."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We're running a Node.js Express app and every few hours our MongoDB Atlas cluster shows thousands of connections and eventually our app crashes with connection errors. We restart and it's fine for a while.",
+      "expected_output": "Should identify the per-request MongoClient creation anti-pattern. Should ask how MongoClient is instantiated. Should explain that a single MongoClient should be created at startup and shared. Should explain connection pooling fundamentals.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "asks_diagnostic_questions",
+          "description": "Asks how MongoClient is instantiated - whether it's created per request, per route, or at startup",
+          "rationale": "Core diagnostic for connection leak: must identify MongoClient lifecycle. The symptom pattern (thousands of connections, periodic crashes) suggests per-request instantiation."
+        },
+        {
+          "name": "explains_driver_defaults",
+          "description": "Explains Node.js driver connection pooling and that each MongoClient maintains its own pool",
+          "rationale": "Educational foundation: users need to understand that creating MongoClient per request means creating a new pool per request."
+        },
+        {
+          "name": "calculates_connection_footprint",
+          "description": "May calculate or explain how connection count explodes with per-request MongoClient pattern",
+          "rationale": "Should show the math: if handling 100 req/sec and each creates a MongoClient with pool of 100, that's 10,000 connections/sec."
+        },
+        {
+          "name": "provides_monitoring_guidance",
+          "description": "Suggests monitoring connection count trends and checking for MongoClient instantiation in request handlers",
+          "rationale": "Should guide verification that the fix (singleton MongoClient) actually prevents connection leaks."
+        },
+        {
+          "name": "avoids_arbitrary_parameters",
+          "description": "Does NOT suggest changing maxPoolSize or timeouts as primary solution - focuses on architectural fix (singleton MongoClient)",
+          "rationale": "Core anti-pattern: the problem is MongoClient lifecycle, not pool sizing. Pool parameters won't fix the root cause."
+        },
+        {
+          "name": "addresses_timeout_specifically",
+          "description": "Addresses the eventual crash with 'connection errors' - explains it's pool exhaustion from connection leak, not a timeout configuration issue",
+          "rationale": "User sees 'connection errors' - should diagnose as resource exhaustion from anti-pattern, not a timeout problem."
+        },
+        {
+          "name": "identifies_infrastructure_issues",
+          "description": "Recognizes this is an application architecture issue, not infrastructure",
+          "rationale": "Should correctly identify this as client-side anti-pattern (application scope), not VPC/network issue."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "We have about 200 Python microservices connecting to a 3-member replica set on Atlas M40. We keep hitting the connection limit even though each service doesn't do much.",
+      "expected_output": "Should calculate default footprint: 200 × (100 + 2) × 3 = 61,200 connections. Should explain why defaults are way too high for this topology. Should recommend aggressively lowering maxPoolSize (5-10) and setting maxIdleTimeMS. Should mention file descriptor and memory constraints.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "asks_diagnostic_questions",
+          "description": "Asks about current maxPoolSize setting, ops rate per service, and whether services are using default pool sizes",
+          "rationale": "Need to understand if using defaults (100) and what the actual workload per service is to recommend appropriate reduction."
+        },
+        {
+          "name": "explains_driver_defaults",
+          "description": "Explains Python driver defaults (maxPoolSize: 100) and why they are inappropriate for 200-service topology",
+          "rationale": "Should explain PyMongo defaults and why they make sense for single-app but cause problems at scale."
+        },
+        {
+          "name": "calculates_connection_footprint",
+          "description": "Calculates total connection footprint with defaults: 200 × (100 + 2) × 3 = 61,200 connections, and shows improved footprint with reduced maxPoolSize",
+          "rationale": "Critical for demonstrating the problem magnitude and showing impact of solution. Must include monitoring connections in calculation."
+        },
+        {
+          "name": "provides_monitoring_guidance",
+          "description": "Mentions monitoring server-side connections, file descriptor usage, and memory consumption",
+          "rationale": "Should guide on verifying the fix reduces connection count and prevents hitting limits."
+        },
+        {
+          "name": "avoids_arbitrary_parameters",
+          "description": "Recommends specific maxPoolSize reduction (e.g., 5-10) with justification based on 'each service doesn't do much' context",
+          "rationale": "Parameters should be justified by the low-activity workload mentioned. Should explain reasoning: low ops rate = small pool sufficient."
+        },
+        {
+          "name": "addresses_timeout_specifically",
+          "description": "Addresses the 'hitting connection limit' symptom - explains it's capacity exhaustion from over-provisioned pools, not a timeout issue",
+          "rationale": "User reports 'hitting limit' - should diagnose as over-provisioning problem, not timeout configuration."
+        },
+        {
+          "name": "identifies_infrastructure_issues",
+          "description": "Recognizes this is a client configuration issue (pool sizing), not infrastructure",
+          "rationale": "Should identify as application-side configuration problem requiring maxPoolSize reduction, not network/Atlas issue."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We're running a Laravel app with the MongoDB PHP driver and connections seem to get created and dropped constantly. Our Atlas metrics show a sawtooth pattern in the connections graph. Is this normal for PHP?",
+      "expected_output": "Should explain PHP's request-based lifecycle and how it affects connection pooling. Should mention that persistent connections need to be explicitly configured in PHP. Should explain the difference from long-running process drivers. Should ask about their PHP runtime setup (FPM, mod_php, etc).",
+      "files": [],
+      "assertions": [
+        {
+          "name": "asks_diagnostic_questions",
+          "description": "Asks about PHP runtime setup (PHP-FPM, mod_php, worker count), whether persistent connections are configured, and request volume",
+          "rationale": "PHP behavior varies by runtime. Need to understand FPM worker pool size and whether uriOptions include persistent connections."
+        },
+        {
+          "name": "explains_driver_defaults",
+          "description": "Explains PHP driver's request-based lifecycle vs. long-running drivers like Node.js - different pooling models",
+          "rationale": "Educational contrast: PHP's share-nothing architecture means connections don't persist by default, unlike Node.js event loop."
+        },
+        {
+          "name": "calculates_connection_footprint",
+          "description": "May calculate connection count based on PHP-FPM worker pool size, explaining the relationship between workers and connections",
+          "rationale": "With persistent connections: worker_count × (maxPoolSize + 2) × RS members. Without: connections created/destroyed per request."
+        },
+        {
+          "name": "provides_monitoring_guidance",
+          "description": "Suggests monitoring connection creation rate vs. persistent connection count, and comparing with request rate",
+          "rationale": "Should guide on verifying whether persistent connections are actually working and reducing the sawtooth pattern."
+        },
+        {
+          "name": "avoids_arbitrary_parameters",
+          "description": "Does NOT suggest arbitrary maxPoolSize - explains persistent connections first, then suggests pool sizing based on FPM worker count",
+          "rationale": "Solution is architectural (enable persistent connections) first, then size based on PHP runtime config, not arbitrary numbers."
+        },
+        {
+          "name": "addresses_timeout_specifically",
+          "description": "Explains the 'sawtooth pattern' symptom - shows it's expected behavior for non-persistent connections, not a timeout issue",
+          "rationale": "User sees sawtooth in metrics - should explain this is connection lifecycle visibility, not an error condition."
+        },
+        {
+          "name": "identifies_infrastructure_issues",
+          "description": "Recognizes this is a PHP runtime/driver configuration issue, not infrastructure or Atlas problem",
+          "rationale": "Should identify as language-specific behavior requiring PHP driver configuration, not VPC or networking issue."
+        }
+      ]
+    }
+  ]
+}
