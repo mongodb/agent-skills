@@ -1,27 +1,32 @@
 ---
 title: "Approximation Pattern"
 impact: MEDIUM
-tags: [pattern, approximation, computed, write-optimization]
+impactDescription: "Reduces write load by storing approximate values when exact real-time counts are not required"
+tags: schema, pattern, approximation, computed, write-optimization
 ---
 
-# Approximation Pattern
+## Approximation Pattern
 
-Intentionally store approximate values to reduce write load when exact real-time counts are not required.
+**Intentionally store approximate values to reduce write load when exact real-time counts are not required.** High-frequency counters (page views, trending scores, social media counters) that increment by +1 per event can create expensive per-event writes. The approximation pattern batches these increments, trading staleness for dramatically lower write volume.
 
-## When to Use
+**Incorrect (write to database on every event):**
 
-- Page views, trending scores, social media counters, ratings
-- Counter changes by small increments (+1 per event)
-- Exact real-time count is NOT required — approximate is acceptable
-- High-write workloads where every +1 write to MongoDB is expensive
+```javascript
+// Page view counter - writes to MongoDB on every single view
+function recordPageView(articleId) {
+  db.articles.updateOne(
+    { _id: articleId },
+    {
+      $inc: { viewCount: 1 },
+      $set: { lastViewedAt: new Date() }
+    }
+  )
+}
+// 1M page views/day = 1M database writes/day
+// High write load for a counter that doesn't need real-time accuracy
+```
 
-## When NOT to Use
-
-- Financial amounts, inventory counts — exact values required
-- Low-frequency updates where approximation adds no benefit
-- When regulatory/audit requirements mandate exact counts
-
-## Pattern Structure
+**Correct (batch writes with threshold):**
 
 ```javascript
 // Document stores approximate count + sync timestamp
@@ -31,11 +36,7 @@ Intentionally store approximate values to reduce write load when exact real-time
   viewCount: 9847,          // approximate — may lag by up to threshold
   lastSyncedAt: ISODate("2024-01-15T10:30:00Z")
 }
-```
 
-## Implementation
-
-```javascript
 // Application-side: only write to MongoDB when local counter crosses threshold
 let localViewCount = 0
 const WRITE_THRESHOLD = 100  // write to DB every 100 views
@@ -54,9 +55,10 @@ function recordPageView(articleId) {
     )
   }
 }
+// ~100x fewer DB writes (at threshold=100)
 ```
 
-## Tradeoff
+**Tradeoffs:**
 
 | Concern | Impact |
 |---------|--------|
@@ -65,11 +67,42 @@ function recordPageView(articleId) {
 | Accuracy | Approximate — never exact real-time |
 | Crash safety | Unsynced local increments lost on restart |
 
-## Difference from Computed Pattern
+**Difference from Computed Pattern:**
 
 - **Computed Pattern**: pre-computes expensive aggregations, stores exact results
 - **Approximation Pattern**: intentionally stores inexact values to reduce write frequency
 
 Use Approximation when staleness is acceptable. Use Computed when exact values are needed but recalculating each time is too expensive.
+
+**When NOT to use this pattern:**
+
+- **Financial amounts, inventory counts**: Exact values required — approximation is unacceptable.
+- **Low-frequency updates**: If counter changes rarely, approximation adds complexity without benefit.
+- **Regulatory/audit requirements**: When exact counts are mandated.
+
+## Verify with
+
+```javascript
+// Check write frequency on counter fields
+db.setProfilingLevel(1, { slowms: 0 })
+db.system.profile.find({
+  "command.update": "articles",
+  "command.updates.u.$inc.viewCount": { $exists: true }
+}).count()
+// High count relative to read count suggests approximation would help
+
+// Compare counter staleness
+db.articles.aggregate([
+  { $project: {
+    title: 1,
+    viewCount: 1,
+    lastSyncedAt: 1,
+    staleness: { $subtract: [new Date(), "$lastSyncedAt"] }
+  }},
+  { $sort: { staleness: -1 } },
+  { $limit: 10 }
+])
+// Verify staleness is within acceptable bounds for your use case
+```
 
 Reference: [Use the Approximation Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/approximation-schema-pattern/)
