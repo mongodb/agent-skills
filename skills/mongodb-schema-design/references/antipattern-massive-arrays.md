@@ -71,24 +71,6 @@ db.posts.updateOne(
 db.comments.insertOne({ postId: "post123", ...newComment })
 ```
 
-**Alternative ($slice without separate collection):**
-
-```javascript
-// For simpler cases where you only ever need recent items
-// Keep last 100 items, discard older automatically
-db.posts.updateOne(
-  { _id: "post123" },
-  {
-    $push: {
-      activityLog: {
-        $each: [newActivity],
-        $slice: -100  // Hard cap at 100 elements
-      }
-    }
-  }
-)
-```
-
 **Workload signals:**
 
 | Signal | Recommendation | Rationale |

@@ -97,14 +97,14 @@ db.brands.createIndex({ _id: 1 })       // Already exists
 // For non-_id lookups, create explicit index
 db.reviews.createIndex({ productId: 1 })  // Critical for $lookup
 
-// Use pipeline $lookup for filtered joins
+// Use pipeline $lookup for filtered joins (MongoDB 5.1+)
 db.products.aggregate([
   { $match: { _id: productId } },
   { $lookup: {
       from: "reviews",
-      let: { pid: "$_id" },
+      localField: "_id",
+      foreignField: "productId",
       pipeline: [
-        { $match: { $expr: { $eq: ["$productId", "$$pid"] } } },
         { $sort: { rating: -1 } },
         { $limit: 5 }  // Only top 5 reviews
       ],

@@ -7,7 +7,7 @@ tags: schema, anti-pattern, validation, consistency, data-quality, atlas-suggest
 
 ## Prevent Schema Drift
 
-**Schema drift—when documents in the same collection have inconsistent structures—causes application errors and query inconsistencies.** MongoDB's flexibility is a feature, but undisciplined field additions lead to code that must handle many shapes. Use schema validation to prevent drift before it happens.
+**Schema drift—when documents in the same collection have inconsistent structures—causes application errors and query inconsistencies.** MongoDB's flexibility is a feature, but undisciplined field additions lead to code that must handle many shapes. Use schema validation to prevent unexpected drift before it happens.
 
 **Incorrect (uncontrolled schema drift):**
 
@@ -32,7 +32,7 @@ function getUserEmail(user) {
   throw new Error("No email found")  // Crashes on some documents
 }
 
-// Queries fail silently
+// Queries fail silently or unintentionally return all documents
 db.users.find({ email: "test@ex.com" })  // Misses users with emails[] array
 ```
 
