@@ -2,9 +2,6 @@
 name: mongodb-schema-design
 description: MongoDB schema design patterns and anti-patterns. Use when designing data models, reviewing schemas, migrating from SQL, or troubleshooting performance issues caused by schema problems. Triggers on "design schema", "embed vs reference", "MongoDB data model", "schema review", "unbounded arrays", "one-to-many", "tree structure", "16MB limit", "schema validation", "JSON Schema", "time series", "schema migration", "polymorphic", "TTL", "data lifecycle", "archive", "index explosion", "unnecessary indexes", "approximation pattern", "document versioning".
 license: Apache-2.0
-metadata:
-  author: mongodb
-  version: "2.3.0"
 ---
 
 # MongoDB Schema Design
@@ -90,6 +87,8 @@ Reference these guidelines when:
 > **"Data that is accessed together should be stored together."**
 
 This is MongoDB's core philosophy. Embedding related data eliminates joins, reduces round trips, and enables atomic updates. Reference only when you must.
+
+A core way to implement this philosophy is the fact that MongoDB exposes **flexible schemas**. This means you can have different fields in different documents, and even different structures. This allows you to model data in the way that best fits your access patterns, without being constrained by a rigid schema. For example, if different documents have different sets of fields, that is perfectly fine as long as it serves your application's needs. You can also use schema validation to enforce certain rules while still allowing for flexibility.
 
 ## Decision Framework
 
