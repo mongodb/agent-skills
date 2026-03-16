@@ -89,22 +89,22 @@ db.enrollments.aggregate([
 **Reference-only pattern (for large cardinality):**
 
 ```javascript
-// When arrays would be too large, use reference arrays
-// Product with category IDs only
+// When arrays would be too large, keep references on the side you query most
+// Product with category IDs only (small array per product)
 {
   _id: "prod123",
   name: "Laptop",
   categoryIds: ["cat1", "cat2", "cat3"]  // Just IDs, small array
 }
 
-// Category with product IDs only
+// Category without a back-reference array (avoid huge productIds arrays)
 {
   _id: "cat1",
-  name: "Electronics",
-  productIds: ["prod123", "prod456", ...]  // Could be large
+  name: "Electronics"
+  // Products in this category are found by querying products.categoryIds
 }
 
-// Query with $lookup when needed
+// Query with $lookup when needed from the product side
 db.products.aggregate([
   { $match: { _id: "prod123" } },
   { $lookup: {

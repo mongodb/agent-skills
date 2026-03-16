@@ -37,7 +37,7 @@ Reference these guidelines when:
 ### 1. Schema Anti-Patterns (CRITICAL) - 7 rules
 
 - [antipattern-unbounded-arrays](references/antipattern-unbounded-arrays.md) - Never allow arrays to grow without limit
-- [antipattern-bloated-documents](references/antipattern-bloated-documents.md) - Keep documents under 16KB for working set
+- [antipattern-bloated-documents](references/antipattern-bloated-documents.md) - Keep hot-path documents small; split hot vs cold fields
 - [antipattern-massive-arrays](references/antipattern-massive-arrays.md) - Arrays over 1000 elements hurt performance
 - [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Fewer collections, more embedding
 - [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - Reduce $lookup by denormalizing

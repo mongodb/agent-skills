@@ -44,17 +44,17 @@ tags: schema, relationships, one-to-many, referencing, scalability
   _id: "book123",
   title: "MongoDB: The Definitive Guide",
   authors: ["Kristina Chodorow", "Mike Dirolf"],
-  publisher_id: "oreilly",  // Reference to publisher
+  publisherId: "oreilly",  // Reference to publisher
   isbn: "978-1449344689",
   pages: 432,
   publishedDate: ISODate("2013-05-23")
 }
 
 // Create index on reference field
-db.books.createIndex({ publisher_id: 1 })
+db.books.createIndex({ publisherId: 1 })
 
 // Query books by publisher efficiently
-db.books.find({ publisher_id: "oreilly" }).sort({ publishedDate: -1 })
+db.books.find({ publisherId: "oreilly" }).sort({ publishedDate: -1 })
 // Uses index, returns any number of books
 ```
 
@@ -65,7 +65,7 @@ db.books.find({ publisher_id: "oreilly" }).sort({ publishedDate: -1 })
 db.publishers.findOne({ _id: "oreilly" })
 
 // Get all books for publisher (indexed query)
-db.books.find({ publisher_id: "oreilly" })
+db.books.find({ publisherId: "oreilly" })
 
 // Get books with publisher details ($lookup when needed)
 db.books.aggregate([

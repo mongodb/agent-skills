@@ -136,7 +136,7 @@ printjson({
 const validator = info?.options?.validator
 db.users.find({ $nor: [validator] })
 
-// Optional heavyweight check (slow, can block due collection lock):
+// Optional heavyweight check (slow, can block due to a collection lock):
 // db.runCommand({ validate: "users", full: true })
 ```
 

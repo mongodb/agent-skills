@@ -38,14 +38,15 @@ function recordPageView(articleId) {
 }
 
 // Application-side: only write to MongoDB when local counter crosses threshold
-let localViewCount = 0
+const localViewCounts = new Map()  // track counts per article
 const WRITE_THRESHOLD = 100  // write to DB every 100 views
 
 function recordPageView(articleId) {
-  localViewCount++
+  const currentCount = (localViewCounts.get(articleId) || 0) + 1
+  localViewCounts.set(articleId, currentCount)
 
-  if (localViewCount % WRITE_THRESHOLD === 0) {
-    // Write accumulated increment to MongoDB
+  if (currentCount % WRITE_THRESHOLD === 0) {
+    // Write accumulated increment to MongoDB for this article
     db.articles.updateOne(
       { _id: articleId },
       {

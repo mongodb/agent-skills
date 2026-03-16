@@ -53,13 +53,15 @@ db.books.find({ title: /Potter/ })
   _id: ObjectId("..."),
   bookId: "book2",
   customers: [/* items 51-1000 */],
-  batch: 1
+  batch: 1,
+  count: 950  // current number of customers in this batch
 }
 {
   _id: ObjectId("..."),
   bookId: "book2",
   customers: [/* items 1001-2000 */],
-  batch: 2
+  batch: 2,
+  count: 1000
 }
 // ...additional batches as needed
 ```
@@ -107,13 +109,17 @@ async function addCustomer(bookId, customerId) {
       .next()
 
     const nextBatch = lastBatchDoc ? lastBatchDoc.batch + 1 : 1
+    const targetBatch =
+      lastBatchDoc && lastBatchDoc.count < 1000
+        ? lastBatchDoc.batch
+        : nextBatch
 
     await db.book_customers_extra.updateOne(
-      { bookId: bookId, count: { $lt: 1000 } },  // Example batch limit
+      { bookId: bookId, batch: targetBatch },  // Write to the intended batch
       {
         $push: { customers: customerId },
         $inc: { count: 1 },
-        $setOnInsert: { bookId: bookId, batch: nextBatch }
+        $setOnInsert: { bookId: bookId, batch: targetBatch, count: 0 } // initialize count
       },
       { upsert: true }
     )
