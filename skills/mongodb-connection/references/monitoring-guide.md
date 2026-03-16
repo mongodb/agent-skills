@@ -160,9 +160,10 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 
 **What it is**: MongoDB's WiredTiger storage engine uses a ticket-based concurrency control system. Tickets represent slots for concurrent read and write operations. When all tickets are in use, additional operations must wait.
 
-**Default ticket counts**:
-  - **MongoDB 3.6 - 6.x**: Fixed at 128 read tickets and 128 write tickets
-  - **MongoDB 7.0+**: Starts at 128 but uses dynamic adjustment algorithm (may vary based on workload)
+**Ticket counts**:
+  - **Maximum**: 128 read tickets and 128 write tickets (never exceeds this)
+  - **MongoDB 7.0+**: Uses dynamic adjustment algorithm that starts with a much lower baseline and adjusts based on workload
+  - **Pre-7.0**: Fixed value (documentation does not specify the exact default)
 
 **What to watch for**: Low available tickets indicate the server is at maximum concurrency capacity, regardless of connection availability.
 
@@ -181,7 +182,7 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 **How to check**: Query `db.serverStatus().wiredTiger.concurrentTransactions` to see:
 - `read.available` / `write.available` - Tickets currently available
 - `read.out` / `write.out` - Tickets currently in use
-- `read.totalTickets` / `write.totalTickets` - Total ticket count (typically 128 each)
+- `read.totalTickets` / `write.totalTickets` - Total ticket count
 
 **Reference**: [WiredTiger concurrentTransactions](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#mongodb-serverstatus-serverstatus.wiredTiger.concurrentTransactions)
 
