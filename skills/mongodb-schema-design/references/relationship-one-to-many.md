@@ -69,10 +69,10 @@ db.books.find({ publisherId: "oreilly" })
 
 // Get books with publisher details ($lookup when needed)
 db.books.aggregate([
-  { $match: { publisher_id: "oreilly" } },
+  { $match: { publisherId: "oreilly" } },
   { $lookup: {
     from: "publishers",
-    localField: "publisher_id",
+    localField: "publisherId",
     foreignField: "_id",
     as: "publisher"
   }},
@@ -138,12 +138,12 @@ db.publishers.updateOne(
 ```javascript
 // Check for missing indexes on reference fields
 db.books.getIndexes()
-// Must have index on publisher_id for efficient lookups
+// Must have index on publisherId for efficient lookups
 
 // Find reference fields without indexes
 db.books.aggregate([
   { $sample: { size: 1000 } },
-  { $project: { publisher_id: 1 } }
+  { $project: { publisherId: 1 } }
 ])
 // If this is slow, index is missing
 
@@ -151,7 +151,7 @@ db.books.aggregate([
 db.books.aggregate([
   { $lookup: {
     from: "publishers",
-    localField: "publisher_id",
+    localField: "publisherId",
     foreignField: "_id",
     as: "pub"
   }},

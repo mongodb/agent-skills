@@ -58,7 +58,7 @@ db.trades.find({ customerId: 123 }).sort({ date: 1 }).skip(90).limit(10)
 
 ```javascript
 // Insert a new trade into the correct bucket
-db.trades.updateOne(
+db.trades.findOneAndUpdate(
   {
     "_id": /^123_/,            // Match buckets for this customer
     "count": { $lt: 10 }       // Only if bucket isn't full
