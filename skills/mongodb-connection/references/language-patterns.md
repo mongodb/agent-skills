@@ -29,26 +29,30 @@ This reference provides language-specific patterns and considerations for MongoD
 
 ## Python
 
-### PyMongo (Synchronous)
+PyMongo is the official MongoDB driver for Python, supporting synchronous and asynchronous operations.
+Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th, 2026**. Critical bug fixes will continue until May 14th, 2027.
 
-#### Key Characteristics
+#### Synchronous API (`pymongo`)
+
+**Key Characteristics**:
 - **Blocking I/O**: Each operation blocks the calling thread
 - **Thread-safe**: One client per application, shared across threads
 - **Pool size relative to thread count**
 
-#### Best Practices
+**Best Practices**:
 - **One client for the application**: PyMongo internally manages threading
 - **Pool size should match or exceed thread pool size**
 - **Use `with` statements for session management**
 
-### Motor (Asynchronous)
+#### Asynchronous API (`pymongo.asynchronous` and Motor)
 
-#### Key Characteristics
-- **Non-blocking async/await**: Built on top of asyncio
+**Key Characteristics**:
+- **Non-blocking async/await**: Built on asyncio
 - **Event-loop based**: Similar efficiency to Node.js
 - **More efficient with smaller pools**
+- **Production-ready since May 2025**
 
-#### Best Practices
+**Best Practices**:
 - **Smaller pool sizes**: Event loop enables high concurrency with few connections
 - **Initialize once**: Share client across application
 - **Use async context managers**
