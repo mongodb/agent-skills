@@ -34,30 +34,7 @@ db.enrollments.aggregate([
 
 **Correct (embed in primary query direction):**
 
-```javascript
-// If you query "which classes is this student in" most often:
-// Embed class references in student
-{
-  _id: "student1",
-  name: "Alice Smith",
-  classes: [
-    { classId: "class101", name: "Database Systems", instructor: "Dr. Smith" },
-    { classId: "class102", name: "Web Development", instructor: "Dr. Jones" }
-  ]
-}
-
-// If you query "which students are in this class" most often:
-// Embed student references in class
-{
-  _id: "class101",
-  name: "Database Systems",
-  instructor: "Dr. Smith",
-  students: [
-    { studentId: "student1", name: "Alice Smith" },
-    { studentId: "student2", name: "Bob Jones" }
-  ]
-}
-```
+Embed references on the side you query most. If you primarily query “which classes is this student in,” embed an array of class summaries (`classId`, `name`, `instructor`) in each student document. If you primarily query “which students are in this class,” embed student summaries (`studentId`, `name`) in each class document instead.
 
 **Bidirectional embedding (when both directions are common):**
 
@@ -129,18 +106,14 @@ db.products.aggregate([
 
 ```javascript
 // Adding a student to a class requires 2 updates
-// 1. Add class to student
 db.students.updateOne(
   { _id: "student1" },
   { $push: { classes: { classId: "class101", name: "Database Systems" } } }
 )
-
-// 2. Add student to class
 db.classes.updateOne(
   { _id: "class101" },
   { $push: { students: { studentId: "student1", name: "Alice Smith" } } }
 )
-
 // Use transactions for atomicity in critical applications
 const session = client.startSession()
 session.withTransaction(async () => {

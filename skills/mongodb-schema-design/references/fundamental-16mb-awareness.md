@@ -11,80 +11,15 @@ tags: schema, fundamentals, document-size, 16mb, bson-limit, atlas-suggestion
 
 **How documents hit 16MB:**
 
-```javascript
-// Scenario 1: Unbounded arrays
-{
-  _id: "user1",
-  activityLog: [
-    // 100,000 events × 150 bytes = 15MB
-    { action: "login", ts: ISODate("..."), ip: "..." },
-    // ... grows forever until writes begin failing for oversized docs
-  ]
-}
+Three common scenarios push documents toward the 16MB BSON limit:
 
-// Scenario 2: Large embedded binary
-{
-  _id: "doc1",
-  content: "...",
-  attachments: [
-    { filename: "report.pdf", data: BinData(0, "...") }  // 10MB PDF
-    // Additional large attachments can push document size past the 16MB limit
-  ]
-}
-
-// Scenario 3: Deeply nested objects
-{
-  _id: "config1",
-  settings: {
-    level1: {
-      level2: {
-        // ... 100 levels of nesting
-        // Metadata + keys alone can reach 16MB
-      }
-    }
-  }
-}
-```
-
-**Symptoms of approaching 16MB:**
-
-- `Document exceeds maximum allowed size` errors
-- Write operations failing sporadically
-- Slow queries returning large documents
-- Memory spikes when fetching documents
+1. **Unbounded arrays** — e.g. an `activityLog` array with 100,000 events × ~150 bytes = ~15MB, growing until writes are rejected.
+2. **Large embedded binary** — e.g. a `BinData` PDF attachment of 10MB+; additional attachments push the document past the limit.
+3. **Deeply nested objects** — e.g. a configuration document with 100+ nesting levels where metadata and keys alone approach 16MB.
 
 **Correct (design for size constraints):**
 
-```javascript
-// Instead of unbounded arrays, use separate collection
-// User document stays small
-{
-  _id: "user1",
-  name: "Alice",
-  activityCount: 100000,
-  lastActivity: ISODate("2024-01-15")
-}
-
-// Activities in separate collection
-{
-  userId: "user1",
-  action: "login",
-  ts: ISODate("2024-01-15"),
-  ip: "192.168.1.1"
-}
-
-// Instead of embedded binary, use GridFS
-const bucket = new GridFSBucket(db)
-const uploadStream = bucket.openUploadStream("report.pdf")
-// Store file reference in document
-{
-  _id: "doc1",
-  content: "...",
-  attachments: [
-    { filename: "report.pdf", gridfsId: ObjectId("...") }
-  ]
-}
-```
+Instead of unbounded arrays, use a separate collection. Keep the parent document small (e.g. user with `activityCount` and `lastActivity` fields only). Store individual activity entries in their own collection with a reference field (`userId`). For large binary data, use GridFS or external object storage instead of embedding.
 
 **Size estimation:**
 
@@ -112,13 +47,6 @@ db.users.aggregate([
 ])
 ```
 
-**Example monitoring thresholds (tune per workload):**
-
-| Document Size | Suggested Action |
-|---------------|------------------|
-| Smaller documents | Track growth trend over time |
-| Mid-size documents | Add alerts and review growth patterns |
-| Large documents | Prioritize refactor plan before limit risk |
 
 **Prevention strategies:**
 
@@ -156,52 +84,25 @@ db.users.updateOne(
 )
 ```
 
-**GridFS for large binary data:**
-
-```javascript
-// Files >16MB must use GridFS
-const { GridFSBucket } = require('mongodb')
-const bucket = new GridFSBucket(db, { bucketName: 'attachments' })
-
-// Upload large file
-const uploadStream = bucket.openUploadStream('large-video.mp4')
-fs.createReadStream('./large-video.mp4').pipe(uploadStream)
-
-// Reference in document
-{
-  _id: "post1",
-  title: "My Video Post",
-  videoId: uploadStream.id  // Reference, not embedded
-}
-
-// Download when needed
-const downloadStream = bucket.openDownloadStream(videoId)
-```
-
-**When NOT to worry about 16MB:**
-
-- **Small, fixed schemas**: User profiles, configs, small entities rarely hit limits.
-- **Bounded arrays with validation**: Explicit limits reduce growth risk.
-- **Read-heavy with controlled writes**: If writes are always small updates.
+For storing large binary blobs, MongoDB provides in-database storage called GridFS, but often it will be most efficient to store them outside of the database and in an external file storage solution.
 
 ## Verify with
 
 ```javascript
-// Set up monitoring for large documents
-db.createCollection("documentSizeAlerts")
-
-// Periodic check (run via cron/scheduled job)
+// Find largest documents in collection
 db.users.aggregate([
   { $project: { size: { $bsonSize: "$$ROOT" } } },
-  { $match: { size: { $gt: 5000000 } } },  // Example alert threshold; tune per workload
-  { $merge: {
-    into: "documentSizeAlerts",
-    whenMatched: "replace"
-  }}
+  { $sort: { size: -1 } },
+  { $limit: 10 }
 ])
 
-// Alert if any documents are approaching limit
-db.documentSizeAlerts.find({ size: { $gt: 10000000 } }) // Example threshold; tune per workload
+// Check specific field sizes
+db.users.aggregate([
+  { $project: {
+    total: { $bsonSize: "$$ROOT" },
+    activitySize: { $bsonSize: { $ifNull: ["$activityLog", []] } }
+  }}
+])
 ```
 
 Reference: [BSON Document Size Limit](https://mongodb.com/docs/manual/reference/limits/#std-label-limit-bson-document-size)

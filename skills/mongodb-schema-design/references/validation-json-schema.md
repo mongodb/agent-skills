@@ -194,39 +194,6 @@ db.createCollection("products", {
 }
 ```
 
-**Combining with query operators:**
-
-```javascript
-// JSON Schema + MongoDB query operators
-{
-  validator: {
-    $and: [
-      { $jsonSchema: {
-        required: ["price"],
-        properties: {
-          price: { type: "number" }
-        }
-      }},
-      // Query operator validation
-      { price: { $gte: 0 } },
-      { $expr: { $lte: ["$salePrice", "$price"] } }
-    ]
-  }
-}
-```
-
-**Error messages:**
-
-```javascript
-// Insert invalid document
-db.products.insertOne({ name: "", price: -5 })
-
-// Error shows which validation failed:
-// WriteError: Document failed validation
-// - name: minLength 1, actual 0
-// - price: minimum 0, actual -5
-```
-
 **When NOT to use JSON Schema:**
 
 - **Polymorphic collections**: Event logs with varied structures may need looser validation.

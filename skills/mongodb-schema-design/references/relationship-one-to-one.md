@@ -11,20 +11,7 @@ tags: schema, relationships, one-to-one, embedding, fundamentals
 
 **Incorrect (separate collections for one-to-one data):**
 
-```javascript
-// User account collection
-{ _id: "user123", email: "alice@example.com", createdAt: ISODate("...") }
-
-// User profile in separate collection - always accessed with user
-{ userId: "user123", name: "Alice Smith", avatar: "https://...", bio: "Developer" }
-
-// Every user lookup requires 2 queries
-const user = db.users.findOne({ _id: "user123" })
-const profile = db.profiles.findOne({ userId: "user123" })
-// 2 round-trips, 2 index lookups
-// What if profile insert fails? Orphaned user account
-// What if user deleted? Orphaned profile
-```
+Storing user accounts and profiles in separate collections when they are always accessed together requires two queries per user lookup, two index lookups, and risks orphaned records if one insert/delete fails without the other.
 
 **Correct (embedded one-to-one document):**
 
@@ -66,28 +53,7 @@ db.users.deleteOne({ _id: "user123" })
 
 **Alternative (subdocument for organization):**
 
-```javascript
-// Use subdocument to logically group related fields
-// Even if they're simple, grouping improves readability
-{
-  _id: "user123",
-  email: "alice@example.com",
-  auth: {
-    passwordHash: "...",
-    lastLogin: ISODate("..."),
-    mfaEnabled: true
-  },
-  profile: {
-    name: "Alice Smith",
-    avatar: "https://..."
-  },
-  settings: {
-    theme: "dark",
-    notifications: true
-  }
-}
-// All 1:1 data, logically organized
-```
+Use subdocuments to logically group related fields within a single document. For example, a user document can have `auth` (passwordHash, lastLogin, mfaEnabled), `profile` (name, avatar), and `settings` (theme, notifications) subdocuments — all 1:1 data, logically organized without separate collections.
 
 **When NOT to use this pattern:**
 

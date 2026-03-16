@@ -11,17 +11,7 @@ tags: schema, patterns, archive, data-lifecycle, merge, ttl, online-archive
 
 **Incorrect (all data in one collection):**
 
-```javascript
-// Sales collection with 5 years of data
-// 50 million documents, only recent 6 months actively queried
-db.sales.find({ date: { $gte: lastMonth } })
-
-// Problems:
-// 1. Index on date covers 50M docs, only 1M relevant
-// 2. Working set includes old data pages
-// 3. Backups include rarely-accessed historical data
-// 4. Storage costs for hot tier when cold would suffice
-```
+A sales collection with 5 years of data (50M documents) where only the recent 6 months are actively queried suffers from: indexes covering the full 50M documents when only ~1M are relevant, working set including old data pages, backups including rarely-accessed history, and hot-tier storage costs for data that could be cold.
 
 **Correct (archive old data separately):**
 
@@ -52,27 +42,10 @@ db.sales.deleteMany({ date: { $lt: fiveYearsAgo } })
 
 **Archive storage options (best to worst for cost/performance):**
 
-```javascript
-// Option 1: External file storage (S3, cloud object storage)
-// Best for: Compliance, long-term retention, lowest cost
-// Export to JSON/BSON, store in S3
-// Use Atlas Data Federation to query when needed
-
-// Option 2: Separate, cheaper cluster
-// Best for: Occasional historical queries
-// Replicate to lower-tier Atlas cluster
-// Different performance tier = lower cost
-
-// Option 3: Separate collection on same cluster
-// Best for: Simple implementation, frequent historical access
-// As shown above with sales_archive
-// Still uses same storage tier
-
-// Option 4: Atlas Online Archive (Atlas only)
-// Best for: Automatic tiering without code changes
-// MongoDB manages movement to cloud object storage
-// Query via Federated Database Instance
-```
+1. **External file storage (S3, cloud object storage)** — Best for compliance and long-term retention at lowest cost. Export to JSON/BSON, store in S3, query via Atlas Data Federation when needed.
+2. **Separate, cheaper cluster** — Best for occasional historical queries. Replicate to a lower-tier Atlas cluster at reduced cost.
+3. **Separate collection on same cluster** — Best for simple implementation with frequent historical access. As shown above with `sales_archive`, but still uses the same storage tier.
+4. **Atlas Online Archive (Atlas only)** — MongoDB manages automatic movement to cloud object storage; query via Federated Database Instance.
 
 **Design tips for archivable schemas:**
 
@@ -128,82 +101,17 @@ db.sales.aggregate([
 
 **Automated archival with scheduling:**
 
-```javascript
-// Create an archive script to run periodically
-function archiveOldSales(yearsToKeep = 5) {
-  const cutoffDate = new Date()
-  cutoffDate.setFullYear(cutoffDate.getFullYear() - yearsToKeep)
+Create a script (run via cron, Atlas Triggers, or an application scheduler) that:
 
-  print(`Archiving sales before ${cutoffDate.toISOString()}`)
+1. Counts documents older than the cutoff date (excluding those with `retentionPolicy: "permanent"`).
+2. Processes in batches (e.g. 10,000 IDs at a time) to avoid long-running operations: fetch a batch of `_id` values, pipe them through an aggregation with `$match` and `$merge` into the archive collection, then `deleteMany` the batch from the active collection.
+3. Logs progress after each batch.
 
-  // Count documents to archive
-  const toArchive = db.sales.countDocuments({
-    date: { $lt: cutoffDate },
-    retentionPolicy: { $ne: "permanent" }
-  })
-  print(`Documents to archive: ${toArchive}`)
-
-  if (toArchive === 0) {
-    print("Nothing to archive")
-    return
-  }
-
-  // Archive in batches to avoid long-running operations
-  const batchSize = 10000
-  let archived = 0
-
-  while (archived < toArchive) {
-    // Get batch of IDs
-    const batch = db.sales.find(
-      { date: { $lt: cutoffDate }, retentionPolicy: { $ne: "permanent" } },
-      { _id: 1 }
-    ).limit(batchSize).toArray()
-
-    if (batch.length === 0) break
-
-    const ids = batch.map(d => d._id)
-
-    // Move to archive
-    db.sales.aggregate([
-      { $match: { _id: { $in: ids } } },
-      { $merge: { into: "sales_archive", on: "_id" } }
-    ])
-
-    // Delete from active
-    db.sales.deleteMany({ _id: { $in: ids } })
-
-    archived += batch.length
-    print(`Archived ${archived}/${toArchive}`)
-  }
-
-  print("Archive complete")
-}
-
-// Run monthly via cron, Atlas Triggers, or application scheduler
-// archiveOldSales(5)
-```
+This reuses the same `$merge`-based archival shown above but throttles work to avoid overloading the cluster.
 
 **Atlas Online Archive (Atlas only):**
 
-```javascript
-// Atlas Online Archive automatically tiers data
-// Configure via Atlas UI or API:
-
-// 1. Set archive rule based on date field
-// archiveAfter: 365 days on "date" field
-
-// 2. Data moves to MongoDB-managed cloud object storage
-// Transparent to application - appears as same collection
-
-// 3. Query via Federated Database Instance
-// Slightly slower but much cheaper storage
-
-// Benefits:
-// - No code changes
-// - Automatic data movement
-// - Unified query interface
-// - Pay cloud storage rates for cold data
-```
+Atlas Online Archive automatically tiers data to MongoDB-managed cloud object storage based on a date-field rule (e.g. archive after 365 days). Archived data is queried transparently via a Federated Database Instance — slightly slower but much cheaper. No application code changes are required.
 
 **When NOT to use archive pattern:**
 
@@ -216,60 +124,20 @@ function archiveOldSales(yearsToKeep = 5) {
 
 ```javascript
 // Analyze archive candidates
-function analyzeArchiveCandidates(collection, dateField, yearsThreshold) {
-  const cutoff = new Date()
-  cutoff.setFullYear(cutoff.getFullYear() - yearsThreshold)
+const cutoff = new Date()
+cutoff.setFullYear(cutoff.getFullYear() - 5)
 
-  const stats = db[collection].aggregate([
-    { $facet: {
-        total: [{ $count: "count" }],
-        old: [
-          { $match: { [dateField]: { $lt: cutoff } } },
-          { $count: "count" }
-        ],
-        recent: [
-          { $match: { [dateField]: { $gte: cutoff } } },
-          { $count: "count" }
-        ],
-        oldestDoc: [
-          { $sort: { [dateField]: 1 } },
-          { $limit: 1 },
-          { $project: { [dateField]: 1 } }
-        ],
-        newestDoc: [
-          { $sort: { [dateField]: -1 } },
-          { $limit: 1 },
-          { $project: { [dateField]: 1 } }
-        ]
-      }
+db.sales.aggregate([
+  { $facet: {
+      total: [{ $count: "count" }],
+      old: [
+        { $match: { date: { $lt: cutoff } } },
+        { $count: "count" }
+      ]
     }
-  ]).toArray()[0]
-
-  const total = stats.total[0]?.count || 0
-  const old = stats.old[0]?.count || 0
-  const recent = stats.recent[0]?.count || 0
-
-  print(`\n=== Archive Analysis for ${collection} ===`)
-  print(`Date field: ${dateField}`)
-  print(`Threshold: ${yearsThreshold} years (before ${cutoff.toISOString().split('T')[0]})`)
-  print(`\nDocument counts:`)
-  print(`  Total: ${total.toLocaleString()}`)
-  print(`  Archivable (>${yearsThreshold}yr): ${old.toLocaleString()} (${((old/total)*100).toFixed(1)}%)`)
-  print(`  Keep active: ${recent.toLocaleString()} (${((recent/total)*100).toFixed(1)}%)`)
-
-  if (stats.oldestDoc[0]) {
-    print(`\nDate range:`)
-    print(`  Oldest: ${stats.oldestDoc[0][dateField]}`)
-    print(`  Newest: ${stats.newestDoc[0][dateField]}`)
   }
-
-  if (old > 0 && old / total > 0.3) {
-    print(`\nRECOMMENDATION: Archive ${old.toLocaleString()} documents to improve performance`)
-  }
-}
-
-// Usage
-analyzeArchiveCandidates("sales", "date", 5)
+])
+// If old documents are >30% of total, archiving can improve performance
 ```
 
 Reference: [Archive Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/archive/)

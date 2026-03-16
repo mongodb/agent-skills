@@ -11,46 +11,11 @@ tags: schema, patterns, versioning, migration, evolution, backward-compatibility
 
 **Incorrect (breaking change without versioning):**
 
-```javascript
-// Version 1: address is a string
-{ _id: 1, name: "Ada", address: "12 Main St, NYC, 10001" }
-
-// Developer changes schema: address becomes an object
-// New code expects:
-{ _id: 1, name: "Ada", address: { street: "12 Main St", city: "NYC", zip: "10001" } }
-
-// PROBLEMS:
-// 1. Old documents break: address.city returns undefined
-// 2. Application crashes or returns wrong data
-// 3. Can't deploy gradually - all-or-nothing
-// 4. Rollback is dangerous if new docs were written
-```
+Changing a field’s type without versioning (e.g. `address` from a string to an object) breaks old documents: code expecting `address.city` gets `undefined` on v1 documents, the application crashes or returns wrong data, deployment is all-or-nothing, and rollback is dangerous if new-shape documents have already been written.
 
 **Correct (versioned documents with migration path):**
 
-```javascript
-// Version 1 documents (existing)
-{ _id: 1, name: "Ada", schemaVersion: 1, address: "12 Main St, NYC 10001" }
-
-// Version 2 documents (new structure)
-{ _id: 2, name: "Bob", schemaVersion: 2,
-  address: { street: "45 Oak Ave", city: "Boston", zip: "02101" } }
-
-// Application code handles both versions:
-function getCity(user) {
-  if (user.schemaVersion >= 2) {
-    return user.address.city
-  }
-  // Parse city from v1 string format
-  return parseAddressString(user.address).city
-}
-
-// Benefits:
-// 1. Old and new documents coexist
-// 2. Deploy new code before migrating data
-// 3. Gradual migration during low-traffic periods
-// 4. Easy rollback - old code still works
-```
+Add a `schemaVersion` field to every document. Version 1 documents keep the old shape (e.g. `address` as a string); version 2 documents use the new shape (e.g. `address` as an object with `street`, `city`, `zip`). Application code checks `schemaVersion` and handles both formats — for example, parsing the v1 string to extract city when needed. This allows old and new documents to coexist, new code to deploy before data migration, gradual migration during low-traffic periods, and easy rollback since old code still reads v1 documents.
 
 **Online migration strategies:**
 
@@ -180,119 +145,16 @@ function migrateToLatest(doc, targetVersion = 3) {
 
 **Backward-compatible changes (no version bump needed):**
 
-```javascript
-// These changes DON'T require schemaVersion increment:
+These changes do **not** require a `schemaVersion` increment:
+- Adding new optional fields (old code ignores them, new code uses them if present)
+- Adding new indexes (transparent to application code)
+- Relaxing validation (making a required field optional)
 
-// 1. Adding new optional fields
-// Old: { name: "Ada" }
-// New: { name: "Ada", nickname: "A" }
-// Old code ignores nickname, new code uses it if present
-
-// 2. Adding new indexes
-db.users.createIndex({ email: 1 })
-// Transparent to application code
-
-// 3. Relaxing validation (removing required fields)
-// If "phone" was required, making it optional is backward-compatible
-
-// These changes DO require schemaVersion:
-
-// 1. Renaming fields
-// address → shippingAddress
-
-// 2. Changing field types
-// price: "19.99" → price: 19.99
-
-// 3. Restructuring (flat to nested, or vice versa)
-// firstName, lastName → name: { first, last }
-
-// 4. Removing fields that old code expects
-// Removing "legacyId" that old code reads
-```
-
-**Version field conventions:**
-
-```javascript
-// Option 1: Integer version (recommended)
-{ schemaVersion: 1 }
-{ schemaVersion: 2 }
-// Simple, easy to compare, clear progression
-
-// Option 2: Semantic version string
-{ schemaVersion: "1.0.0" }
-{ schemaVersion: "1.1.0" }
-// More expressive but harder to query
-
-// Option 3: Date-based version
-{ schemaVersion: "2025-01-15" }
-// Ties to deployment dates
-
-// Option 4: No explicit version (implicit v1)
-// Treat missing schemaVersion as version 1
-function getVersion(doc) {
-  return doc.schemaVersion || 1
-}
-```
-
-**Monitoring migration progress:**
-
-```javascript
-// Track version distribution
-db.users.aggregate([
-  { $group: {
-      _id: "$schemaVersion",
-      count: { $sum: 1 }
-    }
-  },
-  { $sort: { _id: 1 } }
-])
-
-// Example output during migration:
-// { _id: 1, count: 45000 }   // 45% still on v1
-// { _id: 2, count: 55000 }   // 55% migrated to v2
-
-// Set up alerts when migration stalls
-// Monitor for: v1 count not decreasing over time
-```
-
-**Cleanup after migration:**
-
-```javascript
-// After all documents migrated and old code retired:
-
-// 1. Verify no old versions remain
-const oldCount = db.users.countDocuments({ schemaVersion: { $lt: 2 } })
-if (oldCount > 0) {
-  print(`WARNING: ${oldCount} documents still on old schema`)
-  // Don't proceed with cleanup
-}
-
-// 2. Remove old field handling from application code
-// Delete migration functions, version checks
-
-// 3. Optionally remove schemaVersion field
-// (Keep it for future migrations)
-db.users.updateMany(
-  {},
-  { $unset: { schemaVersion: "" } }
-)
-
-// 4. Update validation to require new structure only
-db.runCommand({
-  collMod: "users",
-  validator: {
-    $jsonSchema: {
-      required: ["address"],
-      properties: {
-        address: {
-          bsonType: "object",
-          required: ["street", "city", "postalCode"]
-        }
-      }
-    }
-  }
-})
-```
+These changes **do** require a `schemaVersion` increment:
+- Renaming fields (e.g. `address` → `shippingAddress`)
+- Changing field types (e.g. `price: "19.99"` → `price: 19.99`)
+- Restructuring (e.g. flat `firstName`/`lastName` → nested `name: { first, last }`)
+- Removing fields that old code reads
 
 **When NOT to use schema versioning:**
 
@@ -304,61 +166,15 @@ db.runCommand({
 ## Verify with
 
 ```javascript
-// Schema version health check
-function analyzeSchemaVersions(collectionName, versionField = "schemaVersion") {
-  const coll = db[collectionName]
+// Track version distribution
+db.users.aggregate([
+  { $group: { _id: "$schemaVersion", count: { $sum: 1 } } },
+  { $sort: { _id: 1 } }
+])
 
-  // Get version distribution
-  const versions = coll.aggregate([
-    { $group: {
-        _id: `$${versionField}`,
-        count: { $sum: 1 },
-        oldestDoc: { $min: "$_id" },
-        newestDoc: { $max: "$_id" }
-      }
-    },
-    { $sort: { _id: 1 } }
-  ]).toArray()
-
-  print(`\n=== Schema Version Analysis: ${collectionName} ===`)
-
-  let total = 0
-  let latestVersion = 0
-  versions.forEach(v => {
-    total += v.count
-    const ver = v._id || "(missing)"
-    if (typeof v._id === "number" && v._id > latestVersion) {
-      latestVersion = v._id
-    }
-    print(`  Version ${ver}: ${v.count.toLocaleString()} documents`)
-  })
-
-  print(`\nTotal: ${total.toLocaleString()} documents`)
-
-  // Check for missing version field
-  const missingVersion = coll.countDocuments({ [versionField]: { $exists: false } })
-  if (missingVersion > 0) {
-    print(`\nWARNING: ${missingVersion.toLocaleString()} documents missing '${versionField}'`)
-    print(`  These may be v1 documents (implicit version)`)
-  }
-
-  // Check for old versions
-  const oldVersions = versions.filter(v => v._id !== null && v._id < latestVersion)
-  if (oldVersions.length > 0) {
-    const oldCount = oldVersions.reduce((sum, v) => sum + v.count, 0)
-    const pct = ((oldCount / total) * 100).toFixed(1)
-    print(`\nMIGRATION STATUS: ${oldCount.toLocaleString()} documents (${pct}%) on old versions`)
-
-    if (oldCount > 0) {
-      print(`  Run migration to upgrade to version ${latestVersion}`)
-    }
-  } else {
-    print(`\nMIGRATION STATUS: Complete - all documents on latest version`)
-  }
-}
-
-// Usage
-analyzeSchemaVersions("users", "schemaVersion")
+// Check for missing version field
+db.users.countDocuments({ schemaVersion: { $exists: false } })
+// Missing schemaVersion may indicate implicit v1 documents
 ```
 
 Reference: [Schema Versioning Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/data-versioning/schema-versioning/)

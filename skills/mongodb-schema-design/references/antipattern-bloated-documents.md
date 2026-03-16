@@ -11,52 +11,11 @@ tags: schema, document-size, anti-pattern, working-set, memory, atlas-suggestion
 
 **Incorrect (everything in one document):**
 
-```javascript
-// Product with full history and all images embedded
-// Problem: 665KB loaded into RAM just to show product name and price
-{
-  _id: "prod123",
-  name: "Laptop",           // 10 bytes - what you need
-  price: 999,               // 8 bytes - what you need
-  description: "...",       // 5KB - rarely needed
-  fullSpecs: {...},         // 10KB - rarely needed
-  images: [...],            // 500KB base64 - almost never needed
-  reviews: [...],           // 100KB - paginated separately
-  priceHistory: [...]       // 50KB - analytics only
-}
-// Total: ~665KB per product
-// Large cold fields reduce how many hot-path documents fit in cache
-```
-
-Queries that touch this collection still read large documents, even when projecting a small field set such as `db.products.find({}, {name: 1, price: 1})`.
+A product document that includes all fields — name and price (~18 bytes, frequently needed) alongside description (~5KB), full specs (~10KB), base64 images (~500KB), reviews (~100KB), and price history (~50KB) — can reach ~665KB. Hot-path queries that only need a few small fields still load the entire document into cache, reducing working-set density. Even projecting a small field set (e.g. `db.products.find({}, {name: 1, price: 1})`) still reads the full document from storage.
 
 **Correct (hot data only in main document):**
 
-```javascript
-// Product - hot data only (~500 bytes)
-// This is what most product-list queries actually need
-{
-  _id: "prod123",
-  name: "Laptop",
-  price: 999,
-  thumbnail: "https://cdn.example.com/prod123-thumb.jpg",
-  avgRating: 4.5,
-  reviewCount: 127,
-  inStock: true
-}
-// Keeping only hot fields in the main document improves cache density
-
-// Cold data in separate collections - loaded only when needed
-// products_details: { productId, description, fullSpecs }
-// products_images: { productId, images: [...] }
-// products_reviews: { productId, reviews: [...] }  // paginated
-
-// Product detail page: 2 targeted queries instead of 1 large-document query
-const product = await db.products.findOne({ _id })           // 0.5KB from cache
-const details = await db.products_details.findOne({ productId })  // 15KB
-```
-
-Two targeted queries can outperform one oversized-document query when hot-path reads are cache constrained.
+Keep only hot fields in the main document (~500 bytes): name, price, thumbnail URL, avgRating, reviewCount, inStock. Move cold data to separate collections — `products_details` (description, fullSpecs), `products_images` (images array), `products_reviews` (paginated reviews). A product detail page then issues two targeted queries instead of one oversized read: the hot-data document from cache plus a cold-data read on demand. Two small queries can outperform one oversized-document query when hot-path reads are cache constrained.
 
 **Alternative (projection when you can't refactor):**
 
@@ -69,11 +28,7 @@ db.products.find(
 )
 ```
 
-Projection reduces network transfer but still loads full documents into memory.
-Exception: index-covered queries (where all projected fields are served directly
-from the index) never load the document from WiredTiger at all. For real working
-set reduction, use the Subset Pattern — projection alone cannot help WiredTiger
-cache pressure for uncovered queries.
+Projection reduces network transfer but still loads full documents into memory unless the query is fully covered by an index. For real working set reduction, use the Subset Pattern.
 
 **When NOT to use this pattern:**
 

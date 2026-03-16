@@ -11,83 +11,17 @@ tags: schema, patterns, outlier, arrays, performance, edge-cases
 
 **Problem scenario:**
 
-```javascript
-// Typical book: 50 customers purchased
-{ _id: "book1", title: "Normal Book", customers: [/* 50 items */] }
-
-// Bestseller: 50,000 customers - outlier!
-{
-  _id: "book2",
-  title: "Harry Potter",
-  customers: [/* 50,000 items = ~2.5MB */]
-}
-
-// Query affects both equally
-db.books.find({ title: /Potter/ })
-// Returns 2.5MB document, killing memory and network
-// Index on customers array has 50,000 entries for this one doc
-```
+A typical book might have 50 customers in an embedded array, while a bestseller like Harry Potter accumulates 50,000 (~2.5MB). Queries return the full document, so the outlier dominates memory and network cost. A multikey index on that array produces 50,000 entries for a single document.
 
 **Correct (outlier pattern):**
 
-```javascript
-// Typical book - unchanged
-{
-  _id: "book1",
-  title: "Normal Book",
-  customers: ["cust1", "cust2", /* ... 50 items */],
-  hasExtras: false  // Flag for application logic
-}
-
-// Bestseller - capped at threshold
-{
-  _id: "book2",
-  title: "Harry Potter",
-  customers: [/* first 50 items only */],
-  hasExtras: true,  // Flag indicating overflow exists
-  customerCount: 50000  // Denormalized count
-}
-
-// Overflow in separate collection
-{
-  _id: ObjectId("..."),
-  bookId: "book2",
-  customers: [/* items 51-1000 */],
-  batch: 1,
-  count: 950  // current number of customers in this batch
-}
-{
-  _id: ObjectId("..."),
-  bookId: "book2",
-  customers: [/* items 1001-2000 */],
-  batch: 2,
-  count: 1000
-}
-// ...additional batches as needed
-```
-
-**Querying with outlier pattern:**
-
-```javascript
-// Most queries - fast, typical documents
-const book = db.books.findOne({ _id: "book1" })
-// Returns immediately, small document
-
-// Outlier query - check flag first
-const book = db.books.findOne({ _id: "book2" })
-if (book.hasExtras) {
-  // Load extras only when needed
-  const extras = db.book_customers_extra.find({ bookId: "book2" }).toArray()
-  book.allCustomers = [...book.customers, ...extras.flatMap(e => e.customers)]
-}
-```
+Typical documents keep their full embedded array and set `hasExtras: false`. Outlier documents cap the embedded array at a threshold (e.g. 50), set `hasExtras: true`, store a denormalized `customerCount`, and overflow remaining items into a separate collection in batched documents (e.g. `{ bookId, customers: [...], batch: 1, count: 950 }`). Application code checks the `hasExtras` flag to decide whether to load overflow batches.
 
 **Implementation with threshold (example; tune per workload):**
 
 ```javascript
 const CUSTOMER_THRESHOLD = 50
 
-// Adding a customer to a book
 async function addCustomer(bookId, customerId) {
   const book = await db.books.findOne({ _id: bookId })
 
@@ -126,7 +60,7 @@ async function addCustomer(bookId, customerId) {
       {
         $push: { customers: customerId },
         $inc: { count: 1 },
-        $setOnInsert: { bookId: bookId, batch: targetBatch, count: 0 } // initialize count
+        $setOnInsert: { bookId: bookId, batch: targetBatch } // initialize count
       },
       { upsert: targetBatch === nextBatch }
     )
@@ -139,7 +73,7 @@ async function addCustomer(bookId, customerId) {
         {
           $push: { customers: customerId },
           $inc: { count: 1 },
-          $setOnInsert: { bookId: bookId, batch: nextBatch, count: 0 }
+          $setOnInsert: { bookId: bookId, batch: nextBatch }
         },
         { upsert: true }
       )

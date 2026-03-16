@@ -36,56 +36,11 @@ db.orders.aggregate([
 
 **Correct (extended reference):**
 
-```javascript
-// Order contains frequently-needed customer fields
-// Full customer data still in customers collection
-{
-  _id: "order123",
-  customer: {
-    _id: "cust456",         // Keep reference for full lookup
-    name: "Alice Smith",    // Cached for display
-    email: "alice@ex.com"   // Cached for notifications
-  },
-  items: [...],
-  total: 299.99,
-  createdAt: ISODate("2024-01-15")
-}
-
-// Order list without $lookup - single query
-db.orders.find({ status: "pending" })
-// Returns customer.name directly - no join needed
-
-// Full customer data available when needed
-const fullCustomer = db.customers.findOne({ _id: order.customer._id })
-```
+Embed frequently-needed customer fields directly in the order document: include a `customer` subdocument with `_id` (kept as a reference for full lookups), `name`, and `email`. The order list query returns customer display data without `$lookup`. Full customer data is still available via a targeted read to the `customers` collection when needed.
 
 **Keeping cached data in sync:**
 
-```javascript
-// When customer name changes (rare event)
-// 1. Update source of truth
-db.customers.updateOne(
-  { _id: "cust456" },
-  { $set: { name: "Alice Johnson" } }
-)
-
-// 2. Update cached copies
-// Can be async via Change Streams or background job
-db.orders.updateMany(
-  { "customer._id": "cust456" },
-  { $set: { "customer.name": "Alice Johnson" } }
-)
-
-// For frequently-changing data, add timestamp
-{
-  customer: {
-    _id: "cust456",
-    name: "Alice Smith",
-    cachedAt: ISODate("2024-01-15")
-  }
-}
-// Application can refresh if cachedAt > threshold
-```
+When the source field changes (e.g. customer name), update the source collection first, then update cached copies in the orders collection using `updateMany` on the embedded reference `_id`. This can be done synchronously or asynchronously via Change Streams / background jobs. For data that changes more often, add a `cachedAt` timestamp to the embedded subdocument so the application can refresh on read when the cache exceeds a staleness threshold.
 
 **What to cache (extend):**
 
@@ -98,29 +53,7 @@ db.orders.updateMany(
 
 **Alternative: Hybrid pattern with cache expiry:**
 
-```javascript
-// For data that changes occasionally
-{
-  _id: "order123",
-  customerId: "cust456",        // Always have reference
-  customerCache: {              // Optional cache
-    name: "Alice Smith",
-    email: "alice@ex.com",
-    cachedAt: ISODate("2024-01-15")
-  }
-}
-
-// Application logic
-if (!order.customerCache ||
-    order.customerCache.cachedAt < oneDayAgo) {
-  // Refresh cache from customers collection
-  const customer = db.customers.findOne({ _id: order.customerId })
-  db.orders.updateOne(
-    { _id: order._id },
-    { $set: { customerCache: { ...customer, cachedAt: new Date() } } }
-  )
-}
-```
+Keep both a bare reference (`customerId`) and an optional cache subdocument (`customerCache`) with `name`, `email`, and `cachedAt`. On read, if the cache is missing or older than a threshold (e.g. one day), refresh it from the `customers` collection and write the updated cache back to the order.
 
 **When NOT to use this pattern:**
 

@@ -86,9 +86,9 @@ db.orders.stats().indexSizes
 // Large number of indexes or large total index size signals audit opportunity
 
 // Find redundant indexes (prefix subsets)
-db.orders.getIndexes().forEach(idx => {
+for (const idx of db.orders.getIndexes()) {
   print(`${idx.name}: ${JSON.stringify(idx.key)}`)
-})
+}
 // Compare index key prefixes — if {a:1} exists alongside {a:1,b:1}, the former is redundant
 ```
 

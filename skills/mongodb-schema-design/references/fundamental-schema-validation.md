@@ -11,16 +11,7 @@ tags: schema, validation, json-schema, data-integrity, fundamentals
 
 **Incorrect (no validation):**
 
-```javascript
-// Any document can be inserted - no safety net
-db.users.insertOne({ email: "not-an-email", age: "twenty" })
-// Now you have: { email: "not-an-email", age: "twenty" }
-// Application crashes when parsing age as number
-// Or worse: silent data corruption, discovered months later
-
-db.users.insertOne({ name: "Bob" })  // Missing required email
-// Downstream systems expect email, fail silently
-```
+Without validation, any document shape is accepted: an `email` field can contain a non-email string, an `age` field can hold a string instead of a number, and required fields like `email` can be omitted entirely. These invalid documents are discovered only when downstream consumers crash or return wrong data — often months later.
 
 **Correct (schema validation):**
 

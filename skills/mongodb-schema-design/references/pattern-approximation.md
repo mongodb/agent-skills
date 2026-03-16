@@ -28,36 +28,9 @@ function recordPageView(articleId) {
 
 **Correct (batch writes with threshold):**
 
-```javascript
-// Document stores approximate count + sync timestamp
-{
-  _id: "article_123",
-  title: "MongoDB Best Practices",
-  viewCount: 9847,          // approximate — may lag by up to threshold
-  lastSyncedAt: ISODate("2024-01-15T10:30:00Z")
-}
+The document stores an approximate count plus a sync timestamp. The application tracks counts in local memory (e.g. a `Map` keyed by article ID) and writes to the database only when the local counter crosses a threshold (e.g. every 100 views). At threshold=100 this yields ~100× fewer database writes.
 
-// Application-side: only write to MongoDB when local counter crosses threshold
-const localViewCounts = new Map()  // track counts per article
-const WRITE_THRESHOLD = 100  // write to DB every 100 views
-
-function recordPageView(articleId) {
-  const currentCount = (localViewCounts.get(articleId) || 0) + 1
-  localViewCounts.set(articleId, currentCount)
-
-  if (currentCount % WRITE_THRESHOLD === 0) {
-    // Write accumulated increment to MongoDB for this article
-    db.articles.updateOne(
-      { _id: articleId },
-      {
-        $inc: { viewCount: WRITE_THRESHOLD },
-        $set: { lastSyncedAt: new Date() }
-      }
-    )
-  }
-}
-// ~100x fewer DB writes (at threshold=100)
-```
+The document includes `viewCount` (approximate — may lag by up to one threshold) and `lastSyncedAt`. When the local counter reaches the threshold, the application issues a single `$inc` by the threshold amount and updates `lastSyncedAt`. Unsynced local increments are lost on application restart.
 
 **Tradeoffs:**
 

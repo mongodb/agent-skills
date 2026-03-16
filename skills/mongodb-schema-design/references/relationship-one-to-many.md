@@ -11,52 +11,11 @@ tags: schema, relationships, one-to-many, referencing, scalability
 
 **Incorrect (embedding unbounded arrays):**
 
-```javascript
-// Publisher with ALL books embedded - risky at scale
-{
-  _id: "oreilly",
-  name: "O'Reilly Media",
-  books: [
-    // 10,000+ books × 1KB each = 10MB+ document
-    { title: "MongoDB: The Definitive Guide", isbn: "123", pages: 400 },
-    { title: "Learning Python", isbn: "456", pages: 600 },
-    // ... grows forever
-  ]
-}
-// Adding one book rewrites entire 10MB document
-// Eventually exceeds 16MB limit -> writes fail for oversized documents
-```
+Embedding all books inside a publisher document (e.g. 10,000+ books × ~1KB each = 10MB+) means adding one book rewrites the entire large document, and the document eventually exceeds the 16MB limit.
 
 **Correct (reference in child documents):**
 
-```javascript
-// Publisher document (simple, fixed size)
-{
-  _id: "oreilly",
-  name: "O'Reilly Media",
-  founded: 1980,
-  location: "CA",
-  bookCount: 10000  // Denormalized count for display
-}
-
-// Each book references its publisher
-{
-  _id: "book123",
-  title: "MongoDB: The Definitive Guide",
-  authors: ["Kristina Chodorow", "Mike Dirolf"],
-  publisherId: "oreilly",  // Reference to publisher
-  isbn: "978-1449344689",
-  pages: 432,
-  publishedDate: ISODate("2013-05-23")
-}
-
-// Create index on reference field
-db.books.createIndex({ publisherId: 1 })
-
-// Query books by publisher efficiently
-db.books.find({ publisherId: "oreilly" }).sort({ publishedDate: -1 })
-// Uses index, returns any number of books
-```
+Keep the publisher document simple and fixed-size (name, founded, location, plus a denormalized `bookCount` for display). Each book document stores a `publisherId` reference. Create an index on `{ publisherId: 1 }` for efficient lookups. Query books by publisher with a simple `find` on the indexed field.
 
 **Querying referenced data:**
 
@@ -82,22 +41,7 @@ db.books.aggregate([
 
 **Alternative (hybrid with subset):**
 
-```javascript
-// Publisher with recent/featured books embedded
-{
-  _id: "oreilly",
-  name: "O'Reilly Media",
-  bookCount: 10000,
-  featuredBooks: [
-    // Only top 5 featured - bounded
-    { _id: "book123", title: "MongoDB Guide", isbn: "123" },
-    { _id: "book456", title: "Learning Python", isbn: "456" }
-  ]
-}
-
-// Display publisher page: no $lookup for featured books
-// "View all books" link: query books collection
-```
+Embed a bounded subset (e.g. top 5 featured books with `_id`, `title`, `isbn`) directly in the publisher document for display without `$lookup`. Provide a “View all books” path that queries the books collection separately.
 
 **Updating denormalized counts:**
 

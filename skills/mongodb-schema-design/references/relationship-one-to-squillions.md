@@ -11,43 +11,11 @@ tags: schema, relationships, one-to-many, references, unbounded, scalability
 
 **Incorrect (embed massive child arrays):**
 
-```javascript
-// User document with millions of activity entries
-{
-  _id: "user123",
-  name: "Ada",
-  activities: [
-    // Unbounded array - will exceed 16MB
-    { ts: ISODate("2025-01-01"), action: "login" }
-  ]
-}
-```
+Embedding millions of activity entries directly in the user document creates an unbounded array that will exceed the 16MB BSON limit.
 
 **Correct (reference children + summary in parent):**
 
-```javascript
-// Parent with summary only
-{
-  _id: "user123",
-  name: "Ada",
-  activityCount: 15000000,
-  recentActivities: [
-    { ts: ISODate("2025-01-15"), action: "login" }
-  ]
-}
-
-// Child documents in separate collection
-{
-  _id: ObjectId("..."),
-  userId: "user123",
-  ts: ISODate("2025-01-01"),
-  action: "login"
-}
-
-// Index for efficient fan-out queries
-
-db.user_activities.createIndex({ userId: 1, ts: -1 })
-```
+Keep the parent document small with only summary fields: `activityCount` and a bounded `recentActivities` array. Store individual activity documents in a separate collection with a `userId` reference. Create a compound index `{ userId: 1, ts: -1 }` for efficient fan-out queries.
 
 **When NOT to use this pattern:**
 

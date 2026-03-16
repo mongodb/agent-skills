@@ -11,21 +11,7 @@ tags: schema, document-model, fundamentals, sql-migration
 
 **Incorrect (SQL patterns in MongoDB):**
 
-```javascript
-// SQL-style: 4 collections for one entity
-// customers: { _id, name, email }
-// addresses: { _id, customerId, type, street, city, zip }
-// phones: { _id, customerId, type, number }
-// preferences: { _id, customerId, key, value }
-
-// To load customer profile: 4 queries required
-const customer = db.customers.findOne({ _id: "cust123" })  // Query 1
-const addresses = db.addresses.find({ customerId: "cust123" })  // Query 2
-const phones = db.phones.find({ customerId: "cust123" })  // Query 3
-const prefs = db.preferences.find({ customerId: "cust123" })  // Query 4
-// Total: 4 round-trips, 4 index lookups, application-side joining
-// Update may require transaction/coordination across collections
-```
+Mirroring a relational schema 1:1 — e.g. separate `customers`, `addresses`, `phones`, and `preferences` collections linked by `customerId` — requires four queries and four index lookups to load one customer profile, plus application-side joining. Updates may require cross-collection coordination or transactions.
 
 **Correct (rich document model):**
 
@@ -88,10 +74,10 @@ db.customers.updateOne(
 
 ```javascript
 // Count your collections vs expected entities
-db.adminCommand({ listDatabases: 1 }).databases.forEach(d => {
+for (const d of db.adminCommand({ listDatabases: 1 }).databases) {
   const colls = db.getSiblingDB(d.name).getCollectionNames().length
   print(`${d.name}: ${colls} collections`)
-})
+}
 // Collection count alone is not enough evidence; inspect query/access patterns too
 
 // Check for SQL-style foreign key patterns

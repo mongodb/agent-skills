@@ -6,7 +6,7 @@ license: Apache-2.0
 
 # MongoDB Schema Design
 
-Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Contains **33 rules across 5 categories**, prioritized by impact. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
+Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Contains **30 rules across 5 categories**, prioritized by impact. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
 
 ## When to Apply
 
@@ -26,28 +26,26 @@ Reference these guidelines when:
 
 | Priority | Category | Impact | Prefix | Rules |
 |----------|----------|--------|--------|-------|
-| 1 | Schema Anti-Patterns | CRITICAL | `antipattern-` | 7 |
-| 2 | Schema Fundamentals | HIGH | `fundamental-` | 5 |
+| 1 | Schema Anti-Patterns | CRITICAL | `antipattern-` | 6 |
+| 2 | Schema Fundamentals | HIGH | `fundamental-` | 4 |
 | 3 | Relationship Patterns | HIGH | `relationship-` | 6 |
 | 4 | Design Patterns | MEDIUM | `pattern-` | 12 |
-| 5 | Schema Validation | MEDIUM | `validation-` | 3 |
+| 5 | Schema Validation | MEDIUM | `validation-` | 2 |
 
 ## Quick Reference
 
-### 1. Schema Anti-Patterns (CRITICAL) - 7 rules
+### 1. Schema Anti-Patterns (CRITICAL) - 6 rules
 
-- [antipattern-unbounded-arrays](references/antipattern-unbounded-arrays.md) - Never allow arrays to grow without limit
+- [antipattern-unbounded-arrays](references/antipattern-unbounded-arrays.md) - Avoid large and unbounded arrays
 - [antipattern-bloated-documents](references/antipattern-bloated-documents.md) - Keep hot-path documents small; split hot vs cold fields
-- [antipattern-massive-arrays](references/antipattern-massive-arrays.md) - Arrays over 1000 elements hurt performance
 - [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Fewer collections, more embedding
 - [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - Reduce $lookup by denormalizing
 - [antipattern-schema-drift](references/antipattern-schema-drift.md) - Enforce consistent structure across documents
 - [antipattern-unnecessary-indexes](references/antipattern-unnecessary-indexes.md) - Audit and remove unused or redundant indexes
 
-### 2. Schema Fundamentals (HIGH) - 5 rules
+### 2. Schema Fundamentals (HIGH) - 4 rules
 
 - [fundamental-embed-vs-reference](references/fundamental-embed-vs-reference.md) - Decision framework for relationships
-- [fundamental-data-together](references/fundamental-data-together.md) - Data accessed together stored together
 - [fundamental-document-model](references/fundamental-document-model.md) - Embrace documents, avoid SQL patterns
 - [fundamental-schema-validation](references/fundamental-schema-validation.md) - Enforce structure with JSON Schema
 - [fundamental-16mb-awareness](references/fundamental-16mb-awareness.md) - Design around BSON document limit
@@ -76,11 +74,10 @@ Reference these guidelines when:
 - [pattern-subset](references/pattern-subset.md) - Store hot data in main doc, cold data elsewhere
 - [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections when available
 
-### 5. Schema Validation (MEDIUM) - 3 rules
+### 5. Schema Validation (MEDIUM) - 2 rules
 
 - [validation-json-schema](references/validation-json-schema.md) - Validate data types and structure at database level
 - [validation-action-levels](references/validation-action-levels.md) - Choose warn vs error mode for validation
-- [validation-rollout-strategy](references/validation-rollout-strategy.md) - Introduce validation safely in production
 
 ## Key Principle
 
@@ -98,7 +95,7 @@ Another implication of the key principle is that information about the expected 
 - **Data accessed together stored together**: MongoDB's core principle: design schemas around queries, not entities. Embed related data to eliminate cross-collection joins and reduce round trips. Identify your API endpoints/pages, list the data each returns, then shape documents to match those queries.
 - **Embrace the document model**: Don't recreate SQL tables 1:1 as MongoDB collections. Instead, denormalize joined tables into rich documents for single-query reads and atomic updates. When migrating from SQL, identify tables that are always joined together and merge them into single documents.
 - **Schema validation**: Use MongoDB's built-in `$jsonSchema` validator to catch invalid data at the database level (type checks, required fields, enum constraints, array size limits). Start with `validationLevel: "moderate"` and `validationAction: "warn"` on existing collections, then tighten to `strict`/`error`.
-- **16MB document limit**: MongoDB documents cannot exceed 16MB—this is a hard limit, not a guideline. Common causes: unbounded arrays, large embedded binaries, deeply nested objects. Mitigate by moving unbounded data to separate collections, using GridFS for large files, and monitoring document sizes with `$bsonSize`.
+- **16MB document limit**: MongoDB documents cannot exceed 16MB—this is a hard limit, not a guideline. Common causes: unbounded arrays, large embedded binaries, deeply nested objects. Mitigate by moving unbounded data to separate collections and monitoring document sizes with `$bsonSize`.
 
 ## Embed/Reference Decision Framework
 

@@ -95,7 +95,7 @@ db.createCollection("users", {
 }
 
 // Migration script for version upgrades
-db.users.find({ schemaVersion: 1 }).forEach(user => {
+for (const user of db.users.find({ schemaVersion: 1 })) {
   db.users.updateOne(
     { _id: user._id },
     {
@@ -109,7 +109,7 @@ db.users.find({ schemaVersion: 1 }).forEach(user => {
       $unset: { name: "" }
     }
   )
-})
+}
 
 // Validation accepts both during migration
 db.runCommand({
@@ -154,16 +154,6 @@ db.users.find({
   ]
 })
 ```
-
-**Common causes of schema drift:**
-
-| Cause | Prevention |
-|-------|------------|
-| Feature additions without migration | Use schema validation, version fields |
-| Multiple app versions writing | Coordinate deployments, use validation |
-| Direct database edits | Restrict write access, audit logs |
-| Import from external sources | Validate before insert, ETL pipeline |
-| Optional fields proliferating | Define allowed fields in schema |
 
 **When NOT to strictly enforce schema:**
 

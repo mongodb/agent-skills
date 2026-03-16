@@ -37,81 +37,11 @@ Join cost depends on cardinality, stage order, index support, and result size. M
 
 **Correct (denormalize frequently-joined data):**
 
-```javascript
-// Embed data that's always displayed with product
-{
-  _id: "prod123",
-  name: "Laptop Pro",
-  price: 1299,
-  // Denormalized from categories collection
-  category: {
-    _id: "cat-electronics",
-    name: "Electronics",
-    path: "Electronics > Computers > Laptops"
-  },
-  // Denormalized from brands collection
-  brand: {
-    _id: "brand-acme",
-    name: "Acme Corp",
-    logo: "https://cdn.example.com/acme.png"
-  }
-}
-
-// Single indexed query, no $lookup needed
-db.products.findOne({ _id: "prod123" })
-// Or listing: one query against a single collection
-db.products.find({ "category._id": "cat-electronics" }).limit(50)
-```
+Embed data that is always displayed alongside the product directly in the product document: include category fields (`_id`, `name`, `path`) and brand fields (`_id`, `name`, `logo`) as subdocuments. A single indexed query returns complete product data without `$lookup`. Listing queries (e.g. by category) also run against a single collection.
 
 **Managing denormalized data updates:**
 
-```javascript
-// When category name changes (rare), update all products
-// Use bulkWrite for efficiency on large updates
-db.products.updateMany(
-  { "category._id": "cat-electronics" },
-  { $set: {
-    "category.name": "Consumer Electronics",
-    "category.path": "Consumer Electronics > Computers > Laptops"
-  }}
-)
-
-// For frequently-changing data, keep reference + cache summary
-{
-  _id: "prod123",
-  brandId: "brand-acme",          // Reference for updates
-  brandCache: {                    // Denormalized for reads
-    name: "Acme Corp",
-    cachedAt: ISODate("...")
-  }
-}
-```
-
-**Alternative ($lookup with index for rare joins):**
-
-```javascript
-// When you must $lookup, ensure foreign field is indexed
-db.categories.createIndex({ _id: 1 })  // Already exists
-db.brands.createIndex({ _id: 1 })       // Already exists
-
-// For non-_id lookups, create explicit index
-db.reviews.createIndex({ productId: 1 })  // Critical for $lookup
-
-// Use pipeline $lookup for filtered joins (MongoDB 5.1+)
-db.products.aggregate([
-  { $match: { _id: productId } },
-  { $lookup: {
-      from: "reviews",
-      localField: "_id",
-      foreignField: "productId",
-      pipeline: [
-        { $sort: { rating: -1 } },
-        { $limit: 5 }  // Only top 5 reviews
-      ],
-      as: "topReviews"
-  }}
-])
-```
+When category data changes (a rare event), use `updateMany` to update all products matching that category’s `_id` with the new field values. For frequently-changing data, keep both a reference ID (`brandId`) and a cache subdocument (`brandCache`) with a `cachedAt` timestamp; refresh the cache when it exceeds a staleness threshold.
 
 **When NOT to use this pattern:**
 
@@ -124,7 +54,6 @@ db.products.aggregate([
 
 ```javascript
 // Find pipelines with multiple $lookup stages
-// Check slow query log for aggregations
 db.setProfilingLevel(1, { slowms: 50 })
 db.system.profile.find({
   "command.aggregate": { $exists: true },

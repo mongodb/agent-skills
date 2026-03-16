@@ -36,24 +36,7 @@ db.screenings.aggregate([
 
 **Correct (pre-computed values):**
 
-```javascript
-// Movie with computed stats stored directly
-{
-  _id: "movie1",
-  title: "The Matrix",
-  stats: {
-    totalViewers: 1840000,
-    totalRevenue: 25880000,
-    screeningCount: 8500,
-    avgViewersPerScreening: 216,
-    computedAt: ISODate("2024-01-15T00:00:00Z")
-  }
-}
-
-// Movie page: instant read, no aggregation
-db.movies.findOne({ _id: "movie1" })
-// Single-document read on the hot path
-```
+Store computed stats directly in the movie document: `stats.totalViewers`, `stats.totalRevenue`, `stats.screeningCount`, `stats.avgViewersPerScreening`, and `stats.computedAt`. The movie page reads a single document with no aggregation needed on the hot path.
 
 **Update strategies:**
 
@@ -115,25 +98,7 @@ db.screenings.aggregate([
 
 **Handling staleness:**
 
-```javascript
-// Include timestamp for freshness checks
-{
-  _id: "movie1",
-  stats: {
-    totalViewers: 1840000,
-    computedAt: ISODate("2024-01-15T00:00:00Z")
-  }
-}
-
-// Application can check freshness
-if (movie.stats.computedAt < oneHourAgo) {
-  // Refresh computed values
-  await refreshMovieStats(movie._id)
-}
-
-// Or show "as of" timestamp to users
-// "1,840,000 viewers (updated 1 hour ago)"
-```
+Include a `computedAt` timestamp alongside the stats. Application code compares this timestamp against a freshness threshold (e.g. one hour) and triggers a refresh if the values are stale. Alternatively, surface the timestamp to users (e.g. “1,840,000 viewers — updated 1 hour ago”).
 
 **Windowed computations:**
 

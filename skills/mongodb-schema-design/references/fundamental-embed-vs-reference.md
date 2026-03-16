@@ -23,18 +23,7 @@ tags: schema, embedding, referencing, relationships, fundamentals
 
 **Incorrect (reference when should embed):**
 
-```javascript
-// Separate collections for 1:1 data - always accessed together
-// users: { _id, email }
-// profiles: { userId, name, avatar, bio }
-
-// Every user fetch requires two queries
-const user = await db.users.findOne({ _id: userId })      // Query 1
-const profile = await db.profiles.findOne({ userId })    // Query 2
-// Extra round-trips and index lookups on the read path
-// No atomicity - what if profile insert fails after user insert?
-// Orphaned profiles when user deleted - referential integrity issues
-```
+Splitting 1:1 data that is always accessed together (e.g. separate `users` and `profiles` collections linked by `userId`) requires two queries per user fetch, two index lookups, and sacrifices atomicity — a failed profile insert can orphan a user record.
 
 **Correct (embed 1:1 data):**
 
@@ -63,41 +52,11 @@ db.users.updateOne(
 
 **Incorrect (embed when should reference):**
 
-```javascript
-// Blog post with ALL comments embedded - unbounded!
-{
-  _id: "post123",
-  title: "Popular Post",
-  comments: [
-    // 50,000 comments × 500 bytes = 25MB document
-    // Exceeds 16MB BSON limit -> writes fail for oversized documents
-    { author: "user1", text: "...", ts: ISODate("...") },
-    // ... grows forever
-  ]
-}
-```
+Embedding an unbounded array (e.g. all 50,000+ comments inside a blog post document) can push the document past the 16MB BSON limit, at which point writes fail.
 
 **Correct (reference unbounded data):**
 
-```javascript
-// Post with comment summary embedded
-{
-  _id: "post123",
-  title: "Popular Post",
-  commentCount: 50000,
-  recentComments: [/* last 5 only - bounded */]
-}
-
-// Comments in separate collection - no limit
-{
-  _id: ObjectId("..."),
-  postId: "post123",
-  author: "user1",
-  text: "Great post!",
-  ts: ISODate("2024-01-15")
-}
-// Index on postId for efficient lookups
-```
+Keep a bounded summary in the parent (e.g. `commentCount` and a `recentComments` array of the last 5). Store comments in a separate collection with a `postId` reference and an index on that field. This keeps the post document small while enabling unbounded comment growth.
 
 **Decision Matrix:**
 

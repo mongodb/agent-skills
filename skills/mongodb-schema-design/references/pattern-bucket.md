@@ -13,46 +13,11 @@ tags: schema, patterns, bucket, grouping, pagination, arrays
 
 **Incorrect (one document per event):**
 
-```javascript
-// Stock trades: 1 document per trade
-{ ticker: "MDB", customerId: 123, type: "buy", quantity: 419, date: ISODate("2023-10-26T15:47:03.434Z") }
-{ ticker: "MDB", customerId: 123, type: "sell", quantity: 29, date: ISODate("2023-10-30T09:32:57.765Z") }
-{ ticker: "GOOG", customerId: 456, type: "buy", quantity: 50, date: ISODate("2023-10-31T11:16:02.120Z") }
-// ...
-
-// Application shows 10 trades per page per customer
-// Query: find trades for customer 123, skip/limit for pagination
-db.trades.find({ customerId: 123 }).sort({ date: 1 }).skip(90).limit(10)
-// Skip-based pagination degrades as offset grows
-// Each trade is a separate document + index entry
-```
+Storing one document per stock trade (e.g. `{ ticker, customerId, type, quantity, date }`) means the application pages through trades using skip/limit, which degrades as offset grows. Each trade is a separate document and index entry.
 
 **Correct (bucket pattern - group by customer, bounded per page):**
 
-```javascript
-// Each document holds up to 10 trades for one customer = one page
-{
-  _id: "123_1698349623",       // customerId + first trade epoch seconds
-  customerId: 123,
-  count: 2,
-  history: [
-    { type: "buy", ticker: "MDB", qty: 419, date: ISODate("2023-10-26T15:47:03.434Z") },
-    { type: "sell", ticker: "MDB", qty: 29, date: ISODate("2023-10-30T09:32:57.765Z") }
-  ]
-}
-{
-  _id: "456_1698765362",
-  customerId: 456,
-  count: 1,
-  history: [
-    { type: "buy", ticker: "GOOG", qty: 50, date: ISODate("2023-10-31T11:16:02.120Z") }
-  ]
-}
-
-// One bucket = one page of data
-// Regex on _id uses default _id index — no extra index needed
-// Document count drops by up to bucket-size factor
-```
+Each document holds up to N trades for one customer (e.g. 10 trades = one page). The `_id` encodes customer ID and the first trade’s epoch seconds (e.g. `"123_1698349623"`), with a `count` field and a `history` array of trade objects. One bucket equals one page of data — a regex on `_id` uses the default `_id` index with no extra index needed, and document count drops by up to the bucket-size factor.
 
 **Insert with atomic upsert:**
 

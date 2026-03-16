@@ -11,117 +11,32 @@ tags: schema, patterns, subset, hot-data, cold-data, working-set, memory
 
 **Incorrect (all data in one document):**
 
-```javascript
-// Movie with ALL reviews embedded
-// Hot data: title, rating, plot (~1KB)
-// Cold data: 10,000 reviews (~1MB)
-{
-  _id: "movie123",
-  title: "The Matrix",
-  year: 1999,
-  rating: 8.7,
-  plot: "A computer hacker learns about the true nature...",
-  reviews: [
-    // 10,000 reviews × 100 bytes each = 1MB cold data
-    { user: "critic1", rating: 5, text: "Masterpiece...", date: "..." },
-    { user: "user42", rating: 4, text: "Great effects...", date: "..." },
-    // ... 9,998 more reviews, 95% never read
-  ]
-}
-
-// Every movie page load pulls 1MB into RAM
-// 1GB RAM = 1,000 movies cached
-// Most page views only need title + rating + plot
-```
+A movie document with all 10,000 reviews embedded (~1MB of cold data alongside ~1KB of hot data like title, rating, plot) means every page load pulls ~1MB into RAM. Since most page views only need title + rating + plot, this reduces how many movies fit in cache (e.g. 1GB RAM ≈ 1,000 movies instead of ~1,000,000 if only hot data were loaded).
 
 **Correct (subset pattern):**
 
-```javascript
-// Movie with only hot data (~2KB)
-{
-  _id: "movie123",
-  title: "The Matrix",
-  year: 1999,
-  rating: 8.7,
-  plot: "A computer hacker learns about the true nature...",
-  // Summary stats - no full reviews
-  reviewStats: {
-    count: 10000,
-    avgRating: 4.2,
-    distribution: { 5: 4000, 4: 3000, 3: 2000, 2: 700, 1: 300 }
-  },
-  // Only top 5 featured reviews (~500 bytes)
-  featuredReviews: [
-    { user: "critic1", rating: 5, text: "Masterpiece", featured: true },
-    { user: "critic2", rating: 5, text: "Revolutionary", featured: true }
-  ]
-}
-// Depending on size reduction, significantly more hot-path documents may fit in cache
-
-// Cold data: Full reviews in separate collection
-{
-  _id: ObjectId("..."),
-  movieId: "movie123",
-  user: "user456",
-  rating: 4,
-  text: "Great visual effects and deep storyline...",
-  date: ISODate("2024-01-15"),
-  helpful: 42
-}
-// Only loaded when user clicks "Show all reviews"
-```
+The movie document (~2KB) contains only hot fields: `title`, `year`, `rating`, `plot`, `reviewStats` (count, avgRating, distribution), and a bounded `featuredReviews` array (top 5 only, ~500 bytes). Full reviews live in a separate `reviews` collection with `movieId` reference, loaded only when the user clicks “Show all reviews.” This dramatically improves cache density for hot-path queries.
 
 **Access patterns:**
 
-```javascript
-// Movie page load: single query, small document, likely cached
-const movie = db.movies.findOne({ _id: "movie123" })
-// Hot-path query is typically faster and more cache-friendly
-
-// User clicks "Show all reviews": separate query, paginated
-const reviews = db.reviews
-  .find({ movieId: "movie123" })
-  .sort({ helpful: -1 })
-  .skip(0)
-  .limit(20)
-// Cold-path query is loaded separately and can be paginated
-```
+Movie page load: a single `findOne` against the movies collection returns the small hot-data document, typically from cache. When the user clicks “Show all reviews,” a separate paginated query (sorted by `helpful`, with skip/limit) runs against the reviews collection.
 
 **Maintaining the subset:**
 
 ```javascript
-// When new review is added
+// When new review is added:
 // 1. Insert full review into reviews collection
-db.reviews.insertOne({
-  movieId: "movie123",
-  user: "newUser",
-  rating: 5,
-  text: "Amazing!",
-  date: new Date(),
-  helpful: 0
-})
+db.reviews.insertOne({ movieId: "movie123", user: "newUser", rating: 5, text: "Amazing!", date: new Date(), helpful: 0 })
 
-// 2. Update movie stats and maybe featured reviews
+// 2. Update movie stats
 db.movies.updateOne(
   { _id: "movie123" },
-  {
-    $inc: { "reviewStats.count": 1, "reviewStats.distribution.5": 1 },
-    // Recalculate avgRating
-    $set: { "reviewStats.avgRating": newAvg }
-  }
+  { $inc: { "reviewStats.count": 1, "reviewStats.distribution.5": 1 } }
 )
 
 // 3. Periodically refresh featured reviews (background job)
-const topReviews = db.reviews
-  .find({ movieId: "movie123" })
-  .sort({ helpful: -1 })
-  .limit(5)
-  .toArray()
-
-db.movies.updateOne(
-  { _id: "movie123" },
-  { $set: { featuredReviews: topReviews } }
-)
+const topReviews = db.reviews.find({ movieId: "movie123" }).sort({ helpful: -1 }).limit(5).toArray()
+db.movies.updateOne({ _id: "movie123" }, { $set: { featuredReviews: topReviews } })
 ```
 
 **How to identify hot vs cold data:**

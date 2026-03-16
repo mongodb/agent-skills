@@ -11,24 +11,7 @@ tags: schema, relationships, tree, hierarchy, parent-child, categories
 
 **Incorrect (recursive queries for breadcrumbs):**
 
-```javascript
-// Using only parent references for breadcrumb navigation
-{ _id: "MongoDB", parent: "Databases" }
-{ _id: "Databases", parent: "Programming" }
-{ _id: "Programming", parent: null }
-
-// Building breadcrumb requires recursive queries
-async function getBreadcrumb(categoryId) {
-  const crumbs = []
-  let current = await db.categories.findOne({ _id: categoryId })
-  while (current && current.parent) {
-    current = await db.categories.findOne({ _id: current.parent })
-    crumbs.unshift(current)  // N queries for N-level hierarchy!
-  }
-  return crumbs
-}
-// 5-level deep category = 5 database round-trips per page view
-```
+Using only parent references (e.g. `{ _id: "MongoDB", parent: "Databases" }`) for breadcrumb navigation requires iterative database round-trips — one query per level. A 5-level deep category means 5 database round-trips per page view.
 
 **Correct (materialized path for breadcrumbs):**
 
@@ -156,35 +139,14 @@ db.categories.find({ _id: { $in: pathParts } })
 db.categories.find({}).sort({ path: 1 })
 ```
 
-### Pattern 5: Nested Sets
-
-**Best for:** Fast subtree queries, rarely-changing trees
-
-```javascript
-// Each node stores left/right boundaries
-{ _id: "Databases", left: 2, right: 7 }
-{ _id: "MongoDB", left: 3, right: 4 }
-{ _id: "PostgreSQL", left: 5, right: 6 }
-
-// Find all descendants (single range query)
-db.categories.find({
-  left: { $gt: parent.left },
-  right: { $lt: parent.right }
-})
-
-// Con: Insert/move requires updating many documents
-// Best for read-heavy, rarely-modified hierarchies
-```
-
 ### Pattern Comparison
 
 | Pattern | Parent Lookup | Child Lookup | Descendant Queries | Ancestor Queries | Update Cost |
 |---------|---------------|--------------|--------------------|------------------|-------------|
 | Parent References | Direct | Indexed by `parent` | Recursive / `$graphLookup` | Recursive | Low |
-| Child References | Via `children` membership query | Direct from `children` array | Recursive / `$graphLookup` | Recursive | Low to moderate (array maintenance) |
-| Array of Ancestors | Optional via `parent` | Via `parent` or reverse query | Fast with `ancestors` index | Direct from stored array | Moderate (update ancestor arrays) |
-| Materialized Paths | Via path parsing or `parent` field | Prefix path query | Flexible regex/prefix path queries (shape-dependent index efficiency) | From stored path | Moderate (path rewrites on moves) |
-| Nested Sets | Via `parent` | Range boundaries | Fast range scans for subtrees | Range/predicate based | High for frequent tree mutations |
+| Child References | Via `children` membership query | Direct from `children` array | Recursive / `$graphLookup` | Recursive | Low to moderate |
+| Array of Ancestors | Optional via `parent` | Via `parent` or reverse query | Fast with `ancestors` index | Direct from stored array | Moderate |
+| Materialized Paths | Via path parsing or `parent` field | Prefix path query | Flexible regex/prefix path queries | From stored path | Moderate |
 
 **Recommended patterns by use case:**
 
@@ -193,34 +155,7 @@ db.categories.find({
 | Category breadcrumbs | Array of Ancestors | Fast ancestor lookup |
 | File browser | Parent References | Simple, fast child listing |
 | Org chart reporting | Materialized Paths | Subtree queries + sorting |
-| Static taxonomy | Nested Sets | Fastest reads, rare changes |
 | Comment threads | Parent References | Comments change frequently |
-
-**Example: E-commerce category tree**
-
-```javascript
-// Using Materialized Paths for category navigation
-{
-  _id: "laptop-gaming",
-  name: "Gaming Laptops",
-  path: ",electronics,computers,laptops,laptop-gaming,",
-  parent: "laptops",
-  depth: 4,
-  productCount: 234  // Denormalized for display
-}
-
-// Create indexes
-db.categories.createIndex({ path: 1 })
-db.categories.createIndex({ parent: 1 })
-
-// Get full category tree under "computers"
-db.categories.find({ path: /^,electronics,computers,/ }).sort({ path: 1 })
-
-// Get breadcrumb for product page
-const category = db.categories.findOne({ _id: "laptop-gaming" })
-const breadcrumb = category.path.split(",").filter(Boolean)
-db.categories.find({ _id: { $in: breadcrumb } }).sort({ depth: 1 })
-```
 
 **When NOT to use tree patterns:**
 

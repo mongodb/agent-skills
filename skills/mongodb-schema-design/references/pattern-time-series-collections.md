@@ -127,64 +127,17 @@ db.createCollection("custom_metrics", {
 **Optimize insert performance:**
 
 ```javascript
-// TIP 1: Batch inserts with insertMany
+// Batch inserts with insertMany
 // Group documents with same metaField value together
 const batch = [
   { metadata: { sensorId: "temp-01" }, ts: new Date(), value: 22.5 },
   { metadata: { sensorId: "temp-01" }, ts: new Date(), value: 22.6 },
-  { metadata: { sensorId: "temp-01" }, ts: new Date(), value: 22.4 },
-  // ... more temp-01 readings
   { metadata: { sensorId: "temp-02" }, ts: new Date(), value: 19.2 },
-  // ... more temp-02 readings
 ]
 
 db.sensor_data.insertMany(batch, { ordered: false })
-// ordered: false lets MongoDB execute inserts out of order and continue past individual insert errors
-
-// TIP 2: Use consistent field order
-// Column compression works better with consistent structure
-// GOOD: Same field order in every document
-{ metadata: {...}, ts: new Date(), value: 22.5, unit: "C" }
-{ metadata: {...}, ts: new Date(), value: 22.6, unit: "C" }
-
-// BAD: Varying field order
-{ metadata: {...}, ts: new Date(), value: 22.5, unit: "C" }
-{ unit: "C", value: 22.6, metadata: {...}, ts: new Date() }
-
-// TIP 3: Omit empty values for better compression
-// GOOD: Omit field entirely if no value
-{ metadata: {...}, ts: new Date(), value: 22.5 }
-
-// BAD: Include empty/null values
-{ metadata: {...}, ts: new Date(), value: 22.5, error: null, note: "" }
-```
-
-**Optimize compression:**
-
-```javascript
-// Time series collections use column compression
-// Optimize data for maximum compression:
-
-// TIP 1: Round numeric values to needed precision
-// BAD: Excessive precision
-{ value: 22.5123456789 }
-
-// GOOD: Round to needed decimals
-{ value: 22.5 }
-
-// TIP 2: Use consistent nested field order
-// Compression is per-field, nested fields need consistency
-// GOOD
-{ metadata: { sensorId: "a", location: "b" } }
-{ metadata: { sensorId: "c", location: "d" } }
-
-// BAD
-{ metadata: { sensorId: "a", location: "b" } }
-{ metadata: { location: "d", sensorId: "c" } }
-
-// TIP 3: Consider flattening for high-cardinality metadata
-// If metadata has many unique combinations, flatten may help
-{ sensorId: "temp-01", location: "building-A", ts: new Date(), value: 22.5 }
+// ordered: false allows parallel processing
+// Use consistent field order and omit empty values for better compression
 ```
 
 **Secondary indexes on time series:**
@@ -208,24 +161,6 @@ db.sensor_data.createIndex(
 )
 ```
 
-**Sharding time series collections:**
-
-```javascript
-// For very high volume, shard on metaField
-// MongoDB 8.0+: timeField sharding is deprecated
-
-// Create sharded time series collection
-sh.shardCollection("mydb.sensor_data", { "metadata.region": 1 })
-
-// Good shard keys for time series:
-// - metadata.sensorId (if many sensors)
-// - metadata.region (geographic distribution)
-// - metadata.customerId (multi-tenant)
-
-// BAD: Sharding on timeField alone
-// Creates hot spots on recent time ranges
-```
-
 **When NOT to use time series collections:**
 
 - **Not time-based data**: Primary access isn't time range queries.
@@ -237,57 +172,19 @@ sh.shardCollection("mydb.sensor_data", { "metadata.region": 1 })
 ## Verify with
 
 ```javascript
-// Analyze time series collection efficiency
-function analyzeTimeSeries(collectionName) {
-  // Get collection info
-  const info = db.getCollectionInfos({ name: collectionName })[0]
+// Get collection info
+const info = db.getCollectionInfos({ name: "sensor_data" })[0]
+const ts = info?.options?.timeseries
+// Check timeField, metaField, granularity, expireAfterSeconds
 
-  if (!info?.options?.timeseries) {
-    print(`${collectionName} is not a time series collection`)
-    return
-  }
-
-  const ts = info.options.timeseries
-  print(`\n=== Time Series: ${collectionName} ===`)
-  print(`Time field: ${ts.timeField}`)
-  print(`Meta field: ${ts.metaField || "(none)"}`)
-  print(`Granularity: ${ts.granularity || "default"}`)
-
-  if (info.options.expireAfterSeconds) {
-    const days = info.options.expireAfterSeconds / 86400
-    print(`TTL: ${days} days`)
-  }
-
-  // Get stats
-  const stats = db[collectionName].stats()
-  print(`\nStorage:`)
-  print(`  Documents: ${stats.count?.toLocaleString() || "N/A"}`)
-  print(`  Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`)
-  print(`  Avg doc size: ${stats.avgObjSize?.toFixed(0) || "N/A"} bytes`)
-
-  // Check bucket efficiency (via system.buckets)
-  const bucketColl = `system.buckets.${collectionName}`
-  const bucketCount = db[bucketColl].countDocuments({})
-  if (bucketCount > 0 && stats.count) {
-    const docsPerBucket = stats.count / bucketCount
-    print(`\nBucketing efficiency:`)
-    print(`  Buckets: ${bucketCount.toLocaleString()}`)
-    print(`  Docs per bucket: ${docsPerBucket.toFixed(1)}`)
-
-    if (docsPerBucket < 10) {
-      print(`  WARNING: Low docs/bucket - consider adjusting granularity or metaField`)
-    }
-  }
-
-  // Show indexes
-  print(`\nIndexes:`)
-  db[collectionName].getIndexes().forEach(idx => {
-    print(`  ${idx.name}: ${JSON.stringify(idx.key)}`)
-  })
+// Check bucket efficiency (via system.buckets)
+const bucketColl = `system.buckets.sensor_data`
+const bucketCount = db[bucketColl].countDocuments({})
+const stats = db.sensor_data.stats()
+if (bucketCount > 0 && stats.count) {
+  const docsPerBucket = stats.count / bucketCount
+  // Low docs/bucket suggests adjusting granularity or metaField
 }
-
-// Usage
-analyzeTimeSeries("sensor_data")
 ```
 
 Reference: [Time Series Collections](https://mongodb.com/docs/manual/core/timeseries-collections/)

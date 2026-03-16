@@ -11,26 +11,7 @@ tags: schema, collections, anti-pattern, embedding, normalization, atlas-suggest
 
 **Incorrect (one collection per day as partitioning strategy):**
 
-```javascript
-// temperature database — one collection per day
-// temperatures_2024_05_10, temperatures_2024_05_11, ...
-
-// temperatures_2024_05_10
-{ _id: 1, timestamp: ISODate("2024-05-10T10:00:00Z"), temperature: 60 }
-{ _id: 2, timestamp: ISODate("2024-05-10T11:00:00Z"), temperature: 61 }
-{ _id: 3, timestamp: ISODate("2024-05-10T12:00:00Z"), temperature: 64 }
-
-// temperatures_2024_05_11
-{ _id: 1, timestamp: ISODate("2024-05-11T10:00:00Z"), temperature: 68 }
-{ _id: 2, timestamp: ISODate("2024-05-11T11:00:00Z"), temperature: 72 }
-{ _id: 3, timestamp: ISODate("2024-05-11T12:00:00Z"), temperature: 72 }
-
-// Problems:
-// 1. Each collection creates a default _id index — 365 collections/year = 365 extra indexes
-// 2. Querying across days requires $unionWith across many collections
-// 3. Schema validation, indexes, and TTL must be duplicated on every collection
-// 4. Application code must dynamically resolve the collection name for each query
-```
+Creating one collection per time period (e.g. `temperatures_2024_05_10`, `temperatures_2024_05_11`, …) means each collection carries its own default `_id` index (365 collections/year = 365 extra indexes), cross-day queries require `$unionWith` across many collections, schema validation / indexes / TTL must be duplicated on every collection, and application code must dynamically resolve the collection name for each query.
 
 **Correct (single collection with an index):**
 
@@ -77,12 +58,9 @@ db.createCollection("temperatures", {
 
 | Scenario | Separate Collection | Why |
 |----------|--------------------|----|
-| Data accessed independently | Yes | User profiles vs. user orders |
-| Different update frequencies | Yes | Product catalog vs. orders |
-| Unbounded relationships | Yes | Comments on posts |
+| Data accessed independently | Yes | Different query patterns |
+| Unbounded relationships | Yes | Prevents document growth |
 | Many-to-many | Yes | Students ↔ Courses |
-| Shared across entities | Yes | Tags, categories |
-| Historical snapshots | No (embed) | Order contains customer at time of purchase |
 | 1:1 always together | No (embed) | User and profile |
 
 **When NOT to use this pattern:**
@@ -96,11 +74,10 @@ db.createCollection("temperatures", {
 
 ```javascript
 // Count your collections
-db.adminCommand({ listDatabases: 1 }).databases
-  .forEach(d => {
-    const colls = db.getSiblingDB(d.name).getCollectionNames().length
-    print(`${d.name}: ${colls} collections`)
-  })
+for (const d of db.adminCommand({ listDatabases: 1 }).databases) {
+  const colls = db.getSiblingDB(d.name).getCollectionNames().length
+  print(`${d.name}: ${colls} collections`)
+}
 // Count alone is not sufficient: combine with access and index/storage evidence
 
 // Find $lookup-heavy aggregations
