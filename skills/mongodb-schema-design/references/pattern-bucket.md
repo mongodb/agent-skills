@@ -78,7 +78,7 @@ db.trades.updateOne(
       customerId: 123
     }
   },
-  { upsert: true }
+  { upsert: true, sort: { _id: -1 } }
 )
 // If a bucket with room exists, the trade is pushed into it
 // Otherwise a new bucket document is created

@@ -2,7 +2,7 @@
 title: "Document Versioning Pattern"
 impact: MEDIUM
 impactDescription: "Enables reproducing exact historical document state for audit, compliance, and rollback"
-tags: schema, pattern, versioning, audit, compliance
+tags: schema, patterns, versioning, audit, compliance
 ---
 
 ## Document Versioning Pattern
@@ -92,10 +92,14 @@ async function getPolicyAtVersion(policyId, version) {
 The `updatePolicy` function writes to two collections (inserting a revision **and** updating the current document). It may or may not be prudent to wrap the call in a [multi-document transaction](https://mongodb.com/docs/manual/core/transactions/) to guarantee both writes succeed or fail together, depending on the use case:
 
 ```javascript
-await using session = client.startSession()
-await session.withTransaction(async () => {
-  await updatePolicy("POL-001", { premium: 475, coverage: "premium" }, session)
-})
+const session = client.startSession()
+try {
+  await session.withTransaction(async () => {
+    await updatePolicy("POL-001", { premium: 475, coverage: "premium" }, session)
+  })
+} finally {
+  await session.endSession()
+}
 ```
 
 **Indexes:**

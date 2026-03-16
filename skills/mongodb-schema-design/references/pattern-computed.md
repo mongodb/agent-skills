@@ -96,7 +96,7 @@ db.screenings.aggregate([
         "stats.totalViewers": "$$new.totalViewers",
         "stats.totalRevenue": "$$new.totalRevenue",
         "stats.screeningCount": "$$new.count",
-        "stats.computedAt": new Date()
+        "stats.computedAt": "$$NOW"
       }
     }]
   }}

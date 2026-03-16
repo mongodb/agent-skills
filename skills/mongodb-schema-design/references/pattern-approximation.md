@@ -2,7 +2,7 @@
 title: "Approximation Pattern"
 impact: MEDIUM
 impactDescription: "Reduces write load by storing approximate values when exact real-time counts are not required"
-tags: schema, pattern, approximation, computed, write-optimization
+tags: schema, patterns, approximation, computed, write-optimization
 ---
 
 ## Approximation Pattern

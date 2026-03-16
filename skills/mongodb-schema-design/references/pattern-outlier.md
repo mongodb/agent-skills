@@ -100,6 +100,14 @@ async function addCustomer(bookId, customerId) {
     )
   } else {
     // Outlier case - add to overflow collection
+    const lastBatchDoc = await db.book_customers_extra
+      .find({ bookId: bookId })
+      .sort({ batch: -1 })
+      .limit(1)
+      .next()
+
+    const nextBatch = lastBatchDoc ? lastBatchDoc.batch + 1 : 1
+
     await db.book_customers_extra.updateOne(
       { bookId: bookId, count: { $lt: 1000 } },  // Example batch limit
       {

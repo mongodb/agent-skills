@@ -15,7 +15,7 @@ tags: schema, patterns, extended-reference, denormalization, caching
 // Order references customer by ID only
 {
   _id: "order123",
-  customerId: "cust456",  // Just an ObjectId
+  customerId: "cust456",  // Customer reference by ID only
   items: [...],
   total: 299.99
 }
