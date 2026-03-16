@@ -26,83 +26,80 @@ The MongoDB MCP server requires authentication. Users have three options:
    - Runs Atlas locally in Docker, requires Docker installed
    - No credentials or cloud cluster access
 
-**Important**: Code snippets use bash/zsh syntax. For other shells (PowerShell, fish, etc.), adjust commands to the user's shell.
-
-## Execution Modes
-
-This skill supports two execution modes:
-
-1. **Interactive Mode** (preferred): Directly modifies the user's shell profile when Bash access is available
-2. **Documentation Mode** (fallback): Creates example configuration files and instructions when Bash access is restricted
-
-Always attempt Interactive Mode first. If Bash permission is denied, automatically switch to Documentation Mode without asking the user.
+This is an interactive step-by-step guide. The agent detects the user's environment and provides tailored instructions, but **never asks for or handles credentials** — users add those directly to their shell profile in Step 5. Make this clear to the user whenever credentials come up in Steps 3a and 3b.
 
 ## Step 1: Check Existing Configuration
 
 Before starting the setup, check if the user already has the required environment variables configured.
 
-**Try to run** this command to check for existing configuration:
+Run this command to check for existing configuration:
 
 ```bash
 env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)"
 ```
 
-**Interpretation (if Bash succeeded):**
+**Interpretation:**
 
-- If `MDB_MCP_CONNECTION_STRING` is set, the user has connection string auth configured
-- If both `MDB_MCP_API_CLIENT_ID` and `MDB_MCP_API_CLIENT_SECRET` are set, the user has service account auth configured. If only one of these is set, the configuration is incomplete and treat it as if neither is set.
-- If `MDB_MCP_READ_ONLY` is set to `true`, the user has read-only mode enabled
+- If `MDB_MCP_CONNECTION_STRING` is set → connection string auth is configured
+- If both `MDB_MCP_API_CLIENT_ID` and `MDB_MCP_API_CLIENT_SECRET` are set → service account auth is configured. If only one is set, treat it as incomplete.
+- If `MDB_MCP_READ_ONLY=true` → read-only mode is enabled
 
 **Partial Configuration Handling:**
 
-- If user wants to add read-only mode to existing setup (has auth but no `MDB_MCP_READ_ONLY`), skip to Step 4
-- If user wants to switch authentication methods, explain they should remove the old variables from their shell profile first, then proceed with Steps 2-5
-- If user wants to update existing credentials, offer to update the configuration in their shell profile
+- User wants to add read-only to existing setup (has auth, no `MDB_MCP_READ_ONLY`) → skip to Step 4
+- User wants to switch authentication methods → explain they should remove the old variables from their shell profile first, then proceed with Steps 2–5
+- User wants to update credentials → skip to Step 5 (profile editing instructions)
 
-**Important**: If the user is asking to perform an Atlas Admin API action (like managing clusters, creating database users, getting performance advisor recommendations) but only has `MDB_MCP_CONNECTION_STRING` configured, explain that they need service account credentials for Atlas Admin API access and offer to help them set it up.
+**Important**: If the user wants an Atlas Admin API action (managing clusters, creating users, performance advisor) but only has `MDB_MCP_CONNECTION_STRING`, explain they need service account credentials and offer to walk through setup.
 
 ## Step 2: Present Configuration Options
 
 If no valid configuration exists, present the options:
 
-**Connection String (Option A)** - Best for:
+**Connection String (Option A)** — Best for:
 
 - Single cluster access
 - Existing database credentials
 - Self-hosted MongoDB or no Atlas Admin API needs
 
-**Service Account Credentials (Option B)** - Best for:
+**Service Account Credentials (Option B)** — Best for:
 
 - MongoDB Atlas users (recommended)
 - Multi-cluster switching
 - Atlas Admin API access (cluster management, user creation, performance monitoring)
 
-**Atlas Local (Option C)** - Best for:
+**Atlas Local (Option C)** — Best for:
 
 - Local development/testing without cloud setup
 - Fastest setup with Docker, no credentials required
 
-Use the agent's interactive question capability to let them choose.
+Ask the user which option they'd like to proceed with.
 
 ## Step 3a: Connection String Setup
 
 If the user chooses Option A:
 
-### 3a.1: Obtain Connection String
+### 3a.1: Explain How to Find the Connection String
 
-Ask the user for their MongoDB connection string. Expected formats:
+Explain where and how to obtain their connection string:
+
+**For MongoDB Atlas:**
+
+1. Go to [cloud.mongodb.com](https://cloud.mongodb.com)
+2. Select your cluster → click **Connect**
+3. Choose **Drivers** or **Shell** → copy the connection string
+4. Replace `<username>` and `<password>` with your database user credentials
+
+**For self-hosted MongoDB:**
+
+- The connection string is typically configured by your DBA or in your application config
+- Format: `mongodb://username:password@host:port/database`
+
+**Expected formats:**
 
 - `mongodb://username:password@host:port/database`
 - `mongodb+srv://username:password@cluster.mongodb.net/database`
-- `mongodb://host:port` (for local instances)
-
-### 3a.2: Validate Connection String
-
-Validate the connection string:
-
-- Must start with `mongodb://` or `mongodb+srv://`
-- Should contain host information
-- Warn if invalid, but allow user to proceed
+- `mongodb://host:port` (local, no auth)
 
 Proceed to Step 4 (Determine Read-Only Access).
 
@@ -110,40 +107,33 @@ Proceed to Step 4 (Determine Read-Only Access).
 
 If the user chooses Option B:
 
-### 3b.1: Provide Setup Instructions
+### 3b.1: Guide Through Atlas Service Account Creation
 
-Direct the user to create a MongoDB Atlas Service Account following the official documentation:
+Direct the user to create a MongoDB Atlas Service Account:
 
-**MongoDB MCP Server Prerequisites**: https://www.mongodb.com/docs/mcp-server/prerequisites/
+**Full documentation**: https://www.mongodb.com/docs/mcp-server/prerequisites/
 
-Offer to open this URL in their browser.
+Walk them through the key steps:
 
-### 3b.2: Key Steps Summary
+1. **Navigate to MongoDB Atlas** — [cloud.mongodb.com](https://cloud.mongodb.com)
+2. **Go to Access Manager** → **Service Accounts** → **Create Service Account**
+3. **Set Permissions** — Grant Organization Member or Project Owner (see docs for exact permission mappings)
+4. **Generate Credentials** — Create Client ID and Secret
+   - ⚠️ The **Client Secret is shown only once** — save it immediately before leaving the page
+5. **Note both values** — you'll need Client ID and Client Secret for Step 5
 
-Remind them of the key steps:
+### 3b.2: API Access List Configuration
 
-1. **Navigate to MongoDB Atlas** - cloud.mongodb.com
-2. **Create Service Account** - Access Manager → Service Accounts → Create Service Account
-3. **Set Permissions** - Grant Organization Member or Project Owner (see docs for exact mappings)
-4. **Generate Credentials** - Create Client ID and Secret (secret visible only once!)
-5. **Save Credentials** - Keep both values safe
+⚠️ **CRITICAL**: The user MUST add their IP address to the service account's API Access List, or all Atlas Admin API operations will fail.
 
-**⚠️ CRITICAL: API Access List Configuration**
+Steps:
 
-The user MUST add their IP address to the service account's API Access List before using it, or all Atlas Admin API operations will fail.
-
-To configure:
-
-1. On the service account details page, find "API Access List"
-2. Click "Add Access List Entry"
-3. Add current IP or 0.0.0.0/0 for testing (not for production)
+1. On the service account details page, find **API Access List**
+2. Click **Add Access List Entry**
+3. Add current IP address (or `0.0.0.0/0` for testing only — not for production)
 4. Save changes
 
 This is more secure than global Network Access settings as it only affects API access, not database connections.
-
-### 3b.3: Collect Credentials
-
-Once Atlas setup is complete, ask for Client ID and Client Secret using the agent's user-input capability. Ensure values are not empty.
 
 Proceed to Step 4 (Determine Read-Only Access).
 
@@ -163,10 +153,10 @@ If not installed, direct them to: https://www.docker.com/get-started
 
 ### 3c.2: Confirm Setup Complete
 
-Inform the user they're all set! Atlas Local requires no credentials:
+Atlas Local requires no credentials — the user is ready to go:
 
-- Create deployments using `atlas-local-create-deployment`
-- List deployments using `atlas-local-list-deployments`
+- Create deployments: `atlas-local-create-deployment`
+- List deployments: `atlas-local-list-deployments`
 - All operations work out of the box with Docker
 
 **Skip Steps 4 and 5** (no configuration needed) and proceed to Step 6 (Next Steps).
@@ -183,156 +173,75 @@ Ask whether they want read-only or read-write access:
 - **Read-Only**: Data reads only, no modifications
   - Best for: Production data safety, reporting, compliance
 
-Use the agent's interactive question capability.
-
-**If read-only**: Set `MDB_MCP_READ_ONLY=true` in Step 5.
-**If read-write**: Do NOT set `MDB_MCP_READ_ONLY` (defaults to read-write).
+**If read-only**: include `export MDB_MCP_READ_ONLY="true"` in the profile snippet in Step 5.
+**If read-write**: omit `MDB_MCP_READ_ONLY` (defaults to read-write).
 
 Proceed to Step 5 (Update Shell Profile).
 
 ## Step 5: Update Shell Profile
 
-Now that you have the environment variable(s) to configure, update the user's shell profile.
+Help the user add the environment variables to their shell profile. **Do not ask for or handle credentials** — provide exact instructions so the user can add them directly.
 
-**Try Interactive Mode first (5a). If Bash is denied at any point, switch to Documentation Mode (5b).**
+### 5.1: Detect Shell and Profile File
 
-### Step 5a: Interactive Mode (Automatic Configuration)
-
-Use this mode when you have Bash access.
-
-#### 5a.1: Detect Shell and Profile
-
-**Try to detect** the user's current shell:
+Run:
 
 ```bash
 echo $SHELL
 ```
 
-**If Bash is denied:** Switch immediately to Documentation Mode (Step 5b).
+Based on the result, identify the appropriate profile file using your training data. If unsure which shell or profile they are using, ask them to specify the path.
 
-Based on the shell, determine the appropriate profile file to update from training data. If necessary, refer to the shell docs.
+### 5.2: Show the Exact Snippet to Add
 
-#### 5a.2: Add Environment Variables
+Tell the user to open their profile file (e.g. `code ~/.zshrc`, `nano ~/.zshrc`, or their preferred editor) and add the following lines at the end. Make sure to adapt the profile path in the instructions to match their shell.
 
-Check if variables already exist in the profile file. If so, replace rather than duplicate.
-
-Add the environment variables with a descriptive comment:
-
-For Connection String (Option A):
+**For Connection String (Option A):**
 
 ```bash
 # MongoDB MCP Server Configuration
-export MDB_MCP_CONNECTION_STRING="<value>"
-```
-
-For Service Account (Option B):
-
-```bash
-# MongoDB MCP Server Configuration (Atlas Service Account)
-export MDB_MCP_API_CLIENT_ID="<value>"
-export MDB_MCP_API_CLIENT_SECRET="<value>"
-```
-
-**If the user chose read-only access** (Step 4), add this additional line:
-
-```bash
-export MDB_MCP_READ_ONLY="true"
-```
-
-Use file-editing capabilities to append to the profile file. If the file doesn't exist, create it. Append to the end to avoid disrupting existing configurations.
-
-#### 5a.3: Set Permissions
-
-Set restrictive permissions on the profile file:
-
-```bash
-chmod 600 ~/.zshrc
-```
-
-#### 5a.4: Verify Configuration
-
-Source the profile and verify:
-
-```bash
-source ~/.zshrc
-env | grep MDB_MCP
-```
-
-Confirm the expected environment variables appear.
-
-Proceed to Step 6 (Next Steps).
-
-### Step 5b: Documentation Mode (Manual Configuration)
-
-Use this mode when Bash access is restricted or denied.
-
-**CRITICAL: Create ONLY ONE file called `SETUP.md`. Do NOT create additional files like README.md, summary.md, session_log.txt, resolution_summary.md, etc. Just SETUP.md.**
-
-#### 5b.1: Create ONE Setup File
-
-Create a single file called `SETUP.md` with concise, actionable instructions. Keep it under 100 lines.
-
-**Security rule:** Never write real credentials to `SETUP.md`. Use placeholders only.
-
-Adapt instructions to the user's shell if known (PowerShell, bash, etc.). If unknown, default to bash on Unix, PowerShell on Windows, and include a shell reference section for common shells at the end.
-
-````markdown
-# MongoDB MCP Setup
-
-## What to do
-
-Add this to your shell profile (e.g., `~/.zshrc`/`~/.bashrc`/`$PROFILE`):
-
-For Connection String (Option A):
-
-```bash
 export MDB_MCP_CONNECTION_STRING="<paste-your-connection-string-here>"
 ```
 
-For Service Account (Option B):
+**For Service Account (Option B):**
 
 ```bash
+# MongoDB MCP Server Configuration (Atlas Service Account)
 export MDB_MCP_API_CLIENT_ID="<paste-your-client-id-here>"
 export MDB_MCP_API_CLIENT_SECRET="<paste-your-client-secret-here>"
 ```
 
-**If you chose read-only access**, also add:
+**If read-only was chosen (Step 4), also add:**
 
 ```bash
 export MDB_MCP_READ_ONLY="true"
 ```
 
-## Steps
+Adjust syntax for the detected shell (e.g. `set -x VAR value` for fish, `$env:VAR = "value"` for PowerShell).
 
-1. Open your shell profile: `code ~/.zshrc` (or vim/nano)
-2. Paste the export line(s) at the end
-3. Save the file
-4. Restart the agentic client (fully quit and reopen) - the environment variables will be loaded when the client starts
-5. Verify: `env | grep MDB_MCP` in a new terminal to confirm the variables are set
+### 5.3: After Editing — Reload and Verify
 
-## Troubleshooting
+Once the user has saved the file, provide the commands to reload and verify:
 
-If it doesn't work after restart:
+**Reload the profile:**
 
-- Make sure you used the exact variable names (MDB_MCP_CONNECTION_STRING, MDB_MCP_API_CLIENT_ID/SECRET, or MDB_MCP_READ_ONLY)
-- Check the variable is set: `env | grep MDB_MCP` or equivalent for your shell
-- Verify the client was fully restarted, not just reloaded
+```bash
+source ~/.zshrc   # adjust path to match their profile file
+```
 
-## Security reminder
+**Verify the variables are set:**
 
-- Never commit credentials to git
-- Keep secrets in your shell profile only (not in project files)
-````
+```bash
+env | grep MDB_MCP
+```
 
-**Keep it direct and scannable.** Don't create separate files for "overview", "architecture", "workflow guide", etc. One file with clear steps.
+Expected output should show the variable(s) they just added. If nothing appears, check that the profile file path is correct and the file was saved.
 
-#### 5b.2: Explain to User
+**Security reminder**: Ensure the profile file permissions are restrictive:
 
-Tell the user:
-
-- "I've created SETUP.md with configuration instructions"
-- "Add the environment variable(s) to your shell profile, then restart the client"
-- Point them to SETUP.md for details
+```bash
+chmod 600 ~/.zshrc   # adjust path as needed
+```
 
 Proceed to Step 6 (Next Steps).
 
@@ -340,14 +249,14 @@ Proceed to Step 6 (Next Steps).
 
 ### For Options A & B (Connection String / Service Account):
 
-1. **Restart the client**: Fully restart (not reload) for environment variables to be picked up.
+1. **Restart the agentic client**: Fully quit the client, then in your terminal run `source <profile-file>` (e.g. `source ~/.zshrc`, adjust command and path based on the user shell) to load the new variables into the current shell session. Open the client from that same shell session so it inherits the environment.
 
-2. **Verify MCP Server**: After restart, test by performing MongoDB operations.
+2. **Verify MCP Server**: After restart, test by performing a MongoDB operation.
 
 3. **Using the Tools**:
    - Option A: Direct database access tools available
    - Option B: Additionally has Atlas Admin API tools and `atlas-connect-cluster`
-   - **Important (Option B)**: Ensure IP is added to service account's API Access List or all API operations will fail
+   - **Important (Option B)**: Ensure your IP is in the service account's API Access List or all API calls will fail
 
 ### For Option C (Atlas Local):
 
@@ -358,24 +267,11 @@ Proceed to Step 6 (Next Steps).
    - List deployments: `atlas-local-list-deployments`
    - Use standard database operations once connected
 
-## Important Notes
+## Troubleshooting
 
-- **Security**: Never commit credentials to version control. Set shell profile permissions to 600.
-
-- **Troubleshooting** if MCP server doesn't work after restart:
-  - Verify variables: `env | grep MDB_MCP`
-  - Confirm full restart (not reload)
-  - Test credentials directly (mongosh for connection string, API call for service account)
-  - For read-only mode, verify `MDB_MCP_READ_ONLY=true`
-  - Check MCP server logs for errors
-
-## Error Handling
-
-Common issues:
-
-- **Bash permission denied**: Automatically switch to Documentation Mode (Step 5b)
-- **Invalid connection string**: Provide correct format guidance
-- **Profile file doesn't exist**: Create it (Interactive) or explain where to create it (Documentation)
-- **Permission denied on profile**: Fix permissions (Interactive) or include instructions (Documentation)
-- **Variables not loading**: Check shell type and profile path
-- **Invalid service account credentials**: Direct to Atlas to verify/regenerate
+- **Variables not appearing after `source`**: Check the profile file path and confirm the file was saved
+- **Client doesn't pick up variables**: Ensure full restart (quit + reopen), not just a reload
+- **Invalid connection string format**: Re-check the format; must start with `mongodb://` or `mongodb+srv://`
+- **Atlas Admin API errors (Option B)**: Verify your IP is in the service account's API Access List
+- **Read-only mode not working**: Check `MDB_MCP_READ_ONLY=true` is set — run `env | grep MDB_MCP`
+- **fish/PowerShell**: Syntax differs — use `set -x` (fish) or `$env:` (PowerShell) instead of `export`
