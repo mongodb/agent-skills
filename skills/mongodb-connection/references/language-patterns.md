@@ -2,6 +2,8 @@
 
 This reference provides language-specific patterns and considerations for MongoDB connection management. Consult this when working with a specific driver or when users ask about best practices for their language.
 
+**Note**: See "General Patterns Across Languages" at the bottom for best practices that apply to all drivers.
+
 ## Node.js
 
 ### Key Characteristics
@@ -12,11 +14,8 @@ This reference provides language-specific patterns and considerations for MongoD
   - Legacy versions (Node.js Driver 3.x, Mongoose 5.x, pre-2021) defaulted to 5
 
 ### Best Practices
-- **Default is usually sufficient**: The default of 100 works well for most applications
 - **Event loop efficiency**: Node.js can handle high concurrency with fewer connections than thread-based runtimes due to its async model
 - **Typical range**: 10-50 connections often sufficient for most Node.js workloads
-- **Singleton pattern**: Create one `MongoClient` instance and export it
-- **Module-level initialization**: For serverless, initialize outside the handler
 
 **Alternative scaling approaches**:
 - Multiple `MongoClient` instances across different Node processes/instances
@@ -40,7 +39,6 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Pool size relative to thread count**
 
 **Best Practices**:
-- **One client for the application**: PyMongo internally manages threading
 - **Pool size should match or exceed thread pool size**
 - **Use `with` statements for session management**
 
@@ -53,9 +51,8 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Production-ready since May 2025**
 
 **Best Practices**:
-- **Smaller pool sizes**: Event loop enables high concurrency with few connections
-- **Initialize once**: Share client across application
-- **Use async context managers**
+- **Smaller pool sizes work well**: Event loop enables high concurrency with fewer connections
+- **Use async context managers for session management**
 
 ---
 
@@ -67,9 +64,8 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Reactive Streams support**: For reactive frameworks
 
 ### Best Practices
-- **Spring Boot**: Configure via `MongoClientSettings` bean
+- **Use singleton pattern via dependency injection**
 - **Thread pool coordination**: For sync API, pool size often matches thread pool size
-- **One client per application**: Singleton pattern via dependency injection
 
 ---
 
@@ -81,9 +77,8 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Default pool size**: `maxPoolSize` defaults to 100 connections
 
 ### Best Practices
+- **Initialize at package level and share**
 - **Prefer context timeouts over driver timeouts**: Use `context.WithTimeout` for operation-level control
-- **Default pool usually sufficient**: 100 connections handles most workloads
-- **Package-level initialization**: Share client across application
 
 ---
 
@@ -95,8 +90,7 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Async/await support**: Modern asynchronous programming model
 
 ### Best Practices
-- **One client instance per application lifecycle**: MongoClient is expensive to create
-- **Use dependency injection**: Register as singleton in ASP.NET Core
+- **Register as singleton in ASP.NET Core via dependency injection**
 - **Connection string OR MongoClientSettings**: Choose one approach for clarity
 
 ---
@@ -109,7 +103,6 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Rack middleware available**: For connection management in web apps
 
 ### Best Practices
-- **Global client**: Initialize once, use throughout application
 - **Monitor pool metrics**: Use built-in monitoring events
 - **Consider Rack middleware**: For Rails/Sinatra applications
 
@@ -133,6 +126,15 @@ The PHP extension manages connection pooling at the process level. In traditiona
 ---
 
 ## General Patterns Across Languages
+
+### Best Practices (All Drivers)
+
+**Note**: PHP differs significantly from other languages due to its unique request lifecycle. See the PHP section for PHP-specific patterns.
+
+- **Initialize once at startup, reuse across application**
+- **Client creation is expensive—create once only**
+- **Use default pool size (100) unless you have specific needs**
+- **Serverless: Initialize outside handler function**
 
 ### Default Pool Sizes
 
