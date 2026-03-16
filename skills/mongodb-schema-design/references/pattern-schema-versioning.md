@@ -13,7 +13,7 @@ tags: schema, patterns, versioning, migration, evolution, backward-compatibility
 
 ```javascript
 // Version 1: address is a string
-{ _id: 1, name: "Ada", address: "12 Main St, NYC 10001" }
+{ _id: 1, name: "Ada", address: "12 Main St, NYC, 10001" }
 
 // Developer changes schema: address becomes an object
 // New code expects:

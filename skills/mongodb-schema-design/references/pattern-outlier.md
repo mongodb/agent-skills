@@ -114,8 +114,15 @@ async function addCustomer(bookId, customerId) {
         ? lastBatchDoc.batch
         : nextBatch
 
-    await db.book_customers_extra.updateOne(
-      { bookId: bookId, batch: targetBatch },  // Write to the intended batch
+    // First, try to append to the intended batch, enforcing the 1000-item cap under concurrency.
+    const overflowFilter = { bookId: bookId, batch: targetBatch }
+    if (targetBatch !== nextBatch) {
+      // Only enforce the count cap when targeting an existing batch.
+      overflowFilter.count = { $lt: 1000 }
+    }
+
+    const result = await db.book_customers_extra.updateOne(
+      overflowFilter, // Write to the intended batch, respecting the count cap when reusing a batch
       {
         $push: { customers: customerId },
         $inc: { count: 1 },
@@ -123,6 +130,21 @@ async function addCustomer(bookId, customerId) {
       },
       { upsert: true }
     )
+
+    // If we failed to match when trying to reuse the previous batch (it filled concurrently),
+    // fall back to writing into the next batch.
+    if (result.matchedCount === 0 && targetBatch !== nextBatch) {
+      await db.book_customers_extra.updateOne(
+        { bookId: bookId, batch: nextBatch },
+        {
+          $push: { customers: customerId },
+          $inc: { count: 1 },
+          $setOnInsert: { bookId: bookId, batch: nextBatch, count: 0 }
+        },
+        { upsert: true }
+      )
+    }
+
     await db.books.updateOne(
       { _id: bookId },
       {
