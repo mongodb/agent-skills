@@ -139,7 +139,7 @@ const batch = [
 ]
 
 db.sensor_data.insertMany(batch, { ordered: false })
-// ordered: false allows parallel processing
+// ordered: false lets MongoDB execute inserts out of order and continue past individual insert errors
 
 // TIP 2: Use consistent field order
 // Column compression works better with consistent structure
