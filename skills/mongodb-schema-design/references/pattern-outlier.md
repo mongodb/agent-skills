@@ -128,7 +128,7 @@ async function addCustomer(bookId, customerId) {
         $inc: { count: 1 },
         $setOnInsert: { bookId: bookId, batch: targetBatch, count: 0 } // initialize count
       },
-      { upsert: true }
+      { upsert: targetBatch === nextBatch }
     )
 
     // If we failed to match when trying to reuse the previous batch (it filled concurrently),

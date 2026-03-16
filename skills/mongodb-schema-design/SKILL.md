@@ -58,7 +58,7 @@ Reference these guidelines when:
 - [relationship-one-to-few](references/relationship-one-to-few.md) - Embed bounded arrays (addresses, phone numbers)
 - [relationship-one-to-many](references/relationship-one-to-many.md) - Reference for large/unbounded relationships
 - [relationship-one-to-squillions](references/relationship-one-to-squillions.md) - Reference massive child sets, store summaries
-- [relationship-many-to-many](references/relationship-many-to-many.md) - Two-way referencing for bidirectional access
+- [relationship-many-to-many](references/relationship-many-to-many.md) - Choose primary query direction; mix references with embedded summaries
 - [relationship-tree-structures](references/relationship-tree-structures.md) - Parent/child/materialized path patterns
 
 ### 4. Design Patterns (MEDIUM) - 12 rules
