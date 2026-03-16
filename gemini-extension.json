@@ -1,0 +1,20 @@
+{
+  "name": "mongodb",
+  "version": "0.5.0",
+  "description": "Official Gemini extension for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+  "mcpServers": {
+    "mongodb": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server"
+      ],
+      "env": {
+        "MDB_MCP_CONNECTION_STRING": "${MDB_MCP_CONNECTION_STRING}",
+        "MDB_MCP_API_CLIENT_ID": "${MDB_MCP_API_CLIENT_ID}",
+        "MDB_MCP_API_CLIENT_SECRET": "${MDB_MCP_API_CLIENT_SECRET}",
+        "MDB_MCP_READ_ONLY": "${MDB_MCP_READ_ONLY}"
+      }
+    }
+  }
+}

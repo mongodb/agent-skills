@@ -1,7 +1,7 @@
 {
   "name": "mongodb",
-  "version": "0.1.0",
-  "description": "Official MongoDB plugin for Claude offering skills for database management and optimization, as well as the MongoDB MCP server",
+  "version": "0.5.0",
+  "description": "Official Claude plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
   "author": {
     "name": "MongoDB",
     "email": "agent-plugins@mongodb.com",
@@ -13,8 +13,8 @@
   "keywords": [
     "mongodb",
     "database",
-    "skills",
-    "agent"
+    "mcp",
+    "vector-search"
   ],
   "skills": "./skills/",
   "mcpServers": "./mcp.json"
