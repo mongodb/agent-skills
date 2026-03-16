@@ -105,7 +105,7 @@ db.books.aggregate([
 // When adding a new book
 db.books.insertOne({
   title: "New MongoDB Book",
-  publisher_id: "oreilly"
+  publisherId: "oreilly"
 })
 
 // Update publisher's count

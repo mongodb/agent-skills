@@ -20,7 +20,8 @@ db.products.insertOne({ category: "xyz123" }) // Invalid category
 
 // Later in your application:
 const total = products.reduce((sum, p) => sum + p.price, 0)
-// NaN! Because "free" + 100 = NaN
+// -> Invalid result, concatenating numbers and strings does not result
+// in a meaningful value!
 // Bug discovered months later, data already corrupted
 ```
 
@@ -33,8 +34,8 @@ db.createCollection("products", {
       bsonType: "object",
       required: ["name", "price", "category"],
       properties: {
-        name: { bsonType: "string", minLength: 1 },
-        price: { bsonType: "double", minimum: 0 },
+        name: { type: "string", minLength: 1 },
+        price: { type: "number", minimum: 0 },
         category: { enum: ["electronics", "clothing", "food"] }
       }
     }
@@ -64,7 +65,7 @@ db.createCollection("products", {
           description: "Product name, 1-200 characters"
         },
         price: {
-          bsonType: "double",
+          type: "number", // bsonType: "double" would forbid BSON integers
           minimum: 0,
           description: "Price must be non-negative"
         },
@@ -203,7 +204,7 @@ db.createCollection("products", {
       { $jsonSchema: {
         required: ["price"],
         properties: {
-          price: { bsonType: "double" }
+          price: { type: "number" }
         }
       }},
       // Query operator validation
