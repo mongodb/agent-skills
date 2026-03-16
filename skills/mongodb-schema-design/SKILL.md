@@ -90,7 +90,17 @@ This is MongoDB's core philosophy. Embedding related data eliminates joins, redu
 
 A core way to implement this philosophy is the fact that MongoDB exposes **flexible schemas**. This means you can have different fields in different documents, and even different structures. This allows you to model data in the way that best fits your access patterns, without being constrained by a rigid schema. For example, if different documents have different sets of fields, that is perfectly fine as long as it serves your application's needs. You can also use schema validation to enforce certain rules while still allowing for flexibility.
 
-## Decision Framework
+Another implication of the key principle is that information about the expected read and write workload becomes very relevant to schema design. If pieces of information from different entities are often queried or updated together, that means that prioritizing co-location of that data in the same document can lead to significant performance benefits. On the other hand, if certain pieces of information are rarely accessed together, it may make sense to store them separately to avoid loading more data than necessary.
+
+#### Schema Fundamentals Summary
+
+- **Embed vs Reference**: Choose embedding or referencing based on access patterns: embed when data is always accessed together (1:1, 1:few, bounded arrays, atomic updates needed); reference when data is accessed independently, relationships are many-to-many, or arrays can grow without bound.
+- **Data accessed together stored together**: MongoDB's core principle: design schemas around queries, not entities. Embed related data to eliminate cross-collection joins and reduce round trips. Identify your API endpoints/pages, list the data each returns, then shape documents to match those queries.
+- **Embrace the document model**: Don't recreate SQL tables 1:1 as MongoDB collections. Instead, denormalize joined tables into rich documents for single-query reads and atomic updates. When migrating from SQL, identify tables that are always joined together and merge them into single documents.
+- **Schema validation**: Use MongoDB's built-in `$jsonSchema` validator to catch invalid data at the database level (type checks, required fields, enum constraints, array size limits). Start with `validationLevel: "moderate"` and `validationAction: "warn"` on existing collections, then tighten to `strict`/`error`.
+- **16MB document limit**: MongoDB documents cannot exceed 16MB—this is a hard limit, not a guideline. Common causes: unbounded arrays, large embedded binaries, deeply nested objects. Mitigate by moving unbounded data to separate collections, using GridFS for large files, and monitoring document sizes with `$bsonSize`.
+
+## Embed/Reference Decision Framework
 
 | Relationship | Cardinality | Access Pattern | Recommendation |
 |-------------|-------------|----------------|----------------|
@@ -98,6 +108,8 @@ A core way to implement this philosophy is the fact that MongoDB exposes **flexi
 | One-to-Few | 1:N (N < 100) | Usually together | Embed array |
 | One-to-Many | 1:N (N > 100) | Often separate | Reference |
 | Many-to-Many | M:N | Varies | Two-way reference |
+
+This is a **rough** guideline, and whether to embed or reference depends on your specific access patterns, data size, and read/write frequencies. Always verify with your actual workload.
 
 ## How to Use
 
@@ -135,37 +147,9 @@ This means I might suggest:
 
 ### MongoDB MCP Integration
 
-For automatic verification, connect the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb-mcp-server):
+For automatic verification, connect the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb-mcp-server).
 
-**Option 1: Connection String**
-```json
-{
-  "mcpServers": {
-    "mongodb": {
-      "command": "npx",
-      "args": ["-y", "mongodb-mcp-server", "--readOnly"],
-      "env": {
-        "MDB_MCP_CONNECTION_STRING": "mongodb+srv://user:pass@cluster.mongodb.net/mydb"
-      }
-    }
-  }
-}
-```
-
-**Option 2: Local MongoDB**
-```json
-{
-  "mcpServers": {
-    "mongodb": {
-      "command": "npx",
-      "args": ["-y", "mongodb-mcp-server", "--readOnly"],
-      "env": {
-        "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017/mydb"
-      }
-    }
-  }
-}
-```
+If the MCP server is running and connected, I can automatically run verification commands to check your actual schema, document sizes, array lengths, index usage, and more. This allows me to provide tailored recommendations based on your real data, not just code patterns.
 
 **⚠️ Security**: Use `--readOnly` for safety. Remove only if you need write operations.
 
