@@ -126,9 +126,6 @@ printjson({
 // Primary compliance check: find documents that do NOT match validator
 const validator = info?.options?.validator
 db.users.find({ $nor: [validator] })
-
-// Optional heavyweight check (slow, can block due to a collection lock):
-// db.runCommand({ validate: "users", full: true })
 ```
 
 Reference: [Schema Validation](https://mongodb.com/docs/manual/core/schema-validation/)

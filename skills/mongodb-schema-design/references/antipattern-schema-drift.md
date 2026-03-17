@@ -22,7 +22,7 @@ tags: schema, anti-pattern, validation, consistency, data-quality, atlas-suggest
 // Version 3 (2022) - restructured name
 { _id: 3, firstName: "Carol", lastName: "Smith", email: "carol@ex.com" }
 
-// Version 4 (2023) - email is now array
+// Version 4 (2023) - email changed its name
 { _id: 4, firstName: "Dave", lastName: "Jones", emails: ["dave@ex.com", "d@work.com"] }
 
 // Application code becomes defensive nightmare
@@ -33,7 +33,7 @@ function getUserEmail(user) {
 }
 
 // Queries fail silently or unintentionally return all documents
-db.users.find({ email: "test@ex.com" })  // Misses users with emails[] array
+db.users.find({ email: "test@ex.com" })  // Misses users with emails[] array instead of single-value email field
 ```
 
 **Correct (controlled schema with validation):**
@@ -47,6 +47,7 @@ db.createCollection("users", {
       required: ["email", "profile"],
       properties: {
         email: {
+          // NB: We could also use $anyOf to say that this should be a string *or* an array of strings
           bsonType: "string",
           pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
         },
@@ -121,7 +122,7 @@ db.runCommand({
       }
     }
   },
-  validationLevel: "moderate"  // Don't block existing invalid docs
+  validationLevel: "moderate"  // Don't error on existing invalid docs
 })
 ```
 
@@ -174,13 +175,6 @@ if (validator) {
   db.users.find({ $nor: [validator] }).limit(20)
   db.users.countDocuments({ $nor: [validator] })
 }
-
-// Optional heavy check for maintenance windows:
-// validate can be slow and can take an exclusive lock on the collection.
-db.runCommand({
-  validate: "users",
-  full: true
-})
 ```
 
 Reference: [Schema Validation](https://mongodb.com/docs/manual/core/schema-validation/)

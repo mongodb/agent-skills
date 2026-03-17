@@ -66,7 +66,9 @@ db.products.aggregate([
     _id: null,
     avgTotal: { $avg: "$total" },
     avgImages: { $avg: "$imagesSize" },
-    avgReviews: { $avg: "$reviewsSize" }
+    avgReviews: { $avg: "$reviewsSize" },
+    maxImages: { $max: "$imagesSize" },
+    maxReviews: { $max: "$reviewsSize" }
   }}
 ])
 // Shows which fields are bloating documents

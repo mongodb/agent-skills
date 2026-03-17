@@ -69,7 +69,6 @@ db.publishers.updateOne(
 | Large child documents | User → Orders | Orders have line items, addresses |
 | Independent queries | Department → Employees | Query employees directly |
 | Different lifecycles | Author → Articles | Archive articles separately |
-| Frequent child updates | Post → Comments | Adding comments shouldn't lock post |
 
 **When NOT to use this pattern:**
 

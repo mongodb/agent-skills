@@ -57,8 +57,8 @@ When category data changes (a rare event), use `updateMany` to update all produc
 db.setProfilingLevel(1, { slowms: 50 })
 db.system.profile.find({
   "command.aggregate": { $exists: true },
-  "command.pipeline": {
-    $elemMatch: { "$lookup": { $exists: true } }
+  "command.pipeline.$lookup": {
+    $exists: true
   }
 }).sort({ millis: -1 })
 
@@ -66,8 +66,7 @@ db.system.profile.find({
 db.reviews.aggregate([
   { $indexStats: {} }
 ])
-// Look for "productId_1" with high ops - good
-// Missing index = every $lookup is a collection scan
+// Look for index supporting the query in result
 
 // Measure $lookup impact
 db.products.aggregate([
