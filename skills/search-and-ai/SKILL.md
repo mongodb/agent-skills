@@ -1,7 +1,7 @@
 ---
-name: search-and-ai-recommendations
+name: search-and-ai
 description: |
-  Guides MongoDB users through implementing and optimizing Atlas Search (full-text), Vector Search (semantic), and Hybrid Search solutions. Use this skill when users need to build search functionality, whether for text-based queries (autocomplete, fuzzy matching, faceted search), semantic similarity (embeddings, RAG applications), or combined approaches. Provides workflows for selecting the right search type, creating indexes, constructing queries, and optimizing performance using MongoDB's MCP server. 
+  Guides MongoDB users through implementing and optimizing Atlas Search (full-text), Vector Search (semantic), and Hybrid Search solutions. Use this skill when users need to build search functionality, whether for text-based queries (autocomplete, fuzzy matching, faceted search), semantic similarity (embeddings, RAG applications), or combined approaches. Provides workflows for selecting the right search type, creating indexes, constructing queries, and optimizing performance using the MongoDB MCP server. 
 ---
 
 # MongoDB Search and AI Recommendations Skill
@@ -37,7 +37,6 @@ Common questions to ask:
 - Do they need exact matching, fuzzy matching, or semantic similarity?
 - Do they need filters (price ranges, categories, dates)?
 - Do they need autocomplete/typeahead functionality?
-- For vector search: Do they have embeddings already, or should we use auto-embedding?
 
 ### 2. Determine Search Type
 
@@ -60,138 +59,25 @@ Use when users need:
 
 **Hybrid Search:**
 Use when users need:
-- Combining keywords and semantics
-- Queries like "find action movies similar to 'epic space battles'"
-- Exact matching with semantic understanding
+- Combining multiple search approaches (e.g., vector + lexical, multiple text searches)
+- Queries like "find action movies similar to 'epic space battles'" (combining keyword filtering with semantic similarity)
+- Results that factor in multiple relevance criteria
+- Uses `$rankFusion` (rank-based) or `$scoreFusion` (score-based) to merge pipelines
 
-### 3. Index Recommendations
+Once you have determined the search type, always consult the appropriate reference file(s) before recommending indexes or queries:
+- **Lexical**: consult both `references/lexical-search-indexing.md` (index) and `references/lexical-search-querying.md` (query)
+- **Vector**: consult `references/vector-search.md`
+- **Hybrid**: consult `references/hybrid-search.md` (and the lexical/vector files for the individual pipeline stages within it)
 
-**For Atlas Search indexes:**
-```javascript
-{
-  "mappings": {
-    "dynamic": false,
-    "fields": {
-      "title": { "type": "string", "analyzer": "lucene.standard" },
-      "genre": { "type": "string", "analyzer": "lucene.keyword" },  // Exact matching
-      "year": { "type": "number" }
-    }
-  }
-}
-```
-*Use `lucene.keyword` for exact matching (genres, categories), `lucene.standard` for full-text.*
+### 3. Query Construction
 
-**For Vector Search indexes (classic with embeddings):**
-```javascript
-{
-  "type": "vector",
-  "fields": [
-    {
-      "type": "vector",
-      "path": "embedding_field",
-      "numDimensions": 1024,
-      "similarity": "cosine",
-      "quantization": "none"  // or "scalar", {"type": "binary"}
-    },
-    { "type": "filter", "path": "category" }  // For pre-filtering
-  ]
-}
-```
+Consult the appropriate reference file for full query syntax and examples. When constructing queries, keep in mind:
 
-**For Vector Search indexes (auto-embed):**
-```javascript
-{
-  "type": "autoEmbed",
-  "fields": [
-    {
-      "type": "autoEmbed",
-      "path": "text_field",
-      "model": "voyage-4",
-      "modality": "text"
-    },
-    { "type": "filter", "path": "category" }
-  ]
-}
-```
-*Auto-embed generates embeddings automatically.*
-
-### 4. Query Construction
-
-**When to use $search vs $searchMeta:**
-- Use `$search` for results and metadata
-- Use `$searchMeta` for metadata only (counts, facets) - more efficient
-
-**Compound query clauses:**
+**Compound query clauses (Atlas Search):**
 - `must`: Required matches that affect scoring
 - `should`: Optional matches that boost scores
 - `filter`: Required matches that don't affect scoring (faster)
 - `mustNot`: Exclusions
-
-**Atlas Search queries ($search):**
-```javascript
-db.collection.aggregate([
-  {
-    $search: {
-      index: "search_index",
-      text: {
-        query: "search term",
-        path: "field_name",
-        fuzzy: { maxEdits: 2 }  // Optional typo tolerance
-      }
-    }
-  }
-])
-```
-
-**Vector Search queries ($vectorSearch):**
-```javascript
-// Classic (with pre-computed embeddings)
-db.collection.aggregate([
-  {
-    $vectorSearch: {
-      queryVector: [...],  // Your embedding array
-      path: "embedding_field",
-      numCandidates: 150,  // 10-20x limit
-      limit: 10,
-      filter: { category: "value" }  // Pre-filter
-    }
-  }
-])
-
-// Auto-embed (text query)
-db.collection.aggregate([
-  {
-    $vectorSearch: {
-      query: "text description",  // MongoDB generates embedding
-      path: "text_field",
-      numCandidates: 150,
-      limit: 10
-    }
-  }
-])
-```
-
-**Hybrid Search queries:**
-```javascript
-db.collection.aggregate([
-  { $vectorSearch: { /* ... */ } },
-  { $limit: 10 },
-  { $addFields: { score: { $meta: "vectorSearchScore" } } },
-  {
-    $unionWith: {
-      coll: "collection",
-      pipeline: [
-        { $search: { /* ... */ } },
-        { $limit: 10 },
-        { $addFields: { score: { $meta: "searchScore" } } }
-      ]
-    }
-  },
-  { $sort: { score: -1 } },
-  { $limit: 10 }
-])
-```
-*Use `$unionWith` to combine vector and lexical search. Limit results between stages for performance.*
 
 ### 5. Optimization Considerations
 
@@ -204,7 +90,6 @@ Before finalizing recommendations, review:
 - **Embedding dimensions**: Higher = better accuracy but slower and more storage
 - **storedSource**: Store frequently projected/filtered fields in the index to avoid full document lookups
 - **exact: true**: For small collections (<10K docs) or accuracy-critical queries, use exact nearest neighbor
-- **Search Nodes**: For large collections (millions of docs) with heavy search workloads, recommend dedicated search nodes
 
 ### 6. Execution and Validation
 
@@ -236,14 +121,12 @@ Before finalizing recommendations, review:
 
 If a user asks for regex/text for a search use case, explain why Atlas Search is more appropriate and show the equivalent pattern.
 
-## Common Use Cases
+## Reference Files
 
-For detailed patterns, refer to:
-- `references/search-common-patterns.md` - Autocomplete, facets, pagination, fuzzy search, relevance, filters, analytics
-- `references/search-advanced-features.md` - Advanced query syntax (queryString), similar items (moreLikeThis), nested arrays (embeddedDocument), highlighting, synonyms
-- `references/optimization-vector.md` - Vector search: numCandidates, quantization, filtering, similarity metrics, ENN vs ANN
-- `references/optimization-search.md` - Atlas Search: storedSource, analyzers, mappings, compound queries
-- `references/optimization-general.md` - Hybrid search, views, index size, search nodes, caching
+- `references/lexical-search-indexing.md` — Creating or modifying an Atlas Search index: field types, analyzers, dynamic vs explicit vs typeSet mappings, storedSource configuration, synonym mapping setup, creating Search indexes on Views
+- `references/lexical-search-querying.md` — Writing a $search or $searchMeta query: $search vs $searchMeta, compound operator, queryString, embeddedDocument, highlighting, returnStoredSource at query time, multi-analyzer path syntax, explain
+- `references/vector-search.md` — Creating a Vector Search index or writing a $vectorSearch query: index definition, filter fields, numCandidates tuning, ANN vs ENN, pre/post filtering, creating Vector Search indexes on Views
+- `references/hybrid-search.md` — Combining search methods: $rankFusion, $scoreFusion, lexical prefilters using the vectorSearch operator inside $search, required index setup for hybrid, choosing between $rankFusion/$scoreFusion/lexical prefilter
 
 ## Handling Edge Cases
 
@@ -273,9 +156,10 @@ For detailed patterns, refer to:
 - If context makes it obvious, confirm your assumption
 
 **User wants to search on views:**
-- Atlas Search indexes can be created on MongoDB views
-- Useful for pre-filtered data or pre-joined collections
-- Trade-off: Views add overhead vs indexing base collection
+- Atlas Search and Vector Search indexes can be created on Views (requires MongoDB 8.0+)
+- Programmatic index creation via mongosh/drivers requires 8.1+
+- Supported view stages: `$addFields`, `$set`, `$match` with `$expr` only
+- See `references/lexical-search-indexing.md` or `references/vector-search.md` for full details
 
 ## Remember
 
