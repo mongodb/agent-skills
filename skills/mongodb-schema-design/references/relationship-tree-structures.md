@@ -100,7 +100,7 @@ Including a `parent` field alongside the ancestors array enables `$graphLookup` 
 {
   _id: "programming",
   name: "Programming",
-  parent: "books",          // ← add this alongside ancestors array
+  parent: "technology",     // ← add this alongside ancestors array
   ancestors: ["books", "technology"]
 }
 // $graphLookup uses connectFromField/connectToField — requires a direct parent ref
