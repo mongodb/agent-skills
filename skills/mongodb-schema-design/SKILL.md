@@ -6,7 +6,7 @@ license: Apache-2.0
 
 # MongoDB Schema Design
 
-Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Contains **26 rules across 4 categories**, prioritized by impact. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
+Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
 
 ## When to Apply
 
@@ -22,41 +22,23 @@ Reference these guidelines when:
 - Hitting the 16MB document limit
 - Adding schema validation to existing collections
 
-## Rule Categories by Priority
-
-| Priority | Category | Impact | Prefix | Rules |
-|----------|----------|--------|--------|-------|
-| 1 | Schema Anti-Patterns | CRITICAL | `antipattern-` | 4 |
-| 2 | Schema Fundamentals | HIGH | `fundamental-` | 4 |
-| 3 | Relationship Patterns | HIGH | `relationship-` | 6 |
-| 4 | Design Patterns | MEDIUM | `pattern-` | 11 |
-
 ## Quick Reference
 
-### 1. Schema Anti-Patterns (CRITICAL) - 4 rules
+### 1. Schema Anti-Patterns - 4 rules
 
-- [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Fewer collections, more embedding
-- [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - Reduce $lookup by denormalizing
-- [antipattern-schema-drift](references/antipattern-schema-drift.md) - Enforce consistent structure across documents
-- [antipattern-unnecessary-indexes](references/antipattern-unnecessary-indexes.md) - Audit and remove unused or redundant indexes
+- [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Splitting homogeneous data into multiple collections is often an anti-pattern; consult this reference to validate whether this is the case.
+- [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - When encountering overly normalized collections that reference each other or frequent and possibly slow $lookup operations, consult this reference to validate whether this is problematic and how to fix it.
+- [antipattern-schema-drift](references/antipattern-schema-drift.md) - When investigation migrations or issues with inconsistent document structures, consult this reference to understand how to identify and mitigate schema drift.
+- [antipattern-unnecessary-indexes](references/antipattern-unnecessary-indexes.md) - Consult this file when indexes overlap or are not used by queries, to identify and remove unnecessary indexes that add overhead without benefit.
 
-### 2. Schema Fundamentals (HIGH) - 4 rules
+### 2. Schema Fundamentals - 4 rules
 
-- [fundamental-embed-vs-reference](references/fundamental-embed-vs-reference.md) - Decision framework for relationships
+- [fundamental-embed-vs-reference](references/fundamental-embed-vs-reference.md) - Decision framework for relationships: 1:1, 1:few, 1:many, many-to-many, and tree structures
 - [fundamental-document-model](references/fundamental-document-model.md) - Embrace documents, avoid SQL patterns
 - [fundamental-schema-validation](references/fundamental-schema-validation.md) - Enforce structure with JSON Schema
 - [fundamental-document-size](references/fundamental-document-size.md) - Keep documents small; design around the 16MB BSON limit and unbounded arrays
 
-### 3. Relationship Patterns (HIGH) - 6 rules
-
-- [relationship-one-to-one](references/relationship-one-to-one.md) - Embed for simplicity, reference for independence
-- [relationship-one-to-few](references/relationship-one-to-few.md) - Embed bounded arrays (addresses, phone numbers)
-- [relationship-one-to-many](references/relationship-one-to-many.md) - Reference for large/unbounded relationships
-- [relationship-one-to-squillions](references/relationship-one-to-squillions.md) - Reference massive child sets, store summaries
-- [relationship-many-to-many](references/relationship-many-to-many.md) - Choose primary query direction; mix references with embedded summaries
-- [relationship-tree-structures](references/relationship-tree-structures.md) - Parent/child/materialized path patterns
-
-### 4. Design Patterns (MEDIUM) - 12 rules
+### 3. Design Patterns - 11 rules
 
 - [pattern-approximation](references/pattern-approximation.md) - Use approximate values for high-frequency counters
 - [pattern-archive](references/pattern-archive.md) - Move historical data to separate storage for performance
