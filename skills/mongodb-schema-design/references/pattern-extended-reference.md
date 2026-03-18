@@ -77,9 +77,11 @@ db.system.profile.find({
 // Check how often lookups hit same collections
 db.system.profile.aggregate([
   { $match: { "command.pipeline.$lookup": { $exists: true } } },
-  { $unwind: "$command.pipeline" },
-  { $match: { "$lookup": { $exists: true } } },
-  { $group: { _id: "$command.pipeline.$lookup.from", count: { $sum: 1 } } }
+  { $project: { pipeline: "$command.pipeline" } },
+  { $unwind: "$pipeline" },
+  { $project: { lookup: { $getField: { field: { $literal: '$lookup' }, input: '$pipeline' } } } },
+  { $match: { "lookup": { $exists: true } } },
+  { $group: { _id: "$lookup.from", count: { $sum: 1 } } }
 ])
 // High count = candidate for extended reference
 ```
