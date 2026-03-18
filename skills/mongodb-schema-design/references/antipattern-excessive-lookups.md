@@ -54,7 +54,7 @@ When category data changes (a rare event), use `updateMany` to update all produc
 
 ```javascript
 // Find pipelines with multiple $lookup stages
-db.setProfilingLevel(1, { slowms: 50 })
+db.setProfilingLevel(1, { slowms: 50 }) // Disable afterwards
 db.system.profile.find({
   "command.aggregate": { $exists: true },
   "command.pipeline.$lookup": {

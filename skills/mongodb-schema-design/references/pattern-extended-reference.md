@@ -66,9 +66,12 @@ Keep both a bare reference (`customerId`) and an optional cache subdocument (`cu
 
 ```javascript
 // Find $lookup-heavy aggregations in profile
-db.setProfilingLevel(1, { slowms: 20 })
+db.setProfilingLevel(1, { slowms: 20 }) // Disable afterwards
 db.system.profile.find({
-  "command.pipeline": { $elemMatch: { "$lookup": { $exists: true } } }
+  "command.aggregate": { $exists: true },
+  "command.pipeline.$lookup": {
+    $exists: true
+  }
 }).sort({ millis: -1 }).limit(10)
 
 // Check how often lookups hit same collections

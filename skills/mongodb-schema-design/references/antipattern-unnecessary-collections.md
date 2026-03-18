@@ -81,9 +81,12 @@ for (const d of db.adminCommand({ listDatabases: 1 }).databases) {
 // Count alone is not sufficient: combine with access and index/storage evidence
 
 // Find $lookup-heavy aggregations
-db.setProfilingLevel(1, { slowms: 20 })
+db.setProfilingLevel(1, { slowms: 20 }) // Disable afterwards
 db.system.profile.find({
-  "command.pipeline.0.$lookup": { $exists: true }
+  "command.aggregate": { $exists: true },
+  "command.pipeline.$lookup": {
+    $exists: true
+  }
 }).count()
 // Frequent repeated lookups on the same paths can indicate over-normalized hot paths
 

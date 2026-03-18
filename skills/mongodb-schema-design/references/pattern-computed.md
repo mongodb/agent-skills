@@ -149,7 +149,7 @@ On-demand materialized views are not automatically refreshed—you control when 
 
 ```javascript
 // Find expensive aggregations that should be pre-computed
-db.setProfilingLevel(1, { slowms: 100 })
+db.setProfilingLevel(1, { slowms: 100 }) // Disable afterwards
 db.system.profile.find({
   "command.aggregate": { $exists: true },
   millis: { $gt: 100 }

@@ -23,8 +23,8 @@ db.runCommand({
       }
     }
   },
-  validationLevel: "strict",   // Validates ALL documents
-  validationAction: "error"    // Rejects invalid
+  validationLevel: "strict",   // Validates ALL writes
+  validationAction: "error"    // Errors on writes that fail validation
 })
 // Problem: 10,000 existing users without email field
 // Result: All updates to those users fail!
