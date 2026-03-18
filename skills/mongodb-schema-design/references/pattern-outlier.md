@@ -23,70 +23,72 @@ Typical documents keep their full embedded array and set `hasExtras: false`. Out
 const CUSTOMER_THRESHOLD = 50
 
 async function addCustomer(bookId, customerId) {
-  const book = await db.books.findOne({ _id: bookId })
-
-  if (book.customers.length < CUSTOMER_THRESHOLD) {
-    // Normal case - add to embedded array
-    await db.books.updateOne(
-      { _id: bookId },
-      {
-        $push: { customers: customerId },
-        $inc: { customerCount: 1 }
-      }
-    )
-  } else {
-    // Outlier case - add to overflow collection
-    const lastBatchDoc = await db.book_customers_extra
-      .find({ bookId: bookId })
-      .sort({ batch: -1 })
-      .limit(1)
-      .next()
-
-    const nextBatch = lastBatchDoc ? lastBatchDoc.batch + 1 : 1
-    const targetBatch =
-      lastBatchDoc && lastBatchDoc.count < 1000
-        ? lastBatchDoc.batch
-        : nextBatch
-
-    // First, try to append to the intended batch, enforcing the 1000-item cap under concurrency.
-    const overflowFilter = { bookId: bookId, batch: targetBatch }
-    if (targetBatch !== nextBatch) {
-      // Only enforce the count cap when targeting an existing batch.
-      overflowFilter.count = { $lt: 1000 }
+  // Try the normal case first: atomically add to the embedded array only if
+  // the current customerCount is below the threshold.
+  const result = await db.books.updateOne(
+    { _id: bookId, customerCount: { $lt: CUSTOMER_THRESHOLD } },
+    {
+      $push: { customers: customerId },
+      $inc: { customerCount: 1 }
     }
+  )
 
-    const result = await db.book_customers_extra.updateOne(
-      overflowFilter, // Write to the intended batch, respecting the count cap when reusing a batch
+  if (result.matchedCount > 0) {
+    // Normal case succeeded - customer added to embedded array
+    return
+  }
+
+  // Outlier case - add to overflow collection
+  const lastBatchDoc = await db.book_customers_extra
+    .find({ bookId: bookId })
+    .sort({ batch: -1 })
+    .limit(1)
+    .next()
+
+  const nextBatch = lastBatchDoc ? lastBatchDoc.batch + 1 : 1
+  const targetBatch =
+    lastBatchDoc && lastBatchDoc.count < 1000
+      ? lastBatchDoc.batch
+      : nextBatch
+
+  // First, try to append to the intended batch, enforcing the 1000-item cap under concurrency.
+  const overflowFilter = { bookId: bookId, batch: targetBatch }
+  if (targetBatch !== nextBatch) {
+    // Only enforce the count cap when targeting an existing batch.
+    overflowFilter.count = { $lt: 1000 }
+  }
+
+  const overflowResult = await db.book_customers_extra.updateOne(
+    overflowFilter, // Write to the intended batch, respecting the count cap when reusing a batch
+    {
+      $push: { customers: customerId },
+      $inc: { count: 1 },
+      $setOnInsert: { bookId: bookId, batch: targetBatch } // initialize count
+    },
+    { upsert: targetBatch === nextBatch }
+  )
+
+  // If we failed to match when trying to reuse the previous batch (it filled concurrently),
+  // fall back to writing into the next batch.
+  if (overflowResult.matchedCount === 0 && targetBatch !== nextBatch) {
+    await db.book_customers_extra.updateOne(
+      { bookId: bookId, batch: nextBatch },
       {
         $push: { customers: customerId },
         $inc: { count: 1 },
-        $setOnInsert: { bookId: bookId, batch: targetBatch } // initialize count
+        $setOnInsert: { bookId: bookId, batch: nextBatch }
       },
-      { upsert: targetBatch === nextBatch }
-    )
-
-    // If we failed to match when trying to reuse the previous batch (it filled concurrently),
-    // fall back to writing into the next batch.
-    if (result.matchedCount === 0 && targetBatch !== nextBatch) {
-      await db.book_customers_extra.updateOne(
-        { bookId: bookId, batch: nextBatch },
-        {
-          $push: { customers: customerId },
-          $inc: { count: 1 },
-          $setOnInsert: { bookId: bookId, batch: nextBatch }
-        },
-        { upsert: true }
-      )
-    }
-
-    await db.books.updateOne(
-      { _id: bookId },
-      {
-        $set: { hasExtras: true },
-        $inc: { customerCount: 1 }
-      }
+      { upsert: true }
     )
   }
+
+  await db.books.updateOne(
+    { _id: bookId },
+    {
+      $set: { hasExtras: true },
+      $inc: { customerCount: 1 }
+    }
+  )
 }
 ```
 
