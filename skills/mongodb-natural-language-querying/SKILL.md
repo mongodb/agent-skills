@@ -60,7 +60,7 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 - Simple filtering on one or more fields
 - Basic sorting and limiting
 - Field projection only
-- No data transformation needed
+- No complex document transformation needed
 
 **For Aggregation Pipelines**, generate an array of stage objects.
 
@@ -74,7 +74,7 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 
 ### 4. Format Your Response
 
-Always output queries as **valid JSON strings**, not JavaScript objects. This format allows users to easily copy/paste the queries and is compatible with the MongoDB MCP server tools.
+Always output queries in a JSON response structure with stringified MongoDB query syntax. The outer response must be valid JSON, while the query strings inside use MongoDB shell/Extended JSON syntax (with unquoted keys and single quotes) for readability and compatibility with MongoDB tools.
 
 **Find Query Response:**
 ```json
@@ -108,28 +108,29 @@ For aggregation pipelines:
 ## Best Practices
 
 ### Query Quality
-1. **Use indexes efficiently** - Structure filters to leverage available indexes:
-   - Check collection indexes before generating the query
-   - Avoid operators that prevent index usage: `$where`
+1. **Generate correct queries** - Build queries that match user requirements, then check index coverage:
+   - Generate the query to correctly satisfy all user requirements
+   - After generating the query, check if existing indexes can support it
+   - If no appropriate index exists, mention this in your response (user may want to create one)
+   - Never use `$where` because it prevents index usage
    - Do not use `$text` without a text index
    - `$expr` should only be used when necessary (use sparingly)
-   - For compound indexes, use leftmost prefix when possible
-   - If no relevant index exists, mention this in your response (user may want to create one)
 2. **Avoid redundant operators** - Never add operators that are already implied by other conditions:
-   - Don't add `$exists: true` when you already have an equality check (e.g., `status: "active"` already implies the field exists)
+   - Don't add `$exists` when you already have an equality or inequality check (e.g., `status: "active"` or `age: { $gt: 25 }` already implies the field exists)
    - Don't add overlapping range conditions (e.g., don't use both `$gte: 0` and `$gt: -1`)
    - Don't combine `$eq` with `$in` for the same field
    - Each condition should add meaningful filtering that isn't already covered
 3. **Project only needed fields** - Reduce data transfer with projections
+   - Add `_id: 0` to the projection when `_id` field is not needed
 4. **Validate field names** against the schema before using them
 5. **Handle edge cases** - Consider null values, missing fields, type mismatches
-5. **Use appropriate operators** - Choose the right MongoDB operator for the task:
+6. **Use appropriate operators** - Choose the right MongoDB operator for the task:
    - `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte` for comparisons
-   - `$in`, `$nin` for matching values within arrays or lists
+   - `$in`, `$nin` for matching against a list of possible values (equivalent to multiple $eq/$ne conditions OR'ed together)
    - `$and`, `$or`, `$not`, `$nor` for logical operations
-   - `$regex` for text pattern matching (prefer left-anchored patterns like `/^prefix/` when possible, as they can use indexes efficiently)
-   - `$exists` for field existence checks
-   - `$type` for type validation
+   - `$regex` for case sensitive text pattern matching (prefer left-anchored patterns like `/^prefix/` when possible, as they can use indexes efficiently)
+   - `$exists` for field existence checks (prefer `a: {$ne: null}` to `a: {$exists: false}` )
+   - `$type` for type matching
 
 ### Aggregation Pipeline Quality
 1. **Filter early** - Use `$match` as early as possible to reduce documents
@@ -138,7 +139,7 @@ For aggregation pipelines:
 4. **Use indexes** - Ensure `$match` and `$sort` stages can use indexes:
    - Place `$match` stages at the beginning of the pipeline
    - Initial `$match` and `$sort` stages can use indexes if they precede any stage that modifies documents
-   - Structure `$match` filters to align with available indexes
+   - After generating `$match` filters, check if indexes can support them
    - Avoid `$unwind` or other transformations before `$match` when possible
 5. **Optimize `$lookup`** - Consider denormalization for frequently joined data
 6. **Group efficiently** - Use accumulators appropriately: `$sum`, `$avg`, `$min`, `$max`, `$push`, `$addToSet`
@@ -173,7 +174,7 @@ Use sample documents to:
 
 1. **Using nonexistent field names** - Always validate against schema first. MongoDB won't error; it just returns no results.
 2. **Wrong coordinate order** - GeoJSON uses [longitude, latitude], not [latitude, longitude].
-3. **Missing index awareness** - Structure queries to leverage indexes. If no index exists for key filters, mention this to the user.
+3. **Missing index awareness** - Generate queries based on requirements. If no index exists to support the query, mention this to the user.
 4. **Type mismatches** - Check schema to ensure field values in queries match actual field types.
 
 ## Error Handling
@@ -191,8 +192,8 @@ If you cannot generate a query:
 **Your Process:**
 1. Check schema for fields: `status`, `age`, `registrationDate` or similar
 2. Verify field types match the query requirements
-3. Check available indexes to optimize the query
-4. Generate query
+3. Generate query based on user requirements
+4. Check if available indexes can support the query
 5. Suggest creating an index if no appropriate index exists for the query filters
 6. Suggest adding a limit if the collection is large or size is unknown
 
@@ -221,7 +222,7 @@ Before returning a query, verify:
 - [ ] Query syntax is valid MongoDB JSON
 - [ ] Query addresses the user's request
 - [ ] Query is optimized (filters early, projects when helpful)
-- [ ] Query can leverage available indexes (or note if no relevant index exists)
+- [ ] Checked if available indexes support the query (or note if no relevant index exists)
 - [ ] Response is properly formatted as JSON strings
 
 ---
@@ -236,9 +237,10 @@ Before returning a query, verify:
    - Understand data patterns from samples
 
 3. **Generate the query:**
-   - Structure to leverage available indexes
+   - Build query to match user requirements
    - Use appropriate find vs aggregation based on requirements
    - Follow MongoDB best practices
+   - Check if indexes support the query (note if missing)
 
 4. **Provide response with:**
    - The formatted query (JSON strings)

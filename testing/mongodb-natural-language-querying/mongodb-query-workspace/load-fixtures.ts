@@ -69,4 +69,7 @@ async function loadFixtures(connectionString: string) {
 
 // Get connection string from command line or environment variable
 const connectionString = process.argv[2] || process.env.MONGODB_URI || 'mongodb://localhost:27017';
-loadFixtures(connectionString);
+loadFixtures(connectionString).catch((error) => {
+  console.error('Fixture loading failed:', error);
+  process.exitCode = 1;
+});
