@@ -6,7 +6,7 @@ license: Apache-2.0
 
 # MongoDB Schema Design
 
-Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Contains **30 rules across 5 categories**, prioritized by impact. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
+Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Contains **28 rules across 4 categories**, prioritized by impact. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
 
 ## When to Apply
 
@@ -73,11 +73,6 @@ Reference these guidelines when:
 - [pattern-schema-versioning](references/pattern-schema-versioning.md) - Evolve schemas safely with version fields
 - [pattern-subset](references/pattern-subset.md) - Store hot data in main doc, cold data elsewhere
 - [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections when available
-
-### 5. Schema Validation (MEDIUM) - 2 rules
-
-- [validation-json-schema](references/validation-json-schema.md) - Validate data types and structure at database level
-- [validation-action-levels](references/validation-action-levels.md) - Choose warn vs error mode for validation
 
 ## Key Principle
 
