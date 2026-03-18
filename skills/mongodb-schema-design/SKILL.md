@@ -6,7 +6,7 @@ license: Apache-2.0
 
 # MongoDB Schema Design
 
-Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Contains **28 rules across 4 categories**, prioritized by impact. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
+Data modeling patterns and anti-patterns for MongoDB, maintained by MongoDB. Contains **26 rules across 4 categories**, prioritized by impact. Bad schema is the root cause of most MongoDB performance and cost issues—queries and indexes cannot fix a fundamentally wrong model.
 
 ## When to Apply
 
@@ -26,18 +26,15 @@ Reference these guidelines when:
 
 | Priority | Category | Impact | Prefix | Rules |
 |----------|----------|--------|--------|-------|
-| 1 | Schema Anti-Patterns | CRITICAL | `antipattern-` | 6 |
+| 1 | Schema Anti-Patterns | CRITICAL | `antipattern-` | 4 |
 | 2 | Schema Fundamentals | HIGH | `fundamental-` | 4 |
 | 3 | Relationship Patterns | HIGH | `relationship-` | 6 |
-| 4 | Design Patterns | MEDIUM | `pattern-` | 12 |
-| 5 | Schema Validation | MEDIUM | `validation-` | 2 |
+| 4 | Design Patterns | MEDIUM | `pattern-` | 11 |
 
 ## Quick Reference
 
-### 1. Schema Anti-Patterns (CRITICAL) - 6 rules
+### 1. Schema Anti-Patterns (CRITICAL) - 4 rules
 
-- [antipattern-unbounded-arrays](references/antipattern-unbounded-arrays.md) - Avoid large and unbounded arrays
-- [antipattern-bloated-documents](references/antipattern-bloated-documents.md) - Keep hot-path documents small; split hot vs cold fields
 - [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Fewer collections, more embedding
 - [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - Reduce $lookup by denormalizing
 - [antipattern-schema-drift](references/antipattern-schema-drift.md) - Enforce consistent structure across documents
@@ -48,7 +45,7 @@ Reference these guidelines when:
 - [fundamental-embed-vs-reference](references/fundamental-embed-vs-reference.md) - Decision framework for relationships
 - [fundamental-document-model](references/fundamental-document-model.md) - Embrace documents, avoid SQL patterns
 - [fundamental-schema-validation](references/fundamental-schema-validation.md) - Enforce structure with JSON Schema
-- [fundamental-16mb-awareness](references/fundamental-16mb-awareness.md) - Design around BSON document limit
+- [fundamental-document-size](references/fundamental-document-size.md) - Keep documents small; design around the 16MB BSON limit and unbounded arrays
 
 ### 3. Relationship Patterns (HIGH) - 6 rules
 
@@ -71,7 +68,6 @@ Reference these guidelines when:
 - [pattern-outlier](references/pattern-outlier.md) - Handle documents with exceptional array sizes
 - [pattern-polymorphic](references/pattern-polymorphic.md) - Store heterogeneous documents with a type discriminator
 - [pattern-schema-versioning](references/pattern-schema-versioning.md) - Evolve schemas safely with version fields
-- [pattern-subset](references/pattern-subset.md) - Store hot data in main doc, cold data elsewhere
 - [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections when available
 
 ## Key Principle
