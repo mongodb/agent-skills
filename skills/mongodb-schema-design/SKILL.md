@@ -29,14 +29,14 @@ Reference these guidelines when:
 - [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Splitting homogeneous data into multiple collections is often an anti-pattern; consult this reference to validate whether this is the case.
 - [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - When encountering overly normalized collections that reference each other or frequent and possibly slow $lookup operations, consult this reference to validate whether this is problematic and how to fix it.
 - [antipattern-schema-drift](references/antipattern-schema-drift.md) - When investigation migrations or issues with inconsistent document structures, consult this reference to understand how to identify and mitigate schema drift.
-- [antipattern-unnecessary-indexes](references/antipattern-unnecessary-indexes.md) - Consult this file when indexes overlap or are not used by queries, to identify and remove unnecessary indexes that add overhead without benefit.
+- [antipattern-unnecessary-indexes](references/antipattern-unnecessary-indexes.md) - Consult this reference when indexes overlap or are not used by queries, to identify and remove unnecessary indexes that add overhead without benefit.
 
 ### 2. Schema Fundamentals - 4 rules
 
-- [fundamental-embed-vs-reference](references/fundamental-embed-vs-reference.md) - Decision framework for relationships: 1:1, 1:few, 1:many, many-to-many, and tree structures
-- [fundamental-document-model](references/fundamental-document-model.md) - Embrace documents, avoid SQL patterns
-- [fundamental-schema-validation](references/fundamental-schema-validation.md) - Enforce structure with JSON Schema
-- [fundamental-document-size](references/fundamental-document-size.md) - Keep documents small; design around the 16MB BSON limit and unbounded arrays
+- [fundamental-embed-vs-reference](references/fundamental-embed-vs-reference.md) - Consult this reference for approaches to modeling different types of relationships (1:1, 1:few, 1:many, many:many, tree/hierarchical data) and how to decide between embedding and referencing based on access patterns.
+- [fundamental-document-model](references/fundamental-document-model.md) - Fundamentals of the document model. Consult this reference when migrating from SQL or other normalized data to a document database like MongoDB.
+- [fundamental-schema-validation](references/fundamental-schema-validation.md) - Consult this reference when creating new collections, or adding validation to existing collections, for example in response to finding inconsistent document structures or data quality issues.
+- [fundamental-document-size](references/fundamental-document-size.md) - Consult this reference when documents hit the hard 16MB limit, or when accesses are slower than expected as a result of large documents.
 
 ### 3. Design Patterns - 11 rules
 
@@ -96,24 +96,6 @@ Each reference file contains:
 ---
 
 ## How These Rules Work
-
-### Recommendations with Verification
-
-Every rule in this skill provides:
-1. **A recommendation** based on best practices
-2. **A verification checklist** of things that should be confirmed
-3. **Commands to verify** so you can check before implementing
-4. **MCP integration** for automatic verification when connected
-
-### Why Verification Matters
-
-I analyze code patterns, but I can't see your actual data without a database connection.
-This means I might suggest:
-- Fixing an "unbounded array" that's actually small and bounded
-- Restructuring a schema that works well for your access patterns
-- Adding validation when documents already conform to the schema
-
-**Always verify before implementing.** Each rule includes verification commands.
 
 ### MongoDB MCP Integration
 
