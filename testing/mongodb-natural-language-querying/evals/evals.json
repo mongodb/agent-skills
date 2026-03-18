@@ -10,237 +10,223 @@
     },
     {
       "id": 2,
-      "name": "find-with-filter-projection-sort-limit",
-      "prompt": "find three movies with alien in the title, show earliest movies first, only the _id, title and year",
-      "expected_output": "Find query that uses Atlas Search ($search) on the title field when available (regex filter on title is an acceptable fallback/partial pass), sort by year ascending, limit 3, project _id/title/year",
-      "files": []
-    },
-    {
-      "id": 3,
       "name": "geo-based-find",
       "prompt": "find all the listings within 10km from the istanbul center",
       "expected_output": "Find query with $geoWithin or $nearSphere for geospatial search, 10km radius",
       "files": []
     },
     {
-      "id": 4,
+      "id": 3,
       "name": "find-with-nested-match",
       "prompt": "Return all the properties of type \"Hotel\" and with ratings lte 70",
       "expected_output": "Find query with nested field filters for property_type and ratings",
       "files": []
     },
     {
-      "id": 5,
+      "id": 4,
       "name": "find-translates-to-agg-mode-count",
       "prompt": "what is the bed count that occurs the most? return it in a field called bedCount (only return the bedCount field)",
       "expected_output": "Aggregation pipeline with $group by beds, $count, $sort, $limit to find mode",
       "files": []
     },
     {
-      "id": 6,
+      "id": 5,
       "name": "find-translates-to-agg-total-sum",
       "prompt": "whats the total number of reviews across all listings? return it in a field called totalReviewsOverall",
       "expected_output": "Aggregation pipeline with $group and $sum to calculate total",
       "files": []
     },
     {
-      "id": 7,
+      "id": 6,
       "name": "find-translates-to-agg-max-host",
       "prompt": "which host id has the most reviews across all listings? return it in a field called hostId",
       "expected_output": "Aggregation pipeline grouping by host_id, summing reviews, sorting and limiting",
       "files": []
     },
     {
-      "id": 8,
+      "id": 7,
       "name": "relative-date-find-last-year",
       "prompt": "find all of the movies from last year",
       "expected_output": "Find query with date filter for 2025 (current year - 1)",
       "files": []
     },
     {
-      "id": 9,
+      "id": 8,
       "name": "relative-date-find-30-years-ago",
       "prompt": "Which comments were posted 30 years ago. consider all comments from that year. return name and date",
       "expected_output": "Find query with date range for 1996 (30 years before 2026), project name and date",
       "files": []
     },
     {
-      "id": 10,
+      "id": 9,
       "name": "number-field-find",
       "prompt": "get all docs where accommodates is 6",
       "expected_output": "Find query with filter accommodates: 6",
       "files": []
     },
     {
-      "id": 11,
+      "id": 10,
       "name": "find-with-complex-projection",
       "prompt": "give me just the price and the first 3 amenities (in a field called amenities) of the listing has \"Step-free access\" in its amenities.",
       "expected_output": "Find query with array filter for amenities, projection with $slice for first 3 items",
       "files": []
     },
     {
-      "id": 12,
+      "id": 11,
       "name": "find-with-and-operator",
       "prompt": "Return only the Plate IDs of Acura vehicles registered in New York",
       "expected_output": "Find query with $and or implicit AND for vehicle make and state, project plate_id only",
       "files": []
     },
     {
-      "id": 13,
+      "id": 12,
       "name": "find-with-non-english",
       "prompt": "¿Qué alojamiento tiene el precio más bajo? devolver el número en un campo llamado \"precio\" en español",
       "expected_output": "Find query with sort by price ascending, limit 1, project price field renamed",
       "files": []
     },
     {
-      "id": 14,
+      "id": 13,
       "name": "find-with-regex-string-ops",
       "prompt": "Write a query that does the following: find all of the parking incidents that occurred on any ave. Return all of the plate ids involved with their summons number and vehicle make and body type. Put the vehicle make and body type into lower case. No _id, sorted by the summons number lowest first.",
       "expected_output": "Find query with regex for 'ave', projection with lowercase operations, sort by summons_number",
       "files": []
     },
     {
-      "id": 15,
+      "id": 14,
       "name": "find-simple-projection",
       "prompt": "return only the customer email",
       "expected_output": "Find query with projection for email field only",
       "files": []
     },
     {
-      "id": 16,
+      "id": 15,
       "name": "basic-aggregate",
       "prompt": "find all the movies released in 1983",
       "expected_output": "Aggregation pipeline with $match on year 1983 (or preferably suggests find query)",
       "files": []
     },
     {
-      "id": 17,
-      "name": "agg-filter-projection-sort-limit",
-      "prompt": "find three movies with alien in the title, show earliest movies first, only the _id, title and year",
-      "expected_output": "Aggregation with $match on title regex, $project, $sort, $limit",
-      "files": []
-    },
-    {
-      "id": 18,
+      "id": 16,
       "name": "agg-filter-and-projection",
       "prompt": "find all the violations for the violation code 21 and only return the car plate",
       "expected_output": "Aggregation with $match on violation_code, $project for plate",
       "files": []
     },
     {
-      "id": 19,
+      "id": 17,
       "name": "geo-based-agg",
       "prompt": "find all the bars 10km from the berlin center, only return their names. Berlin center is at longitude 13.4050 and latitude 52.5200. use correct key for coordinates.",
       "expected_output": "Aggregation with $geoNear or $match with geospatial query, coordinates in correct order [13.4050, 52.5200]",
       "files": []
     },
     {
-      "id": 20,
+      "id": 18,
       "name": "agg-nested-fields-match",
       "prompt": "Return all the properties of type \"Hotel\" and with ratings lte 70",
       "expected_output": "Aggregation with $match on nested property_type and ratings fields",
       "files": []
     },
     {
-      "id": 21,
+      "id": 19,
       "name": "agg-group-sort-limit-project",
       "prompt": "what is the bed count that occurs the most? return it in a field called bedCount (only return the bedCount field)",
-      "expected_output": "Aggregation with $group by beds, $count, $sort descending, $limit 1, $project to rename",
+      "expected_output": "Aggregation with $sortByCount by beds, $limit 1, $project to rename field",
       "files": []
     },
     {
-      "id": 22,
+      "id": 20,
       "name": "agg-group-sort-limit-project-2",
       "prompt": "which host id has the most reviews across all listings? return it in only a field called hostId",
-      "expected_output": "Aggregation grouping by host_id, $sum reviews, $sort, $limit, $project",
+      "expected_output": "Aggregation grouping by host_id, $sum number_of_reviews, $sort descending, $limit 1, $project to rename field",
       "files": []
     },
     {
-      "id": 23,
+      "id": 21,
       "name": "relative-date-agg-30-years",
       "prompt": "Which movies were released 30 years ago (consider whole year). return title and year",
       "expected_output": "Aggregation with $match for year 1996, $project title and year",
       "files": []
     },
     {
-      "id": 24,
+      "id": 22,
       "name": "relative-date-agg-last-year",
       "prompt": "find all of the movies from last year",
       "expected_output": "Aggregation with $match for 2025",
       "files": []
     },
     {
-      "id": 25,
+      "id": 23,
       "name": "agg-array-slice",
       "prompt": "give me just the price and the first 3 amenities (in a field called amenities) of the listing that has \"Step-free access\" in its amenities.",
       "expected_output": "Aggregation with $match on amenities array, $project with $slice",
       "files": []
     },
     {
-      "id": 26,
+      "id": 24,
       "name": "agg-multiple-conditions-match",
       "prompt": "Return only the Plate IDs of Acura vehicles registered in New York",
       "expected_output": "Aggregation with $match for vehicle make and state, $project plate_id",
       "files": []
     },
     {
-      "id": 27,
+      "id": 25,
       "name": "agg-non-english",
       "prompt": "¿Qué alojamiento tiene el precio más bajo? devolver el número en un campo llamado \"precio\"",
       "expected_output": "Aggregation with $sort by price, $limit 1, $project to rename field",
       "files": []
     },
     {
-      "id": 28,
+      "id": 26,
       "name": "agg-simple-sort-limit",
       "prompt": "give me only cancellation policy and listing url of the most expensive listing",
       "expected_output": "Aggregation with $sort descending, $limit 1, $project specific fields",
       "files": []
     },
     {
-      "id": 29,
+      "id": 27,
       "name": "agg-unwind-group",
       "prompt": "group all the listings based on the amenities tags and return only count and tag name",
       "expected_output": "Aggregation with $unwind on amenities, $group by amenity, $count",
       "files": []
     },
     {
-      "id": 30,
+      "id": 28,
       "name": "agg-size-operator",
       "prompt": "which listing has the most amenities? the resulting documents should only have the _id",
-      "expected_output": "Aggregation with $project using $size on amenities array, $sort, $limit, project _id only",
+      "expected_output": "Aggregation with $addFields using $size on amenities array, $sort descending by count, $limit 1, $project _id only",
       "files": []
     },
     {
-      "id": 31,
-      "name": "agg-complex-regex-split",
+      "id": 29,
+      "name": "agg-complex-word-frequency",
       "prompt": "What are the 5 most frequent words (case sensitive) used in movie titles in the 1980s and 1990s combined? Sorted first by frequency count then alphabetically. output fields count and word",
-      "expected_output": "Complex aggregation with $match on year range, $split on title, $unwind, $group with $sum, $sort",
+      "expected_output": "Complex aggregation with $match on year range, $split on title, $unwind, $group with $sum, $sort descending by count, $sort ascending by word, $limit 5, $project",
       "files": []
     },
     {
-      "id": 32,
+      "id": 30,
       "name": "agg-super-complex-percentage",
       "prompt": "what percentage of listings have a \"Washer\" in their amenities? Only consider listings with more than 2 beds. Return is as a string named \"washerPercentage\" like \"75%\", rounded to the nearest whole number.",
       "expected_output": "Complex aggregation with $match beds > 2, $group with $cond to count washers, calculate percentage, format as string",
       "files": []
     },
     {
-      "id": 33,
+      "id": 31,
       "name": "agg-complex-regex-string-ops",
       "prompt": "Write a query that does the following: find all of the parking incidents that occurred on any ave. Return all of the plate ids involved with their summons number and vehicle make and body type. Put the vehicle make and body type into lower case. No _id, sorted by the summons number lowest first.",
       "expected_output": "Aggregation with $match regex for 'ave', $project with $toLower, sort by summons_number",
       "files": []
     },
     {
-      "id": 34,
+      "id": 32,
       "name": "agg-join-lookup",
       "prompt": "join with \"movies\" based on a movie_id and return one document for each comment with movie_title (from movie.title) and comment_text",
       "expected_output": "Aggregation with $lookup to join movies collection, $unwind, $project to extract fields",
       "files": []
     },
     {
-      "id": 35,
+      "id": 33,
       "name": "agg-simple-projection",
       "prompt": "return only the customer email",
       "expected_output": "Aggregation with $project for email (or preferably suggests find query)",

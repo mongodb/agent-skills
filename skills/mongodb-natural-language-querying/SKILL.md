@@ -1,12 +1,12 @@
 ---
 name: mongodb-natural-language-querying
-description: Generate MongoDB queries (find) or aggregation pipelines using natural language, with collection schema context and sample documents. Use this skill whenever the user asks to write, create, or generate MongoDB queries, wants to filter/query/aggregate data in MongoDB, asks "how do I query...", needs help with query syntax, or discusses finding/filtering/grouping MongoDB documents. Generates queries that leverage available indexes. Also use for translating SQL-like requests to MongoDB syntax. Handles basic text pattern matching with regex. Does NOT handle Atlas Search ($search operator), vector/semantic search, fuzzy matching, autocomplete indexes, or relevance scoring - use search-and-ai for those. Does NOT analyze or optimize existing queries - use mongodb-query-optimizer for that. Requires MongoDB MCP server.
-allowed-tools: mcp__mongodb__*, Read, Bash
+description: Generate read-only MongoDB queries (find) or aggregation pipelines using natural language, with collection schema context and sample documents. Use this skill whenever the user asks to write, create, or generate MongoDB queries, wants to filter/query/aggregate data in MongoDB, asks "how do I query...", needs help with query syntax, or discusses finding/filtering/grouping MongoDB documents. Also use for translating SQL-like requests to MongoDB syntax. Does NOT handle Atlas Search ($search operator), vector/semantic search ($vectorSearch operator), fuzzy matching, autocomplete indexes, or relevance scoring - use search-and-ai for those. Does NOT analyze or optimize existing queries - use mongodb-query-optimizer for that. Does NOT handle aggregation pipelines that involve write operations. Requires MongoDB MCP server.
+allowed-tools: mcp__mongodb__*
 ---
 
 # MongoDB Natural Language Querying
 
-You are an expert MongoDB query generator. When a user requests a MongoDB query or aggregation pipeline, follow these guidelines based on the Compass query generation patterns.
+You are an expert MongoDB read-only query generator. When a user requests a MongoDB query or aggregation pipeline, follow these guidelines based on the Compass query generation patterns.
 
 ## Query Generation Process
 
@@ -60,7 +60,6 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 - Simple filtering on one or more fields
 - Basic sorting and limiting
 - Field projection only
-- No complex document transformation needed
 
 **For Aggregation Pipelines**, generate an array of stage objects.
 
@@ -70,7 +69,6 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 - Computed fields or data reshaping
 - Joins with other collections ($lookup)
 - Array unwinding or complex array operations
-- Text search with scoring
 
 ### 4. Format Your Response
 
@@ -118,19 +116,22 @@ For aggregation pipelines:
 2. **Avoid redundant operators** - Never add operators that are already implied by other conditions:
    - Don't add `$exists` when you already have an equality or inequality check (e.g., `status: "active"` or `age: { $gt: 25 }` already implies the field exists)
    - Don't add overlapping range conditions (e.g., don't use both `$gte: 0` and `$gt: -1`)
-   - Don't combine `$eq` with `$in` for the same field
    - Each condition should add meaningful filtering that isn't already covered
 3. **Project only needed fields** - Reduce data transfer with projections
    - Add `_id: 0` to the projection when `_id` field is not needed
 4. **Validate field names** against the schema before using them
-5. **Handle edge cases** - Consider null values, missing fields, type mismatches
-6. **Use appropriate operators** - Choose the right MongoDB operator for the task:
+5. **Use appropriate operators** - Choose the right MongoDB operator for the task:
    - `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte` for comparisons
    - `$in`, `$nin` for matching against a list of possible values (equivalent to multiple $eq/$ne conditions OR'ed together)
    - `$and`, `$or`, `$not`, `$nor` for logical operations
    - `$regex` for case sensitive text pattern matching (prefer left-anchored patterns like `/^prefix/` when possible, as they can use indexes efficiently)
    - `$exists` for field existence checks (prefer `a: {$ne: null}` to `a: {$exists: false}` )
    - `$type` for type matching
+6. **Optimize array field checks** - Use efficient patterns for array operations:
+   - To check if array is non-empty: use `"arrayField.0": {$exists: true}` instead of `arrayField: {$exists: true, $type: "array", $ne: []}`
+   - Checking for the first element's existence is simpler, more readable, and more efficient than combining existence, type, and inequality checks
+   - For matching array elements with multiple conditions, use `$elemMatch`
+   - For array length checks, use `$size` when you need an exact count
 
 ### Aggregation Pipeline Quality
 1. **Filter early** - Use `$match` as early as possible to reduce documents
@@ -140,17 +141,15 @@ For aggregation pipelines:
    - Place `$match` stages at the beginning of the pipeline
    - Initial `$match` and `$sort` stages can use indexes if they precede any stage that modifies documents
    - After generating `$match` filters, check if indexes can support them
-   - Avoid `$unwind` or other transformations before `$match` when possible
+   - Minimize stages that transform documents before first `$match`
 5. **Optimize `$lookup`** - Consider denormalization for frequently joined data
-6. **Group efficiently** - Use accumulators appropriately: `$sum`, `$avg`, `$min`, `$max`, `$push`, `$addToSet`
 
 ### Error Prevention
 1. **Validate all field references** against the schema
 2. **Quote field names correctly** - Use dot notation for nested fields
-3. **Handle array fields properly** - Use `$elemMatch`, `$size`, `$all` as needed
-4. **Escape special characters** in regex patterns
-5. **Check data types** - Ensure operations match field types from schema
-6. **Geospatial coordinates** - MongoDB's GeoJSON format requires longitude first, then latitude (e.g., `[longitude, latitude]` or `{type: "Point", coordinates: [lng, lat]}`). This is opposite to how coordinates are often written in plain English, so double-check this when generating geo queries.
+3. **Escape special characters** in regex patterns
+4. **Check data types** - Ensure field values match field types from schema
+5. **Geospatial coordinates** - MongoDB's GeoJSON format requires longitude first, then latitude (e.g., `[longitude, latitude]` or `{type: "Point", coordinates: [lng, lat]}`). This is opposite to how coordinates are often written in plain English, so double-check this when generating geo queries.
 
 ## Schema Analysis
 
@@ -170,13 +169,6 @@ Use sample documents to:
 - Estimate cardinality for grouping operations
 - Validate that your query will work with real data
 
-## Common Pitfalls to Avoid
-
-1. **Using nonexistent field names** - Always validate against schema first. MongoDB won't error; it just returns no results.
-2. **Wrong coordinate order** - GeoJSON uses [longitude, latitude], not [latitude, longitude].
-3. **Missing index awareness** - Generate queries based on requirements. If no index exists to support the query, mention this to the user.
-4. **Type mismatches** - Check schema to ensure field values in queries match actual field types.
-
 ## Error Handling
 
 If you cannot generate a query:
@@ -195,7 +187,6 @@ If you cannot generate a query:
 3. Generate query based on user requirements
 4. Check if available indexes can support the query
 5. Suggest creating an index if no appropriate index exists for the query filters
-6. Suggest adding a limit if the collection is large or size is unknown
 
 **Generated Query:**
 ```json
@@ -214,37 +205,4 @@ Keep requests under 5MB:
 - Limit to 4 sample documents by default
 - For very large documents, project only essential fields when sampling
 
-## Response Validation
-
-Before returning a query, verify:
-- [ ] All field names exist in the schema or samples
-- [ ] Operators are used correctly for field types
-- [ ] Query syntax is valid MongoDB JSON
-- [ ] Query addresses the user's request
-- [ ] Query is optimized (filters early, projects when helpful)
-- [ ] Checked if available indexes support the query (or note if no relevant index exists)
-- [ ] Response is properly formatted as JSON strings
-
 ---
-
-## When invoked
-
-1. **Gather context** - Follow section 1 to fetch indexes, schema, and sample documents using MCP tools
-
-2. **Analyze the context:**
-   - Review indexes for query optimization opportunities
-   - Validate field names against schema
-   - Understand data patterns from samples
-
-3. **Generate the query:**
-   - Build query to match user requirements
-   - Use appropriate find vs aggregation based on requirements
-   - Follow MongoDB best practices
-   - Check if indexes support the query (note if missing)
-
-4. **Provide response with:**
-   - The formatted query (JSON strings)
-   - Explanation of the approach
-   - Which index will be used (if any)
-   - Suggestion to create index if beneficial
-   - Any assumptions made
