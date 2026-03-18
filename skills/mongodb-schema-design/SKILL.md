@@ -24,11 +24,10 @@ Reference these guidelines when:
 
 ## Quick Reference
 
-### 1. Schema Anti-Patterns - 4 rules
+### 1. Schema Anti-Patterns - 3 rules
 
 - [antipattern-unnecessary-collections](references/antipattern-unnecessary-collections.md) - Splitting homogeneous data into multiple collections is often an anti-pattern; consult this reference to validate whether this is the case.
 - [antipattern-excessive-lookups](references/antipattern-excessive-lookups.md) - When encountering overly normalized collections that reference each other or frequent and possibly slow $lookup operations, consult this reference to validate whether this is problematic and how to fix it.
-- [antipattern-schema-drift](references/antipattern-schema-drift.md) - When investigation migrations or issues with inconsistent document structures, consult this reference to understand how to identify and mitigate schema drift.
 - [antipattern-unnecessary-indexes](references/antipattern-unnecessary-indexes.md) - Consult this reference when indexes overlap or are not used by queries, to identify and remove unnecessary indexes that add overhead without benefit.
 
 ### 2. Schema Fundamentals - 4 rules
@@ -49,7 +48,7 @@ Reference these guidelines when:
 - [pattern-extended-reference](references/pattern-extended-reference.md) - Cache frequently-accessed related data
 - [pattern-outlier](references/pattern-outlier.md) - Handle documents with exceptional array sizes
 - [pattern-polymorphic](references/pattern-polymorphic.md) - Store heterogeneous documents with a type discriminator
-- [pattern-schema-versioning](references/pattern-schema-versioning.md) - Evolve schemas safely with version fields
+- [pattern-schema-versioning](references/pattern-schema-versioning.md) - Schema evolution, preventing drift, and safe online migrations. Consult when encountering inconsistent document structures, or when planning a schema change that cannot be applied atomically.
 - [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections when available
 
 ## Key Principle
