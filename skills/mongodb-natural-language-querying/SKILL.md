@@ -1,6 +1,6 @@
 ---
 name: mongodb-natural-language-querying
-description: Generate MongoDB queries (find) or aggregation pipelines using natural language, with collection schema context and sample documents. Use this skill whenever the user asks to write, create, or generate MongoDB queries, wants to search/filter/aggregate data in MongoDB, asks "how do I query...", needs help with query syntax, or discusses finding/filtering/grouping MongoDB documents. Generates queries that leverage available indexes. Also use for translating SQL-like requests to MongoDB syntax. Does NOT analyze or optimize existing queries - use mongodb-query-optimizer for that. Requires MongoDB MCP server.
+description: Generate MongoDB queries (find) or aggregation pipelines using natural language, with collection schema context and sample documents. Use this skill whenever the user asks to write, create, or generate MongoDB queries, wants to filter/query/aggregate data in MongoDB, asks "how do I query...", needs help with query syntax, or discusses finding/filtering/grouping MongoDB documents. Generates queries that leverage available indexes. Also use for translating SQL-like requests to MongoDB syntax. Handles basic text pattern matching with regex. Does NOT handle Atlas Search ($search operator), vector/semantic search, fuzzy matching, autocomplete indexes, or relevance scoring - use search-and-ai for those. Does NOT analyze or optimize existing queries - use mongodb-query-optimizer for that. Requires MongoDB MCP server.
 allowed-tools: mcp__mongodb__*, Read, Bash
 ---
 
