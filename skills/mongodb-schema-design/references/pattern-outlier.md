@@ -70,7 +70,7 @@ async function addCustomer(bookId, customerId) {
     {
       $push: { customers: customerId },
       $inc: { count: 1 },
-      $setOnInsert: { bookId: bookId, batch: targetBatch } // initialize count
+      $setOnInsert: { bookId: bookId, batch: targetBatch }
     },
     { upsert: targetBatch === nextBatch }
   )
