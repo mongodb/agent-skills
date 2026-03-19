@@ -82,7 +82,7 @@ This is a **rough** guideline, and whether to embed or reference depends on your
 
 ## How to Use
 
-Read individual reference files for detailed explanations and code examples.
+Each reference file listed above contains detailed explanations and code examples. Use the descriptions in the Quick Reference to identify which files are relevant to your current task.
 
 Each reference file contains:
 - Brief explanation of why it matters
