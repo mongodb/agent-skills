@@ -59,7 +59,6 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 **Use Find Query when:**
 - Simple filtering on one or more fields
 - Basic sorting and limiting
-- Field projection only
 
 **For Aggregation Pipelines**, generate an array of stage objects.
 
