@@ -560,7 +560,7 @@ The `vectorSearch` operator runs inside a `$search` stage and performs ANN or EN
       filter: { <search-operator> }, // Optional
       score: { <score-options> }     // Optional
     },
-    concurrent: true  // Optional, improves latency
+    concurrent: true  // Optional, dedicated search nodes only
   }
 }
 ```
@@ -575,7 +575,7 @@ The `vectorSearch` operator runs inside a `$search` stage and performs ANN or EN
 | `numCandidates` | Conditional | Required if `exact` is false or omitted. Max 10000. Recommend 20x `limit`. |
 | `exact` | No | `true` for ENN, `false`/omit for ANN |
 | `filter` | No | Any Atlas Search operator to pre-filter documents |
-| `concurrent` | No | Set `true` to improve query latency |
+| `concurrent` | No | Parallelizes search across segments on dedicated search nodes. Ignored if no dedicated search nodes. |
 
 ---
 

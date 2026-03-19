@@ -20,7 +20,7 @@ Both stages must be the **first stage** in an aggregation pipeline.
 | `$search` | You need matching documents, with or without metadata |
 | `$searchMeta` | You only need metadata (count, facets) — no documents returned |
 
-`$searchMeta` shares the following fields with `$search`: `index`, all operator names (e.g. `text`, `range`, `compound`), `concurrent`, and `returnStoredSource`.
+`$searchMeta` shares the following fields with `$search`: `index`, all operator names (e.g. `text`, `range`, `compound`), `concurrent` (parallelizes search across segments on dedicated search nodes only — ignored otherwise), and `returnStoredSource`.
 
 ---
 
