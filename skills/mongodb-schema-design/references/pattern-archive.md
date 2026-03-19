@@ -16,13 +16,13 @@ A sales collection with 5 years of data (50M documents) where only the recent 6 
 **Correct (archive old data separately):**
 
 ```javascript
-// Step 1: Define archive threshold
-const fiveYearsAgo = new Date()
-fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5)
+// Step 1: Define archive threshold (older than 6 months)
+const sixMonthsAgo = new Date()
+sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
 // Step 2: Move old data to archive collection using $merge
 db.sales.aggregate([
-  { $match: { date: { $lt: fiveYearsAgo } } },
+  { $match: { date: { $lt: sixMonthsAgo } } },
   { $merge: {
       into: "sales_archive",
       on: "_id",
@@ -33,7 +33,7 @@ db.sales.aggregate([
 ])
 
 // Step 3: Delete archived data from active collection
-db.sales.deleteMany({ date: { $lt: fiveYearsAgo } })
+db.sales.deleteMany({ date: { $lt: sixMonthsAgo } })
 
 // Result:
 // - sales: Recent data, fast queries, small indexes
