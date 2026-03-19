@@ -1,0 +1,257 @@
+{
+  "test_suite": "MongoDB Natural Language Querying vs Query Optimizer - Skill Invocation Tests",
+  "description": "Validates that the correct skill is invoked based on user prompts. Tests boundary between query generation and query optimization.",
+  "version": "1.0",
+  "skills_tested": [
+    "mongodb-natural-language-querying",
+    "mongodb-query-optimizer"
+  ],
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "clear_natural_language_querying",
+      "prompt": "Write a query to find all users with age greater than 25",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Clear query generation request with 'write' keyword",
+      "trigger_keywords": ["write", "find"]
+    },
+    {
+      "id": 2,
+      "category": "clear_natural_language_querying",
+      "prompt": "Generate a MongoDB aggregation pipeline to group orders by customer and calculate totals",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Explicit query generation with 'generate' keyword",
+      "trigger_keywords": ["generate", "aggregation"]
+    },
+    {
+      "id": 3,
+      "category": "clear_natural_language_querying",
+      "prompt": "How do I query for all active users in the last 30 days?",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Question about query syntax, no performance context",
+      "trigger_keywords": ["how do I query"]
+    },
+    {
+      "id": 4,
+      "category": "clear_natural_language_querying",
+      "prompt": "Create a query to find products with price between 50 and 100",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Clear query creation request",
+      "trigger_keywords": ["create", "find"]
+    },
+    {
+      "id": 5,
+      "category": "clear_natural_language_querying",
+      "prompt": "Show me the MongoDB syntax to filter documents by status",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Asking for query syntax help",
+      "trigger_keywords": ["syntax", "filter"]
+    },
+    {
+      "id": 6,
+      "category": "clear_query_optimizer",
+      "prompt": "Why is this query slow? db.users.find({status: 'active', age: {$gt: 25}})",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Explicit performance question with existing query",
+      "trigger_keywords": ["slow", "why"]
+    },
+    {
+      "id": 7,
+      "category": "clear_query_optimizer",
+      "prompt": "Optimize this query for better performance: db.orders.find({customerId: 123}).sort({date: -1})",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Direct optimization request with existing query",
+      "trigger_keywords": ["optimize", "performance"]
+    },
+    {
+      "id": 8,
+      "category": "clear_query_optimizer",
+      "prompt": "What indexes should I create for my users collection?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Index recommendation request",
+      "trigger_keywords": ["indexes", "create"]
+    },
+    {
+      "id": 9,
+      "category": "clear_query_optimizer",
+      "prompt": "How can I make this aggregation pipeline faster?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Performance improvement question",
+      "trigger_keywords": ["faster", "performance"]
+    },
+    {
+      "id": 10,
+      "category": "clear_query_optimizer",
+      "prompt": "Show me the slow queries on my cluster",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Cluster performance analysis request",
+      "trigger_keywords": ["slow queries", "cluster"]
+    },
+    {
+      "id": 11,
+      "category": "clear_query_optimizer",
+      "prompt": "Can you explain this query plan? It seems inefficient",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Query plan analysis request",
+      "trigger_keywords": ["explain", "query plan", "inefficient"]
+    },
+    {
+      "id": 12,
+      "category": "clear_query_optimizer",
+      "prompt": "My query is taking 5 seconds, how do I speed it up?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Performance problem with existing query",
+      "trigger_keywords": ["speed it up", "taking too long"]
+    },
+    {
+      "id": 13,
+      "category": "ambiguous_with_context",
+      "prompt": "Write an optimized query to find all active users",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Primary intent is query generation ('write'), 'optimized' is secondary context",
+      "trigger_keywords": ["write", "optimized", "find"],
+      "notes": "Generation takes precedence over optimization when both mentioned"
+    },
+    {
+      "id": 14,
+      "category": "ambiguous_with_context",
+      "prompt": "This query db.users.find({age: {$gt: 25}}) returns results, but can it be better?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Existing query provided, asking for improvement",
+      "trigger_keywords": ["can it be better", "improve"],
+      "notes": "Query already exists, looking for optimization"
+    },
+    {
+      "id": 15,
+      "category": "ambiguous_with_context",
+      "prompt": "Generate a query that performs well for finding users by email",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Primary action is 'generate', performance is a constraint not optimization request",
+      "trigger_keywords": ["generate", "performs well"],
+      "notes": "Generation with performance consideration, not optimization"
+    },
+    {
+      "id": 16,
+      "category": "ambiguous_with_context",
+      "prompt": "How should I index my collection for these queries: find by status, find by date, sort by name",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Index strategy question for query patterns",
+      "trigger_keywords": ["index", "for these queries"],
+      "notes": "Optimization focus even though queries described"
+    },
+    {
+      "id": 17,
+      "category": "ambiguous_edge_case",
+      "prompt": "Create a compound index for querying users by status and age",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Index creation is optimization domain",
+      "trigger_keywords": ["create", "index"],
+      "notes": "Despite 'create' keyword, indexes belong to optimizer"
+    },
+    {
+      "id": 18,
+      "category": "ambiguous_edge_case",
+      "prompt": "What's the best way to query for documents with nested fields?",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Asking about query syntax/approach, not optimization",
+      "trigger_keywords": ["best way", "query", "syntax"],
+      "notes": "'Best way' refers to correct syntax, not performance"
+    },
+    {
+      "id": 19,
+      "category": "combined_workflow",
+      "prompt": "Write a query to find recent orders and tell me if it needs indexes",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Primary task is generation, index check is secondary",
+      "trigger_keywords": ["write", "find", "needs indexes"],
+      "notes": "Natural language skill can mention index coverage"
+    },
+    {
+      "id": 20,
+      "category": "combined_workflow",
+      "prompt": "My aggregation pipeline groups by customer and sums totals, but it's slow. Can you help?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Query exists and is slow, needs optimization",
+      "trigger_keywords": ["slow", "help", "pipeline"],
+      "notes": "Performance issue with existing query"
+    },
+    {
+      "id": 21,
+      "category": "query_rewrite_scenario",
+      "prompt": "Rewrite this query to be more efficient: db.orders.find({$where: 'this.total > 100'})",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Optimization through query restructuring",
+      "trigger_keywords": ["rewrite", "efficient", "optimization"],
+      "notes": "Query rewrite is optimization, not generation"
+    },
+    {
+      "id": 22,
+      "category": "query_rewrite_scenario",
+      "prompt": "Convert this SQL query to MongoDB: SELECT * FROM users WHERE age > 25",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "SQL to MongoDB translation is query generation",
+      "trigger_keywords": ["convert", "SQL", "MongoDB"],
+      "notes": "Translation task, not optimization"
+    },
+    {
+      "id": 23,
+      "category": "index_awareness",
+      "prompt": "Write a query using the existing {status: 1, date: -1} index",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Query generation with index constraint",
+      "trigger_keywords": ["write", "query", "using index"],
+      "notes": "Generation task even with index awareness"
+    },
+    {
+      "id": 24,
+      "category": "index_awareness",
+      "prompt": "Which of my existing indexes would help this query: find({status: 'active'}).sort({date: -1})?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Index selection analysis for existing query",
+      "trigger_keywords": ["which indexes", "would help"],
+      "notes": "Performance analysis question"
+    },
+    {
+      "id": 25,
+      "category": "explain_plan_analysis",
+      "prompt": "Run explain plan on this query and tell me what's wrong",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Explicit explain plan analysis request",
+      "trigger_keywords": ["explain plan", "what's wrong"],
+      "notes": "Core optimizer functionality"
+    }
+  ],
+  "evaluation_criteria": {
+    "success_metrics": [
+      "Correct skill triggered for clear cases (100% target)",
+      "Reasonable skill choice for ambiguous cases (>80% target)",
+      "No false positives (skill not triggered when it shouldn't be)"
+    ],
+    "test_methodology": "Each test case is evaluated by observing which skill Claude invokes when presented with the prompt. The test passes if the expected skill is invoked and the should_not_trigger skill is not invoked."
+  }
+}
