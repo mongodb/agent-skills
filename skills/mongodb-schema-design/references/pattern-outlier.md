@@ -24,9 +24,16 @@ const CUSTOMER_THRESHOLD = 50
 
 async function addCustomer(bookId, customerId) {
   // Try the normal case first: atomically add to the embedded array only if
-  // the current customerCount is below the threshold.
+  // the current customerCount is below the threshold (treat missing/null as 0).
   const result = await db.books.updateOne(
-    { _id: bookId, customerCount: { $lt: CUSTOMER_THRESHOLD } },
+    {
+      _id: bookId,
+      $or: [
+        { customerCount: { $lt: CUSTOMER_THRESHOLD } },
+        { customerCount: { $exists: false } },
+        { customerCount: null }
+      ]
+    },
     {
       $push: { customers: customerId },
       $inc: { customerCount: 1 }
