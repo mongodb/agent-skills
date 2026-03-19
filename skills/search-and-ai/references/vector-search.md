@@ -587,34 +587,13 @@ db.collection.aggregate([
 
 **Rule of Thumb**: A good starting point is 20x your `limit` value. You can adjust between 10-20x (or higher) based on your recall and performance requirements.
 
-**Examples**:
+**Example**:
 ```javascript
-// Good balance for most use cases
 {
   $vectorSearch: {
     queryVector: [<array>],
     path: "embedding",
-    numCandidates: 150,  // 15x the limit
-    limit: 10
-  }
-}
-
-// High recall (use when accuracy is critical)
-{
-  $vectorSearch: {
-    queryVector: [<array>],
-    path: "embedding",
-    numCandidates: 500,  // 50x the limit
-    limit: 10
-  }
-}
-
-// Fast queries (use when speed is more important)
-{
-  $vectorSearch: {
-    queryVector: [<array>],
-    path: "embedding",
-    numCandidates: 50,   // 5x the limit
+    numCandidates: 200,  // 20x the limit — good starting point; tune between 10-50x based on recall and latency requirements
     limit: 10
   }
 }
@@ -622,46 +601,26 @@ db.collection.aggregate([
 
 ---
 
-### Factors Affecting numCandidates Selection
-
-**Index Size**:
-- Larger collections (millions of vectors) typically require higher numCandidates to maintain recall
-- Small collections (thousands of vectors) can use lower values
-
-**Limit Value**:
-- Low limit values require proportionally higher numCandidates to maintain recall
-- Example: limit=5 might need numCandidates=200 (40x) for good recall
-
-**Vector Quantization**:
-- Quantized vectors (int8, int1) reduce accuracy, may require higher numCandidates
-- Full precision float32 vectors can use lower numCandidates values
-
-**Pre-filtering**:
-- Heavy filtering (excludes 95%+ of data) may benefit from higher numCandidates
-- Light filtering (excludes less than 50% of data) uses standard values
-
----
-
 ### When to Adjust numCandidates
 
-**Increase numCandidates when**:
-- Search results seem to miss relevant documents
-- Recall testing shows low overlap with ENN results
-- You have a large dataset (millions of vectors)
+**Increase when**:
+- Search results miss relevant documents
+- Large dataset (millions of vectors)
 - Using quantized vectors (int8 or int1)
 - Heavy pre-filtering is applied
 
-**Decrease numCandidates when**:
+**Decrease when**:
 - Queries are too slow and results are already good
-- You have a small dataset (thousands of vectors)
+- Small dataset (thousands of vectors)
 - Speed is more important than perfect recall
-- Testing shows 90%+ recall with lower values
 
-**Test and Measure**:
-- Start with 20x limit (e.g., numCandidates=200 for limit=10)
-- Run sample queries and evaluate result quality
-- Measure query latency
-- Adjust based on your accuracy vs performance requirements
+**Note on low limit values**: A very low limit (e.g., 5) may need proportionally higher numCandidates (e.g., 40x) to maintain recall.
+
+### Test and Measure
+
+- Start with 20x limit and run sample queries
+- Check result quality and query latency
+- Adjust up or down based on your accuracy vs performance requirements
 
 ---
 
@@ -743,16 +702,7 @@ MongoDB Vector Search parallelizes query execution across segments when running 
 
 ## Vector Search on Views
 
-**Requires MongoDB 8.0+.** Create Vector Search indexes on Views to partially index a collection or filter out documents without embeddings.
-
-**Note**: Programmatic index creation via `mongosh`/driver methods requires **8.1+**. On 8.0, queries must run against the **source collection** referencing the view's index name. On 8.1+, you can query the view directly.
-
-**Supported view stages**: `$addFields`, `$set`, `$match` with `$expr` only.
-
-**Key limitations**:
-- Index names must be unique across source collection and all its views
-- No operators producing dynamic results (e.g., `$USER_ROLES`, `$rand`)
-- Queries return original source documents as they appear in the source collection
+Version requirements, supported stages, limitations, and troubleshooting are identical to Atlas Search on Views — see `lexical-search-indexing.md`. The difference is using a `vectorSearch`-type index and querying with `$vectorSearch`.
 
 **Example: partial index (exclude documents without embeddings)**
 ```javascript
@@ -792,9 +742,5 @@ db.moviesWithEmbeddings.aggregate([
   }
 ])
 ```
-
-**Troubleshooting**:
-- Index goes **FAILED**: view is incompatible with Vector Search, or source collection was removed/changed
-- Index goes **STALE**: view's pipeline fails on a document. Index remains queryable while STALE; returns to READY after fixing the document or view definition
 
 ---

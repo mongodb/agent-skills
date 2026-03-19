@@ -7,11 +7,11 @@ This guide covers hybrid search patterns in MongoDB Atlas: combining vector and 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Choosing the Right Approach](#choosing-the-right-approach)
 - [Indexing for Hybrid Search](#indexing-for-hybrid-search)
 - [$rankFusion](#rankfusion)
 - [$scoreFusion](#scorefusion)
 - [Lexical Prefilters (vectorSearch Operator)](#lexical-prefilters-vectorsearch-operator)
-- [Choosing the Right Approach](#choosing-the-right-approach)
 - [Best Practices and Limitations](#best-practices-and-limitations)
 
 ---
@@ -22,15 +22,30 @@ Hybrid search combines multiple search methods on the same collection and merges
 
 **Three patterns covered in this guide:**
 
-| Pattern | Stage / Operator | MongoDB Version | Use When |
-|---|---|---|---|
-| Rank-based fusion | `$rankFusion` | 8.0+ | Document position matters; use RRF algorithm |
-| Score-based fusion | `$scoreFusion` | 8.2+ | Score magnitude matters; need custom math or normalization |
-| Lexical prefilter | `$search` + `vectorSearch` operator | Preview | Need fuzzy/phrase/wildcard/compound pre-filtering before vector search |
+| Pattern | Stage / Operator | Use When |
+|---|---|---|
+| Rank-based fusion | `$rankFusion` | Document position matters; use RRF algorithm |
+| Score-based fusion | `$scoreFusion` | Score magnitude matters; need custom math or normalization |
+| Lexical prefilter | `$search` + `vectorSearch` operator | Need fuzzy/phrase/wildcard/compound pre-filtering before vector search |
 
 **$rankFusion vs $scoreFusion:**
 - `$rankFusion` ranks by position in each input pipeline using the Reciprocal Rank Fusion (RRF) algorithm. A document ranked #1 in multiple pipelines scores much higher than one ranked #1 in only one. Weights influence how much each pipeline's rank contributes.
-- `$scoreFusion` ranks by the actual score values from each pipeline. Supports normalization (sigmoid, minMaxScaler) and custom combination expressions. Use when score magnitude — not just ordering — matters.
+- `$scoreFusion` ranks by the actual score values from each pipeline. Supports normalization (sigmoid, minMaxScaler) and custom combination expressions. Use when score magnitude, not just ordering, matters.
+
+---
+
+## Choosing the Right Approach
+
+| Scenario | Recommended Approach |
+|---|---|
+| Combine lexical + vector, rank by position | `$rankFusion` |
+| Combine lexical + vector, control score math or normalization | `$scoreFusion` |
+| Multiple query vectors or embedding models on same collection | `$rankFusion` with multiple `$vectorSearch` pipelines |
+| Pre-filter vector search with fuzzy, phrase, wildcard, or compound | `$search` + `vectorSearch` operator |
+| Pre-filter vector search with simple equality or range | `filter` fields in `$vectorSearch` (see vector-search.md) |
+| Cross-collection hybrid search | `$unionWith` + `$vectorSearch` (not `$rankFusion`/`$scoreFusion`) |
+
+**Version requirements**: `$rankFusion` requires MongoDB 8.0+. `$scoreFusion` requires MongoDB 8.2+. Only proceed with this guide if the use case is lexical prefilters, or if the cluster meets the version requirement for the fusion stage of interest. Otherwise do not proceed.
 
 ---
 
@@ -97,9 +112,17 @@ db.collection.createSearchIndex(
 
 ---
 
-## $rankFusion
+## Common Rules for Fusion Stages
 
-**Preview feature. Requires MongoDB 8.0+.**
+The following rules apply to both `$rankFusion` and `$scoreFusion`.
+
+**Pipeline naming restrictions**: Pipeline names must not be empty, start with `$`, contain the null character `\0`, or contain `.`
+
+**Not allowed inside input pipelines**: `$project` or `storedSource` fields. Apply modifications (`$project`, `$addFields`, `$set`) in stages after the fusion stage.
+
+---
+
+## $rankFusion
 
 `$rankFusion` executes all input pipelines independently, de-duplicates results, and ranks them using the Reciprocal Rank Fusion (RRF) algorithm. Documents appearing highly ranked in multiple pipelines score highest.
 
@@ -144,15 +167,9 @@ RRFscore(d) = sum over all pipelines of: weight * (1 / (60 + rank_of_d_in_pipeli
 
 The constant 60 is a sensitivity parameter set by MongoDB and cannot be changed. Documents not present in a pipeline do not contribute a term for that pipeline.
 
-### Pipeline Naming Restrictions
-
-Pipeline names must not: be empty, start with `$`, contain the null character `\0`, or contain `.`
-
 ### Input Pipeline Restrictions
 
-Input pipelines must retrieve documents without modifying them and must order documents. Allowed stages: `$search`, `$vectorSearch`, `$match`, `$geoNear`, `$sample`, `$sort`, `$skip`, `$limit`.
-
-**Not allowed**: `$project` or `storedSource` fields. Apply modifications in stages after `$rankFusion`.
+See [Common Rules](#common-rules-for-fusion-stages) for naming and modification restrictions. Allowed stages: `$search`, `$vectorSearch`, `$match`, `$geoNear`, `$sample`, `$sort`, `$skip`, `$limit`.
 
 The ordering requirement is satisfied if the pipeline begins with `$search`, `$vectorSearch`, or `$geoNear`, or contains an explicit `$sort`.
 
@@ -308,8 +325,6 @@ Set `scoreDetails: true` on the stage, then project via `$meta: "scoreDetails"`.
 
 ## $scoreFusion
 
-**Preview feature. Requires MongoDB 8.2+.**
-
 `$scoreFusion` executes all input pipelines independently, de-duplicates results, and combines them using the actual score values from each pipeline. Supports normalization and custom combination expressions for fine-grained control over how scores are merged.
 
 ### Syntax
@@ -359,9 +374,7 @@ Set `scoreDetails: true` on the stage, then project via `$meta: "scoreDetails"`.
 
 ### Input Pipeline Restrictions
 
-Input pipelines must retrieve documents without modifying them and must return a score. Allowed stages: `$search`, `$vectorSearch`, `$match`, `$geoNear`, `$sort`, `$skip`, `$limit`. Note: unlike `$rankFusion`, `$sample` is not permitted.
-
-**Not allowed**: `$project` or `storedSource` fields. Apply modifications in stages after `$scoreFusion`.
+See [Common Rules](#common-rules-for-fusion-stages) for naming and modification restrictions. Allowed stages: `$search`, `$vectorSearch`, `$match`, `$geoNear`, `$sort`, `$skip`, `$limit`. Note: unlike `$rankFusion`, `$sample` is not permitted.
 
 The scoring requirement is satisfied if the pipeline begins with `$search`, `$vectorSearch`, `$match` with legacy text search, or `$geoNear`. Otherwise, include an explicit `$score` stage.
 
@@ -526,8 +539,6 @@ Set `scoreDetails: true`, then use `$meta: "scoreDetails"` in `$project`, `$addF
 
 ## Lexical Prefilters (vectorSearch Operator)
 
-**Preview feature.**
-
 The `vectorSearch` operator runs inside a `$search` stage and performs ANN or ENN vector search with the ability to pre-filter using any Atlas Search operator — including `text` with fuzzy matching, `phrase`, `wildcard`, `queryString`, and `compound`. This is more expressive than the MQL-only `filter` option in the `$vectorSearch` stage.
 
 **Requires**: A `search`-type index (not vectorSearch-type) with the embedding field configured as `vector` type. See [Indexing for Hybrid Search](#indexing-for-hybrid-search).
@@ -656,23 +667,6 @@ db.embedded_movies.aggregate([
 
 ---
 
-## Choosing the Right Approach
-
-| Scenario | Recommended Approach |
-|---|---|
-| Combine lexical + vector, rank by position | `$rankFusion` |
-| Combine lexical + vector, control score math or normalization | `$scoreFusion` |
-| Multiple query vectors or embedding models on same collection | `$rankFusion` with multiple `$vectorSearch` pipelines |
-| Pre-filter vector search with fuzzy, phrase, wildcard, or compound | `$search` + `vectorSearch` operator |
-| Pre-filter vector search with simple equality or range | `filter` fields in `$vectorSearch` (see vector-search.md) |
-| Cross-collection hybrid search | `$unionWith` + `$vectorSearch` (not `$rankFusion`/`$scoreFusion`) |
-
-**$rankFusion vs $scoreFusion — quick rule:**
-- If you care about which documents appear across multiple pipelines and their relative ordering → `$rankFusion`
-- If you care about score magnitude and want to normalize, weight, or apply math to raw scores → `$scoreFusion`
-
----
-
 ## Best Practices and Limitations
 
 ### Best Practices
@@ -690,23 +684,14 @@ textPipeline: [
 
 **Handle disjoint results**: If most results come from one pipeline and not the other, the two methods are returning largely different documents. Increase per-pipeline limits to improve overlap.
 
-**Apply modifications after the fusion stage**: Input pipelines cannot contain `$project` or `storedSource` fields. Add `$project`, `$addFields`, and `$set` stages after `$rankFusion`/`$scoreFusion`.
-
 **Use `$match` for non-search filtering**: To filter on specific fields without a search pipeline (e.g., boost on a flag field), add a `$match` pipeline inside `input.pipelines`. It must contain an explicit `$sort` to qualify as a ranked pipeline.
 
 ### Limitations
-
-**Version requirements**:
-- `$rankFusion`: MongoDB 8.0+
-- `$scoreFusion`: MongoDB 8.2+
-- `vectorSearch` operator inside `$search`: Preview feature, check Atlas documentation for availability
 
 **Single collection only**: `$rankFusion` and `$scoreFusion` cannot span multiple collections. For cross-collection hybrid search, use `$unionWith` with `$vectorSearch`.
 
 **Pipelines run serially**: Input pipelines do not execute in parallel.
 
 **No pagination inside sub-pipelines**: `$rankFusion` and `$scoreFusion` do not support pagination within input pipelines.
-
-**storedSource not supported**: Indexes containing a `vector` field type do not support `storedSource: true`. Use `include`/`exclude` to specify stored fields.
 
 **vectorSearch operator restrictions**: Cannot be used inside `embeddedDocument`, `compound`, or `facet` operators. Cannot use `highlight`, `sort`, or `searchSequenceToken` with the `vectorSearch` operator — use `$skip` and `$limit` after `$search` instead.

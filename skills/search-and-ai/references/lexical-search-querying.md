@@ -7,6 +7,7 @@ This guide covers query patterns and optimization techniques for MongoDB Atlas S
 - [$search vs $searchMeta](#search-vs-searchmeta)
 - [Query Patterns](#query-patterns)
 - [Query Optimization](#query-optimization)
+- [Query Performance Analysis](#query-performance-analysis)
 
 ---
 
@@ -16,35 +17,171 @@ Both stages must be the **first stage** in an aggregation pipeline.
 
 | Stage | Use When |
 |---|---|
-| `$search` | You need matching documents, with or without facet metadata |
+| `$search` | You need matching documents, with or without metadata |
 | `$searchMeta` | You only need metadata (count, facets) — no documents returned |
 
 `$searchMeta` shares the following fields with `$search`: `index`, all operator names (e.g. `text`, `range`, `compound`), `concurrent`, and `returnStoredSource`.
 
-`$searchMeta`-only fields:
-
-| Field | Description |
-|---|---|
-| `count` | Returns total or lower-bound count of matching documents. `{ "type": "total \| lowerBound" }` |
-| `facet` | Collector that returns facet bucket metadata instead of an operator |
-| `returnScope` | Sets query context to an embedded document field. Requires `returnStoredSource: true` on MongoDB < 8.2 |
-
-**Example: count documents matching a range**
-```javascript
-db.movies.aggregate([
-  {
-    $searchMeta: {
-      range: { path: "year", gte: 1998, lt: 1999 },
-      count: { "type": "total" }
-    }
-  }
-])
-// Returns: [ { count: { total: Long("552") } } ]
-```
-
 ---
 
 ## Query Patterns
+
+### Operator Reference
+
+| Operator | Description |
+|---|---|
+| `autocomplete` | Search-as-you-type from incomplete input |
+| `compound` | Combines multiple operators into a single query |
+| `embeddedDocument` | Queries fields inside arrays of objects |
+| `equals` | Exact match on boolean, date, number, objectId, token, uuid |
+| `exists` | Tests for presence of a field |
+| `geoShape` | Queries shapes by spatial relation (geo type, indexShapes: true) |
+| `geoWithin` | Queries points within a region (geo type) |
+| `hasAncestor` | Queries ancestor-level fields when using `returnScope` |
+| `hasRoot` | Queries root-level fields when using `returnScope` |
+| `in` | Queries single values or arrays of values |
+| `moreLikeThis` | Finds documents similar to a given document |
+| `near` | Queries values near a number, date, or geo point |
+| `phrase` | Searches for terms in a specific order |
+| `queryString` | Boolean/field-specific query syntax |
+| `range` | Queries values within a numeric, date, string, or objectId range |
+| `regex` | Regular expression matching on string fields |
+| `text` | Full-text analyzed search on string fields |
+| `vectorSearch` | Semantic search with lexical pre-filters (vector type in search index) |
+| `wildcard` | Wildcard pattern matching on string fields |
+
+---
+
+### Count Results
+
+Use the `count` option in `$searchMeta` to count matching documents without fetching them. Also works in `$search` via the `$SEARCH_META` aggregation variable when you need both results and count.
+
+```javascript
+// Count only (recommended)
+db.movies.aggregate([
+  {
+    $searchMeta: {
+      range: { path: "year", gte: 2010, lte: 2015 },
+      count: { type: "lowerBound" }  // or "total" for exact count
+    }
+  }
+])
+// Returns: { count: { lowerBound: NumberLong(1001) } }
+```
+
+```javascript
+// Count alongside results using $SEARCH_META
+db.movies.aggregate([
+  {
+    $search: {
+      text: { path: "title", query: "<query>" },
+      count: { type: "total" }
+    }
+  },
+  { $project: { title: 1, meta: "$SEARCH_META" } },
+  { $limit: 10 }
+])
+```
+
+| type | Behavior |
+|---|---|
+| `lowerBound` | Approximate. Exact up to `threshold` (default 1000), rough above it. |
+| `total` | Exact count. Slower on large result sets. |
+
+**Note:** Count affects performance — use only when needed (e.g., first page of paginated results).
+
+---
+
+### Pagination with searchSequenceToken
+
+Cursor-based pagination using tokens. More efficient than `$skip` alone for deep pagination.
+
+**Step 1 — Get tokens from the initial query:**
+```javascript
+db.movies.aggregate([
+  {
+    $search: {
+      index: "<index-name>",
+      text: { path: "title", query: "summer" },
+      sort: { released: 1 }  // Sort on a unique field to prevent tie-ordering issues
+    }
+  },
+  { $limit: 10 },
+  {
+    $project: {
+      title: 1, released: 1,
+      paginationToken: { $meta: "searchSequenceToken" }
+    }
+  }
+])
+```
+
+**Step 2 — Next page using searchAfter:**
+```javascript
+db.movies.aggregate([
+  {
+    $search: {
+      index: "<index-name>",
+      text: { path: "title", query: "summer" },
+      searchAfter: "<token-from-last-document-on-previous-page>",
+      sort: { released: 1 }
+    }
+  },
+  { $limit: 10 },
+  { $project: { title: 1, paginationToken: { $meta: "searchSequenceToken" } } }
+])
+```
+
+Use `searchBefore` with the first document's token on the current page to go to the previous page — results are returned in reverse order. Combine `searchAfter` with `$skip` to jump pages.
+
+**Key constraint:** Query semantics (operator, path, query value, sort) must be identical between the initial query and any `searchAfter`/`searchBefore` query.
+
+---
+
+### Retrieve Arrays of Objects with returnScope
+
+Return each element of an embedded document array as an individually scored document. Works in both `$search` and `$searchMeta`.
+
+**Requirements:**
+- Array field indexed as `embeddedDocuments` type with `storedSource` defined on the fields to return
+- `returnStoredSource: true` in the query
+- All operator paths must be nested under `returnScope.path` (use `hasAncestor` or `hasRoot` to query outside it)
+
+**Index:**
+```javascript
+{
+  "mappings": {
+    "dynamic": false,
+    "fields": {
+      "funding_rounds": {
+        "type": "embeddedDocuments",
+        "dynamic": true,
+        "storedSource": {
+          "include": ["round_code", "raised_currency_code", "raised_amount"]
+        }
+      }
+    }
+  }
+}
+```
+
+**Query:**
+```javascript
+db.companies.aggregate([
+  {
+    $search: {
+      range: { path: "funding_rounds.raised_amount", gte: 5000000, lte: 10000000 },
+      returnStoredSource: true,
+      returnScope: { path: "funding_rounds" }
+    }
+  },
+  { $limit: 5 }
+])
+```
+
+Only fields defined in `storedSource` within the embedded document are returned — root-level fields are excluded.
+
+---
 
 ### Advanced Query Syntax (queryString)
 
@@ -243,8 +380,6 @@ db.collection.aggregate([
 
 ---
 
-## Query Optimization
-
 ### Compound Queries
 
 **Compound queries** combine multiple operators efficiently:
@@ -283,31 +418,6 @@ db.collection.aggregate([
 - Use `filter` instead of `must` for criteria that shouldn't affect scoring (faster)
 - Put most selective criteria in `must` or `filter` first
 - Limit `should` clauses to 3-5 for best performance
-
----
-
-### Using Stored Source
-
-Retrieve frequently accessed fields directly from the search index instead of the database:
-
-```javascript
-db.collection.aggregate([
-  {
-    $search: {
-      index: "search_index",
-      text: { query: "detective", path: "plot" },
-      returnStoredSource: true  // Retrieve from mongot, not DB
-    }
-  },
-  { $limit: 20 },
-  { $match: { rating: { $gte: 7 } } }  // Filter on stored fields
-])
-```
-
-**Requirements:**
-- Fields must be configured in `storedSource` in your index definition
-- Dramatically improves performance by avoiding database lookups
-- Especially beneficial when filtering or sorting after $search
 
 ---
 
@@ -367,6 +477,93 @@ db.collection.aggregate([
 ```
 
 **Use case:** Support both fuzzy and exact matching on the same field without duplicating data.
+
+---
+
+### Autocomplete
+
+Search-as-you-type on fields indexed as `autocomplete` type (see lexical-search-indexing.md).
+
+| Option | Description |
+|---|---|
+| `query` | String to search |
+| `path` | Field indexed as `autocomplete` |
+| `tokenOrder` | `any` (tokens in any order; sequential matches score higher) or `sequential` (tokens must be adjacent) |
+| `fuzzy` | `{ maxEdits: 1\|2, prefixLength: <n>, maxExpansions: <n> }` |
+
+To score exact matches higher, index the field as both `autocomplete` and `string` types and query using `compound`.
+
+---
+
+### Facet
+
+Groups results into buckets by field values or ranges. Use with `$searchMeta` for metadata only, or with `$search` + `$SEARCH_META` variable for results and metadata.
+
+```javascript
+{ "$searchMeta": { "facet": {
+    "operator": { <operator> },
+    "facets": {
+      "<facet-name>": { "type": "string|number|date", "path": "<field>", ...options }
+    }
+} } }
+```
+
+| Facet type | Field index type | Bucket definition |
+|---|---|---|
+| `string` | `token` | Top N unique string values. `numBuckets` defaults to 10. |
+| `number` | `number` | Numeric ranges via `boundaries` array + optional `default` bucket |
+| `date` | `date` | Date ranges via `boundaries` array + optional `default` bucket |
+
+---
+
+### geoShape
+
+Query shapes by spatial relation. Field must be indexed as `geo` type with `indexShapes: true`. Required fields: `geometry` (GeoJSON Polygon, MultiPolygon, or LineString), `path`, and `relation`:
+
+| relation | Meaning |
+|---|---|
+| `contains` | Indexed geometry contains the query geometry |
+| `disjoint` | No overlap between geometries |
+| `intersects` | Geometries overlap |
+| `within` | Indexed geometry is within the query geometry (not supported for LineString or Point) |
+
+---
+
+### geoWithin
+
+Query geographic points within a region. Field must be indexed as `geo` type. Specify one of:
+- `box`: `{ bottomLeft: <GeoJSON Point>, topRight: <GeoJSON Point> }`
+- `circle`: `{ center: <GeoJSON Point>, radius: <meters> }`
+- `geometry`: GeoJSON Polygon or MultiPolygon
+
+**For both geo operators:** longitude must be specified before latitude; longitude range [-180, 180], latitude range [-90, 90].
+
+---
+
+## Query Optimization
+
+### Using Stored Source
+
+Retrieve frequently accessed fields directly from the search index instead of the database:
+
+```javascript
+db.collection.aggregate([
+  {
+    $search: {
+      index: "search_index",
+      text: { query: "detective", path: "plot" },
+      returnStoredSource: true  // Retrieve from mongot, not DB
+    }
+  },
+  { $limit: 20 },
+  { $match: { rating: { $gte: 7 } } }  // Filter on stored fields
+])
+```
+
+**Requirements:**
+- Fields must be configured in `storedSource` in your index definition
+- Dramatically improves performance by avoiding database lookups
+- Especially beneficial when filtering or sorting after $search
 
 ---
 
