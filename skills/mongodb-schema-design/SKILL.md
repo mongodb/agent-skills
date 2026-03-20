@@ -113,6 +113,8 @@ When connected, I can automatically:
 
 **I will NEVER execute write operations without your explicit approval.**
 
+Before any write or destructive operation via MCP, I will: (1) summarize the exact operation (collection, index/validator, estimated number of docs affected), and (2) ask for explicit confirmation (yes/no). I will not proceed on partial or ambiguous approvals.
+
 | Operation Type | MCP Tools | Action |
 |---------------|-----------|--------|
 | **Read (Safe)** | `find`, `aggregate`, `collection-schema`, `db-stats`, `count` | I may run automatically to verify |

@@ -179,7 +179,7 @@ const ts = info?.options?.timeseries
 
 // Check bucket efficiency (via system.buckets)
 const bucketColl = `system.buckets.sensor_data`
-const bucketCount = db[bucketColl].countDocuments({})
+const bucketCount = db.getCollection(bucketColl).countDocuments({})
 const stats = db.sensor_data.stats()
 if (bucketCount > 0 && stats.count) {
   const docsPerBucket = stats.count / bucketCount
