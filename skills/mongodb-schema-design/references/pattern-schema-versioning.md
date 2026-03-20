@@ -48,7 +48,6 @@ db.createCollection("users", {
       properties: {
         emails: {
           bsonType: "array",
-          minItems: 1,
           items: {
             bsonType: "string",
             pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
