@@ -13,9 +13,9 @@ tags: schema, patterns, polymorphic, discriminator, flexible-schema, indexing, s
 
 Using a separate collection per product type (e.g. `products_books`, `products_electronics`, `products_clothing`) means querying across all products requires multiple calls or `$unionWith`, shared indexes must be duplicated, adding new types requires new collections, and application code must branch on collection names.
 
-**Correct (single collection with discriminator):**
+**Correct (single collection using optional fields):**
 
-Store all product types in one `products` collection with a `type` discriminator field (e.g. `"book"`, `"electronics"`, `"clothing"`). All documents share common fields (`name`, `price`, `inStock`); each type adds its own specific fields (books: `author`, `isbn`, `pages`; electronics: `brand`, `wattage`, `batteryHours`, `warranty`; clothing: `size`, `color`, `material`). Cross-type queries use shared fields; type-specific queries filter by `type` plus type-specific fields.
+Store all product types in one `products` collection. All documents share common fields (`name`, `price`, `inStock`); each type adds its own specific fields (books: `author`, `isbn`, `pages`; electronics: `brand`, `wattage`, `batteryHours`, `warranty`; clothing: `size`, `color`, `material`). If the categories are always fully disjoint, use a `type` discriminator field (e.g. `"book"`, `"electronics"`, `"clothing"`). Cross-type queries use shared fields; type-specific queries filter by `type` plus type-specific fields. If there is potential overlap (e.g. between different categories of users), you can omit this field and rely entirely on optional fields.
 
 **Index strategies for polymorphic collections:**
 
