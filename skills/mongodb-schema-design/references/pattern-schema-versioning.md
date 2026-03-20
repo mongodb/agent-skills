@@ -233,7 +233,7 @@ db.users.find({
 
 // Find documents with wrong field types
 db.users.find({
-  { emails: { $not: { $type: "array" } } }
+  emails: { $not: { $type: "array" } }
 })
 ```
 
