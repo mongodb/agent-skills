@@ -71,7 +71,7 @@ db.articles.aggregate([
     title: 1,
     viewCount: 1,
     lastSyncedAt: 1,
-    staleness: { $subtract: [new Date(), "$lastSyncedAt"] }
+    staleness: { $subtract: [$$NOW, "$lastSyncedAt"] }
   }},
   { $sort: { staleness: -1 } },
   { $limit: 10 }
