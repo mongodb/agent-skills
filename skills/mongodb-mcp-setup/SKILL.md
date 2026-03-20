@@ -35,7 +35,7 @@ Before starting the setup, check if the user already has the required environmen
 Run this command to check for existing configuration (masking values to avoid exposing credentials):
 
 ```bash
-env | grep -E "^MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)=" | sed 's/=.*/=[set]/'
+env | grep "^MDB_MCP" | sed 's/=.*/=[set]/'
 ```
 
 **Interpretation:**
@@ -282,5 +282,5 @@ Proceed to Step 6 (Next Steps).
 - **Client doesn't pick up variables**: Ensure full restart (quit + reopen), not just a reload
 - **Invalid connection string format**: Re-check the format; must start with `mongodb://` or `mongodb+srv://`
 - **Atlas Admin API errors (Option B)**: Verify your IP is in the service account's API Access List
-- **Read-only mode not working**: Check `MDB_MCP_READ_ONLY=true` is set — run `env | grep MDB_MCP`
+- **Read-only mode not working**: Check `MDB_MCP_READ_ONLY=true` is set — run `env | grep ^MDB_MCP_READ_ONLY`
 - **fish/PowerShell**: Syntax differs — use `set -x` (fish) or `$env:` (PowerShell) instead of `export`
