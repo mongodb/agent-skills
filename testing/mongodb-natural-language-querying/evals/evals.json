@@ -231,6 +231,13 @@
       "prompt": "return only the customer email",
       "expected_output": "Aggregation with $project for email (or preferably suggests find query)",
       "files": []
+    },
+    {
+      "id": 34,
+      "name": "no-redundant-exists-with-comparison",
+      "prompt": "find all documents where age exists and is greater than 20",
+      "expected_output": "Find query with ONLY { age: { $gt: 20 } }, should NOT include $exists operator since comparison already implies existence",
+      "files": []
     }
   ]
 }

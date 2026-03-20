@@ -65,7 +65,6 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 **Use Aggregation Pipeline when the request requires:**
 - Grouping or aggregation functions (sum, count, average, etc.)
 - Multiple transformation stages
-- Computed fields or data reshaping
 - Joins with other collections ($lookup)
 - Array unwinding or complex array operations
 
@@ -124,7 +123,7 @@ For aggregation pipelines:
    - `$in`, `$nin` for matching against a list of possible values (equivalent to multiple $eq/$ne conditions OR'ed together)
    - `$and`, `$or`, `$not`, `$nor` for logical operations
    - `$regex` for case sensitive text pattern matching (prefer left-anchored patterns like `/^prefix/` when possible, as they can use indexes efficiently)
-   - `$exists` for field existence checks (prefer `a: {$ne: null}` to `a: {$exists: false}` )
+   - `$exists` for field existence checks (prefer `a: {$ne: null}` to `a: {$exists: true}` to leverage available indexes)
    - `$type` for type matching
 6. **Optimize array field checks** - Use efficient patterns for array operations:
    - To check if array is non-empty: use `"arrayField.0": {$exists: true}` instead of `arrayField: {$exists: true, $type: "array", $ne: []}`
