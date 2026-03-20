@@ -40,16 +40,16 @@ Reference these guidelines when:
 ### 3. Design Patterns - 11 rules
 
 - [pattern-approximation](references/pattern-approximation.md) - Use approximate values for high-frequency counters
-- [pattern-archive](references/pattern-archive.md) - Move historical data to separate storage for performance
+- [pattern-archive](references/pattern-archive.md) - Move historical data to separate/cold storage for performance
 - [pattern-attribute](references/pattern-attribute.md) - Collapse many optional fields into key-value attributes
 - [pattern-bucket](references/pattern-bucket.md) - Group time-series or IoT data into buckets
 - [pattern-computed](references/pattern-computed.md) - Pre-calculate expensive aggregations
-- [pattern-document-versioning](references/pattern-document-versioning.md) - Track document change history
-- [pattern-extended-reference](references/pattern-extended-reference.md) - Cache frequently-accessed related data
-- [pattern-outlier](references/pattern-outlier.md) - Handle documents with exceptional array sizes
-- [pattern-polymorphic](references/pattern-polymorphic.md) - Store heterogeneous documents with a type discriminator
+- [pattern-document-versioning](references/pattern-document-versioning.md) - Track document changes to enable historical queries and audit trails
+- [pattern-extended-reference](references/pattern-extended-reference.md) - Cache frequently-accessed data from related entities
+- [pattern-outlier](references/pattern-outlier.md) - Handle collections in which a small subset of documents are much larger than the rest, to prevent outliers from dominating memory and index costs
+- [pattern-polymorphic](references/pattern-polymorphic.md) - Store different types of entities in the same collection, often when they are different types of the same base entity (e.g. different types of users or different types of products)
 - [pattern-schema-versioning](references/pattern-schema-versioning.md) - Schema evolution, preventing drift, and safe online migrations. Consult when encountering inconsistent document structures, or when planning a schema change that cannot be applied atomically.
-- [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections when available
+- [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections for high-frequency time series data
 
 ## Key Principle
 
