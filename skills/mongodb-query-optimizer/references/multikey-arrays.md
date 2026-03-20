@@ -2,6 +2,18 @@
 
 Use this when optimizing queries on array fields or dealing with multikey indexes.
 
+### Array fields and multikey indexes
+
+When you index a field containing arrays, MongoDB creates a **multikey index** (one entry per array element).
+
+**Limitations:**
+
+- Cannot cover queries in most cases (must read documents), though coverage is possible when the array field is excluded from the projection and $elemMatch is not used  
+- Compound multikey restriction: at most **one** array field per compound index  
+- Large arrays create many index entries (impacts write performance and index size)
+
+**Use $elemMatch** for compound array queries to ensure conditions match the same array element.
+
 ## What are multikey indexes?
 
 When you create an index on a field that contains an array value in any document, MongoDB creates a **multikey index**. One index entry is created for each array element.
@@ -16,23 +28,10 @@ When you create an index on a field that contains an array value in any document
 // "nosql" → doc 1
 ```
 
-## Performance implications
-
-**Advantages:**
-- Enables efficient queries on array elements
-- Supports $in, $all, equality, and range queries on arrays
-- Required for querying array contents with indexes
-
-**Costs:**
-- More index entries per document (proportional to array size)
-- Larger index size on disk and in memory
-- Higher write cost (must update multiple index entries per document)
-- Cannot cover queries (MongoDB limitation)
-- **Compound multikey restriction**: at most ONE array field per compound index
-
 ## Querying arrays efficiently
 
 ### Equality match on array element
+
 ```javascript
 // Find documents where tags contains "mongodb"
 db.posts.find({ tags: "mongodb" })
@@ -43,6 +42,7 @@ db.posts.find({ tags: "mongodb" })
 **Performance:** Efficient if tag is selective (few documents match)
 
 ### $in with arrays
+
 ```javascript
 // Match any of several tags
 db.posts.find({ tags: { $in: ["mongodb", "database"] } })
@@ -51,6 +51,7 @@ db.posts.find({ tags: { $in: ["mongodb", "database"] } })
 **Index:** `{ tags: 1 }` scans multiple index ranges efficiently
 
 ### $all (must contain all values)
+
 ```javascript
 // Must have ALL specified tags
 db.posts.find({ tags: { $all: ["mongodb", "database"] } })
@@ -61,6 +62,7 @@ db.posts.find({ tags: { $all: ["mongodb", "database"] } })
 **Performance note:** Still requires checking documents. Less efficient than single equality.
 
 ### Range queries on arrays
+
 ```javascript
 // Array of numbers
 db.sensors.find({ readings: { $gt: 100 } })
@@ -71,6 +73,7 @@ db.sensors.find({ readings: { $gt: 100 } })
 **Index:** `{ readings: 1 }` enables IXSCAN but may return more docs than expected
 
 ### $elemMatch for complex array conditions
+
 ```javascript
 // items is array of objects
 db.orders.find({
@@ -85,6 +88,7 @@ db.orders.find({
 **Behavior:** Ensures **same array element** satisfies all conditions (not just any element)
 
 **Without $elemMatch:**
+
 ```javascript
 // This matches different array elements!
 db.orders.find({
@@ -93,13 +97,14 @@ db.orders.find({
 })
 ```
 
-May return documents where one item has sku="ABC123" and a *different* item has quantity>=5.
+May return documents where one item has sku="ABC123" and a *different* item has quantity\>=5.
 
 ## Compound multikey index restrictions
 
 **Rule:** At most ONE array field per compound index.
 
 **Allowed:**
+
 ```javascript
 // tags is array, category is scalar
 db.posts.createIndex({ tags: 1, category: 1 })  // Valid
@@ -109,6 +114,7 @@ db.posts.createIndex({ author: 1, category: 1 })  // Valid
 ```
 
 **Not allowed:**
+
 ```javascript
 // BOTH tags and keywords are arrays
 db.posts.createIndex({ tags: 1, keywords: 1 })  // Error!
@@ -117,7 +123,8 @@ db.posts.createIndex({ tags: 1, keywords: 1 })  // Error!
 **Why:** MongoDB cannot determine which array element combinations to index.
 
 **Workaround:** Create separate indexes:
-- `{ tags: 1, category: 1 }` for queries filtering by tags
+
+- `{ tags: 1, category: 1 }` for queries filtering by tags  
 - `{ keywords: 1, category: 1 }` for queries filtering by keywords
 
 MongoDB will use the most appropriate index for each query.
@@ -132,38 +139,47 @@ Large arrays impact index size and write performance:
 ```
 
 **When arrays grow large:**
-- Index size grows proportionally
-- Write operations update many index entries
+
+- Index size grows proportionally  
+- Write operations update many index entries  
 - Query selectivity decreases (many matches per tag)
 
 **Strategies for large arrays:**
-1. **Consider if you need to index it** - Can you filter another way?
-2. **Partial index** - Index only documents with reasonable array sizes:
-   ```javascript
-   db.posts.createIndex(
-     { tags: 1 },
-     { partialFilterExpression: {
-       $expr: { $lte: [{ $size: "$tags" }, 20] }
-     }}
-   )
-   ```
-   Note: Use `$expr` with `$size` for range comparisons in partial filters.
-3. **Separate collection** - Move array to own collection with parent reference
-4. **Bucketing** - Group related values instead of storing individually
 
-## Multikey + compound index query patterns
+1. **Consider if you need to index it** \- Can you filter another way?  
+2. **Partial index** \- Index only documents with reasonable array sizes:
+
+```javascript
+db.posts.createIndex(
+  { tags: 1 },
+  { partialFilterExpression: {
+    $expr: { $lte: [{ $size: "$tags" }, 20] }
+  }}
+)
+```
+
+   Note: Use `$expr` with `$size` for range comparisons in partial filters.
+
+   
+
+3. **Separate collection** \- Move array to own collection with parent reference  
+4. **Bucketing** \- Group related values instead of storing individually
+
+## Multikey \+ compound index query patterns
 
 ### ESR still applies
 
 For `{ tags: 1, date: 1 }` where tags is array:
 
 **Efficient:**
+
 ```javascript
 // Equality on array field first, then sort
 db.posts.find({ tags: "mongodb" }).sort({ date: -1 })
 ```
 
 **Less efficient:**
+
 ```javascript
 // Range on array field first
 db.posts.find({ tags: { $in: ["mongodb", "database"] } }).sort({ date: -1 })
@@ -176,13 +192,15 @@ May scan many index entries for tags before sorting by date.
 Index: `{ tags: 1, category: 1, date: 1 }`
 
 **Can use index:**
-- `{ tags: "X" }`
-- `{ tags: "X", category: "Y" }`
+
+- `{ tags: "X" }`  
+- `{ tags: "X", category: "Y" }`  
 - `{ tags: "X", category: "Y", date: {...} }`
 
 **Cannot use index efficiently:**
-- `{ category: "Y" }` - missing prefix (tags)
-- `{ date: {...} }` - missing prefix
+
+- `{ category: "Y" }` \- missing prefix (tags)  
+- `{ date: {...} }` \- missing prefix
 
 ## Avoiding unnecessary multikey indexes
 
@@ -193,9 +211,10 @@ Index: `{ tags: 1, category: 1, date: 1 }`
 { _id: 1, history: [/* audit log, never queried */] }
 ```
 
-Don't create index on `history` - wastes space and slows writes.
+Don't create index on `history` \- wastes space and slows writes.
 
 **If you only query array existence/size:**
+
 ```javascript
 // Only care if array exists and has elements
 db.coll.find({ tags: { $exists: true, $ne: [] } })
@@ -227,6 +246,7 @@ db.posts.getIndexes()
 Look for `"multikey": true` in the index definition.
 
 Alternatively:
+
 ```javascript
 db.posts.find({ tags: "mongodb" }).explain("executionStats")
 ```
@@ -236,15 +256,17 @@ Check `"isMultiKey": true` in the winning plan.
 ## When to use multikey indexes
 
 **Good use cases:**
-- Small to moderate array sizes (< 100 elements)
-- High query frequency on array contents
-- Selective array values (specific elements match few documents)
+
+- Small to moderate array sizes (\< 100 elements)  
+- High query frequency on array contents  
+- Selective array values (specific elements match few documents)  
 - Tags, categories, multi-valued attributes
 
 **Poor use cases:**
-- Very large arrays (1000s of elements)
-- Low query frequency relative to write frequency
-- Non-selective values (most documents contain the value)
+
+- Very large arrays (1000s of elements)  
+- Low query frequency relative to write frequency  
+- Non-selective values (most documents contain the value)  
 - Arrays that grow unbounded
 
 ## Alternative: embedded document arrays
@@ -266,4 +288,4 @@ Instead of scalar array, use array of objects with specific fields:
 
 **Benefit:** Can query multiple fields within same array element using $elemMatch
 
-**Tradeoff:** More complex data model, but more expressive queries
+**Tradeoff:** More complex data model, but more expressive queries  
