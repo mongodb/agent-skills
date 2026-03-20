@@ -32,10 +32,10 @@ This is an interactive step-by-step guide. The agent detects the user's environm
 
 Before starting the setup, check if the user already has the required environment variables configured.
 
-Run this command to check for existing configuration:
+Run this command to check for existing configuration (masking values to avoid exposing credentials):
 
 ```bash
-env | grep -E "MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)"
+env | grep -E "^MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)=" | sed 's/=.*/=[set]/'
 ```
 
 **Interpretation:**
@@ -130,7 +130,8 @@ Steps:
 
 1. On the service account details page, find **API Access List**
 2. Click **Add Access List Entry**
-3. Add current IP address (or `0.0.0.0/0` for testing only — not for production)
+3. Add your current IP address. Use a specific IP or CIDR range whenever possible.
+   - ⚠️ **`0.0.0.0/0` allows access from any IP — this is a significant security risk.** Only use it as a last resort for temporary testing and remove it immediately afterward. It should never be used in production.
 4. Save changes
 
 This is more secure than global Network Access settings as it only affects API access, not database connections.
@@ -194,7 +195,9 @@ Based on the result, identify the appropriate profile file using your training d
 
 ### 5.2: Show the Exact Snippet to Add
 
-Tell the user to open their profile file (e.g. `code ~/.zshrc`, `nano ~/.zshrc`, or their preferred editor) and add the following lines at the end. Make sure to adapt the profile path in the instructions to match their shell.
+Tell the user to store credentials in a dedicated `~/.mcp-env` file (not directly in their shell profile). This keeps credentials out of files that are often group/world readable by default and prevents accidentally committing them to git. Make sure to adapt the path in the instructions to be in the same folder as the shell profile file.
+
+**Step 1**: Create/edit `~/.mcp-env` (e.g. `nano ~/.mcp-env`) and add:
 
 **For Connection String (Option A):**
 
@@ -217,7 +220,19 @@ export MDB_MCP_API_CLIENT_SECRET="<paste-your-client-secret-here>"
 export MDB_MCP_READ_ONLY="true"
 ```
 
-Adjust syntax for the detected shell (e.g. `set -x VAR value` for fish, `$env:VAR = "value"` for PowerShell).
+**Step 2**: Restrict permissions on the file so only the owner can read it:
+
+```bash
+chmod 600 ~/.mcp-env # adapt command for Windows if needed
+```
+
+**Step 3**: Source the file from the shell profile. Tell the user to open their profile file (e.g. `code ~/.zshrc`, `nano ~/.zshrc`) and add this line:
+
+```bash
+source ~/.mcp-env
+```
+
+Adjust syntax for the detected shell (e.g. for fish: `bass source ~/.mcp-env` or set variables directly with `set -x`; for PowerShell: dot-source a `.ps1` file instead).
 
 ### 5.3: After Editing — Reload and Verify
 
@@ -229,19 +244,13 @@ Once the user has saved the file, provide the commands to reload and verify:
 source ~/.zshrc   # adjust path to match their profile file
 ```
 
-**Verify the variables are set:**
+**Verify the variables are set (masking values to avoid exposing credentials):**
 
 ```bash
-env | grep MDB_MCP
+env | grep "^MDB_MCP" | sed 's/=.*/=[set]/'
 ```
 
-Expected output should show the variable(s) they just added. If nothing appears, check that the profile file path is correct and the file was saved.
-
-**Security reminder**: Ensure the profile file permissions are restrictive:
-
-```bash
-chmod 600 ~/.zshrc   # adjust path as needed
-```
+Expected output should show the variable name(s) they just added, each with `=[set]`. If nothing appears, check that `source ~/.mcp-env` is in the profile file, the profile was reloaded, and `~/.mcp-env` was saved.
 
 Proceed to Step 6 (Next Steps).
 
