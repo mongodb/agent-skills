@@ -82,27 +82,30 @@ AWS connections (S3, Kinesis, Lambda) require that the IAM role ARN be **registe
 - "IAM role ARNs are registered via Atlas Cloud Provider Access"
 - "Ensure IAM role ARNs are registered via Atlas Cloud Provider Access before creating connections"
 
+**Security best practice:** Use a dedicated IAM role per processor (or group of related processors) with least-privilege permissions scoped only to the specific S3 buckets, Kinesis streams, or Lambda functions that processor needs. Avoid sharing broad-access roles across unrelated processors.
+
 ## Region Mapping Reference
 
 The `region` field for workspace creation uses Atlas-specific names that differ by cloud provider. Using the wrong format returns a cryptic `dataProcessRegion` error.
 
-| Provider | Cloud Region | Atlas `region` Value |
-|----------|-------------|---------------------|
+| Provider | Cloud Region | Streams `region` Value |
+|----------|-------------|----------------------|
 | **AWS** | us-east-1 | `VIRGINIA_USA` |
-| **AWS** | us-east-2 | `US_EAST_2` |
+| **AWS** | us-east-2 | `OHIO_USA` |
 | **AWS** | us-west-2 | `OREGON_USA` |
-| **AWS** | ca-central-1 | `CA_CENTRAL_1` |
-| **AWS** | sa-east-1 | `SA_EAST_1` |
-| **AWS** | eu-west-1 | `IRELAND_IRL` |
+| **AWS** | ca-central-1 | `MONTREAL_CAN` |
+| **AWS** | sa-east-1 | `SAOPAULO_BRA` |
+| **AWS** | eu-west-1 | `DUBLIN_IRL` |
+| **AWS** | ap-southeast-1 | `SINGAPORE_SGP` |
+| **AWS** | ap-south-1 | `MUMBAI_IND` |
+| **AWS** | ap-northeast-1 | `TOKYO_JPN` |
 | **GCP** | us-central1 | `US_CENTRAL1` |
-| **GCP** | europe-west1 | `WESTERN_EUROPE` |
-| **Azure** | eastus | `US_EAST_1` |
-| **Azure** | eastus2 | `US_EAST_2` |
-| **Azure** | westus | `US_WEST` |
-| **Azure** | westeurope | `EUROPE_WEST` |
-| **AWS** | ap-southeast-1 | `AP_SOUTHEAST_1` |
-| **AWS** | ap-south-1 | `AP_SOUTH_1` |
-| **AWS** | ap-northeast-1 | `AP_NORTHEAST_1` |
+| **GCP** | europe-west1 | `EUROPE_WEST1` |
+| **GCP** | us-east4 | `US_EAST4` |
+| **Azure** | eastus | `eastus` |
+| **Azure** | eastus2 | `eastus2` |
+| **Azure** | westus | `westus` |
+| **Azure** | westeurope | `westeurope` |
 
 This is a partial list. If unsure, inspect an existing workspace with `atlas-streams-discover` → `inspect-workspace` and check `dataProcessRegion.region`.
 
@@ -140,13 +143,7 @@ Security protocols: `SASL_SSL`, `SASL_PLAINTEXT`, `SSL`
 
 For Confluent Cloud, use `mechanism: "PLAIN"` with your API key as `username` and API secret as `password`.
 
-Kafka supports both **PrivateLink** and **VPC Peering** for private networking:
-
-**PrivateLink:**
-- Supported with Confluent Cloud on AWS (see Terraform examples in the ASP_example repo: `terraform/privatelinkConfluentAWS.tf`)
-- Requires both the Stream Processing workspace and Kafka cluster to be on AWS
-- Format: `"networking": {"access": {"type": "PRIVATE_LINK", "connectionId": "<Atlas PrivateLink ID>"}}`
-- The `connectionId` is the Atlas PrivateLink `_id` (not the AWS service endpoint ID)
+Kafka supports both **PrivateLink** and **VPC Peering** for private networking. See the [PrivateLink Reference](#privatelink-reference-all-vendors) section below for all supported vendors and providers.
 
 **VPC Peering:**
 - Supported for outbound connections to Kafka brokers in your own VPC
@@ -267,3 +264,35 @@ Required IAM policy permissions: `kinesis:ListShards`, `kinesis:SubscribeToShard
 No connectionConfig required. Provides built-in test data. Useful for development and testing without external infrastructure.
 
 Available sample formats: `sample_stream_solar` (default, auto-created when `includeSampleData: true` on workspace), `samplestock`, `sampleweather`, `sampleiot`, `samplelog`, `samplecommerce`.
+
+### PrivateLink Reference (All Vendors)
+
+PrivateLink is supported for Kafka, S3, Kinesis, and Azure EventHub connections. Create a project-level PrivateLink first, then reference it in the connection's `networking.access` config.
+
+**Step 1: Create project-level PrivateLink** via `atlas-streams-build` resource='privatelink':
+
+| Provider | Vendor | Required privateLinkConfig fields |
+|----------|--------|----------------------------------|
+| AWS | CONFLUENT | provider, vendor, dnsDomain, dnsSubDomain (array, [] if none) |
+| AWS | MSK | provider, vendor, arn |
+| AWS | S3 | provider, vendor, region, serviceEndpointId (`com.amazonaws.<region>.s3`) |
+| AWS | KINESIS | provider, vendor, region, serviceEndpointId |
+| AZURE | EVENTHUB | provider, vendor, dnsDomain, serviceEndpointId |
+| AZURE | CONFLUENT | provider, vendor, dnsDomain |
+| GCP | CONFLUENT | provider, vendor, gcpServiceAttachmentUris |
+
+**Step 2: Reference in connection networking config:**
+```json
+{
+  "networking": {
+    "access": {
+      "type": "PRIVATE_LINK",
+      "connectionId": "<PrivateLink _id from Step 1>"
+    }
+  }
+}
+```
+
+Use `atlas-streams-discover` action='get-networking' to find the PrivateLink `_id`.
+
+**Note:** Networking config cannot be modified after connection creation — delete and recreate to change.

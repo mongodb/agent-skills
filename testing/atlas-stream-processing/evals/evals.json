@@ -175,6 +175,13 @@
       "prompt": "How do I chain two processors together?",
       "expected_output": "Explains processor A writes to Atlas collection via $merge, processor B reads from that collection via change stream $source, provides example pipeline snippets for both",
       "files": []
+    },
+    {
+      "id": 26,
+      "name": "create-privatelink-kafka-aws",
+      "prompt": "Set up a PrivateLink connection for Confluent Kafka on AWS in workspace 'prod-streams'",
+      "expected_output": "Calls atlas-streams-build with resource='privatelink', privateLinkProvider='AWS', privateLinkConfig includes provider, vendor: 'CONFLUENT', dnsDomain, dnsSubDomain; then references the PrivateLink ID in the Kafka connection's networking.access config",
+      "files": []
     }
   ]
 }

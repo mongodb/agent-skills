@@ -84,7 +84,7 @@
     },
     "Azure": {
       "cloud_format": "eastus2",
-      "atlas_format": "US_EAST_2"
+      "atlas_format": "eastus2"
     }
   }
 }

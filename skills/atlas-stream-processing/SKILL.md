@@ -161,14 +161,15 @@ See [references/pipeline-patterns.md](references/pipeline-patterns.md) for stage
 
 **Region naming:** The `region` field uses Atlas-specific names that differ by cloud provider. Using the wrong format returns a cryptic `dataProcessRegion` error.
 
-| Provider | Cloud Region | Atlas `region` Value |
-|----------|-------------|---------------------|
+| Provider | Cloud Region | Streams `region` Value |
+|----------|-------------|----------------------|
 | **AWS** | us-east-1 | `VIRGINIA_USA` |
-| **AWS** | us-east-2 | `US_EAST_2` |
+| **AWS** | us-east-2 | `OHIO_USA` |
+| **AWS** | eu-west-1 | `DUBLIN_IRL` |
 | **GCP** | us-central1 | `US_CENTRAL1` |
-| **GCP** | europe-west1 | `WESTERN_EUROPE` |
-| **Azure** | eastus | `US_EAST_1` |
-| **Azure** | westeurope | `EUROPE_WEST` |
+| **GCP** | europe-west1 | `EUROPE_WEST1` |
+| **Azure** | eastus | `eastus` |
+| **Azure** | westeurope | `westeurope` |
 
 See [references/connection-configs.md](references/connection-configs.md) for the full region mapping table. If unsure, inspect an existing workspace with `atlas-streams-discover` → `inspect-workspace` and check `dataProcessRegion.region`.
 
@@ -181,7 +182,7 @@ Know what each connection type can do before creating pipelines:
 | **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
 | **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
 | **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
-| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path`, `format`, `compression` |
+| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path`, `format`, `compression`. Supports AWS PrivateLink. |
 | **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
 | **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
