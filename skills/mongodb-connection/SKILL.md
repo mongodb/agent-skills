@@ -53,6 +53,7 @@ Ask targeted questions:
 - **Current config**: Existing pool settings?
 - **Pool metrics**: Connections in use? Wait queue?
 - **Connectivity test**: Connects via mongo shell from same environment?
+- **Driver and Server versions**: Ask what driver and server version the project is using.
 
 Ask follow-up questions if responses are vague.
 
@@ -65,6 +66,9 @@ Analyze whether this is a client config issue or infrastructure problem.
 
 **Client Configuration Issues (Your Territory)**:
 - Pool exhaustion, inappropriate timeouts, poor reuse patterns, suboptimal sizing, missing serverless caching, connection churn
+
+**Driver Compatibility**
+- Check the Driver compatibility matrix to verify that the selected driver and server are a supported combination: https://www.mongodb.com/docs/drivers/compatibility/
 
 When identifying infrastructure issues, explain: "This appears to be a [DNS/VPC/IP] issue rather than client config. It's outside the scope of the client configuration skill, but here's how to resolve: [guidance/docs link]."
 
@@ -80,7 +84,7 @@ When you suggest configuration, explain WHY each parameter has its specific valu
 
 **These are reference templates—adapt them to the user's specific context from Phase 1.** Each scenario below applies when the user described that environment during context gathering.
 
-**Language-specific implementations**: For Python, Java, Go, C#, Ruby, or PHP, see `references/language-patterns.md` for complete code examples and driver-specific patterns.
+**Language-specific implementations**: For Python, Java, Go, C#, Ruby, or PHP, see `references/language-patterns.md` for driver-specific patterns.
 
 ##### Calculating Initial Pool Size
 
@@ -89,7 +93,7 @@ If performance data available: `Pool Size ≈ (Ops/sec) × (Avg duration) + 10-2
 Example: 10,000 ops/sec, 10ms → 100 + buffer = 110-120
 
 Use when: Clear requirements, known latency, predictable traffic.
-Don't use when: New app, variable durations—start conservative (10-20), monitor, adjust.
+Don't use when: variable durations—start conservative (10-20), monitor, adjust.
 
 Query optimization can dramatically reduce required pool size.
 
@@ -169,7 +173,7 @@ Example: `maxPoolSize: 50` — "Based on your observed peak of 40 concurrent ope
 
 **Solutions**:
 - Check server metrics BEFORE increasing pool: CPU, tickets, connections.current
-- **Increase `maxPoolSize`** when: Wait queue + server has capacity (available tickets, <70% CPU)
+- **Increase `maxPoolSize`** when: Wait queue has operations waiting (size > 0) + server shows low utilization (available tickets, low CPU)
 - **Don't increase** when: Server at capacity (tickets exhausted, high CPU)—optimize queries instead
 - Implement rate limiting if needed
 
@@ -191,7 +195,7 @@ Example: `maxPoolSize: 50` — "Based on your observed peak of 40 concurrent ope
 - Nearest read preference for geo-distributed setups
 
 ### Server-Side Connection Limits
-Total connections = instances × maxPoolSize × replica members. Monitor `connections.current` to avoid hitting limits.
+Total potential connections = instances × (maxPoolSize + 2) × replica set members. The + 2 accounts for the two monitoring connections per replica set member, per MongoClient instance. Monitor `connections.current` to avoid hitting limits.
 
 ## Language-Specific Considerations
 

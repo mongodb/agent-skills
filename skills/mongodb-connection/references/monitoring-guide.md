@@ -8,7 +8,7 @@ This reference provides detailed guidance on monitoring connection pool health, 
 
 Modern MongoDB drivers expose connection pool telemetry, providing a client-side view of connection health. Access methods vary by driver:
 - **Node.js**: Event listeners (`client.on('connectionPoolCreated', ...)`)
-- **Python**: `client.get_server_pool_stats()`
+- **Python (PyMongo and Motor)**: Event listeners via `monitoring.ConnectionPoolListener`
 - **Java**: `ConnectionPoolListener` interfaces
 - **Go**: Monitoring through driver configuration
 
@@ -109,7 +109,11 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 
 **What it is**: The number of active client connections currently established to the MongoDB server.
 
-**What to watch for**: Approaching `maxIncomingConnections` (default: 1,000,000 for MongoDB >3.0.0; 65,536 for versions 2.6.0-3.0.0) indicates server-side saturation.
+**What to watch for**: Approaching `maxIncomingConnections` indicates server-side saturation.
+
+**Default values**: 
+- Windows: 1,000,000
+- Linux/Unix: `(RLIMIT_NOFILE / 2) * 0.8` (MongoDB enforces this limit even if configured higher)
 
 **Healthy pattern**: Stable value with headroom for growth. Should roughly match the sum of all client pool sizes across all application instances.
 
@@ -235,7 +239,7 @@ Use this template when advising users on what to monitor after implementing conf
 > - **Both show high connection creation (totalCreated growing rapidly)**
   → Investigate client caching, maxIdleTimeMS settings, or network stability
 >
-> - **Wait queue grows but server metrics show available capacity**
+> - **Wait queue has operations waiting (size > 0) but server metrics show available capacity**
   → Client pool undersized; increase maxPoolSize
 >
 > **Key insight from MongoDB best practices**: Only increase `maxPoolSize` when you observe a request queue in the application **AND** MongoDB server metrics show low utilization. This prevents the common mistake of increasing pool size when the actual bottleneck is server capacity or query performance.
