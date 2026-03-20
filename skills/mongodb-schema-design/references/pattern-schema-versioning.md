@@ -17,8 +17,7 @@ MongoDB's flexibility is a feature, but undisciplined field additions lead to co
 
 ```javascript
 // Over time, different versions of "user" documents accumulate
-{ _id: 1, name: "Alice", email: "alice@ex.com" }                  // 2020
-{ _id: 2, name: "Bob", email: "bob@ex.com", phone: "555-1234" }   // 2021
+{ _id: 1, name: "Alice", email: "alice@ex.com" }                  // 2021
 { _id: 3, firstName: "Carol", lastName: "Smith", email: "carol@ex.com" }  // 2022 - restructured name
 { _id: 4, firstName: "Dave", lastName: "Jones", emails: ["dave@ex.com"] } // 2023 - email → emails
 
@@ -45,11 +44,15 @@ db.createCollection("users", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["email", "profile", "schemaVersion"],
+      required: ["emails", "profile", "schemaVersion"],
       properties: {
-        email: {
-          bsonType: "string",
-          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        emails: {
+          bsonType: "array",
+          minItems: 1,
+          items: {
+            bsonType: "string",
+            pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          }
         },
         profile: {
           bsonType: "object",
@@ -58,10 +61,6 @@ db.createCollection("users", {
             firstName: { bsonType: "string", minLength: 1 },
             lastName: { bsonType: "string", minLength: 1 }
           }
-        },
-        phones: {
-          bsonType: "array",
-          items: { bsonType: "string" }
         },
         schemaVersion: {
           bsonType: "int",
@@ -86,15 +85,18 @@ function migrateToV2(batchSize = 1000) {
   let cursor = db.users.find({ schemaVersion: { $lt: 2 } }).limit(batchSize)
 
   for (const doc of cursor) {
-    const parsed = parseAddressString(doc.address)
+    const [firstName, ...rest] = (doc.name || "").split(" ")
+    const lastName = rest.join(" ") || "Unknown"
 
     db.users.updateOne(
       { _id: doc._id, schemaVersion: { $lt: 2 } },  // Prevent double-migration
       {
         $set: {
           schemaVersion: 2,
-          address: { street: parsed.street, city: parsed.city, zip: parsed.zip }
-        }
+          profile: { firstName, lastName },
+          emails: doc.emails || (doc.email ? [doc.email] : []),
+        },
+        $unset: { name: "", email: "" }
       }
     )
     migrated++
@@ -117,19 +119,29 @@ db.users.updateMany(
     {
       $set: {
         schemaVersion: 2,
-        address: {
+        profile: {
           $cond: {
-            if: { $eq: [{ $type: "$address" }, "string"] },
+            if: { $eq: [{ $type: "$name" }, "string"] },
             then: {
-              street: { $arrayElemAt: [{ $split: ["$address", ", "] }, 0] },
-              city: { $arrayElemAt: [{ $split: ["$address", ", "] }, 1] },
-              zip: { $arrayElemAt: [{ $split: ["$address", ", "] }, 2] }
+              firstName: { $arrayElemAt: [{ $split: ["$name", " "] }, 0] },
+              lastName: { $ifNull: [
+                { $arrayElemAt: [{ $split: ["$name", " "] }, 1] },
+                "Unknown"
+              ]}
             },
-            else: "$address"
+            else: "$profile"
           }
-        }
+        },
+        emails: {
+          $cond: {
+            if: { $eq: [{ $type: "$email" }, "string"] },
+            then: ["$email"],
+            else: { $ifNull: ["$emails", []] }
+          }
+        },
       }
-    }
+    },
+    { $unset: ["name", "email"] }
   ]
 )
 
@@ -158,20 +170,18 @@ const migrations = {
   1: (doc) => ({
     ...doc,
     schemaVersion: 2,
-    address: {
-      street: parseAddressString(doc.address).street,
-      city: parseAddressString(doc.address).city,
-      zip: parseAddressString(doc.address).zip
-    }
+    profile: {
+      firstName: doc.name.split(" ")[0],
+      lastName: doc.name.split(" ").slice(1).join(" ") || "Unknown"
+    },
+    emails: doc.email ? [doc.email] : []
   }),
   2: (doc) => ({
     ...doc,
     schemaVersion: 3,
-    address: {
-      street: doc.address.street,
-      city: doc.address.city,
-      postalCode: doc.address.zip,
-      country: "USA"  // Default for existing data
+    profile: {
+      ...doc.profile,
+      displayName: `${doc.profile.firstName} ${doc.profile.lastName}`
     }
   })
 }
@@ -215,7 +225,7 @@ db.users.aggregate([
 // Find documents missing required fields
 db.users.find({
   $or: [
-    { email: { $exists: false } },
+    { emails: { $exists: false } },
     { profile: { $exists: false } },
     { "profile.firstName": { $exists: false } }
   ]
@@ -223,10 +233,7 @@ db.users.find({
 
 // Find documents with wrong field types
 db.users.find({
-  $or: [
-    { email: { $not: { $type: "string" } } },
-    { phones: { $exists: true, $not: { $type: "array" } } }
-  ]
+  { emails: { $not: { $type: "array" } } }
 })
 ```
 

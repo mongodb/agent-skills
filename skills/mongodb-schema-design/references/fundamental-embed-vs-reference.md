@@ -138,6 +138,8 @@ db.createCollection("users", {
 })
 ```
 
+(See fundamental-schema-validation.md for full validation guidance).
+
 **When NOT to embed arrays:**
 - Unbounded growth (comments, orders, events) — use separate collection
 - Independent access (addresses queried without user context)

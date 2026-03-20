@@ -125,6 +125,7 @@ db.createCollection("users", {
     }
   }
 })
+// (See fundamental-schema-validation.md for full validation guidance).
 
 // 2. Application-level checks before write
 const doc = await db.users.findOne({ _id: userId })
