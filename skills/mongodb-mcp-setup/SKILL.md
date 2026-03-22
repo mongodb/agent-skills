@@ -35,7 +35,7 @@ Before starting the setup, check if the user already has the required environmen
 Run this command to check for existing configuration (masking values to avoid exposing credentials):
 
 ```bash
-env | grep "^MDB_MCP" | sed 's/=.*/=[set]/'
+env | grep "^MDB_MCP" | sed '/^MDB_MCP_READ_ONLY=/!s/=.*/=[set]/'
 ```
 
 **Interpretation:**
@@ -247,7 +247,7 @@ source ~/.zshrc   # adjust path to match their profile file
 **Verify the variables are set (masking values to avoid exposing credentials):**
 
 ```bash
-env | grep "^MDB_MCP" | sed 's/=.*/=[set]/'
+env | grep "^MDB_MCP" | sed '/^MDB_MCP_READ_ONLY=/!s/=.*/=[set]/'
 ```
 
 Expected output should show the variable name(s) they just added, each with `=[set]`. If nothing appears, check that `source ~/.mcp-env` is in the profile file, the profile was reloaded, and `~/.mcp-env` was saved.
