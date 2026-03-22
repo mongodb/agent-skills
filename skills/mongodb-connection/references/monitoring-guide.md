@@ -6,13 +6,16 @@ This reference provides detailed guidance on monitoring connection pool health, 
 
 ## Driver-Level Metrics (Client-Side)
 
-Modern MongoDB drivers expose connection pool telemetry, providing a client-side view of connection health. Access methods vary by driver:
+Modern MongoDB drivers expose connection pool telemetry events, providing a client-side view of connection health. Access methods vary by driver. For example:
 - **Node.js**: Event listeners (`client.on('connectionPoolCreated', ...)`)
 - **Python (PyMongo and Motor)**: Event listeners via `monitoring.ConnectionPoolListener`
 - **Java**: `ConnectionPoolListener` interfaces
-- **Go**: Monitoring through driver configuration
 
-### Connections Created (`totalCreated`)
+Consult your driver's [documentation](https://www.mongodb.com/docs/drivers/) for how to subscribe to these standard events.
+
+Subscribe to the required events and keep stats for the relevant properties.
+
+### Connections Created
 
 **What it is**: The total number of connections the pool has established since initialization.
 
@@ -45,20 +48,15 @@ Modern MongoDB drivers expose connection pool telemetry, providing a client-side
 - **Consistently 100%**: Pool is definitely exhausted; immediate action needed
 - **High percentage with high wait queue times**: Clear sign of undersized pool
 
-**Diagnosis questions**:
-- Does it correlate with traffic spikes?
-- Are operations taking longer than expected to complete?
-- Are there any long-running queries holding connections?
-
 ---
 
-### Connections Available (Idle)
+### Connections Available (Idle Connections)
 
 **What it is**: The number of open but unused connections ready in the pool.
 
 **What to watch for**: Consistently zero means the pool is undersized.
 
-**Healthy pattern**: Some available connections (at least 10-20% of `maxPoolSize`) ready to handle sudden traffic spikes without waiting for new connection establishment.
+**Healthy pattern**: Some available connections (10-20% of `maxPoolSize`) ready to handle sudden traffic spikes without waiting for new connection establishment.
 
 **Action thresholds**:
 - **Always zero during traffic**: Pool is too small; connections are never released
@@ -72,14 +70,14 @@ Modern MongoDB drivers expose connection pool telemetry, providing a client-side
 
 **What to watch for**: Any value above zero indicates possible pool exhaustion. This is a critical metric.
 
-**Healthy pattern**: Zero most of the time, or very brief, occasional spikes during peak loads (and only if those spikes resolve quickly).
+**Healthy pattern**: Zero most of the time, or occasional spikes during peak loads.
 
 **Action thresholds**:
 - **Any sustained queue (>0 for >10 seconds)**: Immediate action required
 - **Repeated queuing**: Increase `maxPoolSize` or reduce operation duration
 - **Queue correlates with specific operations**: Those operations may be holding connections too long
 
-**Why this matters**: Operations in the wait queue add latency directly to user-facing requests. If `waitQueueTimeoutMS` is reached, users see errors.
+**Why this matters**: If `waitQueueTimeoutMS` is reached, users see errors.
 
 ---
 
@@ -103,7 +101,6 @@ Modern MongoDB drivers expose connection pool telemetry, providing a client-side
 Server-side metrics provide the MongoDB server's perspective on connection usage. Access via:
 - `db.adminCommand({ serverStatus: 1 }).connections`
 - MongoDB Atlas monitoring dashboards
-- Integration with monitoring platforms (Prometheus, Datadog, etc.)
 
 ### `connections.current`
 
@@ -111,7 +108,7 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 
 **What to watch for**: Approaching `maxIncomingConnections` indicates server-side saturation.
 
-**Default values**: 
+**Default maxIncomingConnections values per OS**: 
 - Windows: 1,000,000
 - Linux/Unix: `(RLIMIT_NOFILE / 2) * 0.8` (MongoDB enforces this limit even if configured higher)
 
@@ -154,9 +151,9 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 **Diagnosis**:
 - **Baseline calculation**: After initial warmup, calculate connections created per hour
 - **Rapid increase** (much faster than app restart cadence): Indicates connection churn across one or more clients
-- **Correlation with client metrics**: Cross-reference with driver-level `totalCreated` to identify which clients are churning
+- **Correlation with client metrics**: Cross-reference with driver-level total connections to identify which clients are churning
 
-**Example**: If you see `totalCreated` increasing by 1,000 connections/hour but you only restart apps once per day, something is causing unnecessary connection cycling.
+**Example**: If you see `totalCreated` increasing by 1,000 connections/hour but you only restart apps once per day (not serverless), something is causing unnecessary connection cycling.
 
 ---
 
@@ -171,7 +168,7 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 
 **What to watch for**: Low available tickets indicate the server is at maximum concurrency capacity, regardless of connection availability.
 
-**Healthy pattern**: Should have available tickets even during normal load. If tickets are frequently exhausted while connections are available, the bottleneck is server-side processing capacity, not connections.
+**Healthy pattern**: Should have available tickets. If tickets are frequently exhausted while connections are available, the bottleneck is server-side processing capacity, not connections.
 
 **Action thresholds**:
 - **Tickets available = 0 frequently**: Server is at capacity; operations will queue even if connections are available
@@ -189,137 +186,6 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 - `read.totalTickets` / `write.totalTickets` - Total ticket count
 
 **Reference**: [WiredTiger concurrentTransactions](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#mongodb-serverstatus-serverstatus.wiredTiger.concurrentTransactions)
-
----
-
-## Practical Monitoring Guidance
-
-Use this template when advising users on what to monitor after implementing configuration:
-
-
-> Monitor your connection pool over the next 24-48 hours:
->
-> ### Driver-Side Metrics (from your application)
-> 
-> 1. Connections In-Use:
->   - If consistently >80% of maxPoolSize → increase maxPoolSize by 20-30%
->   - Track peak usage to determine appropriate sizing
->
-> 2. Wait Queue:
->   - If size >0 during normal traffic → pool exhausted, scale up or optimize operations
->   - If wait time >50ms → investigate immediately
->
-> 3. Connections Created (totalCreated):
->   - If growing rapidly (+100/hour in steady state) → connection churn issue
->   - Compare growth rate to application restart frequency
->
-> ### Server-Side Metrics (from MongoDB)
->
-> 1. connections.current:
->   - Should be stable and match expected (instances × maxPoolSize)
->   - If approaching 90% of maxIncomingConnections → coordinate with DBA about server limits or scaling
->
-> 2. connections.totalCreated:
->   - Compare rate of increase over time
->   - If increasing much faster than app deployment/restart cycle → check client connection caching
->
-> ### Cross-Reference Patterns (Critical for Diagnosing Pool Issues)
->
-> Before increasing `maxPoolSize`, always cross-reference client and server metrics. A wait queue doesn't automatically mean you need more connections.
-> 
-> - **Driver shows pool exhaustion (wait queue >0) + Server has available capacity (low CPU, tickets available, connections well below limit)**
-  → ✅ **Safe to increase client maxPoolSize**—server can handle more connections
->
-> - **Driver shows pool exhaustion + Server at capacity (tickets exhausted, high CPU, or >90% of connection limit)**
-  → ❌ **Don't increase pool**—optimize queries or scale server tier instead
->
-> - **Driver shows healthy pool + Server at capacity limits**
-  → Need to optimize connection usage or scale server tier (not a pool sizing issue)
->
-> - **Both show high connection creation (totalCreated growing rapidly)**
-  → Investigate client caching, maxIdleTimeMS settings, or network stability
->
-> - **Wait queue has operations waiting (size > 0) but server metrics show available capacity**
-  → Client pool undersized; increase maxPoolSize
->
-> **Key insight from MongoDB best practices**: Only increase `maxPoolSize` when you observe a request queue in the application **AND** MongoDB server metrics show low utilization. This prevents the common mistake of increasing pool size when the actual bottleneck is server capacity or query performance.
-
----
-
-## Connection Churn Diagnosis
-
-Connection churn—rapid creation and destruction of connections—wastes resources and degrades performance. Identifying and resolving churn is critical for stable operation.
-
-### Symptoms
-
-- **Driver-side**: `totalCreated` increasing rapidly relative to stable connection counts
-- **Server-side**: `connections.totalCreated` growing much faster than expected
-- **High CPU on server**: Connection establishment is CPU-intensive (handshakes, authentication)
-- **Logs**: Frequent connection open/close events (enable debug logging)
-
-### Common Causes and Solutions
-
-#### 1. Not Using Connection Pooling
-
-**Problem**: Application creates a new `MongoClient` for each operation instead of reusing one.
-
-**Detection**:
-- `totalCreated` increases with each operation
-- Connection count never stabilizes
-- Code review reveals client creation in request handlers
-
-**Solution**: Create the MongoClient once at application initialization and reuse it throughout the application lifecycle. The client manages the connection pool internally—creating a new client for each operation bypasses pooling entirely and forces new connection establishment every time.
-
-#### 2. Serverless Functions Not Caching Client
-
-**Problem**: Serverless function creates new client inside the handler function instead of outside.
-
-**Detection**:
-- Cold starts create connections as expected
-- Warm invocations also show new connection creation
-- Connection count increases with invocation count, not instance count
-
-**Solution**: Initialize the MongoClient **outside** the handler function (at module/global scope). This allows the client to be reused across warm invocations of the same function instance. Clients created inside the handler are recreated on every invocation, defeating connection pooling entirely.
-
-#### 3. `maxIdleTimeMS` Set Too Low
-
-**Problem**: Connections are closed and recreated too frequently during normal operation.
-
-**Detection**:
-- Connection creation correlates with traffic patterns
-- Connections created during low-traffic periods after idle time
-- `maxIdleTimeMS` < 60 seconds for most applications
-
-**Solution**:
-- Increase `maxIdleTimeMS` to balance reuse and resource cleanup
-- Serverless: 10-30 seconds (ephemeral context)
-- Long-running servers: 5-10 minutes (300,000-600,000ms)
-- Consider intermediate network device timeouts
-
-#### 4. Application Restart Loops
-
-**Problem**: Application continuously restarting due to crashes or orchestration issues.
-
-**Detection**:
-- Server logs show frequent application connections/disconnections
-- Deployment platform shows high restart rate
-- Each restart creates `minPoolSize` connections immediately
-
-**Solution**: Fix root cause of application instability.
-
-#### 5. Network Issues
-
-**Problem**: Frequent network disruptions force reconnections.
-
-**Detection**:
-- Connection creation correlates with network errors in logs
-- May see "connection reset" or "EOF" errors
-- Intermittent connectivity to MongoDB
-
-**Solution**:
-- Investigate network stability between application and database
-- Check intermediate devices (firewalls, load balancers, proxies)
-- Verify network configurations (VPC peering, security groups, DNS)
 
 ---
 
@@ -344,8 +210,6 @@ All MongoDB drivers implement the [Connection Monitoring and Pooling specificati
 
 **What to instrument**: Send `connectionCheckOutFailed` events and rapid `connectionCreated` events to your monitoring system immediately.
 
-**Implementation**: Consult your driver's documentation for how to subscribe to these standard events. Search for "connection pool monitoring" or "connection pool events" in your driver's API documentation. This is the official driver documentation url: https://www.mongodb.com/docs/drivers/
-
 ### Server-Level Monitoring
 
 #### Querying Server Status
@@ -361,41 +225,3 @@ Use `db.serverStatus().connections` (via MongoDB shell or driver equivalent) to 
 - `awaitingTopologyChanges` - Connections waiting for topology updates
 
 **Reference**: [db.serverStatus() documentation](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#connections)
-
-#### Monitoring Integration
-
-Most monitoring platforms support MongoDB:
-
-- **MongoDB Atlas**: Built-in metrics dashboard with connection monitoring
-- **Prometheus**: Use mongodb_exporter for metrics collection
-- **Datadog**: MongoDB integration with connection metrics
-- **New Relic**: MongoDB monitoring with connection tracking
-
-**Key metrics to track**:
-- `connections.current` (gauge)
-- `connections.totalCreated` (counter - calculate rate)
-- `connections.available` (gauge)
-- Pool in-use percentage (calculated: in_use / maxPoolSize)
-- Wait queue size (gauge)
-- Wait queue time (histogram)
-
-**Alerting thresholds**:
-- Alert if in-use > 80% for > 5 minutes
-- Alert if wait queue > 0 for > 30 seconds
-- Alert if wait queue time > 100ms
-- Alert if connections.current > 90% of maxIncomingConnections
-- Alert if connection churn rate exceeds baseline by 3x
-
----
-
-## Summary
-
-Effective monitoring requires tracking both driver and server metrics, understanding what healthy patterns look like, and knowing when to take action. Use this guide to:
-
-1. Set up proper instrumentation in your application and monitoring platform
-2. Establish baselines for normal operation
-3. Set meaningful alerts for abnormal conditions
-4. Diagnose issues quickly when they occur
-5. Make informed decisions about pool sizing and configuration adjustments
-
-Remember: connection metrics are leading indicators of performance issues. Proactive monitoring prevents user-facing problems.

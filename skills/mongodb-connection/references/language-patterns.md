@@ -17,19 +17,12 @@ This reference provides language-specific patterns and considerations for MongoD
 - **Event loop efficiency**: Node.js can handle high concurrency with fewer connections than thread-based runtimes due to its async model
 - **Typical range**: 10-50 connections often sufficient for most Node.js workloads
 
-**Alternative scaling approaches**:
-- Multiple `MongoClient` instances across different Node processes/instances
-- Horizontal scaling (more application instances with smaller pools each)
-- If you hit Node's scaling limits, consider multi-threaded drivers (Python, Java, Go)
-
-**Note for legacy applications**: If you're maintaining older code with Node.js Driver 3.x or Mongoose 5.x, remember these versions defaulted to pool size 5. Consider upgrading to modern versions (4.x+/6.x+) for the improved default of 100 and better performance
-
 ---
 
 ## Python
 
 PyMongo is the official MongoDB driver for Python, supporting synchronous and asynchronous operations.
-Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th, 2026**. Critical bug fixes will continue until May 14th, 2027.
+Motor is the legacy asynchronous Python driver. Motor's EOL is **May 14th, 2026**. Critical bug fixes continue until May 14th, 2027.
 
 #### Synchronous API (`pymongo`)
 
@@ -48,7 +41,6 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Non-blocking async/await**: Built on asyncio
 - **Event-loop based**: Similar efficiency to Node.js
 - **More efficient with smaller pools**
-- **Production-ready since May 2025**
 
 **Best Practices**:
 - **Smaller pool sizes work well**: Event loop enables high concurrency with fewer connections
@@ -103,7 +95,6 @@ Motor is the legacy asynchronous Python driver. Motor will be EOL on **May 14th,
 - **Rack middleware available**: For connection management in web apps
 
 ### Best Practices
-- **Monitor pool metrics**: Use built-in monitoring events
 - **Consider Rack middleware**: For Rails/Sinatra applications
 
 ---
@@ -127,7 +118,7 @@ The PHP extension manages connection pooling at the process level. In traditiona
 
 ## General Patterns Across Languages
 
-### Best Practices (All Drivers)
+### Best Practices (All Drivers, except PHP)
 
 **Note**: PHP differs significantly from other languages due to its unique request lifecycle. See the PHP section for PHP-specific patterns.
 
@@ -141,15 +132,13 @@ The PHP extension manages connection pooling at the process level. In traditiona
 All modern MongoDB drivers default to **`maxPoolSize: 100`** (Node.js, Python, Java, Go, C#, Ruby, PHP, etc.).
 
 **When defaults are appropriate**:
-- For most applications, the default of 100 is a reasonable starting point
-- Modern async drivers (Node.js 4.x+, Motor) can handle high concurrency with fewer connections due to non-blocking I/O
-- Sync drivers' default of 100 handles moderate traffic well
+- For most applications, the default maxPoolSize is a reasonable starting point
+- Modern async drivers can handle high concurrency with fewer connections due to non-blocking I/O
 
 **When to adjust**:
 - Increase if you observe sustained connection pool exhaustion (wait queue growth, >80% utilization)
 - Decrease for low-traffic applications to reduce resource footprint
-- Decrease for serverless environments (3-10 per function instance)
-- **Don't change without reason**—defaults are based on extensive real-world usage patterns
+- Decrease for serverless environments
 
 ### Connection Lifecycle
 1. **Initialize once**: Create client at application startup
@@ -158,14 +147,4 @@ All modern MongoDB drivers default to **`maxPoolSize: 100`** (Node.js, Python, J
 4. **Let the driver manage**: Don't manually close connections unless shutting down
 
 ### Monitoring Access
-Most drivers provide:
-- **Event listeners**: Subscribe to connection pool events
-- **Statistics APIs**: Query current pool state
-- **Logging**: Enable debug logging for troubleshooting
-
-### Serverless Considerations
-All languages benefit from similar patterns in serverless:
-- Initialize client outside handler/function scope
-- Use smaller pool sizes (3-5 connections)
-- Shorter `maxIdleTimeMS` (10-30 seconds)
-- Prevent function runtime from waiting for pool cleanup
+Drivers provide Event listeners: Subscribe to connection pool events
