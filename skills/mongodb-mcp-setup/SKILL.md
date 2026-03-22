@@ -185,7 +185,7 @@ Help the user add the environment variables to their shell profile. **Do not ask
 
 ### 5.1: Detect Shell and Profile File
 
-Run:
+If the user is on Windows, assume **PowerShell** but ask the user to confirm. For Unix/macOS, detect the shell to determine the correct profile file by running:
 
 ```bash
 echo $SHELL
