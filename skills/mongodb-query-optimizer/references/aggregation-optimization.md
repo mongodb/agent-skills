@@ -2,9 +2,9 @@
 
 Aggregation pipelines process documents through sequential stages. Focus on:
 
-- Reducing documents early in the pipeline  
-- Minimizing data moved between stages  
-- Leveraging indexes where possible  
+- Reducing documents early in the pipeline
+- Minimizing data moved between stages
+- Leveraging indexes where possible
 - Managing memory usage
 
 ## Memory limits and disk spilling
@@ -13,9 +13,9 @@ Blocking stages (such as in-memory `$sort` and `$group`) have a 100MB memory lim
 
 **Better solutions:**
 
-- Filter more aggressively early in pipeline  
-- Add indexes to enable `$sort` to use index order  
-- Use `$limit` with `$sort` to reduce the amount of data the sort must process in memory for unindexed sorts  
+- Filter more aggressively early in pipeline
+- Add indexes to enable `$sort` to use index order
+- Use `$limit` with `$sort` to reduce the amount of data the sort must process in memory for unindexed sorts
 - Consider materialized views for repeated aggregations
 
 # Optimization Examples
@@ -148,10 +148,10 @@ db.collection.aggregate([
 
 `$lookup` performs collection joins and can be expensive. Strategies to improve performance:
 
-1. **Filter before lookup** to reduce left-side documents  
-2. **Use indexed fields** in the lookup `localField`/`foreignField`  
-3. **Add $match in the lookup pipeline** to reduce right-side documents early  
-4. **Add $project last in the lookup pipeline** only when and you need a small subset of fields  
+1. **Filter before lookup** to reduce left-side documents
+2. **Use indexed fields** in the lookup `localField`/`foreignField`
+3. **Add $match in the lookup pipeline** to reduce right-side documents early
+4. **Add $project last in the lookup pipeline** only when and you need a small subset of fields
 5. **$unwind immediately after lookup** when you need `as` result flattened
 
 ```javascript
@@ -176,7 +176,7 @@ db.collection.aggregate([
 
 Group operations require accumulating result documents in memory. Keys to efficiency:
 
-1. **Include only needed fields within the $group stage** \- reference only the fields you need in accumulators  
+1. **Include only needed fields within the $group stage** \- reference only the fields you need in accumulators
 2. **Be mindful of unbounded accumulators** \- `$push` and `$addToSet` grow without limit as group size increases and can cause memory issues
 
 **Bad** \- do not add $project before $group to "reduce fields":
