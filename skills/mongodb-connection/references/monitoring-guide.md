@@ -2,24 +2,41 @@
 
 This reference provides detailed guidance on monitoring connection pool health, interpreting metrics, and taking action based on what you observe. Consult this when users need to verify their configuration is working or troubleshoot connection-related issues.
 
----
+## Driver Events
+All MongoDB drivers implement the [Connection Monitoring and Pooling specification](https://github.com/mongodb/specifications/blob/master/source/connection-monitoring-and-pooling/connection-monitoring-and-pooling.md), which defines standard events for tracking pool lifecycle and connection state:
 
-## Driver-Level Metrics (Client-Side)
+**Pool lifecycle events**:
+- `connectionPoolCreated` / `connectionPoolClosed` - Track when pools are initialized or shut down
 
-Modern MongoDB drivers expose connection pool telemetry events, providing a client-side view of connection health. Access methods vary by driver. For example:
+**Connection lifecycle events**:
+- `connectionCreated` / `connectionClosed` - Monitor connection churn (rapid creation = pooling issues)
+
+**Check-out events**:
+- `connectionCheckOutStarted` - Operation requests a connection
+- `connectionCheckedOut` / `connectionCheckedIn` - Track when connections are borrowed/returned
+- `connectionCheckOutFailed` - **Critical alert signal** - indicates pool exhaustion
+
+**Tip:** Send `connectionCheckOutFailed` events and rapid `connectionCreated` events to your monitoring system immediately.
+
+Access methods vary by driver. For example:
 - **Node.js**: Event listeners (`client.on('connectionPoolCreated', ...)`)
 - **Python (PyMongo and Motor)**: Event listeners via `monitoring.ConnectionPoolListener`
-- **Java**: `ConnectionPoolListener` interfaces
+- **Java**: Through `ConnectionPoolListener` interfaces
 
 Consult your driver's [documentation](https://www.mongodb.com/docs/drivers/) for how to subscribe to these standard events.
 
-Subscribe to the required events and keep stats for the relevant properties.
+---
 
-### Connections Created
+### Driver-Level Metrics to Watch
+
+#### Connections Created
 
 **What it is**: The total number of connections the pool has established since initialization.
 
-**What to watch for**: Rapid increases indicate connection churn due to network issues or misconfiguration.
+**Events**: 
+- `ConnectionCreatedEvent` - fired when a new connection object is instantiated.
+
+**What to watch for**: Rapid increases (+100 connections/hour in steady state) indicate connection churn due to network issues or misconfiguration.
 
 **Healthy pattern**: Gradual increase during application startup as the pool warms up, then relatively stable. You should see increases mainly when:
 - Application restarts
@@ -27,7 +44,7 @@ Subscribe to the required events and keep stats for the relevant properties.
 - Network disruptions force reconnections
 
 **Troubleshooting**:
-- **Rapid growth** (+100 connections/hour in steady state): Indicates connection churn. Check:
+- **Rapid growth**: Indicates connection churn. Check:
   - `maxIdleTimeMS` is not too aggressive
   - Network stability
   - Application not creating new clients repeatedly
@@ -35,9 +52,13 @@ Subscribe to the required events and keep stats for the relevant properties.
 
 ---
 
-### Connections In-Use
+#### Connections In-Use
 
 **What it is**: The number of connections currently borrowed from the pool and serving application requests.
+
+**Events**:
+- `ConnectionCheckedOutEvent` - increment counter (connection borrowed)
+- `ConnectionCheckedInEvent` - decrement counter (connection returned)
 
 **What to watch for**: Consistently high values approaching `maxPoolSize` signal potential pool exhaustion.
 
@@ -50,9 +71,13 @@ Subscribe to the required events and keep stats for the relevant properties.
 
 ---
 
-### Connections Available (Idle Connections)
+#### Connections Available
 
 **What it is**: The number of open but unused connections ready in the pool.
+
+**Events**:
+- `ConnectionCheckedInEvent` - increases available count
+- `ConnectionCheckedOutEvent` - decreases available count
 
 **What to watch for**: Consistently zero means the pool is undersized.
 
@@ -64,9 +89,12 @@ Subscribe to the required events and keep stats for the relevant properties.
 
 ---
 
-### Wait Queue Size
+#### Wait Queue Size
 
 **What it is**: The number of operations currently waiting for an available connection because the pool is at capacity.
+
+**Event**: 
+- `ConnectionCheckoutStartedEvent` - track when threads enter wait queue.
 
 **What to watch for**: Any value above zero indicates possible pool exhaustion. This is a critical metric.
 
@@ -81,9 +109,13 @@ Subscribe to the required events and keep stats for the relevant properties.
 
 ---
 
-### Wait Queue Time
+#### Wait Queue Time
 
 **What it is**: The duration operations spend waiting for connections to become available.
+
+**Events** – Calculate duration: `(checked out time) - (checkout started time)`
+- `ConnectionCheckoutStartedEvent` - record timestamp when entering queue
+- `ConnectionCheckedOutEvent` - record timestamp when successfully acquired
 
 **What to watch for**: This wait time directly adds to application latency. Even moderate wait times (50-100ms) can degrade user experience.
 
@@ -96,11 +128,19 @@ Subscribe to the required events and keep stats for the relevant properties.
 
 ---
 
-## Server-Level Metrics (MongoDB-Side)
+## Server-Level Metrics to Watch
 
-Server-side metrics provide the MongoDB server's perspective on connection usage. Access via:
-- `db.adminCommand({ serverStatus: 1 }).connections`
-- MongoDB Atlas monitoring dashboards
+Use `db.serverStatus().connections` via MongoDB shell or driver equivalent.
+
+**Available fields**:
+- `current` - Total active client connections
+- `available` - Remaining capacity before hitting `maxIncomingConnections`
+- `totalCreated` - Cumulative connections created since server start
+- `active` - Connections currently executing operations
+- `exhaustIsMaster` / `exhaustHello` - Streaming topology monitoring connections
+- `awaitingTopologyChanges` - Connections waiting for topology updates
+
+**See manual**: [db.serverStatus() documentation](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#connections)
 
 ### `connections.current`
 
@@ -161,10 +201,10 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 
 **What it is**: MongoDB's WiredTiger storage engine uses a ticket-based concurrency control system. Tickets represent slots for concurrent read and write operations. When all tickets are in use, additional operations must wait.
 
-**Ticket counts**:
-  - **Maximum**: 128 read tickets and 128 write tickets (never exceeds this)
-  - **MongoDB 7.0+**: Uses dynamic adjustment algorithm that starts with a much lower baseline and adjusts based on workload
-  - **Pre-7.0**: Fixed value (documentation does not specify the exact default)
+**How to check**: Query `db.serverStatus().wiredTiger.concurrentTransactions` to see:
+- `read.available` / `write.available` - Tickets currently available
+- `read.out` / `write.out` - Tickets currently in use
+- `read.totalTickets` / `write.totalTickets` - Total ticket count
 
 **What to watch for**: Low available tickets indicate the server is at maximum concurrency capacity, regardless of connection availability.
 
@@ -180,48 +220,5 @@ Server-side metrics provide the MongoDB server's perspective on connection usage
 - **Client pool healthy + Server tickets exhausted**: Server-side bottleneck; optimize queries or scale server
 - **Both exhausted**: Need both client pool increase AND server capacity/optimization
 
-**How to check**: Query `db.serverStatus().wiredTiger.concurrentTransactions` to see:
-- `read.available` / `write.available` - Tickets currently available
-- `read.out` / `write.out` - Tickets currently in use
-- `read.totalTickets` / `write.totalTickets` - Total ticket count
+**See manual**: [WiredTiger concurrentTransactions](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#mongodb-serverstatus-serverstatus.wiredTiger.concurrentTransactions)
 
-**Reference**: [WiredTiger concurrentTransactions](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#mongodb-serverstatus-serverstatus.wiredTiger.concurrentTransactions)
-
----
-
-## Setting Up Monitoring
-
-### Application-Level Monitoring
-
-#### Event-Based Monitoring
-
-All MongoDB drivers implement the [Connection Monitoring and Pooling specification](https://github.com/mongodb/specifications/blob/master/source/connection-monitoring-and-pooling/connection-monitoring-and-pooling.md), which defines standard events for tracking pool lifecycle and connection state:
-
-**Pool lifecycle events**:
-- `connectionPoolCreated` / `connectionPoolClosed` - Track when pools are initialized or shut down
-
-**Connection lifecycle events**:
-- `connectionCreated` / `connectionClosed` - Monitor connection churn (rapid creation = pooling issues)
-
-**Check-out events**:
-- `connectionCheckOutStarted` - Operation requests a connection
-- `connectionCheckedOut` / `connectionCheckedIn` - Track when connections are borrowed/returned
-- `connectionCheckOutFailed` - **Critical alert signal** - indicates pool exhaustion
-
-**What to instrument**: Send `connectionCheckOutFailed` events and rapid `connectionCreated` events to your monitoring system immediately.
-
-### Server-Level Monitoring
-
-#### Querying Server Status
-
-Use `db.serverStatus().connections` (via MongoDB shell or driver equivalent) to retrieve server-side connection metrics:
-
-**Available fields**:
-- `current` - Total active client connections
-- `available` - Remaining capacity before hitting `maxIncomingConnections`
-- `totalCreated` - Cumulative connections created since server start
-- `active` - Connections currently executing operations
-- `exhaustIsMaster` / `exhaustHello` - Streaming topology monitoring connections
-- `awaitingTopologyChanges` - Connections waiting for topology updates
-
-**Reference**: [db.serverStatus() documentation](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#connections)

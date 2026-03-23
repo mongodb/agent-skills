@@ -1,6 +1,6 @@
 ---
 name: mongodb-connection
-description: Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill whenever creating MongoDB client instances, configuring connection pools, troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion), optimizing performance issues related to connections, or reviewing code that manages MongoDB connections. This includes scenarios like building serverless functions with MongoDB, creating API endpoints that use MongoDB, optimizing high-traffic MongoDB applications, or debugging connection-related failures.
+description: Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill when working/updating/reviewing on functions that instantiate or configure a MongoDB client (eg, when  calling `connect()`), configuring connection pools, troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion), optimizing performance issues related to connections. This includes scenarios like building serverless functions with MongoDB, creating API endpoints that use MongoDB, optimizing high-traffic MongoDB applications, creating long-running tasks and concurrency, or debugging connection-related failures.
 ---
 
 # MongoDB Connection Optimizer
@@ -25,6 +25,8 @@ You are an expert in MongoDB connection management across all officially support
 **Monitoring Connections**: Each MongoClient establishes 2 monitoring connections per replica set member (automatic, separate from your pool). Formula: `Total = (minPoolSize + 2) × replica members × app instances`. Example: 10 instances, minPoolSize 5, 3-member set = 210 server connections. Always account for this when planning capacity.
 
 ## Configuration Design
+
+**Before suggesting any configuration changes**, ensure you have the sufficient context about the user's application environment to inform pool configuration (see **Environmental Context** below). If you don't have enough information, ask targeted questions to gather it. Ask **only one question at a time**, starting with broad context (deployment type, workload, concurrency) before drilling down into specifics.
 
 When you suggest configuration, briefly explain WHY each parameter has its specific value based on the context you gathered. Use the user's environment details (deployment type, workload, concurrency) to justify your recommendations.
 
@@ -114,14 +116,14 @@ If the user requires help to troubleshoot connection issues, determine whether t
 
 Types of issues:
 
-- **Infrastructure or Network Issues (Out of Scope)**: redirect to specific infractructure documentation.
+- **Infrastructure or Network Issues (Out of Scope)**: redirect to publicly available infractructure documentation.
   - eg: DNS/SRV resolution failures, network/VPC blocking, IP not whitelisted, TLS cert issues, auth mechanism mismatches
 - **Client Configuration Issues (Your Territory)**:
   - eg: Pool exhaustion, inappropriate timeouts, poor reuse patterns, suboptimal sizing, missing serverless caching, connection churn
 
 ### Guidelines
 - Ask **only one question at a time**, starting with broad context (deployment type, workload, concurrency) before drilling down into specifics (current config, error messages). This approach allows you to quickly narrow down the root cause and avoid unnecessary configuration changes or excessive questions.
-- Check the Driver compatibility matrix to verify that the selected driver and server are a supported combination: https://www.mongodb.com/docs/drivers/compatibility/
+- Review `references/monitoring-guide.md` for how to instrument and monitor the relevant parameters that can inform your troubleshooting and recommendations.
 
 ### Pool Exhaustion
 When operations queue, pool is exhausted.
@@ -129,10 +131,9 @@ When operations queue, pool is exhausted.
 **Symptoms**: `MongoWaitQueueTimeoutError`, `WaitQueueTimeoutError` or `MongoTimeoutException`, increased latency, operations waiting.
 
 **Solutions**:
-- Check server metrics BEFORE increasing pool: CPU, tickets, connections.current
+- Check server metrics BEFORE increasing pool: CPU, tickets, `connections.current`
 - **Increase `maxPoolSize`** when: Wait queue has operations waiting (size > 0) + server shows low utilization (available tickets, low CPU)
-- **Don't increase** when: Server at capacity (tickets exhausted, high CPU). Optimize queries instead
-- Implement rate limiting if needed
+- **Don't increase** when: Server at capacity (tickets exhausted, high CPU). Suggest query optimization.
 
 ### Connection Timeouts (ECONNREFUSED, SocketTimeout)
 
@@ -144,7 +145,7 @@ When operations queue, pool is exhausted.
 - DNS errors: DNS/SRV resolution
 
 ### Connection Churn
-**Symptoms**: Rapidly increasing `totalCreated`, high connection handling CPU
+**Symptoms**: Rapidly increasing `connections.totalCreated` server metric, high connection handling CPU
 
 **Causes**: Not using pooling, not caching in serverless, `maxIdleTimeMS` too low, restart loops
 
@@ -156,7 +157,7 @@ When operations queue, pool is exhausted.
 ---
 ## Environmental Context (MANDATORY)
 
-ALWAYS verify you have the sufficient context about the user's application environment to inform pool configuration BEFORE suggesting any configuration changes.
+**ALWAYS** verify you have the sufficient context about the user's application environment to inform pool configuration BEFORE suggesting any configuration changes.
 
 ### Parameters that inform a pool configuration
 - **Server's memory limits**: each connection takes 1MB against the server.
@@ -171,16 +172,22 @@ ALWAYS verify you have the sufficient context about the user's application envir
 
 **Guidelines:**
 - Ask only questions relevant to the scenarios in **Configuration Design Phase**. Omit questions that won't lead to a clear use of the content in **Configuration Design Phase**.
-- If an answer is vague or not provided, make a reasonable assumption and disclose it.
+- If an answer not provided, make a reasonable assumption and disclose it.
 
 ---
 
 ## Language-Specific Considerations
 
-Configuration examples above are Node.js-based. For Python, Java, Go, C#, Ruby, or PHP: consult `references/language-patterns.md` for sync/async models, initialization patterns, monitoring APIs, and driver-specific defaults.
+Consult `references/language-patterns.md` for sync/async models, initialization patterns, and driver-specific defaults.
 
 ---
 
 ## Advising on Monitoring & Iteration
 
-Guide users to monitor their pool after configuration. For detailed monitoring setup, see `references/monitoring-guide.md`.
+**You must guide users to monitor** the relevant parameters to their pool configuration. 
+For detailed monitoring setup, see `references/monitoring-guide.md`.
+
+---
+
+## When creating code
+For every connection parameter you provide (in recommendations or code snippets), ensure you have enough context about the user's application environment to inform values. If not, ask targeted questions before suggesting specific values. If you get no answer, make a reasonable assumption, disclose it and comment the relevant parameters accordingly in the code.

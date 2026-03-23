@@ -131,11 +131,7 @@ The PHP extension manages connection pooling at the process level. In traditiona
 
 All modern MongoDB drivers default to **`maxPoolSize: 100`** (Node.js, Python, Java, Go, C#, Ruby, PHP, etc.).
 
-**When defaults are appropriate**:
-- For most applications, the default maxPoolSize is a reasonable starting point
-- Modern async drivers can handle high concurrency with fewer connections due to non-blocking I/O
-
-**When to adjust**:
+**When to adjust default values**:
 - Increase if you observe sustained connection pool exhaustion (wait queue growth, >80% utilization)
 - Decrease for low-traffic applications to reduce resource footprint
 - Decrease for serverless environments
