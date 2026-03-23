@@ -142,7 +142,7 @@ db.collection.aggregate([
 ]
 ```
 
-**Never $unwind to re-group by `_id`:** If you are using `$unwind` followed by `$group` with `_id:` you can replace the pattern with `$filter` to select matching array elements without unwinding.
+**Never $unwind to re-group by `_id`:** If you are using `$unwind` followed by `$group` with `_id:` you can replace it with an array operator like `$filter`, `$map` or `$reduce` to match or transform array elements without unwinding.
 
 ## Optimize $lookup operations
 
@@ -151,7 +151,7 @@ db.collection.aggregate([
 1. **Filter before lookup** to reduce left-side documents
 2. **Use indexed fields** in the lookup `localField`/`foreignField`
 3. **Add $match in the lookup pipeline** to reduce right-side documents early
-4. **Add $project last in the lookup pipeline** only when and you need a small subset of fields
+4. **Add $project last in the lookup pipeline** only when you need a small subset of fields
 5. **$unwind immediately after lookup** when you need `as` result flattened
 
 ```javascript
@@ -177,7 +177,7 @@ db.collection.aggregate([
 Group operations require accumulating result documents in memory. Keys to efficiency:
 
 1. **Include only needed fields within the $group stage** \- reference only the fields you need in accumulators
-2. **Be mindful of unbounded accumulators** \- `$push` and `$addToSet` grow without limit as group size increases and can cause memory issues
+2. **Be mindful of unbounded accumulators** \- `$push` and `$addToSet` grow as group size increases and can cause memory issues
 
 **Bad** \- do not add $project before $group to "reduce fields":
 
