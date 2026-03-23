@@ -1,1 +1,6 @@
+# Skill evaluation/benchmark workspaces
+*-workspace/
+
+# User-specific Claude settings
+.claude/settings.local.json
 .score_cache/
