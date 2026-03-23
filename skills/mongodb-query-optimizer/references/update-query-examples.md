@@ -2,13 +2,13 @@
 
 ## replaceOne vs. updateOne with $replaceWith
 
-**Before** — Full document replacement generates a large oplog entry:
+**Bad** — Full document replacement generates a large oplog entry:
 
 ```javascript
 db.coll.replaceOne({ _id: X }, entireNewDocument)
 ```
 
-**After** — Use aggregation-based update to generate smaller oplog deltas:
+**Good** — Use aggregation-based update to generate smaller oplog deltas:
 
 ```javascript
 db.coll.updateOne({ _id: X }, [{ $replaceWith: { $literal: entireNewDocument } }])
@@ -18,7 +18,7 @@ db.coll.updateOne({ _id: X }, [{ $replaceWith: { $literal: entireNewDocument } }
 
 ## findOneAndUpdate Misuse vs. updateOne
 
-**Before** — Using `findOneAndUpdate` when you don't need the document returned:
+**Bad** — Using `findOneAndUpdate` when you don't need the document returned:
 
 ```javascript
 db.coll.findOneAndUpdate(
@@ -27,7 +27,7 @@ db.coll.findOneAndUpdate(
 )
 ```
 
-**After** — Use `updateOne` when you don't need the result document:
+**Good** — Use `updateOne` when you don't need the result document:
 
 ```javascript
 db.coll.updateOne(
@@ -36,4 +36,4 @@ db.coll.updateOne(
 )
 ```
 
-**Why:** `findOneAndUpdate` writes a copy of the pre-change document to a side collection for retryable writes. This overhead is unnecessary if you don't need the returned document.  
+**Why:** `findOneAndUpdate` writes a copy of the pre-change document to a side collection for retryable writes. This overhead is unnecessary if you don't need the returned document.

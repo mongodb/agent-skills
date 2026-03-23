@@ -2,15 +2,39 @@
 
 ### Compound Index Guidelines
 
-**Equality → Sort → Range** order:
+The first field of the index must be in the query for the index to be considered.
 
-- **Equality** fields first (e.g. `{field: value}`, `{$in: [...]}` matching \<= 200 elements, `{field: {$eq: value}}`)  
+**Equality → Sort → Range** order is most often preferred:
+
+- **Equality** fields first (e.g. `{field: value}`, `{$in: [...]}` with \<= 200 elements, `{field: {$eq: value}}`)
 - **Sort** fields next  
-- **Range** fields last (e.g. `$gt`, `$lt`, `$gte`, `$lte`, `{$in: [...]}`matching \> 200 elements in the array), `$ne`)
+- **Range** fields last (e.g. `$gt`, `$lt`, `$gte`, `$lte`, `{$in: [...]}`with \> 200 elements in the array), `$ne, anchored case-sensitive $regex`)
+
+If equality is not very selective and range is, then ERS may perform better than ESR.
 
 ### Sort direction
 
 Index `{a:1, b:1}` supports `sort({a:1, b:1})` and reverse `sort({a:-1, b:-1})`, but NOT mixed directions like `sort({a:1, b:-1})`. For mixed sorts, create index matching exact pattern.
+
+### Collation Match
+
+**Before** — Query collation differs from index collation, so the index cannot be used:
+
+```javascript
+db.users.createIndex({ name: 1 })
+db.users.find({ name: "José" }).collation({ locale: "es", strength: 2 })
+// Index cannot be used for query
+```
+
+**After** — Create the index with the same collation the query uses:
+
+```javascript
+db.users.createIndex({ name: 1 }, { collation: { locale: "es", strength: 2 } })
+db.users.find({ name: "José" }).collation({ locale: "es", strength: 2 })
+// Index can be used for query
+```
+
+**Why:** Collation must match between index and query.
 
 # Covered Queries
 
@@ -21,7 +45,7 @@ A covered query retrieves data directly from the index, never accessing the actu
 1. **All query fields** are in the index  
 2. **All returned fields** are in the index (includes sort fields)  
 3. **Inclusion projection required** \- you must use an inclusion projection (e.g., `{ field: 1 }`) that requests only indexed fields, plus `_id: 0` if `_id` is not in the index. Exclusion projections cannot produce covered queries.  
-4. **No `$exists` or null checks** \- queries using `$exists` or querying for null/missing values cannot usually be covered by an index  
+4. **No `$exists` or null equality checks** \- queries using `$exists` or querying for null/missing values cannot usually be covered by an index
 5. **Multikey index constraints** \- multikey indexes can cover queries under certain conditions, such as when the array field itself is not included in the projection and operators like `$elemMatch` are not used. If the array field must be projected, covering is not possible.
 
 ## Building a covered query
