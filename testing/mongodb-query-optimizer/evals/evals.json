@@ -3,67 +3,53 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "How do I optimize this MongoDB find? db.orders.find({ status: 'open' }).sort({ createdAt: -1 })",
-      "expected_output": "Recommends a compound index on { status: 1, createdAt: -1 } following ESR ordering, explains why in-memory sort is problematic, and does not create indexes without user approval.",
+      "prompt": "How do I optimize this query? db.orders.find({ status: 'open', tags: { $in: ['urgent', 'priority', 'escalated'] } }).sort({ createdAt: -1 }).limit(50). The tags field usually has 3-5 values per document but the $in list could grow to much larger from a user filter.",
+      "expected_output": "Recommends index { status: 1, tags: 1, createdAt: -1 }, notes that $in with many elements is treated as a range scan rather than equality.",
       "files": [],
       "expectations": [
-        "Recommends a compound index that covers both the filter field (status) and the sort field (createdAt)",
-        "Mentions ESR rule or explains equality-before-sort index ordering",
-        "Suggests an index like { status: 1, createdAt: -1 } or equivalent",
-        "Explains why an in-memory sort is problematic or why eliminating it matters",
-        "Does not recommend creating indexes directly without user approval"
+        "Recommends a compound index covering status, tags, and createdAt",
+        "Mentions ESR ordering or explains equality-before-sort-before-range",
+        "Suggests that if the $in list stays small, { status: 1, tags: 1, createdAt: -1 } works, but if it grows large the performance is likely to degrade"
       ]
     },
     {
       "id": 2,
-      "prompt": "How should I index this aggregation $match so it uses an index? $match: { shopId: ObjectId('...'), date: { $gte: ISODate('2024-01-01') } }",
-      "expected_output": "Suggests a compound index following ESR rule with shopId (equality) before date (range). Explains that $match at the start of a pipeline can use indexes.",
+      "prompt": "This aggregation is slow. It joins orders to products and sums revenue per category. db.orders.aggregate([ { $match: { date: { $gte: ISODate('2025-01-01') } } }, { $lookup: { from: 'products', localField: 'productId', foreignField: 'sku', as: 'product' } }, { $unwind: '$product' }, { $group: { _id: '$product.category', totalRevenue: { $sum: { $multiply: ['$quantity', '$unitPrice'] } } } }, { $sort: { totalRevenue: -1 } }, { $limit: 10 } ])",
+      "expected_output": "Identifies that the $lookup foreignField 'sku' needs an index on the products collection. Notes that $sort + $limit together enable a top-N optimization. Suggests an index on orders.date for the initial $match.",
       "files": [],
       "expectations": [
-        "Suggests a compound index with shopId before date (equality before range per ESR)",
-        "Explains that $match at the beginning of an aggregation pipeline can use indexes",
-        "Recommends an index like { shopId: 1, date: 1 } or equivalent"
+        "Identifies that products.sku needs an index for the $lookup to avoid collection scans on every joined document",
+        "Suggests an index on orders.date for the $match stage",
+        "Notes that $sort immediately followed by $limit enables top-N sort optimization (only tracks top N values rather than sorting full dataset)",
+        "Does not suggest adding a $project before $group to 'reduce fields' since MongoDB's optimizer handles field pruning automatically"
       ]
     },
     {
       "id": 3,
-      "prompt": "Why is this query performing badly on my cluster? It's a find with filter on serialCode and sort by _id.",
-      "expected_output": "Diagnoses likely missing or suboptimal index on serialCode, explains the performance impact, and suggests indexing strategies. May suggest using explain to confirm.",
+      "prompt": "We have a background job that syncs documents from an external system. It does db.coll.replaceOne({ _id: doc._id }, doc) for each document. Most fields don't change but we don't know which fields do change. With 50K updates per hour things are getting slower. Any optimization ideas?",
+      "expected_output": "Identifies that replaceOne writes the full document to the oplog. Recommends switching to updateOne with aggregation pipeline syntax ($replaceWith + $literal) to generate smaller oplog deltas when only a few fields change.",
       "files": [],
       "expectations": [
-        "Identifies that serialCode likely needs an index",
-        "Explains the performance implication of filtering without an index (collection scan)",
-        "Suggests using explain to diagnose or confirms diagnosis from available info",
-        "Recommends an index that covers the filter and sort fields"
+        "Identifies that replaceOne generates large oplog entries because it writes the full document",
+        "Recommends updateOne with aggregation pipeline syntax using $replaceWith and $literal as the alternative",
+        "Explains that the update rather than replace lets MongoDB compute deltas, resulting in smaller oplog entries"
       ]
     },
     {
       "id": 4,
-      "prompt": "What are the slow queries on my cluster? Which should I fix first?",
-      "expected_output": "Attempts to use Atlas Performance Advisor or slow query logs to identify slow queries, then prioritizes them by frequency or impact.",
+      "prompt": "I need a covered query for this access pattern: db.users.find({ status: 'active', plan: 'premium' }, { email: 1 }).sort({ email: 1 }). I created index { status: 1, plan: 1, email: 1 } but explain still shows totalDocsExamined > 0. What am I doing wrong?",
+      "expected_output": "Identifies that the projection implicitly includes _id (which is not in the index), so MongoDB must fetch documents. Fix is to add _id: 0 to the projection.",
       "files": [],
       "expectations": [
-        "Attempts to retrieve slow query logs or Performance Advisor data via MCP if available",
-        "Provides a prioritization strategy (e.g., by frequency, execution time, or impact)",
-        "Suggests concrete next steps for the highest-priority slow queries"
+        "Identifies that _id is included by default in projections and is not in the custom index",
+        "Recommends adding _id: 0 to the projection to achieve a covered query",
+        "Notes that a covered query requires all returned fields to be in the index, and _id counts unless explicitly excluded"
       ]
     },
     {
       "id": 5,
-      "prompt": "Can you fix my slow queries? I have indexes but things are still slow.",
-      "expected_output": "Investigates beyond just adding indexes — checks index usage, selectivity, query patterns, and suggests Performance Advisor if available.",
-      "files": [],
-      "expectations": [
-        "Does not just suggest adding more indexes (user already has indexes)",
-        "Investigates index effectiveness (selectivity, usage, covering)",
-        "Suggests using explain or Performance Advisor to diagnose",
-        "Considers non-index causes (schema, query patterns, resource contention)"
-      ]
-    },
-    {
-      "id": 6,
-      "prompt": "Write a find query for users where status is active and limit 10.",
-      "expected_output": "This is a negative test case — the optimizer skill should NOT be invoked. This is a routine query-writing request with no optimization ask.",
+      "prompt": "Write me a MongoDB query to find all users with role 'admin' and return their name and email.",
+      "expected_output": "This is a negative test case. The optimizer skill should NOT be invoked for routine query writing with no optimization or performance ask.",
       "files": [],
       "expectations": [
         "The mongodb-query-optimizer skill is NOT invoked for this prompt",
@@ -71,76 +57,32 @@
       ]
     },
     {
+      "id": 6,
+      "prompt": "How can I optimize the slow queries on my connected Atlas cluster? Check what's running slow and suggest indexes.",
+      "expected_output": "Uses MCP atlas-get-performance-advisor to fetch slow query logs and index suggestions from the perftest database. Identifies the two COLLSCAN patterns (status+region+sort and customerId) and recommends compound indexes.",
+      "files": [],
+      "expectations": [
+        "Calls atlas-get-performance-advisor (or equivalent MCP tool) to retrieve slow query logs and/or index suggestions",
+        "Identifies slow queries on the perftest.orders collection",
+        "Recommends an index on { status: 1, region: 1, createdAt: -1 } or similar compound index for the status/region/sort query pattern",
+        "Recommends an index on { customerId: 1 } for the customerId lookup pattern",
+        "Prioritizes suggestions by impact or frequency"
+      ],
+      "_note": "Requires live Atlas cluster with perftest data from atlas-perf-test/setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
+    },
+    {
       "id": 7,
-      "prompt": "Can you optimize this aggregation pipeline? It's running slow: db.orders.aggregate([{ $lookup: { from: 'customers', localField: 'customerId', foreignField: '_id', as: 'customer' } }, { $match: { status: 'shipped' } }, { $group: { _id: '$customer.region', total: { $sum: '$amount' } } }])",
-      "expected_output": "Identifies that $match should be moved before $lookup to filter early and reduce documents entering the $lookup stage. Suggests indexes on the match and lookup fields.",
+      "prompt": "Can you summarize performance suggestions for my cluster? I want to know what indexes to create and if there are any I should drop.",
+      "expected_output": "Uses MCP to fetch Performance Advisor output including suggested indexes, drop suggestions, and slow query logs. Summarizes findings with prioritized recommendations.",
       "files": [],
       "expectations": [
-        "Identifies that $match after $lookup is suboptimal and should be moved earlier",
-        "Explains why filtering before $lookup reduces the number of documents processed",
-        "Suggests an index on orders.status for the $match stage",
-        "Suggests an index on customers._id for the $lookup (or notes it exists by default on _id)"
-      ]
-    },
-    {
-      "id": 8,
-      "prompt": "How do I optimize a query on an array field? db.products.find({ tags: 'electronics', 'specs.features': { $all: ['wifi', 'bluetooth'] } }). The tags array has hundreds of values per document.",
-      "expected_output": "Discusses multikey index implications with large arrays, suggests indexing strategies, and warns about performance impact of multikey indexes on large arrays.",
-      "files": [],
-      "expectations": [
-        "Explains multikey index behavior and its implications for array fields",
-        "Warns about performance impact of multikey indexes on arrays with hundreds of values",
-        "Suggests a compound index strategy or alternative approaches",
-        "Discusses the interaction between tags and specs.features in indexing"
-      ]
-    },
-    {
-      "id": 9,
-      "prompt": "I want to make this query as fast as possible without reading documents. Query: db.users.find({ status: 'active', plan: 'premium' }, { status: 1, plan: 1, email: 1, _id: 0 }).sort({ email: 1 }). Can this be a covered query?",
-      "expected_output": "Explains covered query requirements (all queried/projected/sorted fields in index, _id: 0), suggests compound index like { status: 1, plan: 1, email: 1 }, and explains how to verify with explain (totalDocsExamined: 0).",
-      "files": [],
-      "expectations": [
-        "Explains what a covered query is and its requirements",
-        "Notes that _id: 0 in projection is needed to avoid document fetch",
-        "Suggests a compound index like { status: 1, plan: 1, email: 1 } following ESR",
-        "Explains how to verify a covered query via explain (totalDocsExamined: 0)"
-      ]
-    },
-    {
-      "id": 10,
-      "prompt": "I ran explain on my query and got totalKeysExamined: 5000, nReturned: 50, totalDocsExamined: 5000. Is this good performance? What does this mean?",
-      "expected_output": "Explains the query targeting ratio (50/5000 = 0.01 is poor), that the index has low selectivity, and suggests a more selective index or additional filter fields.",
-      "files": [],
-      "expectations": [
-        "Calculates or explains the query targeting ratio (nReturned/totalKeysExamined is poor)",
-        "Identifies that index selectivity is low — scanning 5000 keys to return 50 docs",
-        "Suggests improving index selectivity with additional fields or a more selective index",
-        "Notes that totalDocsExamined equals totalKeysExamined (no extra document fetches beyond keys)"
-      ]
-    },
-    {
-      "id": 11,
-      "prompt": "Why is my array query returning wrong results? db.orders.find({ 'items.sku': 'ABC123', 'items.quantity': { $gte: 5 } }). Sometimes it matches orders where ABC123 has quantity 2 and a different item has quantity 10.",
-      "expected_output": "Explains that without $elemMatch, conditions can match across different array elements. Recommends using $elemMatch to ensure both conditions match the same element.",
-      "files": [],
-      "expectations": [
-        "Explains that without $elemMatch, conditions can match different array elements",
-        "Recommends $elemMatch to ensure both conditions apply to the same array element",
-        "Provides the corrected query using $elemMatch",
-        "Discusses multikey index implications for the corrected query"
-      ]
-    },
-    {
-      "id": 12,
-      "prompt": "My aggregation is timing out. It uses $unwind on an array with thousands of elements per document. Pipeline: [{ $unwind: '$events' }, { $match: { 'events.type': 'purchase' } }, { $group: { _id: '$userId', count: { $sum: 1 } } }]. How do I fix this?",
-      "expected_output": "Identifies that $unwind multiplies document count before filtering. Suggests using $filter or $match before $unwind, and discusses allowDiskUse if needed.",
-      "files": [],
-      "expectations": [
-        "Identifies that $unwind on large arrays multiplies document count dramatically",
-        "Suggests moving $match before $unwind or using $filter instead of $unwind + $match",
-        "Explains why $unwind before $match is inefficient for this use case",
-        "May mention allowDiskUse or index on userId for the $group stage"
-      ]
+        "Calls atlas-get-performance-advisor with suggestedIndexes operation",
+        "Calls atlas-get-performance-advisor with slowQueryLogs operation",
+        "Calls atlas-get-performance-advisor with dropIndexSuggestions operation",
+        "Summarizes index suggestions for the perftest.orders collection",
+        "Mentions whether there are any indexes recommended for dropping"
+      ],
+      "_note": "Requires live Atlas cluster with perftest data from atlas-perf-test/setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
     }
   ]
 }
