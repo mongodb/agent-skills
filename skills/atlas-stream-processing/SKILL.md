@@ -14,7 +14,6 @@ Build, operate, and debug Atlas Stream Processing (ASP) pipelines using four MCP
 
 This skill requires the **MongoDB MCP Server** connected with:
 - Atlas API credentials (`apiClientId` and `apiClientSecret`)
-- `previewFeatures: ["streams"]` enabled in the MCP server config
 
 The 4 tools: `atlas-streams-discover`, `atlas-streams-build`, `atlas-streams-manage`, `atlas-streams-teardown`.
 
@@ -36,7 +35,6 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 | `list-processors` | See all processors in a workspace |
 | `inspect-processor` | Check processor state, pipeline, config |
 | `diagnose-processor` | Full health report: state, stats, errors |
-| `get-logs` | Operational logs (runtime errors) or audit logs (lifecycle) |
 | `get-networking` | PrivateLink and VPC peering details |
 
 **Pagination** (all list actions): `limit` (1-100, default 20), `pageNum` (default 1).
@@ -48,14 +46,14 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 | `workspace` | `cloudProvider`, `region`, `tier` (default SP10), `includeSampleData` |
 | `connection` | `connectionName`, `connectionType` (Kafka/Cluster/S3/Https/Kinesis/Lambda/SchemaRegistry/Sample), `connectionConfig` |
 | `processor` | `processorName`, `pipeline` (must start with `$source`, end with `$merge`/`$emit`), `dlq`, `autoStart` |
-| `privatelink` | `privateLinkProvider`, `privateLinkConfig` |
+| `privatelink` | `privateLinkConfig` (project-level, not tied to a specific workspace) |
 
 **Field mapping — only fill fields for the selected resource type:**
 
 - **resource = "workspace":** Fill: `projectId`, `workspaceName`, `cloudProvider`, `region`, `tier`, `includeSampleData`. Leave empty: all connection and processor fields.
 - **resource = "connection":** Fill: `projectId`, `workspaceName`, `connectionName`, `connectionType`, `connectionConfig`. Leave empty: all workspace and processor fields. (See [references/connection-configs.md](references/connection-configs.md) for type-specific schemas.)
 - **resource = "processor":** Fill: `projectId`, `workspaceName`, `processorName`, `pipeline`, `dlq` (recommended), `autoStart` (optional). Leave empty: all workspace and connection fields. (See [references/pipeline-patterns.md](references/pipeline-patterns.md) for pipeline examples.)
-- **resource = "privatelink":** Fill: `projectId`, `workspaceName`, `privateLinkProvider`, `privateLinkConfig`. Leave empty: all connection and processor fields.
+- **resource = "privatelink":** Fill: `projectId`, `privateLinkConfig`. Note: PrivateLink is **project-level**, not workspace-level. `workspaceName` is not required — omit it. Leave empty: all connection and processor fields.
 
 ### atlas-streams-manage — ALL update/state operations
 | Action | Notes |
@@ -99,7 +97,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 
 - `resource: "workspace"` → `workspaceName`
 - `resource: "connection"` or `"processor"` → `workspaceName`, `resourceName`
-- `resource: "privatelink"` or `"peering"` → `resourceName` (the ID)
+- `resource: "privatelink"` or `"peering"` → `resourceName` (the ID). These are project-level resources, not tied to a specific workspace.
 
 **Before deleting a workspace**, inspect it first:
 1. `atlas-streams-discover` → `inspect-workspace` — get connection/processor counts
@@ -223,11 +221,17 @@ See [references/development-workflow.md](references/development-workflow.md) for
 
 **Debug a failing processor:**
 1. `atlas-streams-discover` → `diagnose-processor` — one-shot health report. Always call this first.
-2. `atlas-streams-discover` → `get-logs` (`logType: "operational"`) — runtime errors, Kafka failures, schema issues, OOM messages. Always call this second.
-3. **Commit to a specific root cause.** Match symptoms to diagnostic patterns (Error 419, idle partitions, OOM, DLQ errors, etc.) — see [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table.
-4. Classify processor type before interpreting output volume (alert vs transformation vs filter).
-5. Provide concrete, ordered fix steps specific to the diagnosed root cause.
-6. If lifecycle event history needed → `atlas-streams-discover` → `get-logs`, `logType: "audit"`
+2. **Commit to a specific root cause.** Match symptoms to diagnostic patterns:
+   - **Error 419 + "no partitions found"** → Kafka topic doesn't exist or is misspelled
+   - **State: FAILED + multiple restarts** → connection-level error (bypasses DLQ), check connection config
+   - **State: STARTED + zero output + windowed pipeline** → likely idle Kafka partitions blocking window closure; add `partitionIdleTimeout` to Kafka `$source` (e.g., `{"size": 30, "unit": "second"}`)
+   - **State: STARTED + zero output + non-windowed** → check if source has data; inspect Kafka offset lag
+   - **High memoryUsageBytes approaching tier limit** → OOM risk; recommend higher tier
+   - **DLQ count increasing** → per-document errors; use MongoDB `find` on DLQ collection
+   See [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table.
+3. Classify processor type before interpreting output volume (alert vs transformation vs filter).
+4. Provide concrete, ordered fix steps specific to the diagnosed root cause. Do NOT present a list of hypothetical scenarios.
+5. If detailed logs are needed, direct the user to the Atlas UI: **Atlas → Stream Processing → Workspace → Processor → Logs tab**.
 
 ### Chained processors (multi-sink pattern)
 **CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). When users request multiple output destinations (e.g., "write to Atlas AND emit to Kafka"), you MUST acknowledge the single-sink constraint and propose chained processors using an intermediate destination. See [references/pipeline-patterns.md](references/pipeline-patterns.md) for the full pattern with examples.

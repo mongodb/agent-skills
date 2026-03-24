@@ -10,20 +10,7 @@ Check if the MongoDB MCP Server is connected to your environment.
 - Install the MongoDB MCP Server
 - Configure it with your Atlas API credentials (`apiClientId` and `apiClientSecret`)
 
-## Step 2: Enable Streams Preview Features
-
-The streams tools require preview features to be enabled in your MCP server configuration.
-
-**Required configuration:**
-```json
-{
-  "previewFeatures": ["streams"]
-}
-```
-
-Add this to your MCP server config file and restart the server.
-
-## Step 3: Verify Tool Availability
+## Step 2: Verify Tool Availability
 
 Check that all four streams tools are available:
 - `atlas-streams-discover`

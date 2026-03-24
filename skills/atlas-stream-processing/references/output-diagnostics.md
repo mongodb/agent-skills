@@ -86,9 +86,8 @@ Ask the user what the processor does, or inspect the pipeline:
 
 ### Step 3: Check operational logs
 
-- `atlas-streams-discover` → `action: "get-logs"`, `resourceName: "<processor-name>"` (defaults to `logType: "operational"`)
+- For detailed logs, direct the user to the Atlas UI: **Atlas → Stream Processing → Workspace → Processor → Logs tab**
 - Operational logs contain runtime errors: Kafka producer/consumer failures, schema serialization issues, OOM events, connection timeouts
-- Use `logType: "audit"` only when you need lifecycle history (when was it started/stopped, by whom)
 
 ### Step 4: Check DLQ
 
@@ -112,7 +111,7 @@ Ask the user what the processor does, or inspect the pipeline:
 
 ## Common Diagnostic Patterns
 
-After running `diagnose-processor` and `get-logs`, match the symptoms to these patterns:
+After running `diagnose-processor`, match the symptoms to these patterns:
 
 | Symptom | Root Cause | Fix |
 |---------|------------|-----|
