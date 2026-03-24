@@ -116,8 +116,7 @@ Specify per-field or top-level for all fields:
     "analyzer": "lucene.standard"  // Or omit to use default
   },
   "category": {
-    "type": "string",
-    "analyzer": "lucene.keyword"   // Exact matching
+    "type": "token"   // Exact matching — use token, not string with lucene.keyword
   }
 }
 
@@ -245,7 +244,7 @@ Normalizers produce a single token (used with `token` field type):
 ### Decision Guide
 
 - **lucene.standard** (or omit): Default for most text fields
-- **lucene.keyword**: Categories, tags, exact values
+- **lucene.keyword**: Categories, tags
 - **Language-specific**: When you know the content language
 - **searchAnalyzer**: Different analysis for queries vs indexed content (e.g., synonyms)
 - **multi**: Support multiple search patterns on same field
@@ -265,15 +264,15 @@ Normalizers produce a single token (used with `token` field type):
 |------|-------------|-----------------|-------------------------------------|-------|
 | **string** | Full-text search, phrase matching, fuzzy search | type | analyzer, searchAnalyzer, indexOptions: "docs" or "freqs" or "positions" or "offsets", store: true or false, multi | Default for text. For sorting use token instead. |
 | **token** | Sort/facet on text, exact matching | type | normalizer: "lowercase" or "none" (default: "none") | Required for sorting strings. Max 8181 chars. |
-| **autocomplete** | Search-as-you-type, typeahead | type | analyzer, tokenization: "edgeGram" or "rightEdgeGram" or "nGram" (default: "edgeGram"), minGrams (default: 2), maxGrams (default: 15), foldDiacritics: true or false | Not in dynamic mapping. Recommend maxGrams ≤ 15. |
-| **boolean** | True/false filters | type | None | Included in dynamic mapping. |
-| **date** | Date ranges, timestamps | type | None | Use range operator for arrays. |
-| **number** | Numeric queries, ranges, sorting | type | representation: "int64" or "double" (default: "double"), indexIntegers: true or false, indexDoubles: true or false | Use int64 for large integers. |
-| **objectId** | Query by _id | type | None | Standard MongoDB ObjectIds. |
-| **uuid** | UUID identifiers | type | None | BSON Binary Subtype 4. |
-| **geo** | Location search, geographic queries | type | indexShapes: true or false (default: false) | Requires GeoJSON. Set indexShapes=true for polygons. |
-| **embeddedDocuments** | Search in arrays of objects, independent scoring | type | dynamic: true or false or {typeSet: "name"} (default: false), fields, storedSource: true or false or {include/exclude} | Not in dynamic mapping. Max 5 nesting levels. Each doc counts toward 2.1B limit. |
-| **vector** | Lexical prefilters for semantic search | type, numDimensions (1-8192), similarity: "cosine" or "dotProduct" or "euclidean" | quantization: "none" or "scalar" or "binary" (default: "none"), hnswOptions.maxEdges: 16-64, hnswOptions.numEdgeCandidates: 100-3200 | For hybrid search. See vector-search.md and hybrid-search.md. |
+| **autocomplete** | Search-as-you-type, typeahead, partial or substring matching | type | analyzer, tokenization: "edgeGram" or "rightEdgeGram" or "nGram" (default: "edgeGram"), minGrams (default: 2), maxGrams (default: 15), foldDiacritics: true or false | Not included in "dynamic: true". Recommend maxGrams ≤ 15. |
+| **boolean** | True/false filters | type | None | Included in "dynamic: true". |
+| **date** | Date ranges, timestamps | type | None | Included in "dynamic: true". |
+| **number** | Numeric queries, ranges, sorting | type | representation: "int64" or "double" (default: "double"), indexIntegers: true or false, indexDoubles: true or false | Included in "dynamic: true". Use int64 for large integers. |
+| **objectId** | Query by _id | type | None | Included in "dynamic: true". Standard MongoDB ObjectIds. |
+| **uuid** | UUID identifiers | type | None | Included in "dynamic: true". BSON Binary Subtype 4. |
+| **geo** | Location search, geographic queries | type | indexShapes: true or false (default: false) | Included in "dynamic: true". Requires GeoJSON. Set indexShapes=true for polygons. |
+| **embeddedDocuments** | Search in arrays of objects, independent scoring | type | dynamic: true or false or {typeSet: "name"} (default: false), fields, storedSource: true or false or {include/exclude} | Not included in "dynamic: true". Max 5 nesting levels. Each nested document counts toward 2.1B limit. |
+| **vector** | Lexical prefilters for semantic search | type, numDimensions (1-8192), similarity: "cosine" or "dotProduct" or "euclidean" | quantization: "none" or "scalar" or "binary" (default: "none"), hnswOptions.maxEdges: 16-64, hnswOptions.numEdgeCandidates: 100-3200 | Not included in "dynamic: true". For hybrid search. See vector-search.md and hybrid-search.md. |
 
 **Field definition structure:**
 ```javascript
@@ -311,15 +310,15 @@ Normalizers produce a single token (used with `token` field type):
 - All or most fields need to be searchable
 - Accept larger index size and slower performance for convenience
 
-**Use explicit (dynamic: false)** when:
-- User knows exactly which fields to search
+**Use explicit (dynamic: false)** (recommended for production) when:
+- User has completed early stages of prototyping and knows exactly which fields to search
 - Performance and index size are priorities
 - Schema is stable and well-defined
 - Only a subset of fields need to be searchable
 
 **Use typeSets (recommended for production)** when:
 - User wants automatic indexing but with control over which types
-- Need to index only certain field types (e.g., only strings and numbers, not all types)
+- Document schema is dynamic and new fields need to be indexed automatically without an index rebuild
 - Want different indexing strategies for different nested documents
 - Balance between convenience and performance is important
 
@@ -343,7 +342,7 @@ Normalizers produce a single token (used with `token` field type):
     "dynamic": false,  // Only index specified fields
     "fields": {
       "title": { "type": "string" },
-      "genre": { "type": "string", "analyzer": "lucene.keyword" }
+      "genre": { "type": "token" }
     }
   }
 }
@@ -390,7 +389,7 @@ Normalizers produce a single token (used with `token` field type):
 - **Pros**: Automatically indexes specified field types, more control than full dynamic, can configure different typeSets for sub-documents
 - **Cons**: Still indexes all fields of specified types
 
-**Recommendation:** Use static mappings or a dynamic typeSet in production for optimized index size and performance.
+**Recommendation:** Use static mappings or a dynamic typeSet (within a specific path, not at the root document level) in production for optimized index size and performance.
 
 ---
 
@@ -431,7 +430,7 @@ false - Don't store any fields (default behavior).
     "dynamic": false,
     "fields": {
       "title": { "type": "string" },
-      "genre": { "type": "string", "analyzer": "lucene.keyword" },
+      "genre": { "type": "token" },
       "year": { "type": "number" },
       "rating": { "type": "number" }
     }

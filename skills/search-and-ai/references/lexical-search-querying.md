@@ -103,7 +103,7 @@ db.movies.aggregate([
     $search: {
       index: "<index-name>",
       text: { path: "title", query: "summer" },
-      sort: { released: 1 }  // Sort on a unique field to prevent tie-ordering issues
+      sort: { released: 1, _id: 1 }  // Sort on a unique field to prevent tie-ordering issues
     }
   },
   { $limit: 10 },
@@ -124,7 +124,7 @@ db.movies.aggregate([
       index: "<index-name>",
       text: { path: "title", query: "summer" },
       searchAfter: "<token-from-last-document-on-previous-page>",
-      sort: { released: 1 }
+      sort: { released: 1, _id: 1 }  // maintain the same sort order
     }
   },
   { $limit: 10 },
@@ -179,7 +179,7 @@ db.companies.aggregate([
 ])
 ```
 
-Only fields defined in `storedSource` within the embedded document are returned — root-level fields are excluded.
+Only fields defined in `storedSource` within the embedded document are returned — root-level fields are excluded. When `returnScope` is specified, all query paths must start with `returnScope.path`.
 
 ---
 
@@ -255,7 +255,7 @@ db.collection.aggregate([
 
 ### Searching Nested Arrays (embeddedDocument)
 
-**Use case:** Search within arrays of objects where each element should be scored independently.
+**Use case:** Search within arrays of objects where element-wise comparisons are required (similar to $elemMatch), or each element must be scored independently.
 
 **Fields configuration:**
 ```javascript
@@ -542,6 +542,38 @@ Query geographic points within a region. Field must be indexed as `geo` type. Sp
 
 ## Query Optimization
 
+### Sorting Search Results
+
+Use the `sort` option inside `$search` to sort at the mongot level (more efficient than a `$sort` stage after). Supports: `boolean`, `date`, `number`, `objectId`, `uuid`, and `string` (must be indexed as `token` type). Cannot sort on `embeddedDocuments` type fields.
+
+```javascript
+db.collection.aggregate([
+  {
+    $search: {
+      text: { ... },
+      sort: { "fieldName": -1, "title": 1, score: { $meta: "searchScore" } }
+    }
+  },
+  { $limit: 10 }
+])
+```
+
+**Sort by score:**
+```javascript
+sort: { score: { $meta: "searchScore", order: 1 } }  // ascending (lowest score first)
+sort: { score: { $meta: "searchScore" } }             // descending (default)
+```
+
+**Null/missing values:** Appear first in ascending sort by default. Use `noData: "highest"` to push them last:
+```javascript
+sort: { "field": { order: 1, noData: "highest" } }
+```
+
+**Key rules:**
+- `sort` inside `$search` only works on indexed fields — use `$sort` after for non-indexed or computed fields
+- For `searchSequenceToken` pagination, sort must include a unique field (e.g., `_id`) to avoid tie-ordering
+- Arrays: ascending uses smallest element, descending uses largest
+
 ### Using Stored Source
 
 Retrieve frequently accessed fields directly from the search index instead of the database:
@@ -564,6 +596,30 @@ db.collection.aggregate([
 - Fields must be configured in `storedSource` in your index definition
 - Dramatically improves performance by avoiding database lookups
 - Especially beneficial when filtering or sorting after $search
+
+---
+
+### $match After $search
+
+Minimize blocking stages after `$search` — prefer encapsulating filter logic inside the `$search` stage itself using `compound.filter`. This avoids additional mongod operations and makes full use of the Atlas Search index.
+
+**Prefer `compound.filter` over `$match`** for fields indexed in the search index (string, token, number, date, boolean, objectId, uuid, geo):
+
+```javascript
+// Prefer this
+{ $search: { compound: { must: [{ text: { ... } }], filter: [{ range: { path: "year", gte: 2000 } }] } } }
+
+// Avoid this where possible
+{ $search: { text: { ... } } },
+{ $match: { year: { $gte: 2000 } } }
+```
+
+**If you must use `$match`** (e.g., for non-indexed or computed fields), use `storedSource` + `returnStoredSource` to avoid a full document lookup in mongod:
+
+```javascript
+{ $search: { text: { ... }, returnStoredSource: true } },
+{ $match: { storedField: { $exists: true } } }
+```
 
 ---
 
