@@ -1,7 +1,0 @@
-{
-  "id": "slow-queries-cluster",
-  "prompt": "What are the slow queries on my cluster? Which should I fix first?",
-  "expect_skill_invocation": true,
-  "rationale": "Cluster slow-query question — if Atlas PA is configured, use atlas-get-performance-advisor slowQueryLogs; prioritize slowest/most frequent.",
-  "optional_mcp": ["atlas-list-projects", "atlas-get-performance-advisor"]
-}

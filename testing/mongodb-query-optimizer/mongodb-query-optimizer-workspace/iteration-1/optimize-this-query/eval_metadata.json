@@ -1,7 +1,0 @@
-{
-  "id": "optimize-this-query",
-  "prompt": "How do I optimize this MongoDB find? db.orders.find({ status: 'open' }).sort({ createdAt: -1 })",
-  "expect_skill_invocation": true,
-  "rationale": "Explicit 'optimize' + query shape — skill should run; suggest or reuse index (e.g. compound on status + createdAt).",
-  "optional_mcp": ["collection-indexes", "explain"]
-}

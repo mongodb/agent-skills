@@ -151,7 +151,7 @@ db.collection.aggregate([
 1. **Filter before lookup** to reduce left-side documents
 2. **Use indexed fields** in the lookup `localField`/`foreignField`
 3. **Add $match in the lookup pipeline** to reduce right-side documents early
-4. **Add $project last in the lookup pipeline** only when you need a small subset of fields
+4. **Add $project last in the lookup pipeline** to keep only the fields you need
 5. **$unwind immediately after lookup** when you need `as` result flattened
 
 ```javascript

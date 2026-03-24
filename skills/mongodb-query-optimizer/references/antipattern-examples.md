@@ -16,7 +16,7 @@ db.collection.find({ a: { $exists: true } })
 // Answered directly from the index — no document fetch needed
 ```
 
-**Why:** Regular indexes store `null` for both missing and explicitly-null fields, so `$exists` can't distinguish them without fetching. Sparse indexes only store entries for documents where the field exists.
+**Why:** Regular indexes store `null` for both missing and existing fields that are set to `null`, so `$exists` can't be answered from the index alone. Sparse indexes only store entries for documents where the field exists.
 
 ## Unanchored $regex vs. Anchored $regex
 

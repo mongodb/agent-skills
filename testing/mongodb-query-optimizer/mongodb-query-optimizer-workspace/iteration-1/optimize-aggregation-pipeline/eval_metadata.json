@@ -1,7 +1,0 @@
-{
-  "id": "optimize-aggregation-pipeline",
-  "prompt": "Can you optimize this aggregation pipeline? It's running slow: db.orders.aggregate([{ $lookup: { from: 'customers', localField: 'customerId', foreignField: '_id', as: 'customer' } }, { $match: { status: 'shipped' } }, { $group: { _id: '$customer.region', total: { $sum: '$amount' } } }])",
-  "expect_skill_invocation": true,
-  "rationale": "Explicit 'optimize' + aggregation pipeline — skill should invoke and MUST load references/aggregation-optimization.md. Key issue: $match after $lookup (should be before). Should suggest moving $match earlier and checking indexes.",
-  "optional_mcp": ["collection-indexes", "explain"]
-}

@@ -1,7 +1,0 @@
-{
-  "id": "negative-routine-find",
-  "prompt": "Write a find query for users where status is active and limit 10.",
-  "expect_skill_invocation": false,
-  "rationale": "Routine query generation without optimization ask — NLQ/query-generator territory; optimizer should not trigger.",
-  "optional_mcp": []
-}

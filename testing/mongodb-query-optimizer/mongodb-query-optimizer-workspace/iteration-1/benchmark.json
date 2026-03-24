@@ -1,5 +1,0 @@
-{
-  "skill": "mongodb-query-optimizer",
-  "iteration": "iteration-1",
-  "notes": "Invocation + MCP-branch smoke cases; expand with harness metrics as needed."
-}

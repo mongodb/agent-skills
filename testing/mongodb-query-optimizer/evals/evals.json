@@ -1,102 +1,146 @@
 {
-  "skill": "mongodb-query-optimizer",
-  "description": "Eval cases: skill should be invoked for explicit optimization/performance asks; description and body are aligned with PR #2 testing pattern.",
-  "cases": [
+  "skill_name": "mongodb-query-optimizer",
+  "evals": [
     {
-      "id": "optimize-this-query",
-      "iteration": "iteration-1",
-      "path": "iteration-1/optimize-this-query",
+      "id": 1,
       "prompt": "How do I optimize this MongoDB find? db.orders.find({ status: 'open' }).sort({ createdAt: -1 })",
-      "expect_invoke": true,
-      "tags": ["optimization", "find", "index"]
+      "expected_output": "Recommends a compound index on { status: 1, createdAt: -1 } following ESR ordering, explains why in-memory sort is problematic, and does not create indexes without user approval.",
+      "files": [],
+      "expectations": [
+        "Recommends a compound index that covers both the filter field (status) and the sort field (createdAt)",
+        "Mentions ESR rule or explains equality-before-sort index ordering",
+        "Suggests an index like { status: 1, createdAt: -1 } or equivalent",
+        "Explains why an in-memory sort is problematic or why eliminating it matters",
+        "Does not recommend creating indexes directly without user approval"
+      ]
     },
     {
-      "id": "how-to-index",
-      "iteration": "iteration-1",
-      "path": "iteration-1/how-to-index",
+      "id": 2,
       "prompt": "How should I index this aggregation $match so it uses an index? $match: { shopId: ObjectId('...'), date: { $gte: ISODate('2024-01-01') } }",
-      "expect_invoke": true,
-      "tags": ["index", "aggregation", "ESR"]
+      "expected_output": "Suggests a compound index following ESR rule with shopId (equality) before date (range). Explains that $match at the start of a pipeline can use indexes.",
+      "files": [],
+      "expectations": [
+        "Suggests a compound index with shopId before date (equality before range per ESR)",
+        "Explains that $match at the beginning of an aggregation pipeline can use indexes",
+        "Recommends an index like { shopId: 1, date: 1 } or equivalent"
+      ]
     },
     {
-      "id": "why-slow",
-      "iteration": "iteration-1",
-      "path": "iteration-1/why-slow",
+      "id": 3,
       "prompt": "Why is this query performing badly on my cluster? It's a find with filter on serialCode and sort by _id.",
-      "expect_invoke": true,
-      "tags": ["slow", "performance"]
+      "expected_output": "Diagnoses likely missing or suboptimal index on serialCode, explains the performance impact, and suggests indexing strategies. May suggest using explain to confirm.",
+      "files": [],
+      "expectations": [
+        "Identifies that serialCode likely needs an index",
+        "Explains the performance implication of filtering without an index (collection scan)",
+        "Suggests using explain to diagnose or confirms diagnosis from available info",
+        "Recommends an index that covers the filter and sort fields"
+      ]
     },
     {
-      "id": "slow-queries-cluster",
-      "iteration": "iteration-1",
-      "path": "iteration-1/slow-queries-cluster",
+      "id": 4,
       "prompt": "What are the slow queries on my cluster? Which should I fix first?",
-      "expect_invoke": true,
-      "tags": ["slow-query-logs", "atlas", "prioritization"]
+      "expected_output": "Attempts to use Atlas Performance Advisor or slow query logs to identify slow queries, then prioritizes them by frequency or impact.",
+      "files": [],
+      "expectations": [
+        "Attempts to retrieve slow query logs or Performance Advisor data via MCP if available",
+        "Provides a prioritization strategy (e.g., by frequency, execution time, or impact)",
+        "Suggests concrete next steps for the highest-priority slow queries"
+      ]
     },
     {
-      "id": "fix-slow-queries",
-      "iteration": "iteration-1",
-      "path": "iteration-1/fix-slow-queries",
+      "id": 5,
       "prompt": "Can you fix my slow queries? I have indexes but things are still slow.",
-      "expect_invoke": true,
-      "tags": ["slow", "indexes"]
+      "expected_output": "Investigates beyond just adding indexes — checks index usage, selectivity, query patterns, and suggests Performance Advisor if available.",
+      "files": [],
+      "expectations": [
+        "Does not just suggest adding more indexes (user already has indexes)",
+        "Investigates index effectiveness (selectivity, usage, covering)",
+        "Suggests using explain or Performance Advisor to diagnose",
+        "Considers non-index causes (schema, query patterns, resource contention)"
+      ]
     },
     {
-      "id": "negative-routine-find",
-      "iteration": "iteration-1",
-      "path": "iteration-1/negative-routine-find",
+      "id": 6,
       "prompt": "Write a find query for users where status is active and limit 10.",
-      "expect_invoke": false,
-      "tags": ["negative", "nlq-boundary"]
+      "expected_output": "This is a negative test case — the optimizer skill should NOT be invoked. This is a routine query-writing request with no optimization ask.",
+      "files": [],
+      "expectations": [
+        "The mongodb-query-optimizer skill is NOT invoked for this prompt",
+        "The response is a straightforward find query without unsolicited optimization advice"
+      ]
     },
     {
-      "id": "optimize-aggregation-pipeline",
-      "iteration": "iteration-1",
-      "path": "iteration-1/optimize-aggregation-pipeline",
+      "id": 7,
       "prompt": "Can you optimize this aggregation pipeline? It's running slow: db.orders.aggregate([{ $lookup: { from: 'customers', localField: 'customerId', foreignField: '_id', as: 'customer' } }, { $match: { status: 'shipped' } }, { $group: { _id: '$customer.region', total: { $sum: '$amount' } } }])",
-      "expect_invoke": true,
-      "tags": ["aggregation", "pipeline", "optimization", "lookup", "references"]
+      "expected_output": "Identifies that $match should be moved before $lookup to filter early and reduce documents entering the $lookup stage. Suggests indexes on the match and lookup fields.",
+      "files": [],
+      "expectations": [
+        "Identifies that $match after $lookup is suboptimal and should be moved earlier",
+        "Explains why filtering before $lookup reduces the number of documents processed",
+        "Suggests an index on orders.status for the $match stage",
+        "Suggests an index on customers._id for the $lookup (or notes it exists by default on _id)"
+      ]
     },
     {
-      "id": "array-field-query",
-      "iteration": "iteration-1",
-      "path": "iteration-1/array-field-query",
+      "id": 8,
       "prompt": "How do I optimize a query on an array field? db.products.find({ tags: 'electronics', 'specs.features': { $all: ['wifi', 'bluetooth'] } }). The tags array has hundreds of values per document.",
-      "expect_invoke": true,
-      "tags": ["array", "multikey", "optimization", "references"]
+      "expected_output": "Discusses multikey index implications with large arrays, suggests indexing strategies, and warns about performance impact of multikey indexes on large arrays.",
+      "files": [],
+      "expectations": [
+        "Explains multikey index behavior and its implications for array fields",
+        "Warns about performance impact of multikey indexes on arrays with hundreds of values",
+        "Suggests a compound index strategy or alternative approaches",
+        "Discusses the interaction between tags and specs.features in indexing"
+      ]
     },
     {
-      "id": "covered-query-optimization",
-      "iteration": "iteration-1",
-      "path": "iteration-1/covered-query-optimization",
+      "id": 9,
       "prompt": "I want to make this query as fast as possible without reading documents. Query: db.users.find({ status: 'active', plan: 'premium' }, { status: 1, plan: 1, email: 1, _id: 0 }).sort({ email: 1 }). Can this be a covered query?",
-      "expect_invoke": true,
-      "tags": ["covered", "optimization", "projection", "references"]
+      "expected_output": "Explains covered query requirements (all queried/projected/sorted fields in index, _id: 0), suggests compound index like { status: 1, plan: 1, email: 1 }, and explains how to verify with explain (totalDocsExamined: 0).",
+      "files": [],
+      "expectations": [
+        "Explains what a covered query is and its requirements",
+        "Notes that _id: 0 in projection is needed to avoid document fetch",
+        "Suggests a compound index like { status: 1, plan: 1, email: 1 } following ESR",
+        "Explains how to verify a covered query via explain (totalDocsExamined: 0)"
+      ]
     },
     {
-      "id": "explain-interpretation",
-      "iteration": "iteration-1",
-      "path": "iteration-1/explain-interpretation",
+      "id": 10,
       "prompt": "I ran explain on my query and got totalKeysExamined: 5000, nReturned: 50, totalDocsExamined: 5000. Is this good performance? What does this mean?",
-      "expect_invoke": true,
-      "tags": ["explain", "diagnosis", "performance", "references"]
+      "expected_output": "Explains the query targeting ratio (50/5000 = 0.01 is poor), that the index has low selectivity, and suggests a more selective index or additional filter fields.",
+      "files": [],
+      "expectations": [
+        "Calculates or explains the query targeting ratio (nReturned/totalKeysExamined is poor)",
+        "Identifies that index selectivity is low — scanning 5000 keys to return 50 docs",
+        "Suggests improving index selectivity with additional fields or a more selective index",
+        "Notes that totalDocsExamined equals totalKeysExamined (no extra document fetches beyond keys)"
+      ]
     },
     {
-      "id": "elemMatch-array-query",
-      "iteration": "iteration-1",
-      "path": "iteration-1/elemMatch-array-query",
+      "id": 11,
       "prompt": "Why is my array query returning wrong results? db.orders.find({ 'items.sku': 'ABC123', 'items.quantity': { $gte: 5 } }). Sometimes it matches orders where ABC123 has quantity 2 and a different item has quantity 10.",
-      "expect_invoke": true,
-      "tags": ["array", "elemMatch", "multikey", "correctness", "references"]
+      "expected_output": "Explains that without $elemMatch, conditions can match across different array elements. Recommends using $elemMatch to ensure both conditions match the same element.",
+      "files": [],
+      "expectations": [
+        "Explains that without $elemMatch, conditions can match different array elements",
+        "Recommends $elemMatch to ensure both conditions apply to the same array element",
+        "Provides the corrected query using $elemMatch",
+        "Discusses multikey index implications for the corrected query"
+      ]
     },
     {
-      "id": "aggregation-unwind-performance",
-      "iteration": "iteration-1",
-      "path": "iteration-1/aggregation-unwind-performance",
+      "id": 12,
       "prompt": "My aggregation is timing out. It uses $unwind on an array with thousands of elements per document. Pipeline: [{ $unwind: '$events' }, { $match: { 'events.type': 'purchase' } }, { $group: { _id: '$userId', count: { $sum: 1 } } }]. How do I fix this?",
-      "expect_invoke": true,
-      "tags": ["aggregation", "unwind", "performance", "optimization", "references"]
+      "expected_output": "Identifies that $unwind multiplies document count before filtering. Suggests using $filter or $match before $unwind, and discusses allowDiskUse if needed.",
+      "files": [],
+      "expectations": [
+        "Identifies that $unwind on large arrays multiplies document count dramatically",
+        "Suggests moving $match before $unwind or using $filter instead of $unwind + $match",
+        "Explains why $unwind before $match is inefficient for this use case",
+        "May mention allowDiskUse or index on userId for the $group stage"
+      ]
     }
   ]
 }

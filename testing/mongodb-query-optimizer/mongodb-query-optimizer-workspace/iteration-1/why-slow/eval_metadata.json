@@ -1,7 +1,0 @@
-{
-  "id": "why-slow",
-  "prompt": "Why is this query performing badly on my cluster? It's a find with filter on serialCode and sort by _id.",
-  "expect_skill_invocation": true,
-  "rationale": "Explicit performance/slowness — skill should run; indexes + explain if connected.",
-  "optional_mcp": ["collection-indexes", "explain"]
-}

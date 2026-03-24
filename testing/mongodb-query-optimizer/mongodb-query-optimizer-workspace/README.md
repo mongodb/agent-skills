@@ -1,25 +1,30 @@
 # mongodb-query-optimizer — test workspace
 
-Mirrors the layout used in [PR #2](https://github.com/mongodb/agent-skills/pull/2/changes) for natural-language querying: `iteration-1/<case>/eval_metadata.json` plus this `evals/evals.json` registry.
-
-## Purpose
-
-- **Invocation**: Cases with `expect_invoke: true` should trigger the mongodb-query-optimizer skill (explicit optimization / performance / slow-query asks).
-- **Boundary**: Cases with `expect_invoke: false` should **not** trigger the optimizer when the user only wants a query generated without optimization language.
+Generated eval outputs go here, organized by iteration (e.g. `iteration-1/`, `iteration-2/`). These directories are ephemeral and should not be committed.
 
 ## Running evals
 
-Use your agent harness or skill-validator flow to:
+Use the `skill-creator` skill to run and evaluate test cases:
 
-1. Load each `eval_metadata.json` prompt.
-2. Assert the skill is selected when `expect_invoke` is true and not selected when false (or that the optimizer workflow is not applied for negative cases).
+1. Open Claude Code in the `agent-skills/` directory.
+2. Run `/skill-creator` and ask it to run the evals for the `mongodb-query-optimizer` skill.
+3. It will read `evals/evals.json`, spawn test runs (with and without the skill), grade assertions, and open a viewer for you to review results.
 
-## MCP branches (for manual or integration checks)
+The eval prompts and assertions are defined in `evals/evals.json`. Each eval has:
+- **prompt** — the simulated user input
+- **expected_output** — human-readable description of a good response
+- **expectations** — specific, verifiable assertions that get graded automatically
 
-| Scenario | Tools |
-|----------|--------|
-| DB connection works | `collection-indexes`, `explain` |
-| Atlas API + PA works | `atlas-get-performance-advisor` with `slowQueryLogs`, `suggestedIndexes`, etc. |
-| Neither | Index suggestion from query shape only |
+Eval 6 (`"Write a find query..."`) is a negative test case — the optimizer skill should **not** trigger for it.
 
-See `skills/mongodb-query-optimizer/SKILL.md` for full workflow.
+## MCP scenarios
+
+Some evals benefit from a live MongoDB connection or Atlas API access:
+
+| Scenario | MCP tools used |
+|----------|----------------|
+| DB connection available | `collection-indexes`, `explain` |
+| Atlas API available | `atlas-get-performance-advisor` (slow query logs, suggested indexes) |
+| Neither available | Skill suggests indexes from query shape only |
+
+See `skills/mongodb-query-optimizer/SKILL.md` for the full skill workflow.

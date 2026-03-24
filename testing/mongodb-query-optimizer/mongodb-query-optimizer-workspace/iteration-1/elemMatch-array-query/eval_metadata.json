@@ -1,7 +1,0 @@
-{
-  "id": "elemMatch-array-query",
-  "prompt": "Why is my array query returning wrong results? db.orders.find({ 'items.sku': 'ABC123', 'items.quantity': { $gte: 5 } }). Sometimes it matches orders where ABC123 has quantity 2 and a different item has quantity 10.",
-  "expect_skill_invocation": true,
-  "rationale": "Performance/correctness issue with array query — skill should invoke and load references/multikey-arrays.md. Should explain that without $elemMatch, conditions can match different array elements. Solution: use { items: { $elemMatch: { sku: 'ABC123', quantity: { $gte: 5 } } } } to ensure same element satisfies both conditions. Should also discuss multikey index on items.sku and items.quantity.",
-  "optional_mcp": ["collection-indexes"]
-}

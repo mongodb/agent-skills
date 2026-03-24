@@ -27,7 +27,7 @@ If the user wants to examine slow queries, or is looking for general performance
 - Use MongoDB MCP server **atlas-get-performance-advisor** tool to fetch slow query logs and performance advisor output  
 - Make suggestions based on this information
 
-If Atlas MCP Server for Atlas is not configured or you don’t have enough information to run **atlas-get-performance-advisor** against the correct cluster, terminate early with explanation.
+If Atlas MCP Server for Atlas is not configured or you don’t have enough information to run **atlas-get-performance-advisor** against the correct cluster, tell the user that general performance analysis requires Atlas MCP Server configuration with API credentials, and suggest they configure it or ask about a specific query instead.
 
 ### Help with a Specific Query
 
@@ -99,8 +99,8 @@ Do not pass the MCP tool name as an `operations` value—`operations` is a separ
    - Call `find` with limit=1 to fetch a sample document to impute the schema.
 
 4. **(**If MCP Atlas connection configured) **Run atlas-get-performance-advisor:**  
-   - Try to get the target cluster id from the MCP connection string  
-   - Use slowQueryLogs to fetch slow query logs from database=`store`, collection=`orders` in the past 24 hours  
+   - Try to get the cluster name from the MCP connection string, or ask the user for projectId/clusterName
+   - Use slowQueryLogs to fetch slow query logs from database=`store`, collection=`orders` in the past 24 hours
    - Use suggestedIndexes to check for index suggestions for the query
 
 5. **Diagnose:** Based on explain output and slow query logs, this query targets 100 docs but scans 50K index entries (poor selectivity: 0.002). In-memory sort adds overhead. Index doesn't support both filter fields or sort.  
@@ -140,8 +140,8 @@ Conditionally load these files:
 ## Output
 
 - Keep answers short and clear: a few sentences on index and optimization suggestions, and reasoning behind them (e.g. general indexing principles, observing slow query logs in the cluster, or seeing advice in Performance Advisor)
-- Focus on highest impact indexes or optimizations
+- Focus on highest impact indexes or optimizations - if you've omitted some optimizations let the user know and present them if asked.
 - Do not use strong language, such as saying “You should create these indexes and they will definitely improve application performance” \-  Explain they are suggestions for certain queries, and give the reasoning behind them.
 - Consider how many indexes already exist on the collection (if known) \- there shouldn’t generally be more than 20
-- Recommend removing redundant indexes if possible.
+- Suggest removing indexes only if the suggestion comes from Atlas Performance Advisor
 - Do not create indexes directly via MCP unless the user gives approval

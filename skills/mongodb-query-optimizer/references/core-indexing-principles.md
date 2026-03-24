@@ -2,13 +2,13 @@
 
 ### Compound Index Guidelines
 
-The first field of the index must be in the query for the index to be considered.
+The first field of the index should be in the query's filter or sort condition.
 
 **Equality → Sort → Range** order is most often preferred:
 
 - **Equality** fields first (e.g. `{field: value}`, `{$in: [...]}` with \<= 200 elements, `{field: {$eq: value}}`)
 - **Sort** fields next  
-- **Range** fields last (e.g. `$gt`, `$lt`, `$gte`, `$lte`, `{$in: [...]}`with \> 200 elements in the array), `$ne, anchored case-sensitive $regex`)
+- **Range** fields last (e.g. `$gt`, `$lt`, `$gte`, `$lte`, `{$in: [...]}` with \> 200 elements in the array), `$ne, anchored case-sensitive $regex`)
 
 If equality is not very selective and range is, then ERS may perform better than ESR.
 
