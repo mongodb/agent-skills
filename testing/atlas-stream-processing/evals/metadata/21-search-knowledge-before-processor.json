@@ -1,0 +1,84 @@
+{
+  "eval_id": 21,
+  "eval_name": "search-knowledge-before-processor",
+  "prompt": "Create a processor that emits to S3",
+  "assertions": [
+    {
+      "name": "calls_search_knowledge_first",
+      "description": "Calls search-knowledge tool before creating processor",
+      "critical": true,
+      "reason": "Skill requires: 'You MUST call search-knowledge before composing any processor pipeline. This is not optional.'"
+    },
+    {
+      "name": "search_query_validates_field_names",
+      "description": "Search query validates S3 $emit field names (path, format, compression)",
+      "critical": true
+    },
+    {
+      "name": "search_query_mentions_s3",
+      "description": "Search query includes 'S3' or '$emit' or 'Atlas Stream Processing'"
+    },
+    {
+      "name": "uses_correct_field_names",
+      "description": "Pipeline uses 'path' (NOT 'prefix') for S3 $emit",
+      "critical": true,
+      "reason": "search-knowledge should catch the common mistake of using 'prefix' instead of 'path'"
+    },
+    {
+      "name": "references_asp_example_repo",
+      "description": "May reference https://github.com/mongodb/ASP_example for examples"
+    },
+    {
+      "name": "validates_before_building",
+      "description": "Knowledge search happens BEFORE calling atlas-streams-build",
+      "critical": true
+    }
+  ],
+  "expected_workflow": [
+    {
+      "step": 1,
+      "action": "Call search-knowledge",
+      "tool": "search-knowledge",
+      "example_queries": [
+        "Atlas Stream Processing $emit S3 fields",
+        "S3 sink configuration Atlas Streams",
+        "Atlas Stream Processing S3 path format"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Review field names",
+      "description": "Confirm correct field names: path (not prefix), bucket, config.outputFormat"
+    },
+    {
+      "step": 3,
+      "action": "Create processor",
+      "tool": "atlas-streams-build",
+      "parameters": {
+        "resource": "processor",
+        "pipeline": [
+          {"$source": "..."},
+          {"$emit": {"connectionName": "...", "bucket": "...", "path": "...", "config": "..."}}
+        ]
+      }
+    }
+  ],
+  "common_field_name_mistakes": [
+    {
+      "mistake": "$emit.prefix",
+      "correct": "$emit.path",
+      "stage": "S3"
+    },
+    {
+      "mistake": "$source.streamName",
+      "correct": "$source.stream",
+      "stage": "Kinesis"
+    },
+    {
+      "mistake": "$source.topicName",
+      "correct": "$source.topic",
+      "stage": "Kafka"
+    }
+  ],
+  "skill_requirement": "You MUST call search-knowledge before composing any processor pipeline. This is not optional. Field validation catches errors like 'prefix' vs 'path' for S3 $emit."
+}
