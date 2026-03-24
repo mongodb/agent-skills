@@ -83,28 +83,28 @@ Do not pass the MCP tool name as an `operations` value—`operations` is a separ
 
 **User:** "Why is this query slow? `db.orders.find({status: 'shipped', region: 'US'}).sort({date: -1})`"
 
-1. **(**If MCP db connection configured and the collection+db name are known) **Check existing collection indexes:**  
-   - Call `collection-indexes` with database=`store`, collection=`orders`  
+**If MCP db connection is configured and the database + collection names are known**, run steps 1–3. Otherwise skip to step 4.
+
+1. **Check existing collection indexes:**
+   - Call `collection-indexes` with database=`store`, collection=`orders`
    - Result shows: `{_id: 1}`, `{status: 1}`, `{date: -1}`
 
-   
-
-2. **(**If MCP db connection configured and the collection+db name are known) **Run explain:**  
-   - Call `explain` with method=`find`, filter=`{status: 'shipped', region: 'US'}`, sort=`{date: -1}`, verbosity=`queryPlanner` and `executionStats`  
+2. **Run explain:**
+   - Call `explain` with method=`find`, filter=`{status: 'shipped', region: 'US'}`, sort=`{date: -1}`, verbosity=`queryPlanner` and `executionStats`
    - Result: Uses `{status: 1}` index, then in-memory SORT, `totalKeysExamined: 50000`, `nReturned: 100`
 
-   
-
-3. **(**If MCP db connection configured and the collection+db name are known) **Run find**:  
+3. **Run find:**
    - Call `find` with limit=1 to fetch a sample document to impute the schema.
 
-4. **(**If MCP Atlas connection configured) **Run atlas-get-performance-advisor:**  
+**If MCP Atlas connection is configured**, run step 4. Otherwise skip to step 5.
+
+4. **Run atlas-get-performance-advisor:**
    - Try to get the cluster name from the MCP connection string, or ask the user for projectId/clusterName
    - Use slowQueryLogs to fetch slow query logs from database=`store`, collection=`orders` in the past 24 hours
    - Use suggestedIndexes to check for index suggestions for the query
 
-5. **Diagnose:** Based on explain output and slow query logs, this query targets 100 docs but scans 50K index entries (poor selectivity: 0.002). In-memory sort adds overhead. Index doesn't support both filter fields or sort.  
-     
+5. **Diagnose:** Based on explain output and slow query logs, this query targets 100 docs but scans 50K index entries (poor selectivity: 0.002). In-memory sort adds overhead. Index doesn't support both filter fields or sort.
+
 6. **Recommend:** Create compound index `{status: 1, region: 1, date: -1}` following ESR (two equality fields, then sort). This eliminates in-memory sort and improves selectivity by filtering on both status and region.
 
 If the MongoDB MCP server is not set up, follow best indexing practices.
@@ -114,7 +114,7 @@ If the MongoDB MCP server is not set up, follow best indexing practices.
 **User:** "Can you help with optimizing slow queries on my cluster?”
 
 1. **Run atlas-get-performance-advisor:**  
-   - Try to get the target cluster id from the MCP connection string  
+   - Try to get the cluster name from the connection string and deduce the project name you need in atlas-list-projects; if you are not sure, then ask the user for cluster name and project id.
    - Use slowQueryLogs to fetch slow query logs from the past 24 hours  
    - Use suggestedIndexes  
    - Use dropIndexSuggestions  
