@@ -238,7 +238,7 @@ async function main() {
     // ------------------------------------------------------------------
     console.log("\n--- Setup complete ---");
     console.log("Database:    perftest");
-    console.log("Collections: orders (10K docs), customers (500 docs)");
+    console.log(`Collections: orders (${NUM_ORDERS} docs), customers (${NUM_CUSTOMERS} docs)`);
     console.log("Indexes:     _id only (no secondary indexes)");
     console.log("\nExpected slow query patterns:");
     console.log("  1. find({ status, region }).sort({ createdAt: -1 })  →  COLLSCAN + in-memory SORT");
