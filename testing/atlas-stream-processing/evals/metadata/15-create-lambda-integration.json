@@ -1,0 +1,91 @@
+{
+  "eval_id": 15,
+  "eval_name": "create-lambda-integration",
+  "prompt": "Set up a processor that sends Kafka events to AWS Lambda function for processing asynchronously",
+  "assertions": [
+    {
+      "name": "pipeline_starts_with_source",
+      "description": "First pipeline stage is $source"
+    },
+    {
+      "name": "source_has_kafka_connection",
+      "description": "$source.connectionName references Kafka connection"
+    },
+    {
+      "name": "has_externalFunction_stage",
+      "description": "Pipeline includes $externalFunction stage",
+      "critical": true
+    },
+    {
+      "name": "externalFunction_has_lambda_connection",
+      "description": "$externalFunction.connectionName references AWSLambda connection"
+    },
+    {
+      "name": "externalFunction_execution_async",
+      "description": "$externalFunction.execution='async' for sink usage",
+      "critical": true,
+      "reason": "When $externalFunction is the final sink stage, execution MUST be 'async'. Only mid-pipeline $externalFunction can use 'sync'."
+    },
+    {
+      "name": "externalFunction_has_function_name",
+      "description": "$externalFunction.functionName is specified"
+    },
+    {
+      "name": "externalFunction_has_as_field",
+      "description": "$externalFunction.as is specified (field name for Lambda response)"
+    },
+    {
+      "name": "externalFunction_has_on_error_dlq",
+      "description": "$externalFunction.onError='dlq'",
+      "critical": true
+    },
+    {
+      "name": "externalFunction_is_terminal_stage",
+      "description": "$externalFunction is the last pipeline stage (async sink)",
+      "critical": true,
+      "note": "For this test, Lambda is used as a sink. It can also be used mid-pipeline for enrichment with execution='sync' or 'async'"
+    },
+    {
+      "name": "mentions_aws_prerequisites",
+      "description": "Response mentions IAM role ARN must be registered via Atlas Cloud Provider Access"
+    },
+    {
+      "name": "dlq_configured",
+      "description": "Processor-level dlq parameter provided"
+    }
+  ],
+  "expected_pipeline": [
+    {
+      "$source": {
+        "connectionName": "<kafka-connection>",
+        "topic": "<topic-name>"
+      }
+    },
+    {
+      "$externalFunction": {
+        "connectionName": "<lambda-connection>",
+        "functionName": "<lambda-function-name>",
+        "execution": "async",
+        "input": "<input-mapping>",
+        "as": "<response-field>",
+        "onError": "dlq"
+      }
+    }
+  ],
+  "execution_mode_rules": {
+    "mid_pipeline": "Can use execution='sync' (blocks) or execution='async' (non-blocking)",
+    "terminal_sink": "MUST use execution='async' only"
+  },
+  "common_mistakes": [
+    {
+      "mistake": "execution='sync' as terminal sink",
+      "error": "Invalid configuration - sink must use async execution",
+      "fix": "Use execution='async' when $externalFunction is the last stage"
+    },
+    {
+      "mistake": "Using $emit with Lambda",
+      "error": "$emit is for Kafka/S3/Kinesis, not Lambda",
+      "fix": "Use $externalFunction for Lambda"
+    }
+  ]
+}
