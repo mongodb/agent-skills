@@ -34,9 +34,6 @@ Example: `maxPoolSize: 50` — "Based on your observed peak of 40 concurrent ope
 
 If you provide code snippets, add inline comments explaining the rationale for each parameter choice.
 
-### Language-specific implementations
-For Python, Java, Go, C#, Ruby, or PHP, see `references/language-patterns.md` for driver-specific patterns.
-
 ### Calculating Initial Pool Size
 
 If performance data available: `Pool Size ≈ (Ops/sec) × (Avg duration) + 10-20% buffer`
@@ -58,6 +55,14 @@ Total potential connections = instances × (maxPoolSize + 2) × replica set memb
 **Self-managed Servers**: Set `net.maxIncomingConnections` to a value slightly higher than the maximum number of connections that the client creates, or the maximum size of the connection pool. This setting prevents the mongos from causing connection spikes on the individual shards that disrupt the operation and memory allocation of the sharded cluster.
 
 ### Configuration Scenarios
+
+**General best practices:**
+
+- Create client once only and reuse across application (in serverless, initialize outside handler)
+- Don't manually close connections unless shutting down
+- Max pool size must exceed expected concurrency
+- Make use of timeouts to keep only the required connections ready as per your workload's needs
+- Use default max pool size (100) unless you have specific needs (see scenarios below)
 
 #### Scenario: Serverless Environments (Lambda, Cloud Functions)
 
@@ -176,12 +181,6 @@ When operations queue, pool is exhausted.
 
 ---
 
-## Language-Specific Considerations
-
-Consult `references/language-patterns.md` for sync/async models, initialization patterns, and driver-specific defaults.
-
----
-
 ## Advising on Monitoring & Iteration
 
 **You must guide users to monitor** the relevant parameters to their pool configuration. 
@@ -191,3 +190,5 @@ For detailed monitoring setup, see `references/monitoring-guide.md`.
 
 ## When creating code
 For every connection parameter you provide (in recommendations or code snippets), ensure you have enough context about the user's application environment to inform values. If not, ask targeted questions before suggesting specific values. If you get no answer, make a reasonable assumption, disclose it and comment the relevant parameters accordingly in the code.
+
+Alwasy present your calculations for the connection parameters based on the context of the task.

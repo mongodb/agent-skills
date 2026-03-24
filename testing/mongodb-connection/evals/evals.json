@@ -69,12 +69,13 @@
     },
     {
       "id": 6,
-      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for a SaaS system with 100k MAU. This endpoint is to send messages between users (stored in MongoDB). Provide a suitable client configuration. I'm in a dedicated cluster with 2 shards, two replica servers per shard, and 200MB RAM per server. Keep resource utilization at 80% with the maximum throughput; I aim for 30k ops/sec. Expect 2 app instances. Assume avg operation time is 10ms",
+      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for a SaaS system with 100k MAU. This endpoint is to send messages between users (stored in MongoDB). Provide a suitable client configuration. I'm in a dedicated cluster with 2 shards, two replica servers per shard, and 200MB RAM **per server**. Keep resource utilization at 80% with the maximum throughput; I aim for 50k ops/sec and 100k ops/sec at peak. Expect 4 app instances. Assume avg operation time is 20ms",
       "expected_output": "Agent should ask about specific requirements for the app. Should then provide a code snippet that demonstrates the connection setup with suitable parameters.",
       "expectations": [
-        "Recognizes that 30k ops/sec is unachievable with the current topology and resource constraints",
-        "Recommends maxPoolSize between 70 and 80 for max achievable througput",
+        "Recognizes that target max ops/sec is unachievable with the current topology and resource constraints",
+        "Recommends maxPoolSize between 100 and 200 for max achievable througput",
         "Presents calculations to justify the maxPoolSize recommendation",
+        "Shows the context of the presented topology in its calculations",
         "Estimates 1MB per connection"
       ]
     },
@@ -85,7 +86,8 @@
       "expected_output": "Agent identifies the issue is reaching the server's max connection limit and recommends decreasing max pool size.",
       "expectations": [
         "Identifies the issue is connection rejection due to reaching the server's max connection limit",
-        "Recommends maxPoolSize be set to <10",
+        "Recommends a smaller pool size",
+        "Recommended maxPoolSize must be <10",
         "Presents calculations to justify the maxPoolSize recommendation",
         "Factors in the calculations 2 extra monitoring connections created per client",
         "Provide specific monitoring recommendations"
