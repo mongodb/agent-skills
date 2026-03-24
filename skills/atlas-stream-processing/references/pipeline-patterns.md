@@ -138,6 +138,32 @@ Dynamic routing:
 
 Key formats: `string`, `json`, `int`, `long`, `binData`. Tombstone support: `"tombstoneWhen": {"$expr": {"$eq": ["$status", "deleted"]}}`.
 
+### $emit to Kafka with Schema Registry (Avro)
+```json
+{"$emit": {
+  "connectionName": "my-kafka", "topic": "output-topic",
+  "schemaRegistry": {
+    "connectionName": "my-schema-registry",
+    "valueSchema": {
+      "type": "avro",
+      "schema": {
+        "type": "record", "name": "SensorReading",
+        "fields": [
+          {"name": "device_id", "type": "string"},
+          {"name": "temp", "type": "double"},
+          {"name": "timestamp", "type": "long"}
+        ]
+      },
+      "options": {
+        "subjectNameStrategy": "TopicNameStrategy",
+        "autoRegisterSchemas": true
+      }
+    }
+  }
+}}
+```
+Requires a `SchemaRegistry` connection (see [connection-configs.md](connection-configs.md#schemaregistry)). `valueSchema.type` must be lowercase `avro` (case-sensitive). `valueSchema.schema` is always required, even with `autoRegisterSchemas: true`.
+
 ### $emit to Kinesis
 ```json
 {"$emit": {"connectionName": "my-kinesis", "stream": "out", "partitionKey": "$device_id"}}

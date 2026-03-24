@@ -10,6 +10,7 @@ Understanding stage categories helps compose valid pipelines. Stages must appear
 | **Stateless Processing** | `$match`, `$project`, `$addFields`, `$unset`, `$unwind`, `$replaceRoot`, `$redact` | Can appear anywhere after source. No state or memory overhead. |
 | **Enrichment** | `$lookup`, `$https` | I/O-bound. Use `parallelism` setting. Place `$https` after windows to batch. |
 | **Stateful/Window** | `$tumblingWindow`, `$hoppingWindow`, `$sessionWindow` | Accumulates state in memory. Monitor `memoryUsageBytes`. |
+| **Validation** | `$validate` | Schema enforcement. Use `validationAction: "dlq"` (not `"error"`). Place early to catch bad data. |
 | **Custom Code** | `$function` | JavaScript UDFs. Requires SP30+. |
 | **Output** (1+, required for deployed) | `$merge`, `$emit` | Must be last. Required for persistent processors. Sinkless = ephemeral only. |
 

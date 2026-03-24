@@ -35,7 +35,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 | `list-processors` | See all processors in a workspace |
 | `inspect-processor` | Check processor state, pipeline, config |
 | `diagnose-processor` | Full health report: state, stats, errors |
-| `get-networking` | PrivateLink and VPC peering details |
+| `get-networking` | PrivateLink and VPC peering details. Optional: `cloudProvider` + `region` to get Atlas account details for PrivateLink setup |
 
 **Pagination** (all list actions): `limit` (1-100, default 20), `pageNum` (default 1).
 **Response format**: `responseFormat` — `"concise"` (default for list actions) or `"detailed"` (default for inspect/diagnose).
@@ -67,7 +67,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 
 **Field mapping** — always fill `projectId`, `workspaceName`, then by action:
 
-- `"start-processor"` → `resourceName`. Optional: `tier`, `resumeFromCheckpoint`, `startAtOperationTime`
+- `"start-processor"` → `resourceName`. Optional: `tier`, `resumeFromCheckpoint`, `startAtOperationTime` (ISO 8601 timestamp to resume from a specific point)
 - `"stop-processor"` → `resourceName`
 - `"modify-processor"` → `resourceName`. At least one of: `pipeline`, `dlq`, `newName`
 - `"update-workspace"` → `newRegion` or `newTier`
@@ -79,6 +79,8 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 - `start-processor` → errors if processor is already STARTED
 - `stop-processor` → no-ops if already STOPPED or CREATED (not an error)
 - `modify-processor` → errors if processor is STARTED (must stop first)
+
+**Processor states:** `CREATED` → `STARTED` (via start) → `STOPPED` (via stop). Can also enter `FAILED` on runtime errors. Modify requires STOPPED or CREATED state.
 
 **Teardown safety checks:**
 - **Processor deletion** → auto-stops before deleting (no need to stop manually first)
@@ -144,7 +146,7 @@ Key quickstarts:
 
 See [references/pipeline-patterns.md](references/pipeline-patterns.md) for stage field examples with JSON syntax.
 
-**SchemaRegistry connection:** `connectionType` must be `"SchemaRegistry"` (not `"Kafka"`). See [references/connection-configs.md](references/connection-configs.md#schemaregistry) for required fields and auth types.
+**SchemaRegistry connection:** `connectionType` must be `"SchemaRegistry"` (not `"Kafka"`). Schema type values are case-sensitive (use lowercase `avro`, not `AVRO`). See [references/connection-configs.md](references/connection-configs.md#schemaregistry) for required fields and auth types.
 
 ## MCP Tool Behaviors
 
