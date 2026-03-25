@@ -1,0 +1,17 @@
+{
+  "name": "mongodb-query-optimizer-perf-test",
+  "version": "1.0.0",
+  "description": "Setup script to insert test data and generate slow queries on an Atlas replica set for testing the mongodb-query-optimizer skill",
+  "type": "module",
+  "scripts": {
+    "setup": "tsx setup-slow-queries.ts",
+    "cleanup": "tsx cleanup.ts"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "skill_name": "mongodb-query-optimizer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How do I optimize this query? db.orders.find({ status: 'open', tags: { $in: ['urgent', 'priority', 'escalated'] } }).sort({ createdAt: -1 }).limit(50). The tags field usually has 3-5 values per document but the $in list could grow to much larger from a user filter.",
+      "expected_output": "Recommends index { status: 1, tags: 1, createdAt: 1 }, notes that $in with many elements is treated as a range scan rather than equality.",
+      "files": [],
+      "expectations": [
+        "Recommends a compound index covering status, tags, and createdAt",
+        "Mentions ESR ordering or explains equality-before-sort-before-range",
+        "Suggests that if the $in list stays small, { status: 1, tags: 1, createdAt: 1 } works, but if it grows large the performance is likely to degrade"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "This aggregation is slow. It joins orders to products and sums revenue per category. db.orders.aggregate([ { $match: { date: { $gte: ISODate('2025-01-01') } } }, { $lookup: { from: 'products', localField: 'productId', foreignField: 'sku', as: 'product' } }, { $unwind: '$product' }, { $group: { _id: '$product.category', totalRevenue: { $sum: { $multiply: ['$quantity', '$unitPrice'] } } } }, { $sort: { totalRevenue: -1 } }, { $limit: 10 } ])",
+      "expected_output": "Identifies that the $lookup foreignField 'sku' needs an index on the products collection. Notes that $sort + $limit together enable a top-N optimization. Suggests an index on orders.date for the initial $match.",
+      "files": [],
+      "expectations": [
+        "Identifies that products.sku needs an index for the $lookup to avoid collection scans on every joined document",
+        "Suggests an index on orders.date for the $match stage",
+        "Notes that $sort immediately followed by $limit enables top-N sort optimization (only tracks top N values rather than sorting full dataset)",
+        "Does not suggest adding a $project before $group to 'reduce fields' since MongoDB's optimizer handles field pruning automatically"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We have a background job that syncs documents from an external system. It does db.coll.replaceOne({ _id: doc._id }, doc) for each document. Most fields don't change but we don't know which fields do change. With 50K updates per hour things are getting slower. Any optimization ideas?",
+      "expected_output": "Identifies that replaceOne writes the full document to the oplog. Recommends switching to updateOne with aggregation pipeline syntax ($replaceWith + $literal) to generate smaller oplog deltas when only a few fields change.",
+      "files": [],
+      "expectations": [
+        "Identifies that replaceOne generates large oplog entries because it writes the full document",
+        "Recommends updateOne with aggregation pipeline syntax using $replaceWith and $literal as the alternative",
+        "Explains that the update rather than replace lets MongoDB compute deltas, resulting in smaller oplog entries"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I need a covered query for this access pattern: db.users.find({ status: 'active', plan: 'premium' }, { email: 1 }).sort({ email: 1 }). I created index { status: 1, plan: 1, email: 1 } but explain still shows totalDocsExamined > 0. What am I doing wrong?",
+      "expected_output": "Identifies that the projection implicitly includes _id (which is not in the index), so MongoDB must fetch documents. Fix is to add _id: 0 to the projection.",
+      "files": [],
+      "expectations": [
+        "Identifies that _id is included by default in projections and is not in the custom index",
+        "Recommends adding _id: 0 to the projection to achieve a covered query",
+        "Notes that a covered query requires all returned fields to be in the index, and _id counts unless explicitly excluded"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Write me a MongoDB query to find all users with role 'admin' and return their name and email.",
+      "expected_output": "This is a negative test case. The optimizer skill should NOT be invoked for routine query writing with no optimization or performance ask.",
+      "files": [],
+      "expectations": [
+        "The mongodb-query-optimizer skill is NOT invoked for this prompt",
+        "The response is a straightforward find query without unsolicited optimization advice"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "How can I optimize the slow queries on my connected Atlas cluster? Check what's running slow and suggest indexes.",
+      "expected_output": "Uses MCP atlas-get-performance-advisor to fetch slow query logs and index suggestions from the perftest database. Identifies the two COLLSCAN patterns (status+region+sort and customerId) and recommends compound indexes.",
+      "files": [],
+      "expectations": [
+        "Calls atlas-get-performance-advisor (or equivalent MCP tool) to retrieve slow query logs and/or index suggestions",
+        "Identifies slow queries on the perftest.orders collection",
+        "Recommends an index on { status: 1, region: 1, createdAt: -1 } or similar compound index for the status/region/sort query pattern",
+        "Recommends an index on { customerId: 1 } for the customerId lookup pattern",
+        "Prioritizes suggestions by impact or frequency"
+      ],
+      "_note": "Requires live Atlas cluster with perftest data from setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
+    },
+    {
+      "id": 7,
+      "prompt": "Can you summarize performance suggestions for my cluster? I want to know what indexes to create and if there are any I should drop.",
+      "expected_output": "Uses MCP to fetch Performance Advisor output including suggested indexes, drop suggestions, and slow query logs. Summarizes findings with prioritized recommendations.",
+      "files": [],
+      "expectations": [
+        "Calls atlas-get-performance-advisor with suggestedIndexes operation",
+        "Calls atlas-get-performance-advisor with slowQueryLogs operation",
+        "Calls atlas-get-performance-advisor with dropIndexSuggestions operation",
+        "Summarizes index suggestions for the perftest.orders collection",
+        "Mentions whether there are any indexes recommended for dropping"
+      ],
+      "_note": "Requires live Atlas cluster with perftest data from setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
+    },
+    {
+      "id": 8,
+      "prompt": "I see a slow aggregation on perftest.orders in my Atlas slow query logs that uses $facet. Can you look at the slow queries on my cluster and suggest how to optimize this aggregation?",
+      "expected_output": "Identifies that $facet sends the entire collection through every branch regardless of each branch's filter. Recommends replacing $facet with $unionWith so each branch runs as an independent pipeline that can use indexes. Suggests indexes on { total: 1, createdAt: -1 } or { createdAt: 1, total: 1 } for the high-value branch.",
+      "files": [],
+      "expectations": [
+        "Calls atlas-get-performance-advisor (or equivalent MCP tool) to retrieve slow query logs",
+        "Identifies the $facet aggregation in the slow query logs on perftest.orders",
+        "Explains that $facet funnels all input documents into every branch, even branches that only need a small subset",
+        "Recommends replacing $facet with $unionWith so each branch can run as an independent pipeline with its own index usage and optimization",
+        "Suggests a compound index for the high-value branch's $match on total and createdAt"
+      ],
+      "_note": "Requires live Atlas cluster with perftest data from setup-slow-queries.ts. The $facet → $unionWith optimization is specific skill knowledge that differentiates from base LLM advice."
+    }
+  ]
+}
