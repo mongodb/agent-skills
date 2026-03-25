@@ -69,11 +69,10 @@
     },
     {
       "id": 6,
-      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for a SaaS system with 100k MAU. This endpoint is to send messages between users (stored in MongoDB). Provide a suitable client configuration. I'm in a dedicated cluster with 2 shards, two replica servers per shard, and 200MB RAM **per server**. Keep resource utilization at 80% with the maximum throughput; I aim for 50k ops/sec and 100k ops/sec at peak. Expect 4 app instances. Assume avg operation time is 20ms",
-      "expected_output": "Agent should ask about specific requirements for the app. Should then provide a code snippet that demonstrates the connection setup with suitable parameters.",
+      "prompt": "For a MongoDB app, advice the best pool config I can use with this setup. I'm in a dedicated cluster with 2 shards, 1 mongos router, 1 replica member per shard. Cluster RAM is 400MB for db operations. Keep memory utilization at 80% or less; I aim for 15k ops/sec on regular operation and 100k ops/sec during peaks. Expect 5 app instances. Assume avg operation time is 20ms. Give me a minimal code snippet.",
       "expectations": [
-        "Recognizes that target max ops/sec is unachievable with the current topology and resource constraints",
-        "Recommends maxPoolSize between 100 and 200 for max achievable througput",
+        "Recognizes that target peak ops/sec is unachievable with the current topology and resource constraints",
+        "Recommends a maxPoolSize between 60 and 80 for the normal operational throughput",
         "Presents calculations to justify the maxPoolSize recommendation",
         "Shows the context of the presented topology in its calculations",
         "Estimates 1MB per connection"
