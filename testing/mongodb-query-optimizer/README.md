@@ -33,7 +33,7 @@ Evals are split into two groups based on whether they need a live Atlas MCP conn
 | Evals | MCP server | What they test |
 |-------|-----------|----------------|
 | **1–5** | **Not configured** | Query optimization knowledge from skill references only. No MCP tools should be called. |
-| **6–7** | **Configured** (connection string + Atlas API credentials) | Skill's ability to use `atlas-get-performance-advisor` to diagnose real cluster performance issues. |
+| **6–8** | **Configured** (connection string + Atlas API credentials) | Skill's ability to use `atlas-get-performance-advisor` to diagnose real cluster performance issues. |
 
 **Both groups run with_skill and without_skill (baseline).** The skill-creator should spawn two subagents per eval — one with the skill, one without — so you can compare the skill's value-add against the model's base knowledge.
 
@@ -41,16 +41,20 @@ Eval 5 is a **negative test case** — the optimizer skill should NOT trigger fo
 
 ### Instructions for /skill-creator
 
-When asked to run evals for this skill:
+**Important:** Evals 1–5 must run without the MCP server, and evals 6–8 must run with it. When invoking skill-creator, call it out explicitly, e.g.:
+
+> `/skill-creator` can you please run the evals for mongodb-query-optimizer. run evals 1-5 without MCP server configured, run evals 6-8 with the MCP server configured
+
+The steps are:
 
 1. Run **evals 1–5 without the MCP server configured** (tell subagents not to use any MongoDB MCP tools). Run both with_skill and without_skill (baseline) for each.
-2. Run **evals 6–7 with the MCP server configured** (subagents should use Atlas MCP tools). Run both with_skill and without_skill (baseline) for each.
+2. Run **evals 6–8 with the MCP server configured** (subagents should use Atlas MCP tools). Run both with_skill and without_skill (baseline) for each.
 3. Grade all runs against the assertions in `evals/evals.json`.
 4. Generate the eval viewer with benchmark comparison (with_skill vs without_skill).
 
-## Atlas Performance Test Setup (Evals 6–7)
+## Atlas Performance Test Setup (Evals 6–8)
 
-Evals 6 and 7 require a live Atlas cluster with slow query data. Follow these steps before running them.
+Evals 6–8 require a live Atlas cluster with slow query data. Follow these steps before running them.
 
 ### Prerequisites
 
@@ -110,6 +114,7 @@ The script produces two slow query patterns:
 |---|---|---|
 | `find({ status, region }).sort({ createdAt: -1 })` | COLLSCAN + in-memory SORT | `{ status: 1, region: 1, createdAt: -1 }` |
 | `find({ customerId })` | COLLSCAN | `{ customerId: 1 }` |
+| `aggregate([$facet: {...}])` | Full collection funneled into every branch | Replace `$facet` with `$unionWith`; index on `{ total: 1, createdAt: -1 }` |
 
 ### 4. Wait for Performance Advisor
 
@@ -129,11 +134,12 @@ If running evals via subagents (e.g., with skill-creator), pre-approve MCP tool 
 }
 ```
 
-### 6. Run evals 6–7
+### 6. Run evals 6–8
 
-The eval test cases (ids 6 and 7 in `evals/evals.json`) ask the skill to:
-- Summarize slow queries and performance suggestions for the connected cluster
-- Provide optimization recommendations based on Performance Advisor output
+The eval test cases (ids 6, 7, and 8 in `evals/evals.json`) ask the skill to:
+- Discover and summarize slow queries on the connected cluster (eval 6)
+- Provide a full performance summary including indexes to create and drop (eval 7)
+- Identify and optimize a slow `$facet` aggregation from slow query logs (eval 8)
 
 These evals require a live MCP server connection — they cannot be run in offline/mock mode.
 
