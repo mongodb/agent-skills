@@ -11,8 +11,7 @@ testing/mongodb-query-optimizer/
 ├── cleanup.ts                 # Drop the perftest database
 ├── package.json               # Dependencies (mongodb, tsx)
 ├── evals/
-│   ├── evals.json             # Eval prompts, assertions, and expected outputs
-│   └── evals.md               # Human-readable eval descriptions
+│   └── evals.json             # Eval prompts, assertions, and expected outputs
 └── mongodb-query-optimizer-workspace/   # .gitignored — ephemeral eval output
     └── iteration-N/
 ```
