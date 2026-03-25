@@ -1,6 +1,6 @@
 ---
 name: mongodb-connection
-description: Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill when working/updating/reviewing on functions that instantiate or configure a MongoDB client (eg, when  calling `connect()`), configuring connection pools, troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion), optimizing performance issues related to connections. This includes scenarios like building serverless functions with MongoDB, creating API endpoints that use MongoDB, optimizing high-traffic MongoDB applications, creating long-running tasks and concurrency, or debugging connection-related failures.
+description: Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill when working/updating/reviewing on functions that instantiate or configure a MongoDB client (eg, when calling `connect()`), configuring connection pools, troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion), optimizing performance issues related to connections. This includes scenarios like building serverless functions with MongoDB, creating API endpoints that use MongoDB, optimizing high-traffic MongoDB applications, creating long-running tasks and concurrency, or debugging connection-related failures.
 ---
 
 # MongoDB Connection Optimizer
@@ -45,7 +45,7 @@ Don't use when: variable durations—start conservative (10-20), monitor, adjust
 
 Query optimization can dramatically reduce required pool size.
 
-The total number of supported connections in a cluster could inform the upper limit of poolSize based on the number of MongoClient's employed. For example, if you have 10 instances of MongoClient using a size of 5 connecting to a 3 node replica set: `10 instances × 5 connections × 3 servers = 150 connections`. 
+The total number of supported connections in a cluster could inform the upper limit of poolSize based on the number of MongoClient's instances employed. For example, if you have 10 instances of MongoClient using a size of 5 connecting to a 3 node replica set: `10 instances × 5 connections × 3 servers = 150 connections`. 
 
 Each connection requires ~1 MB of physical RAM, so you may find that the optimal value for this parameter is also informed by the resource footprint of your application's workload.
 

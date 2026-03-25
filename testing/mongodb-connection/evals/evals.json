@@ -10,7 +10,7 @@
         "Verifies or assumes OLAP workload",
         "maxPoolSize should match expected concurrency",
         "minPoolSize should be less than 10",
-        "socketTimeout should be at between 2x and 3x the length of the slowest operation",
+        "socketTimeout should be between 2x and 3x the length of the slowest operation",
         "Must justify the connection parameters based on the context of the task"
       ]
     },
@@ -36,7 +36,7 @@
         "maxPoolSize must be less than 10",
         "minPoolSize should be 0",
         "socketTimeout and connectTimeout should be greater than zero",
-        "maxIdleTimeMS should be less than aminute",
+        "maxIdleTimeMS should be less than a minute",
         "Must justify the connection parameters based on the context of the task"
       ]
     },
@@ -69,7 +69,7 @@
     },
     {
       "id": 6,
-      "prompt": "For a MongoDB app, advice the best pool config I can use with this setup. I'm in a dedicated cluster with 2 shards, 1 mongos router, 1 replica member per shard. Cluster RAM is 400MB for db operations. Keep memory utilization at 80% or less; I aim for 15k ops/sec on regular operation and 100k ops/sec during peaks. Expect 5 app instances. Assume avg operation time is 20ms. Give me a minimal code snippet.",
+      "prompt": "For a MongoDB app, advise the best pool config I can use with this setup. I'm in a dedicated cluster with 2 shards, 1 mongos router, 1 replica member per shard. Cluster RAM is 400MB for db operations. Keep memory utilization at 80% or less; I aim for 15k ops/sec on regular operation and 100k ops/sec during peaks. Expect 5 app instances. Assume avg operation time is 20ms. Give me a minimal code snippet.",
       "expectations": [
         "Recognizes that target peak ops/sec is unachievable with the current topology and resource constraints",
         "Recommends a maxPoolSize between 60 and 80 for the normal operational throughput",

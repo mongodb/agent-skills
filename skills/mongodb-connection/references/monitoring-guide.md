@@ -6,24 +6,19 @@ This reference provides detailed guidance on monitoring connection pool health, 
 All MongoDB drivers implement the [Connection Monitoring and Pooling specification](https://github.com/mongodb/specifications/blob/master/source/connection-monitoring-and-pooling/connection-monitoring-and-pooling.md), which defines standard events for tracking pool lifecycle and connection state:
 
 **Pool lifecycle events**:
-- `connectionPoolCreated` / `connectionPoolClosed` - Track when pools are initialized or shut down
+- `ConnectionPoolCreated` / `ConnectionPoolClosed` - Track when pools are initialized or shut down
 
 **Connection lifecycle events**:
-- `connectionCreated` / `connectionClosed` - Monitor connection churn (rapid creation = pooling issues)
+- `ConnectionCreated` / `ConnectionClosed` - Monitor connection churn (rapid creation = pooling issues)
 
 **Check-out events**:
-- `connectionCheckOutStarted` - Operation requests a connection
-- `connectionCheckedOut` / `connectionCheckedIn` - Track when connections are borrowed/returned
-- `connectionCheckOutFailed` - **Critical alert signal** - indicates pool exhaustion
+- `ConnectionCheckOutStarted` - Operation requests a connection
+- `ConnectionCheckedOut` / `ConnectionCheckedIn` - Track when connections are borrowed/returned
+- `ConnectionCheckOutFailed` - **Critical alert signal** - indicates pool exhaustion
 
-**Tip:** Send `connectionCheckOutFailed` events and rapid `connectionCreated` events to your monitoring system immediately.
+**Tip:** Send `ConnectionCheckOutFailed` events and rapid `ConnectionCreated` events to your monitoring system immediately.
 
-Access methods vary by driver. For example:
-- **Node.js**: Event listeners (`client.on('connectionPoolCreated', ...)`)
-- **Python (PyMongo and Motor)**: Event listeners via `monitoring.ConnectionPoolListener`
-- **Java**: Through `ConnectionPoolListener` interfaces
-
-Consult your driver's [documentation](https://www.mongodb.com/docs/drivers/) for how to subscribe to these standard events.
+Access methods vary by driver. Consult your driver's [documentation](https://www.mongodb.com/docs/drivers/) for how to subscribe to these standard events.
 
 ---
 
