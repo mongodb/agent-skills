@@ -1,0 +1,96 @@
+{
+  "skill_name": "mongodb-connection",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Using MongoDB, give me a minimal snippet for a task that: reads user preferences, searches the vector store for relevant articles, and sends a personalized newsletter. Use a concurrency of 50. Aggregations take usually around 1 minute and the task will run weekly. Provide a suitable client configuration.",
+      "expected_output": "Agent should ask about specific requirements for the app. Should then provide a code snippet that demonstrates the connection setup with suitable parameters.",
+      "expectations": [
+        "Client initialization should follow singleton, module-level, or cached, client pattern",
+        "Verifies or assumes OLAP workload",
+        "maxPoolSize should match expected concurrency",
+        "minPoolSize should be less than 10",
+        "socketTimeout should be between 2x and 3x the length of the slowest operation",
+        "Must justify the connection parameters based on the context of the task"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for a high-frequency trading system with 100k MAU. This endpoint is to place ask/bid orders. Provide a suitable client configuration.",
+      "expected_output": "Agent should ask about specific requirements for the app. Should then provide a code snippet that demonstrates the connection setup with suitable parameters.",
+      "expectations": [
+        "Client initialization should follow singleton, module-level, or cached, client pattern",
+        "Verifies or assumes OLTP workload",
+        "maxPoolSize must be more than 50",
+        "minPoolSize should be between 10 and 50",
+        "socketTimeout and connectTimeout should be greater than zero and less than a minute",
+        "Must justify the connection parameters based on the context of the task"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for a high-traffic system with 1M MAU. This endpoint is to sign up users. I'm using Cloudflare Workers. Provide a suitable client configuration.",
+      "expected_output": "Agent should ask about specific requirements for the app. Should then provide a code snippet that demonstrates the connection setup with suitable parameters.",
+      "expectations": [
+        "Client initialization should follow singleton, module-level, or cached, client pattern",
+        "maxPoolSize must be less than 10",
+        "minPoolSize should be 0",
+        "socketTimeout and connectTimeout should be greater than zero",
+        "maxIdleTimeMS should be less than a minute",
+        "Must justify the connection parameters based on the context of the task"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for an e-commerce system with 2M transactions a day. This endpoint is to place orders. I'm running it on premise and we expect a 25x peaks during the Black Friday. Provide a suitable client configuration.",
+      "expected_output": "Agent should ask about specific requirements for the app. Should then provide a code snippet that demonstrates the connection setup with suitable parameters.",
+      "expectations": [
+        "Client initialization should follow singleton, module-level, or cached, client pattern",
+        "maxPoolSize must be at least 100",
+        "waitQueueTimeoutMS should be less than 10 seconds",
+        "maxIdleTimeMS should be between 1 and 10 minutes",
+        "maxConnecting should be between 1 or 2 or omitted",
+        "Must justify the connection parameters based on the context of the task",
+        "Provide specific monitoring recommendations"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Help me troubleshoot my connection issue.",
+      "files": ["assets/case1.md"],
+      "expected_output": "Agent identifies a connection issue not necessarily related to client configuration but still recommends decreasing the connection pool size.",
+      "expectations": [
+        "Asks diagnosing questions",
+        "maxPoolSize should be moderate to balance resource usage",
+        "maxConnecting should be between 1 or 2 or omitted",
+        "Must justify the connection parameters based on the context of the task",
+        "Provide specific monitoring recommendations"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "For a MongoDB app, advise the best pool config I can use with this setup. I'm in a dedicated cluster with 2 shards, 1 mongos router, 1 replica member per shard. Cluster RAM is 400MB for db operations. Keep memory utilization at 80% or less; I aim for 15k ops/sec on regular operation and 100k ops/sec during peaks. Expect 5 app instances. Assume avg operation time is 20ms. Give me a minimal code snippet.",
+      "expectations": [
+        "Recognizes that target peak ops/sec is unachievable with the current topology and resource constraints",
+        "Recommends a maxPoolSize between 60 and 80 for the normal operational throughput",
+        "Presents calculations to justify the maxPoolSize recommendation",
+        "Shows the context of the presented topology in its calculations",
+        "Estimates 1MB per connection"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Help me troubleshoot my connection issue.",
+      "files": ["assets/case2.md"],
+      "expected_output": "Agent identifies the issue is reaching the server's max connection limit and recommends decreasing max pool size.",
+      "expectations": [
+        "Identifies the issue is connection rejection due to reaching the server's max connection limit",
+        "Recommends a smaller pool size",
+        "Recommended maxPoolSize must be <10",
+        "Presents calculations to justify the maxPoolSize recommendation",
+        "Factors in the calculations 2 extra monitoring connections created per client",
+        "Provide specific monitoring recommendations"
+      ]
+    }
+  ]
+}
