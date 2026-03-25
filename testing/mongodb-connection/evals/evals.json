@@ -29,7 +29,7 @@
     },
     {
       "id": 3,
-      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for a high-traffic system with 1M MAU. This endpoint is to sign up users. I'm using Claudflare Workers. Provide a suitable client configuration.",
+      "prompt": "Using MongoDB, give me a minimal snippet for new endpoint for a high-traffic system with 1M MAU. This endpoint is to sign up users. I'm using Cloudflare Workers. Provide a suitable client configuration.",
       "expected_output": "Agent should ask about specific requirements for the app. Should then provide a code snippet that demonstrates the connection setup with suitable parameters.",
       "expectations": [
         "Client initialization should follow singleton, module-level, or cached, client pattern",

@@ -143,9 +143,8 @@ When operations queue, pool is exhausted.
 **Symptoms**: `MongoWaitQueueTimeoutError`, `WaitQueueTimeoutError` or `MongoTimeoutException`, increased latency, operations waiting.
 
 **Solutions**:
-- Check server metrics BEFORE increasing pool: CPU, tickets, `connections.current`
-- **Increase `maxPoolSize`** when: Wait queue has operations waiting (size > 0) + server shows low utilization (available tickets, low CPU)
-- **Don't increase** when: Server at capacity (tickets exhausted, high CPU). Suggest query optimization.
+- **Increase `maxPoolSize`** when: Wait queue has operations waiting (size > 0) + server shows low utilization
+- **Don't increase** when: Server is at capacity. Suggest query optimization.
 
 ### Connection Timeouts (ECONNREFUSED, SocketTimeout)
 
