@@ -226,6 +226,54 @@ async function main() {
       await coll.find({ customerId: customer._id }).toArray();
       queryCount++;
 
+      // Query 3: $facet aggregation that sends ALL docs through every branch
+      // This is slow because $facet funnels the entire collection into each branch,
+      // even though the "recentHighValue" branch only needs a tiny subset.
+      // Skill should recommend replacing $facet with $unionWith so each branch
+      // can optimize independently (and use indexes).
+      await coll
+        .aggregate([
+          {
+            $facet: {
+              recentHighValue: [
+                {
+                  $match: {
+                    total: { $gte: 500 },
+                    createdAt: { $gte: new Date("2025-06-01") },
+                  },
+                },
+                { $sort: { total: -1 } },
+                { $limit: 10 },
+              ],
+              statusBreakdown: [
+                {
+                  $group: {
+                    _id: "$status",
+                    count: { $sum: 1 },
+                    avgTotal: { $avg: "$total" },
+                  },
+                },
+                { $sort: { count: -1 } },
+              ],
+              categoryRevenue: [
+                { $unwind: "$items" },
+                {
+                  $group: {
+                    _id: "$items.category",
+                    totalRevenue: {
+                      $sum: { $multiply: ["$items.quantity", "$items.unitPrice"] },
+                    },
+                    orderCount: { $sum: 1 },
+                  },
+                },
+                { $sort: { totalRevenue: -1 } },
+              ],
+            },
+          },
+        ])
+        .toArray();
+      queryCount++;
+
       // Brief pause to avoid overwhelming the cluster
       await new Promise((r) => setTimeout(r, 100));
     }
@@ -243,9 +291,11 @@ async function main() {
     console.log("\nExpected slow query patterns:");
     console.log("  1. find({ status, region }).sort({ createdAt: -1 })  →  COLLSCAN + in-memory SORT");
     console.log("  2. find({ customerId })                              →  COLLSCAN");
+    console.log("  3. aggregate([$facet: { recentHighValue, statusBreakdown }])  →  full collection funneled into every branch");
     console.log("\nExpected Performance Advisor suggestions (after a few minutes):");
     console.log("  - { status: 1, region: 1, createdAt: -1 }  on perftest.orders");
     console.log("  - { customerId: 1 }                        on perftest.orders");
+    console.log("  - $facet aggregation: replace with $unionWith so branches optimize independently");
     console.log("\nNote: Performance Advisor suggestions may take 5-15 minutes to appear in Atlas.");
   } finally {
     await client.close();

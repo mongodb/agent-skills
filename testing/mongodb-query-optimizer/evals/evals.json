@@ -83,6 +83,20 @@
         "Mentions whether there are any indexes recommended for dropping"
       ],
       "_note": "Requires live Atlas cluster with perftest data from atlas-perf-test/setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
+    },
+    {
+      "id": 8,
+      "prompt": "I see a slow aggregation on perftest.orders in my Atlas slow query logs that uses $facet. Can you look at the slow queries on my cluster and suggest how to optimize this aggregation?",
+      "expected_output": "Identifies that $facet sends the entire collection through every branch regardless of each branch's filter. Recommends replacing $facet with $unionWith so each branch runs as an independent pipeline that can use indexes. Suggests indexes on { total: 1, createdAt: -1 } or { createdAt: 1, total: 1 } for the high-value branch.",
+      "files": [],
+      "expectations": [
+        "Calls atlas-get-performance-advisor (or equivalent MCP tool) to retrieve slow query logs",
+        "Identifies the $facet aggregation in the slow query logs on perftest.orders",
+        "Explains that $facet funnels all input documents into every branch, even branches that only need a small subset",
+        "Recommends replacing $facet with $unionWith so each branch can run as an independent pipeline with its own index usage and optimization",
+        "Suggests a compound index for the high-value branch's $match on total and createdAt"
+      ],
+      "_note": "Requires live Atlas cluster with perftest data from setup-slow-queries.ts. The $facet → $unionWith optimization is specific skill knowledge that differentiates from base LLM advice."
     }
   ]
 }
