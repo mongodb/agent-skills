@@ -60,6 +60,10 @@ If not found, search common locations (`/usr/local/bin`, `/opt/homebrew/bin`,
 `~/go/bin`). If found but not on PATH, tell the user. If not found anywhere,
 follow [references/install-skill-validator.md](references/install-skill-validator.md).
 
+If `--version` is not at least v1.5.1, help the user upgrade with
+`brew upgrade skill-validator` or
+`go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest`.
+
 Do NOT proceed until this succeeds.
 
 ### 1b. Check for `claude` CLI (LLM scoring only)
