@@ -1,0 +1,86 @@
+{
+  "eval_id": 26,
+  "eval_name": "create-privatelink-kafka-aws",
+  "prompt": "Set up a PrivateLink connection for Confluent Kafka on AWS in workspace 'prod-streams'",
+  "resource_naming_strategy": {
+    "type": "timestamp",
+    "pattern": "privatelink-test-{timestamp}",
+    "note": "Appends Unix timestamp to PrivateLink resource name"
+  },
+  "test_prerequisites": {
+    "workspace": "Use existing workspace 'prod-streams' or create one",
+    "connections_required": [],
+    "note": "PrivateLink is a project-level resource created before connections; no pre-existing connections needed"
+  },
+  "pre_test_setup": [
+    {
+      "step": "validate_workspace",
+      "action": "Call atlas-streams-discover action='inspect-workspace' for 'prod-streams'",
+      "critical": true
+    }
+  ],
+  "post_test_validation": [
+    {
+      "step": "verify_privatelink_created",
+      "action": "Verify atlas-streams-build was called with resource='privatelink'",
+      "expected": "PrivateLink resource created with AWS provider and Confluent vendor config",
+      "critical": true
+    }
+  ],
+  "post_test_cleanup": [
+    {
+      "step": "delete_test_privatelink",
+      "action": "Call atlas-streams-teardown resource='privatelink'",
+      "when": "test_complete"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "calls_atlas_streams_build",
+      "description": "Uses atlas-streams-build tool"
+    },
+    {
+      "name": "resource_type_privatelink",
+      "description": "resource='privatelink'",
+      "critical": true
+    },
+    {
+      "name": "provider_aws",
+      "description": "privateLinkProvider='AWS'"
+    },
+    {
+      "name": "vendor_confluent",
+      "description": "privateLinkConfig.vendor='CONFLUENT'",
+      "critical": true
+    },
+    {
+      "name": "has_dns_domain",
+      "description": "privateLinkConfig includes dnsDomain"
+    },
+    {
+      "name": "has_dns_subdomain",
+      "description": "privateLinkConfig includes dnsSubDomain (array)"
+    },
+    {
+      "name": "explains_two_step_process",
+      "description": "Mentions creating PrivateLink first, then referencing connectionId in the Kafka connection's networking config",
+      "critical": true
+    },
+    {
+      "name": "networking_access_type",
+      "description": "networking.access.type='PRIVATE_LINK' in connection config"
+    }
+  ],
+  "common_mistakes": [
+    {
+      "mistake": "Putting networking config directly on Kafka connection without creating project-level PrivateLink first",
+      "error": "Connection creation fails because PrivateLink resource does not exist yet",
+      "fix": "Create PrivateLink resource first via atlas-streams-build resource='privatelink', then reference its _id in the Kafka connection's networking.access.connectionId"
+    },
+    {
+      "mistake": "Using AWS endpoint ID instead of Atlas PrivateLink _id as connectionId",
+      "error": "Kafka connection networking config references wrong identifier",
+      "fix": "Use the Atlas PrivateLink resource _id returned from atlas-streams-build, not the AWS VPC endpoint ID"
+    }
+  ]
+}

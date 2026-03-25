@@ -1,0 +1,107 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_source:
+        description: "How to determine the next version"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+          - exact
+      exact_version:
+        description: "Exact version (required when version_source=exact), e.g. 1.2.3"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Compute target version
+        id: version
+        shell: bash
+        env:
+          VERSION_SOURCE: ${{ inputs.version_source }}
+          EXACT_VERSION: ${{ inputs.exact_version }}
+        run: |
+          set -euo pipefail
+
+          current_version="$(jq -r '.version' .cursor-plugin/plugin.json)"
+          claude_version="$(jq -r '.version' .claude-plugin/plugin.json)"
+          gemini_version="$(jq -r '.version' gemini-extension.json)"
+
+          if [[ "$current_version" != "$claude_version" || "$current_version" != "$gemini_version" ]]; then
+            echo "Plugin version mismatch detected:" >&2
+            echo "  .cursor-plugin/plugin.json: $current_version" >&2
+            echo "  .claude-plugin/plugin.json: $claude_version" >&2
+            echo "  gemini-extension.json: $gemini_version" >&2
+            exit 1
+          fi
+
+          if [[ "$VERSION_SOURCE" == "exact" ]]; then
+            if [[ -z "${EXACT_VERSION:-}" ]]; then
+              echo "Input exact_version is required when version_source=exact." >&2
+              exit 1
+            fi
+
+            target_version="$(npx --yes semver "$EXACT_VERSION")"
+          else
+            target_version="$(npx --yes semver "$current_version" -i "$VERSION_SOURCE")"
+          fi
+
+          if [[ "$target_version" == "$current_version" ]]; then
+            echo "Target version matches current version ($current_version); nothing to release." >&2
+            exit 1
+          fi
+
+          echo "current_version=$current_version" >> "$GITHUB_OUTPUT"
+          echo "target_version=$target_version" >> "$GITHUB_OUTPUT"
+          echo "branch_name=release/v$target_version" >> "$GITHUB_OUTPUT"
+
+      - name: Update plugin versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp_file="$(mktemp)"
+          jq '.version = "${{ steps.version.outputs.target_version }}"' .cursor-plugin/plugin.json > "$tmp_file"
+          mv "$tmp_file" .cursor-plugin/plugin.json
+
+          tmp_file="$(mktemp)"
+          jq '.version = "${{ steps.version.outputs.target_version }}"' .claude-plugin/plugin.json > "$tmp_file"
+          mv "$tmp_file" .claude-plugin/plugin.json
+
+          tmp_file="$(mktemp)"
+          jq '.version = "${{ steps.version.outputs.target_version }}"' gemini-extension.json > "$tmp_file"
+          mv "$tmp_file" gemini-extension.json
+
+      - name: Create release pull request
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # 8.1.0
+        with:
+          base: main
+          branch: ${{ steps.version.outputs.branch_name }}
+          title: "chore: prepare release v${{ steps.version.outputs.target_version }}"
+          commit-message: "chore: bump plugin versions to v${{ steps.version.outputs.target_version }}"
+          body: |
+            ## Summary
+            - Bump plugin version from `${{ steps.version.outputs.current_version }}` to `${{ steps.version.outputs.target_version }}`
+
+            ## Next step
+            - Merge this PR to trigger draft release creation.

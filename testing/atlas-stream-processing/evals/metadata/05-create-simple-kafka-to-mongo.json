@@ -1,0 +1,128 @@
+{
+  "eval_id": 5,
+  "eval_name": "create-simple-kafka-to-mongo",
+  "prompt": "Create a processor that reads from Kafka topic 'orders' and writes to Atlas collection 'analytics.orders'",
+  "resource_naming_strategy": {
+    "type": "timestamp",
+    "pattern": "orders-processor-test-{timestamp}",
+    "note": "Appends Unix timestamp to processor name"
+  },
+  "test_prerequisites": {
+    "workspace": "Use existing workspace with Kafka and Atlas connections (e.g., ASPDemo)",
+    "connections_required": [
+      {
+        "type": "Kafka",
+        "name": "<any-kafka-connection>",
+        "state": "READY"
+      },
+      {
+        "type": "Cluster",
+        "name": "<any-atlas-connection>",
+        "state": "READY"
+      }
+    ]
+  },
+  "pre_test_setup": [
+    {
+      "step": "validate_workspace_exists",
+      "action": "Call atlas-streams-discover action='list-workspaces' to find workspace with required connections",
+      "critical": true
+    },
+    {
+      "step": "validate_connections",
+      "action": "Call atlas-streams-discover action='list-connections' and verify Kafka + Atlas connections exist",
+      "critical": true
+    }
+  ],
+  "post_test_validation": [
+    {
+      "step": "verify_processor_created",
+      "action": "Call atlas-streams-discover action='inspect-processor' to confirm processor exists",
+      "critical": true
+    },
+    {
+      "step": "verify_processor_state",
+      "expected": "State is CREATED or STOPPED (not FAILED)",
+      "critical": true
+    }
+  ],
+  "post_test_cleanup": [
+    {
+      "step": "delete_test_processor",
+      "action": "Call atlas-streams-teardown resource='processor' to remove test processor",
+      "when": "test_complete",
+      "note": "Processor auto-stops before deletion"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "validates_connections_first",
+      "description": "Calls atlas-streams-discover with action='list-connections' before creating processor",
+      "critical": true
+    },
+    {
+      "name": "inspects_each_connection",
+      "description": "Calls atlas-streams-discover with action='inspect-connection' for Kafka and Atlas connections"
+    },
+    {
+      "name": "calls_atlas_streams_build",
+      "description": "Uses atlas-streams-build tool with resource='processor'"
+    },
+    {
+      "name": "pipeline_starts_with_source",
+      "description": "First pipeline stage is $source",
+      "critical": true
+    },
+    {
+      "name": "source_has_kafka_connection",
+      "description": "$source.connectionName references Kafka connection"
+    },
+    {
+      "name": "source_has_topic_field",
+      "description": "$source.topic='orders'",
+      "critical": true
+    },
+    {
+      "name": "pipeline_ends_with_merge",
+      "description": "Last pipeline stage is $merge (not $emit for Atlas)",
+      "critical": true
+    },
+    {
+      "name": "merge_has_connection",
+      "description": "$merge.into.connectionName references Atlas connection"
+    },
+    {
+      "name": "merge_has_db_and_collection",
+      "description": "$merge.into.db='analytics' and $merge.into.coll='orders'",
+      "critical": true
+    },
+    {
+      "name": "dlq_configured",
+      "description": "dlq parameter provided with connectionName, db, and coll fields",
+      "critical": true
+    }
+  ],
+  "expected_pipeline": [
+    {
+      "$source": {
+        "connectionName": "<kafka-connection-name>",
+        "topic": "orders"
+      }
+    },
+    {
+      "$merge": {
+        "into": {
+          "connectionName": "<atlas-connection-name>",
+          "db": "analytics",
+          "coll": "orders"
+        }
+      }
+    }
+  ],
+  "success_criteria": {
+    "operation_succeeds": "Processor creation returns success (not 400 or 409)",
+    "processor_accessible": "Processor is accessible via inspect-processor",
+    "pipeline_structure_valid": "Pipeline has $source first and $merge last",
+    "dlq_configured": "DLQ parameter was provided in processor creation"
+  }
+}

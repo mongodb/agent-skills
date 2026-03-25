@@ -1,0 +1,123 @@
+{
+  "eval_id": 14,
+  "eval_name": "validate-connections-before-deploy",
+  "prompt": "I want to create a processor using connections 'kafka-prod' and 'atlas-main'. Can you verify they're ready?",
+  "test_prerequisites": {
+    "workspace": "Use existing workspace with at least 2 connections (Kafka + Atlas)",
+    "connections_required": "Any Kafka and Atlas connections (names don't need to match prompt)",
+    "note": "Test validates connection validation workflow, not specific connection names"
+  },
+  "pre_test_setup": [
+    {
+      "step": "identify_test_connections",
+      "action": "Call atlas-streams-discover action='list-connections' to identify available connections",
+      "note": "Use first available Kafka and Atlas connections as test subjects"
+    }
+  ],
+  "post_test_validation": [
+    {
+      "step": "verify_workflow_followed",
+      "expected": "Agent called list-connections first, then inspect-connection for each",
+      "critical": true
+    },
+    {
+      "step": "verify_summary_presented",
+      "expected": "Agent presents connection summary with states and types",
+      "critical": true
+    }
+  ],
+  "post_test_cleanup": [
+    {
+      "step": "no_cleanup_required",
+      "note": "Read-only operations, no resources created"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "calls_list_connections_first",
+      "description": "First tool call is atlas-streams-discover with action='list-connections'",
+      "critical": true,
+      "reason": "Must list connections before inspecting specific ones"
+    },
+    {
+      "name": "calls_inspect_for_kafka_prod",
+      "description": "Calls atlas-streams-discover with action='inspect-connection', resourceName='kafka-prod'"
+    },
+    {
+      "name": "calls_inspect_for_atlas_main",
+      "description": "Calls atlas-streams-discover with action='inspect-connection', resourceName='atlas-main'"
+    },
+    {
+      "name": "checks_connection_state_ready",
+      "description": "Response verifies both connections are in READY state",
+      "critical": true
+    },
+    {
+      "name": "verifies_connection_types",
+      "description": "Response confirms connection types match intended usage (Kafka for kafka-prod, Cluster for atlas-main)"
+    },
+    {
+      "name": "presents_summary_to_user",
+      "description": "Response presents connection summary before proceeding",
+      "critical": true,
+      "reason": "User must confirm connections are correct before processor creation"
+    },
+    {
+      "name": "validates_names_match_targets",
+      "description": "Response verifies connection names match their actual targets (e.g., connection 'kafka-prod' actually points to production Kafka)"
+    },
+    {
+      "name": "does_not_skip_validation",
+      "description": "Does NOT skip directly to processor creation without validation",
+      "critical": true
+    }
+  ],
+  "expected_workflow": [
+    {
+      "step": 1,
+      "action": "List all connections",
+      "tool": "atlas-streams-discover",
+      "parameters": {
+        "action": "list-connections",
+        "workspaceName": "<workspace>"
+      }
+    },
+    {
+      "step": 2,
+      "action": "Inspect kafka-prod connection",
+      "tool": "atlas-streams-discover",
+      "parameters": {
+        "action": "inspect-connection",
+        "workspaceName": "<workspace>",
+        "resourceName": "kafka-prod"
+      }
+    },
+    {
+      "step": 3,
+      "action": "Inspect atlas-main connection",
+      "tool": "atlas-streams-discover",
+      "parameters": {
+        "action": "inspect-connection",
+        "workspaceName": "<workspace>",
+        "resourceName": "atlas-main"
+      }
+    },
+    {
+      "step": 4,
+      "action": "Present summary",
+      "description": "Show connection summary: names, types, states, targets"
+    },
+    {
+      "step": 5,
+      "action": "Confirm readiness",
+      "description": "Confirm both connections are READY and properly configured"
+    }
+  ],
+  "validation_checklist": [
+    "Connection exists in workspace",
+    "Connection state is READY",
+    "Connection type matches usage (Kafka for source, Cluster for sink)",
+    "Connection name clearly indicates target",
+    "Connection configuration is complete"
+  ]
+}

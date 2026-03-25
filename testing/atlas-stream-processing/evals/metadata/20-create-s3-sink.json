@@ -1,0 +1,125 @@
+{
+  "eval_id": 20,
+  "eval_name": "create-s3-sink",
+  "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
+  "resource_naming_strategy": {
+    "type": "timestamp",
+    "pattern": "s3-sink-test-{timestamp}",
+    "note": "Appends Unix timestamp to processor name"
+  },
+  "test_prerequisites": {
+    "workspace": "Use existing workspace with Kafka and S3 connections",
+    "connections_required": [
+      {
+        "type": "Kafka",
+        "name": "<any-kafka-connection>",
+        "state": "READY"
+      },
+      {
+        "type": "S3",
+        "name": "<any-s3-connection>",
+        "state": "READY",
+        "note": "S3 connection requires IAM role ARN registered via Atlas Cloud Provider Access"
+      }
+    ],
+    "skip_if_missing": "If no S3 connection exists, test should validate that agent mentions AWS prerequisites but cannot create processor"
+  },
+  "pre_test_setup": [
+    {
+      "step": "validate_connections",
+      "action": "Call atlas-streams-discover action='list-connections' to find Kafka and S3 connections",
+      "critical": true
+    }
+  ],
+  "post_test_validation": [
+    {
+      "step": "verify_processor_created",
+      "action": "Call atlas-streams-discover action='inspect-processor'",
+      "expected": "Processor exists with $emit pipeline (not $merge)",
+      "critical": true,
+      "skip_if": "S3 connection not available"
+    }
+  ],
+  "post_test_cleanup": [
+    {
+      "step": "delete_test_processor",
+      "action": "Call atlas-streams-teardown resource='processor'",
+      "when": "test_complete"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "pipeline_starts_with_source",
+      "description": "First pipeline stage is $source"
+    },
+    {
+      "name": "source_has_kafka_topic",
+      "description": "$source.topic='logs'"
+    },
+    {
+      "name": "pipeline_ends_with_emit",
+      "description": "Last pipeline stage is $emit (not $merge for S3)",
+      "critical": true
+    },
+    {
+      "name": "emit_has_s3_connection",
+      "description": "$emit.connectionName references S3 connection"
+    },
+    {
+      "name": "emit_uses_path_not_prefix",
+      "description": "$emit has 'path' field (NOT 'prefix')",
+      "critical": true,
+      "reason": "Common mistake: S3 $emit uses 'path', not 'prefix'. Using wrong field name causes processor failure."
+    },
+    {
+      "name": "emit_has_bucket",
+      "description": "$emit.bucket='company-logs'",
+      "critical": true
+    },
+    {
+      "name": "emit_has_config",
+      "description": "$emit.config.outputFormat is specified"
+    },
+    {
+      "name": "dlq_configured",
+      "description": "dlq parameter provided"
+    },
+    {
+      "name": "mentions_aws_prerequisites",
+      "description": "Response mentions IAM role ARN must be registered via Atlas Cloud Provider Access",
+      "critical": true
+    }
+  ],
+  "expected_pipeline": [
+    {
+      "$source": {
+        "connectionName": "<kafka-connection>",
+        "topic": "logs"
+      }
+    },
+    {
+      "$emit": {
+        "connectionName": "<s3-connection>",
+        "bucket": "company-logs",
+        "path": "logs/year={$year}/month={$month}",
+        "config": {
+          "outputFormat": {
+            "name": "json"
+          }
+        }
+      }
+    }
+  ],
+  "common_mistakes": [
+    {
+      "mistake": "$emit.prefix instead of $emit.path",
+      "error": "Processor fails with field validation error",
+      "fix": "Use 'path' field for S3 $emit"
+    },
+    {
+      "mistake": "Using $merge instead of $emit",
+      "error": "$merge is for Atlas, not S3",
+      "fix": "Use $emit for S3 sinks"
+    }
+  ]
+}

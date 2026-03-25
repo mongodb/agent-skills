@@ -1,0 +1,117 @@
+{
+  "eval_id": 7,
+  "eval_name": "debug-failed-processor",
+  "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
+  "test_prerequisites": {
+    "workspace": "Use existing workspace with an existing processor (any state)",
+    "processor_required": "Use any existing processor (doesn't need to be FAILED)",
+    "note": "Test validates debugging workflow, not actual failure recovery"
+  },
+  "pre_test_setup": [
+    {
+      "step": "identify_test_processor",
+      "action": "Call atlas-streams-discover action='list-processors' to find any existing processor to debug",
+      "note": "Use first available processor as test subject"
+    }
+  ],
+  "post_test_validation": [
+    {
+      "step": "verify_workflow_followed",
+      "expected": "Agent called diagnose-processor first, then get-logs second",
+      "critical": true
+    },
+    {
+      "step": "verify_root_cause_identified",
+      "expected": "Agent provides specific diagnosis (not list of hypotheticals)",
+      "critical": true
+    }
+  ],
+  "post_test_cleanup": [
+    {
+      "step": "no_cleanup_required",
+      "note": "Read-only operations, no resources created"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "calls_diagnose_processor_first",
+      "description": "First tool call is atlas-streams-discover with action='diagnose-processor'",
+      "critical": true,
+      "reason": "Always diagnose first to get comprehensive health report"
+    },
+    {
+      "name": "diagnose_has_correct_parameters",
+      "description": "diagnose-processor call includes workspaceName and resourceName='payment-handler'"
+    },
+    {
+      "name": "calls_get_logs_second",
+      "description": "Second tool call is atlas-streams-discover with action='get-logs'",
+      "critical": true
+    },
+    {
+      "name": "get_logs_uses_operational_type",
+      "description": "get-logs call includes logType='operational'",
+      "critical": true,
+      "reason": "Operational logs contain runtime errors, Kafka failures, schema issues, OOM messages"
+    },
+    {
+      "name": "identifies_specific_root_cause",
+      "description": "Response identifies THE primary issue (not a list of hypothetical scenarios)",
+      "critical": true
+    },
+    {
+      "name": "matches_diagnostic_pattern",
+      "description": "Root cause matches one of the diagnostic patterns (Error 419, connection issue, OOM, etc.)"
+    },
+    {
+      "name": "provides_ordered_fix_steps",
+      "description": "Response provides concrete, ordered steps to fix the issue",
+      "critical": true
+    },
+    {
+      "name": "does_not_present_hypothetical_list",
+      "description": "Does NOT say 'it could be X, Y, or Z' - commits to specific diagnosis",
+      "critical": true
+    }
+  ],
+  "expected_workflow": [
+    {
+      "step": 1,
+      "action": "Call diagnose-processor",
+      "tool": "atlas-streams-discover",
+      "parameters": {
+        "action": "diagnose-processor",
+        "workspaceName": "<workspace>",
+        "resourceName": "payment-handler"
+      }
+    },
+    {
+      "step": 2,
+      "action": "Call get-logs",
+      "tool": "atlas-streams-discover",
+      "parameters": {
+        "action": "get-logs",
+        "logType": "operational",
+        "workspaceName": "<workspace>",
+        "resourceName": "payment-handler"
+      }
+    },
+    {
+      "step": 3,
+      "action": "Analyze patterns",
+      "description": "Match symptoms to diagnostic patterns from output-diagnostics.md"
+    },
+    {
+      "step": 4,
+      "action": "Provide fix",
+      "description": "Give specific, ordered steps to resolve the root cause"
+    }
+  ],
+  "common_diagnostic_patterns": [
+    "Error 419 + 'no partitions found' → Kafka topic doesn't exist",
+    "State: FAILED + multiple restarts → connection-level error",
+    "State: STARTED + zero output + windowed → idle partitions, need partitionIdleTimeout",
+    "High memoryUsageBytes → OOM risk, upgrade tier",
+    "DLQ count increasing → per-document errors, check DLQ collection"
+  ]
+}
