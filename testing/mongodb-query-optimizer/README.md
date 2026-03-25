@@ -100,7 +100,7 @@ Configure both the connection string and Atlas API credentials in your MCP confi
 ### 3. Insert test data and run slow queries
 
 ```bash
-npm run setup "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/"
+npm run setup -- "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/"
 ```
 
 This will:
@@ -146,7 +146,7 @@ These evals require a live MCP server connection — they cannot be run in offli
 ## Cleanup
 
 ```bash
-npm run cleanup "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/"
+npm run cleanup -- "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/"
 ```
 
 This drops the `perftest` database.

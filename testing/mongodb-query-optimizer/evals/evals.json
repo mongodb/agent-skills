@@ -68,7 +68,7 @@
         "Recommends an index on { customerId: 1 } for the customerId lookup pattern",
         "Prioritizes suggestions by impact or frequency"
       ],
-      "_note": "Requires live Atlas cluster with perftest data from atlas-perf-test/setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
+      "_note": "Requires live Atlas cluster with perftest data from setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
     },
     {
       "id": 7,
@@ -82,7 +82,7 @@
         "Summarizes index suggestions for the perftest.orders collection",
         "Mentions whether there are any indexes recommended for dropping"
       ],
-      "_note": "Requires live Atlas cluster with perftest data from atlas-perf-test/setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
+      "_note": "Requires live Atlas cluster with perftest data from setup-slow-queries.ts. Run setup first and wait 5-15 min for Performance Advisor."
     },
     {
       "id": 8,
