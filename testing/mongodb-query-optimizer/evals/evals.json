@@ -4,12 +4,12 @@
     {
       "id": 1,
       "prompt": "How do I optimize this query? db.orders.find({ status: 'open', tags: { $in: ['urgent', 'priority', 'escalated'] } }).sort({ createdAt: -1 }).limit(50). The tags field usually has 3-5 values per document but the $in list could grow to much larger from a user filter.",
-      "expected_output": "Recommends index { status: 1, tags: 1, createdAt: -1 }, notes that $in with many elements is treated as a range scan rather than equality.",
+      "expected_output": "Recommends index { status: 1, tags: 1, createdAt: 1 }, notes that $in with many elements is treated as a range scan rather than equality.",
       "files": [],
       "expectations": [
         "Recommends a compound index covering status, tags, and createdAt",
         "Mentions ESR ordering or explains equality-before-sort-before-range",
-        "Suggests that if the $in list stays small, { status: 1, tags: 1, createdAt: -1 } works, but if it grows large the performance is likely to degrade"
+        "Suggests that if the $in list stays small, { status: 1, tags: 1, createdAt: 1 } works, but if it grows large the performance is likely to degrade"
       ]
     },
     {

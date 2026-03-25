@@ -189,12 +189,15 @@ async function main() {
     console.log(`  Inserted ${customers.length} customers`);
 
     console.log(`Generating ${NUM_ORDERS} orders...`);
-    const orders = generateOrders(customers, NUM_ORDERS);
-    // Insert in batches of 2000
-    for (let i = 0; i < orders.length; i += 2000) {
-      await db.collection("orders").insertMany(orders.slice(i, i + 2000));
+    const ORDERS_BATCH_SIZE = 2000;
+    let insertedOrders = 0;
+    for (let i = 0; i < NUM_ORDERS; i += ORDERS_BATCH_SIZE) {
+      const batchSize = Math.min(ORDERS_BATCH_SIZE, NUM_ORDERS - i);
+      const ordersBatch = generateOrders(customers, batchSize);
+      await db.collection("orders").insertMany(ordersBatch);
+      insertedOrders += ordersBatch.length;
     }
-    console.log(`  Inserted ${orders.length} orders`);
+    console.log(`  Inserted ${insertedOrders} orders`);
 
     // ------------------------------------------------------------------
     // 3. Run slow queries for ~30 seconds
