@@ -1,0 +1,95 @@
+{
+  "skill_name": "mongodb-search-and-ai",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Show me comedies with robots in them",
+      "expected_output": "Should inspect schema and check for existing search indexes. Should recognize 'comedies' as an exact genre filter (token type) and 'robots' as a text containment query on plot/description (string type). Should propose an Atlas Search index with token type on genre and string type on plot, then construct a compound query using filter for genre (equals operator, token field) and must for 'robot' text search on plot. Should prefer compound.filter over $match for genre filtering.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Count movies by genre that mention 'detective'",
+      "expected_output": "Should recognize this is a count + facet use case with no documents needed, so $searchMeta is preferred over $search. Should propose an Atlas Search index with string type on plot/description and token type on genre (required for faceting). Should construct a $searchMeta query using the facet collector with a text operator for 'detective' and a string facet on genre (token field). Should not use $search + $group when $searchMeta with facet is more appropriate.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Create a vector index with binary quantization for maximum compression on the embedding field",
+      "expected_output": "Should inspect schema to confirm the embedding field exists. Should explain that binary quantization requires: (1) numDimensions to be a multiple of 8, and (2) euclidean similarity — not dotProduct or cosine. Should show a vectorSearch-type index definition with quantization: 'binary' and similarity: 'euclidean'. Should ask for an index name and explicit approval before creating. Should note binary quantization offers 4-8x compression but reduced accuracy.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Find Action or Adventure movies similar to 'car chases and explosions in a city'",
+      "expected_output": "Should recognize this as vector search with a pre-filter on genre. Should check existing indexes and propose a vectorSearch-type index with a vector field on the embedding field and a filter field on genre (for simple equality filtering). Should construct a $vectorSearch query with a filter option for genre (using $in or $eq), appropriate numCandidates (starting at 20x the limit), and limit. Should not use hybrid search for this — a pre-filter on $vectorSearch is sufficient.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Find movies semantically similar to 'coming of age story in high school' and sort by IMDB rating descending",
+      "expected_output": "Should check for an embedding field in the schema. Should propose a vectorSearch-type index with a vector field. Should construct a $vectorSearch query with appropriate numCandidates (20x limit as starting point). Should add a $sort stage after $vectorSearch to sort by IMDB rating descending — note the sort option inside $search is not applicable here since this is $vectorSearch, not $search. Should ask for approval before creating the index.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Find movies about 'star wars' using both semantic and keyword search combined",
+      "expected_output": "Should recognize this as hybrid search and check the cluster version (requires MongoDB 8.0+ for $rankFusion). Should propose both a vectorSearch-type index and a search-type index. Should construct a $rankFusion pipeline with a vectorPipeline ($vectorSearch) and a textPipeline ($search with text operator + $limit). Should add $limit inside the textPipeline since $search does not auto-limit. Should explain weights and ask for approval before creating indexes.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "I want to add autocomplete to my movie search app so users can see suggestions as they type movie titles",
+      "expected_output": "Should recognize autocomplete use case. Should note that autocomplete type is NOT included in dynamic: true and must be configured with explicit mappings. Should propose an Atlas Search index with autocomplete type on the title field, explain edgeGram as the default tokenization strategy, and show minGrams/maxGrams configuration. Should provide the autocomplete operator query pattern with the path set to the autocomplete-indexed field. Should ask for approval before creating the index.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "My users keep misspelling movie names. How can I handle typos in search?",
+      "expected_output": "Should recognize this as a fuzzy search use case. Should propose an Atlas Search index with string type on the title/name field. Should show a query using the text operator with fuzzy options (maxEdits: 1 or 2, prefixLength to keep first character stable). Should explain the trade-off: higher maxEdits = more tolerance but more false positives. Should ask for approval before creating the index.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "I want to search for movies where the plot matches a pattern like /space.*battle/i. Can you help me write a regex query?",
+      "expected_output": "Should NOT recommend $regex. Should explain that Atlas Search text operator is the preferred approach for text containment and pattern matching — it provides relevance scoring, analyzer support, and better performance than regex. Should show the equivalent $search query using the text operator on the plot field. Should inspect schema and check for existing search indexes.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "How many movies were released after 2010 in my collection?",
+      "expected_output": "Should use $searchMeta with a range operator and count option since only the count is needed — not $search with $count. Should show a $searchMeta query with range on the released/year field and count type of 'lowerBound' (default, faster) or 'total' (exact but slower). Should note that count affects performance and lowerBound is preferred unless exact count is required.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "I want to search for courtroom dramas semantically but only consider movies released between 2000 and 2015",
+      "expected_output": "Should recognize this as vector search with a rich lexical prefilter (date range). Should propose a search-type index (not vectorSearch-type) with a vector field type on the embedding field and dynamic mappings for the date/year field. Should use the vectorSearch operator inside $search with a compound or range filter for the date range — NOT a standalone $vectorSearch stage with simple filter fields. This pattern allows Atlas Search operators (range, compound) as the prefilter. Should optionally set concurrent: true for latency improvement.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "I want to add full-text search to my e-commerce product catalog. Users need to search by product name with typo tolerance, filter by category and price range, and see which part of the product description matched their query.",
+      "expected_output": "Should inspect schema to identify relevant fields. Should propose an Atlas Search index with: string type on name and description (for full-text and fuzzy search), token type on category (NOT string with lucene.keyword — use token for exact matching), number type on price. Should show a compound query using must (text with fuzzy on name/description), filter (equals on category token field, range on price), and highlight option on description. Should explain that compound.filter is preferred over $match for performance. Should ask for index name and approval before creating.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "I'm building a RAG application and need to implement vector search on my documents collection. Each document has a 'content' field. I need to find the top 10 most semantically similar documents to a user query, and only return documents where 'status' is 'published'.",
+      "expected_output": "Should inspect schema to confirm content and status fields exist. Should note that a pre-computed embedding field is required (must be stored in the document). Should propose a vectorSearch-type index with a vector field on the embedding field (confirming numDimensions matches the embedding model) and a filter field on status. Should construct a $vectorSearch query with filter: { status: 'published' }, limit: 10, and numCandidates starting at 200 (20x limit). Should ask for approval before creating the index.",
+      "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "I want to build a search experience for my movie app. Users should be able to search by title keyword but also get semantically relevant results. The keyword match should matter more than the semantic match.",
+      "expected_output": "Should recognize this as hybrid search and verify cluster is on MongoDB 8.0+ (required for $rankFusion). Should propose both a search-type index and a vectorSearch-type index. Should construct a $rankFusion pipeline with a textPipeline ($search with text operator + $limit) weighted higher than vectorPipeline ($vectorSearch). Should explain that weights influence rank contribution and recommend setting them per-query rather than statically. Should ask for approval before creating both indexes.",
+      "files": []
+    },
+    {
+      "id": 15,
+      "prompt": "I have a support ticket collection and want to let agents search for similar past tickets to find resolutions. Tickets have a 'summary' field, a 'resolution' field, and a 'status' field. I want to find the 5 most similar open tickets.",
+      "expected_output": "Should inspect schema to confirm fields exist. Should note that a pre-computed embedding field on summary or resolution is required. Should propose a vectorSearch-type index with a vector field on the embedding field and a filter field on status. Should construct a $vectorSearch query with filter: { status: 'open' }, limit: 5, and numCandidates of at least 100 (20x limit as starting point). Should project the relevant fields (summary, resolution, status). Should ask for approval before creating the index.",
+      "files": []
+    }
+  ]
+}

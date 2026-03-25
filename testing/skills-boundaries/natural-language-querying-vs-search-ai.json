@@ -1,0 +1,291 @@
+{
+  "test_suite": "MongoDB Natural Language Querying vs Search and AI - Skill Invocation Tests",
+  "description": "Validates that the correct skill is invoked based on user prompts. Tests do NOT execute the skill, only verify which skill gets triggered.",
+  "version": "1.0",
+  "skills_tested": [
+    "mongodb-natural-language-querying",
+    "mongodb-search-and-ai"
+  ],
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "clear_natural_language_querying",
+      "prompt": "Find all users with age greater than 25",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-search-and-ai",
+      "reasoning": "Simple filtering with 'find' keyword, no search features mentioned",
+      "trigger_keywords": ["find", "filter"]
+    },
+    {
+      "id": 2,
+      "category": "clear_natural_language_querying",
+      "prompt": "Get total sales by category and show the top 10",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-search-and-ai",
+      "reasoning": "Aggregation pipeline with grouping, no search features",
+      "trigger_keywords": ["get", "group by", "aggregate"]
+    },
+    {
+      "id": 3,
+      "category": "clear_natural_language_querying",
+      "prompt": "Join orders with customers to calculate order totals",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-search-and-ai",
+      "reasoning": "Standard aggregation with $lookup, no search features",
+      "trigger_keywords": ["join"]
+    },
+    {
+      "id": 4,
+      "category": "clear_natural_language_querying",
+      "prompt": "Show me all products where price is less than 100 and status is active",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-search-and-ai",
+      "reasoning": "Basic filtering, no search features",
+      "trigger_keywords": ["show", "where", "filter"]
+    },
+    {
+      "id": 5,
+      "category": "clear_natural_language_querying",
+      "prompt": "Retrieve documents from last month sorted by date",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-search-and-ai",
+      "reasoning": "Date filtering with sorting, no search features",
+      "trigger_keywords": ["retrieve", "sorted"]
+    },
+    {
+      "id": 6,
+      "category": "clear_search_ai",
+      "prompt": "Build a full-text search index with fuzzy matching for my product catalog",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Explicitly mentions fuzzy matching and search index",
+      "trigger_keywords": ["fuzzy matching", "search index", "full-text"]
+    },
+    {
+      "id": 7,
+      "category": "clear_search_ai",
+      "prompt": "I need semantic search using embeddings for document similarity",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Explicitly mentions semantic search and embeddings",
+      "trigger_keywords": ["semantic search", "embeddings", "similarity"]
+    },
+    {
+      "id": 8,
+      "category": "clear_search_ai",
+      "prompt": "Create an autocomplete feature with typo tolerance for product names",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Autocomplete with typo tolerance requires Atlas Search analyzers",
+      "trigger_keywords": ["autocomplete", "typo tolerance"]
+    },
+    {
+      "id": 9,
+      "category": "clear_search_ai",
+      "prompt": "How do I implement vector search for my RAG application?",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Vector search is explicitly Atlas Search/AI feature",
+      "trigger_keywords": ["vector search", "RAG"]
+    },
+    {
+      "id": 10,
+      "category": "clear_search_ai",
+      "prompt": "Build a hybrid search combining text and semantic similarity with relevance scoring",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Hybrid search and relevance scoring are Atlas Search features",
+      "trigger_keywords": ["hybrid search", "relevance scoring", "semantic"]
+    },
+    {
+      "id": 11,
+      "category": "ambiguous_simple_text",
+      "prompt": "Find products where name contains 'laptop'",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": null,
+      "reasoning": "Full-text search pattern matching",
+      "trigger_keywords": ["find", "contains"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 12,
+      "category": "ambiguous_simple_text",
+      "prompt": "Query users where email includes '@gmail.com'",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": null,
+      "reasoning": "Custom analyzer use case",
+      "trigger_keywords": ["query", "includes"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 13,
+      "category": "ambiguous_search_keyword",
+      "prompt": "I need to search my products database",
+      "expected_skill": "mongodb-natural-language-querying",
+      "acceptable_alternative": "mongodb-search-and-ai",
+      "reasoning": "Generic 'search' without specifics - should default to simpler skill, but could trigger search-and-ai",
+      "trigger_keywords": ["search"],
+      "ambiguity_level": "high",
+      "notes": "This is the highest conflict case. Default to mongodb-natural-language-querying unless user clarifies they need Atlas Search features."
+    },
+    {
+      "id": 14,
+      "category": "ambiguous_search_keyword",
+      "prompt": "Search for movies released in 2020",
+      "expected_skill": "mongodb-natural-language-querying",
+      "acceptable_alternative": "mongodb-search-and-ai",
+      "reasoning": "Despite 'search' keyword, this is simple date filtering assuming that all documents in collection or a subset can be identified as a move. If this has to be infered, then this is a search use case.",
+      "trigger_keywords": ["search"],
+      "ambiguity_level": "medium",
+      "notes": "Context (year filter) indicates simple query"
+    },
+    {
+      "id": 15,
+      "category": "ambiguous_advanced_search",
+      "prompt": "Search products with typo tolerance",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": null,
+      "reasoning": "Explicit mention of typo tolerance requires Atlas Search",
+      "trigger_keywords": ["typo tolerance"],
+      "ambiguity_level": "low",
+      "notes": "Qualifier 'with typo tolerance' makes this clear"
+    },
+    {
+      "id": 16,
+      "category": "ambiguous_autocomplete",
+      "prompt": "Show products starting with 'lap'",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": "mongodb-natural-language-querying",
+      "reasoning": "Simple prefix match - regex sufficient, no need for autocomplete analyzer",
+      "trigger_keywords": ["starting with"],
+      "ambiguity_level": "low",
+      "notes": "Use left-anchored regex /^lap/i"
+    },
+    {
+      "id": 17,
+      "category": "ambiguous_autocomplete",
+      "prompt": "Build an autocomplete feature for the search bar",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": null,
+      "reasoning": "'Build autocomplete feature' implies creating search index with analyzer",
+      "trigger_keywords": ["build", "autocomplete feature"],
+      "ambiguity_level": "low",
+      "notes": "Building a feature != one-off query"
+    },
+    {
+      "id": 18,
+      "category": "ambiguous_text_multiple_fields",
+      "prompt": "Find documents where 'machine learning' appears in title or description",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": null,
+      "reasoning": "Should be an Atlas Search multi-field query",
+      "trigger_keywords": ["find", "or"],
+      "ambiguity_level": "medium",
+      "notes": "Clear full-text search use cases"
+    },
+    {
+      "id": 19,
+      "category": "ambiguous_ranking",
+      "prompt": "Search movies by plot keywords with relevance ranking",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": null,
+      "reasoning": "Explicit mention of 'relevance ranking' requires Atlas Search scoring",
+      "trigger_keywords": ["relevance ranking", "search"],
+      "ambiguity_level": "low",
+      "notes": "Ranking is a clear Atlas Search indicator"
+    },
+    {
+      "id": 20,
+      "category": "ambiguous_build_vs_query",
+      "prompt": "I want users to be able to search products on my website",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": "mongodb-natural-language-querying",
+      "reasoning": "'Build search functionality' context suggests creating indexes, but could be interpreted as generating queries",
+      "trigger_keywords": ["search", "website"],
+      "ambiguity_level": "high",
+      "notes": "Building a feature for users suggests Atlas Search, but ambiguous without more context"
+    },
+    {
+      "id": 21,
+      "category": "edge_case_sql_translation",
+      "prompt": "Convert this SQL to MongoDB: SELECT * FROM users WHERE age > 25",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-search-and-ai",
+      "reasoning": "SQL translation is explicitly mentioned in mongodb-natural-language-querying description",
+      "trigger_keywords": ["SQL", "convert"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 22,
+      "category": "edge_case_optimization",
+      "prompt": "Why is my query slow and how can I optimize it?",
+      "expected_skill": null,
+      "should_not_trigger": ["mongodb-natural-language-querying", "mongodb-search-and-ai"],
+      "reasoning": "Query optimization should trigger mongodb-query-optimizer skill, not these two",
+      "trigger_keywords": ["optimize", "slow"],
+      "ambiguity_level": "low",
+      "notes": "This tests that skills properly exclude optimization scenarios"
+    },
+    {
+      "id": 23,
+      "category": "edge_case_exact_match",
+      "prompt": "Find the exact email address john@example.com",
+      "expected_skill": "mongodb-natural-language-querying",
+      "acceptable_alternative": "mongodb-search-and-ai",
+      "reasoning": "Exact matching doesn't need fuzzy/search features",
+      "trigger_keywords": ["exact", "find"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 24,
+      "category": "edge_case_case_insensitive",
+      "prompt": "Search for products with name matching 'IPhone' case-insensitive",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": "mongodb-natural-language-querying",
+      "reasoning": "Case-insensitive regex is sufficient, no need for Atlas Search",
+      "trigger_keywords": ["case-insensitive"],
+      "ambiguity_level": "low",
+      "notes": "search use case, but can also use clasic index with colation for case insensitivity"
+    },
+    {
+      "id": 25,
+      "category": "ambiguous_content_search",
+      "prompt": "can you find all movies about batman",
+      "expected_skill": "mongodb-search-and-ai",
+      "acceptable_alternative": null,
+      "reasoning": "Hybrid search (full-text and semantic search) would find all relevant movies; regex would not capture semantic matches",
+      "trigger_keywords": ["find", "about"],
+      "ambiguity_level": "high"
+    }
+  ],
+  "evaluation_metrics": {
+    "total_tests": 25,
+    "clear_mongodb_natural_language_querying": 5,
+    "clear_search_ai": 5,
+    "ambiguous_cases": 10,
+    "edge_cases": 4,
+    "high_ambiguity_count": 2,
+    "acceptable_threshold": ">=90% accuracy on clear cases, >=70% expected behavior on ambiguous cases"
+  },
+  "test_instructions": {
+    "setup": "Load both skills into the agent environment",
+    "execution": "For each test case, present the prompt to the agent and record which skill(s) get invoked",
+    "validation": [
+      "Check if expected_skill was invoked",
+      "Check if should_not_trigger skills were NOT invoked",
+      "For ambiguous cases with acceptable_alternative, either skill is acceptable",
+      "For cases with expected_skill=null, verify no listed skills are invoked"
+    ],
+    "reporting": [
+      "Count correct invocations",
+      "List all failures with reasoning",
+      "Pay special attention to ambiguous cases - track which skill wins",
+      "Generate confusion matrix if both skills trigger on same prompt"
+    ]
+  },
+  "ambiguity_guidelines": {
+    "high": "Expected skill is preferred but acceptable_alternative is also valid. Monitor user confusion.",
+    "medium": "Expected skill should be invoked 80%+ of the time. Alternative acceptable in edge cases.",
+    "low": "Expected skill should be invoked 95%+ of the time. Clear boundary."
+  }
+}
