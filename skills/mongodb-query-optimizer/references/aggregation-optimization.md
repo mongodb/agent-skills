@@ -163,7 +163,8 @@ db.collection.aggregate([
       foreignField: "_id",  // _id is always indexed
       pipeline: [
         { $match: { inStock: true } },  // Reduce right side
-        { $project: { _id: 0, name: 1, price: 1 } }  ],
+        { $project: { _id: 0, name: 1, price: 1 } }
+      ],
       as: "product"
   }},
   { $unwind: "$product" }
@@ -182,7 +183,7 @@ Group operations require accumulating result documents in memory. Keys to effici
 **Bad** \- do not add $project before $group to "reduce fields":
 
 ```javascript
-
+[
   { $match: { date: { $gte: ISODate("2024-01-01") } } },
   { $project: { category: 1, amount: 1 } },
   { $group: {
