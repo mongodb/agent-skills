@@ -1,0 +1,74 @@
+{
+  "eval_id": 1,
+  "eval_name": "create-workspace-basic",
+  "prompt": "Create a new Atlas Stream Processing workspace called 'dev-streams' in AWS us-east-1 with an SP10 tier",
+  "resource_naming_strategy": {
+    "type": "timestamp",
+    "pattern": "dev-streams-test-{timestamp}",
+    "note": "Appends Unix timestamp to avoid conflicts with existing workspaces"
+  },
+  "pre_test_setup": [
+    {
+      "step": "check_existing_workspaces",
+      "action": "Call atlas-streams-discover action='list-workspaces' to verify test workspace doesn't exist",
+      "optional": true
+    }
+  ],
+  "post_test_validation": [
+    {
+      "step": "verify_workspace_created",
+      "action": "Call atlas-streams-discover action='inspect-workspace' to confirm workspace exists with correct config",
+      "critical": true
+    }
+  ],
+  "post_test_cleanup": [
+    {
+      "step": "delete_test_workspace",
+      "action": "Call atlas-streams-teardown resource='workspace' to remove test workspace",
+      "when": "test_complete",
+      "note": "Only delete if cleanup_enabled=true in test config"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "calls_atlas_streams_build",
+      "description": "Uses atlas-streams-build tool"
+    },
+    {
+      "name": "resource_type_workspace",
+      "description": "resource='workspace'"
+    },
+    {
+      "name": "workspace_name_correct",
+      "description": "workspaceName='dev-streams'"
+    },
+    {
+      "name": "cloud_provider_aws",
+      "description": "cloudProvider='AWS'"
+    },
+    {
+      "name": "region_mapped_correctly",
+      "description": "region='VIRGINIA_USA' (not 'us-east-1')",
+      "critical": true
+    },
+    {
+      "name": "tier_sp10",
+      "description": "tier='SP10'"
+    }
+  ],
+  "expected_tool_call": {
+    "tool": "atlas-streams-build",
+    "parameters": {
+      "projectId": "<any-valid-24-char-hex>",
+      "resource": "workspace",
+      "workspaceName": "dev-streams-test-{timestamp}",
+      "cloudProvider": "AWS",
+      "region": "VIRGINIA_USA",
+      "tier": "SP10"
+    }
+  },
+  "success_criteria": {
+    "operation_succeeds": "Workspace creation returns success (not 409 Conflict)",
+    "workspace_state": "Workspace is created and accessible via inspect-workspace"
+  }
+}

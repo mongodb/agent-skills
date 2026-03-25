@@ -1,0 +1,90 @@
+{
+  "eval_id": 6,
+  "eval_name": "create-windowed-aggregation",
+  "prompt": "Build a processor that counts events per user_id in 5-minute windows from Kafka topic 'events' and writes to 'metrics.user_activity'",
+  "assertions": [
+    {
+      "name": "pipeline_starts_with_source",
+      "description": "First pipeline stage is $source"
+    },
+    {
+      "name": "source_has_topic",
+      "description": "$source.topic='events'"
+    },
+    {
+      "name": "source_has_partitionIdleTimeout",
+      "description": "$source includes partitionIdleTimeout configuration",
+      "critical": true,
+      "reason": "Required for windowed Kafka pipelines to prevent windows from stalling on idle partitions"
+    },
+    {
+      "name": "has_tumbling_window",
+      "description": "Pipeline includes $tumblingWindow stage",
+      "critical": true
+    },
+    {
+      "name": "window_size_5_minutes",
+      "description": "Window configuration: size=5, unit='minute'",
+      "critical": true
+    },
+    {
+      "name": "window_has_group_pipeline",
+      "description": "$tumblingWindow.pipeline contains $group stage"
+    },
+    {
+      "name": "groups_by_user_id",
+      "description": "$group._id includes user_id field",
+      "critical": true
+    },
+    {
+      "name": "has_count_operation",
+      "description": "$group includes $count or $sum: 1"
+    },
+    {
+      "name": "pipeline_ends_with_merge",
+      "description": "Last pipeline stage is $merge"
+    },
+    {
+      "name": "merge_to_metrics_collection",
+      "description": "$merge.into.db='metrics' and $merge.into.coll='user_activity'",
+      "critical": true
+    }
+  ],
+  "expected_pipeline_structure": [
+    {
+      "$source": {
+        "connectionName": "<kafka-connection>",
+        "topic": "events",
+        "partitionIdleTimeout": {
+          "size": "<number>",
+          "unit": "second|minute"
+        }
+      }
+    },
+    {
+      "$tumblingWindow": {
+        "interval": {
+          "size": 5,
+          "unit": "minute"
+        },
+        "pipeline": [
+          {
+            "$group": {
+              "_id": "$user_id",
+              "count": {"$sum": 1}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "$merge": {
+        "into": {
+          "connectionName": "<atlas-connection>",
+          "db": "metrics",
+          "coll": "user_activity"
+        }
+      }
+    }
+  ]
+}

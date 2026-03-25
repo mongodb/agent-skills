@@ -1,0 +1,92 @@
+{
+  "eval_id": 13,
+  "eval_name": "create-https-enrichment",
+  "prompt": "Build a processor that reads from Kafka 'transactions', enriches with an external API call, and writes to 'enriched.transactions'",
+  "assertions": [
+    {
+      "name": "pipeline_starts_with_source",
+      "description": "First pipeline stage is $source"
+    },
+    {
+      "name": "source_has_kafka_topic",
+      "description": "$source.topic='transactions'"
+    },
+    {
+      "name": "has_https_stage",
+      "description": "Pipeline includes $https stage for enrichment",
+      "critical": true
+    },
+    {
+      "name": "https_has_connection",
+      "description": "$https.connectionName references HTTPS connection"
+    },
+    {
+      "name": "https_has_required_fields",
+      "description": "$https includes connectionName, path, method, as fields",
+      "critical": true
+    },
+    {
+      "name": "https_has_on_error_dlq",
+      "description": "$https.onError='dlq' (not 'fail' or 'ignore')",
+      "critical": true,
+      "reason": "Using 'fail' causes processor crash on API errors. Must use 'dlq' for production."
+    },
+    {
+      "name": "https_is_mid_pipeline_enrichment",
+      "description": "$https stage is used for enrichment (mid-pipeline), not as final sink in this test",
+      "note": "HTTPS can be used mid-pipeline for enrichment OR as a final sink stage"
+    },
+    {
+      "name": "pipeline_ends_with_merge",
+      "description": "Last pipeline stage is $merge (writes enriched data to Atlas)"
+    },
+    {
+      "name": "merge_to_enriched_collection",
+      "description": "$merge.into.db='enriched' and $merge.into.coll='transactions'",
+      "critical": true
+    },
+    {
+      "name": "dlq_configured",
+      "description": "Processor-level dlq parameter provided"
+    }
+  ],
+  "expected_pipeline": [
+    {
+      "$source": {
+        "connectionName": "<kafka-connection>",
+        "topic": "transactions"
+      }
+    },
+    {
+      "$https": {
+        "connectionName": "<https-connection>",
+        "path": "/api/enrich",
+        "method": "POST",
+        "body": "<request-body>",
+        "as": "<field-name>",
+        "onError": "dlq"
+      }
+    },
+    {
+      "$merge": {
+        "into": {
+          "connectionName": "<atlas-connection>",
+          "db": "enriched",
+          "coll": "transactions"
+        }
+      }
+    }
+  ],
+  "common_mistakes": [
+    {
+      "mistake": "$https.onError='fail'",
+      "error": "Processor crashes on API errors",
+      "fix": "Use onError='dlq' to handle errors gracefully"
+    },
+    {
+      "mistake": "Using HTTPS connection as $source",
+      "error": "HTTPS is for enrichment or sink only, NOT as a data source",
+      "fix": "Use $https stage mid-pipeline (enrichment) or as final sink"
+    }
+  ]
+}
