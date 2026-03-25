@@ -19,15 +19,15 @@
 
 set -euo pipefail
 
-if ! command -v skill-validator-ent &>/dev/null; then
-  echo "Error: skill-validator-ent is not installed."
+if ! command -v skill-validator &>/dev/null; then
+  echo "Error: skill-validator is not installed."
   echo ""
   echo "Install via Homebrew (recommended):"
   echo "  brew tap agent-ecosystem/homebrew-tap"
-  echo "  brew install skill-validator-ent"
+  echo "  brew install skill-validator"
   echo ""
   echo "Or from source (requires Go 1.25.5+):"
-  echo "  go install github.com/agent-ecosystem/skill-validator-ent/cmd/skill-validator-ent@latest"
+  echo "  go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest"
   exit 1
 fi
 
@@ -54,4 +54,4 @@ fi
 # Ensure the path ends with a trailing slash for consistency with the validator.
 [[ "$SKILL_PATH" != */ ]] && SKILL_PATH="$SKILL_PATH/"
 
-skill-validator-ent check --strict "$SKILL_PATH"
+skill-validator check --strict "$SKILL_PATH"
