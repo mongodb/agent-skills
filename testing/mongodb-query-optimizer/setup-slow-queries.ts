@@ -4,8 +4,8 @@
  * slow query log and trigger Performance Advisor index suggestions.
  *
  * Usage:
- *   npm run setup <connection-string>
- *   npm run setup mongodb+srv://user:pass@cluster.mongodb.net/
+ *   npm run setup -- <connection-string>
+ *   npm run setup -- mongodb+srv://user:pass@cluster.mongodb.net/
  */
 
 import { MongoClient, ObjectId } from "mongodb";
@@ -15,8 +15,8 @@ const CONNECTION_STRING =
 
 if (!CONNECTION_STRING) {
   console.error(
-    "Usage: npm run setup <atlas-connection-string>\n" +
-      "  e.g. npm run setup mongodb+srv://user:pass@cluster0.abc12.mongodb.net/"
+    "Usage: npm run setup -- <atlas-connection-string>\n" +
+      "  e.g. npm run setup -- mongodb+srv://user:pass@cluster0.abc12.mongodb.net/"
   );
   process.exit(1);
 }
