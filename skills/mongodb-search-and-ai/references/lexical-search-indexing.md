@@ -263,7 +263,7 @@ Normalizers produce a single token (used with `token` field type):
 | Type | When to Use | Required Fields | Optional Fields (with valid values) | Notes |
 |------|-------------|-----------------|-------------------------------------|-------|
 | **string** | Full-text search, phrase matching, fuzzy search | type | analyzer, searchAnalyzer, indexOptions: "docs" or "freqs" or "positions" or "offsets", store: true or false, multi | Default for text. For sorting use token instead. |
-| **token** | Sort/facet on text, exact matching | type | normalizer: "lowercase" or "none" (default: "none") | Required for sorting strings. Max 8181 chars. |
+| **token** | Sort/facet on text, exact matching | type | normalizer: "lowercase" or "none" (default: "none") | Required for sorting or faceting strings. Max 8181 chars. |
 | **autocomplete** | Search-as-you-type, typeahead, partial or substring matching | type | analyzer, tokenization: "edgeGram" or "rightEdgeGram" or "nGram" (default: "edgeGram"), minGrams (default: 2), maxGrams (default: 15), foldDiacritics: true or false | Not included in "dynamic: true". Recommend maxGrams ≤ 15. |
 | **boolean** | True/false filters | type | None | Included in "dynamic: true". |
 | **date** | Date ranges, timestamps | type | None | Included in "dynamic: true". |
