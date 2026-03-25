@@ -51,7 +51,7 @@ Each connection requires ~1 MB of physical RAM, so you may find that the optimal
 
 #### The role of Topology:
 - Pools are created per server per MongoClient. 
-- By default, clients connect to one mongos router per sharded clusters (which manages connections to the shards internally), not to individual shards; so the shard amount do not affect the pool size directly.
+- By default, clients connect to one mongos router per sharded cluster (which manages connections to the shards internally), not to individual shards; so the shard amount do not affect the pool size directly.
 - Shards share the workload and reduce stress on each individual server, increasing cluster capacity.
 - Replica members do not affect the max pool directly. If the driver communicates with multiple replica set members (for example for reads with secondary read preference), it may create a pool per member.
 - Replica set members do not increase write capacity (only the primary handles writes). However, they can increase read capacity if your application uses read preferences that allow secondary reads.
