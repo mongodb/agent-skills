@@ -1,78 +1,53 @@
-# AWS Bedrock LLM Scoring Flow
+# LLM Scoring Flow
 
-Bedrock-specific prerequisites and LLM scoring steps. Only follow this if the
-user selected AWS Bedrock access in Step 0.
+LLM scoring steps using the `claude-cli` provider. This provider shells out to
+the locally installed `claude` binary — no API keys are needed. It uses the
+CLI's existing authentication (e.g., company or team subscription).
 
-## Bedrock Prerequisites
+Only follow this if the user selected LLM scoring in Step 0.
 
-Complete after Step 1a (binary check) passes.
+## Accuracy caveat
 
-### Check for config file
-
-```bash
-cat .skill-validator-ent.yaml 2>/dev/null || cat ~/.config/skill-validator-ent/config.yaml 2>/dev/null
-```
-
-If the config exists with `model`, `region`, and `profile` keys, skip to the
-AWS authentication check.
-
-If missing, ask for their AWS profile (`aws configure list-profiles` to show
-options) and region (default: `us-east-1`), then create
-`~/.config/skill-validator-ent/config.yaml`:
-
-```yaml
-model: us.anthropic.claude-sonnet-4-5-20250929-v1:0
-region: <user's region>
-profile: <user's profile>
-```
-
-### Verify AWS authentication
-
-```bash
-aws sts get-caller-identity --profile <profile>
-```
-
-If this fails, follow [aws-auth-troubleshooting.md](aws-auth-troubleshooting.md)
-to diagnose and fix. Re-run the check after the user acts.
-
-Do NOT proceed until authentication succeeds.
+The Claude CLI loads local context (CLAUDE.md files, project memory, rules)
+into each scoring call. This extra context may influence scores, making them
+less reproducible across environments compared to API-based providers.
 
 ## Run LLM Scoring (after structural validation passes)
 
 Check for cached scores:
 
 ```bash
-skill-validator-ent score report <path> -o json 2>/dev/null
+skill-validator score report <path> -o json 2>/dev/null
 ```
 
 If scored output exists, use `--rescore` to generate fresh scores (content may
 have changed since the last run):
 
 ```bash
-skill-validator-ent score evaluate <path> --full-content --display files -o json --rescore
+skill-validator score evaluate <path> --provider claude-cli --full-content --display files -o json --rescore
 ```
 
 If no cached scores exist, run without `--rescore`:
 
 ```bash
-skill-validator-ent score evaluate <path> --full-content --display files -o json
+skill-validator score evaluate <path> --provider claude-cli --full-content --display files -o json
 ```
-
-If scoring fails with an authentication error, invalidate saved state:
-
-```bash
-rm -f ~/.config/skill-validator-ent/review-state.yaml
-```
-
-Then re-run the AWS authentication check.
 
 After scoring completes, run the comparison report:
 
 ```bash
-skill-validator-ent score report <path> -o json
+skill-validator score report <path> -o json
 ```
 
 Capture both outputs for interpretation.
+
+### Error handling
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `claude: command not found` | CLI not installed | macOS: `curl -fsSL https://claude.ai/install.sh \| bash`; other platforms: [quickstart guide](https://code.claude.com/docs/en/quickstart) |
+| `claude` auth error | CLI not authenticated | Run `claude` interactively to complete login |
+| Rate limit / 429 | Too many concurrent calls | Wait and retry; scoring is sequential by default |
 
 ## Interpret LLM Scores
 
