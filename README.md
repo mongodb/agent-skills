@@ -6,7 +6,7 @@ Collection of official MongoDB agent skills for use in agentic workflows.
 
 ### Claude
 
-First, install the plugin marketplace: `claude plugin marketplace add https://github.com/mongodb/agent-skills.git`. Then use the `/plugin` command to install the plugin.
+First, add this plugin marketplace to Claude: `claude plugin marketplace add https://github.com/mongodb/agent-skills.git`. Then use the `/plugin` command to look for the `mongodb` plugin.
 
 ### Cursor
 
@@ -18,9 +18,11 @@ Install the extension from the [Gemini marketplace](https://geminicli.com/extens
 
 ### Copilot CLI
 
-Install the plugin from the github repository: `/plugin install https://github.com/mongodb/agent-skills.git`. Then restart copilot to activate the MCP server.
+Install the plugin from the GitHub repository: `/plugin install https://github.com/mongodb/agent-skills.git`. Then restart Copilot CLI to activate the MCP server.
 
-### Install using skills.sh
+### Install using Vercel's Agent Skills Directory
+
+https://skills.sh/ is a popular directory and a CLI that automates the installation of skills.
 
 1. Add the skills you want to your agent:
 
