@@ -20,6 +20,16 @@ Install the extension from the [Gemini marketplace](https://geminicli.com/extens
 
 Install the plugin from the github repository: `/plugin install https://github.com/mongodb/agent-skills.git`. Then restart copilot to activate the MCP server.
 
+### Install using skills.sh
+
+1. Add the skills you want to your agent:
+
+   ```bash
+   npx skills add mongodb/agent-skills
+   ```
+
+2. Install the MCP server: `npx mongodb-mcp-server@1 setup` and follow the instructions.
+
 ### Local install from repository
 
 1. Clone the repository:
