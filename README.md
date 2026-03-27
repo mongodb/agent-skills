@@ -6,17 +6,21 @@ Collection of official MongoDB agent skills for use in agentic workflows.
 
 ### Claude
 
-Install the plugin from the [Claude marketplace](https://claude.com/plugins).
+First, install the plugin marketplace: `claude plugin marketplace add https://github.com/mongodb/agent-skills.git`. Then use the `/plugin` command to install the plugin.
 
 ### Cursor
 
-Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace).
+Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace/mongodb).
 
 ### Gemini
 
-Install the extension from the [Gemini marketplace](https://geminicli.com/extensions/).
+Install the extension from the [Gemini marketplace](https://geminicli.com/extensions/?name=mongodbagent-skills).
 
-#### Local install from repository
+### Copilot CLI
+
+Install the plugin from the github repository: `/plugin install https://github.com/mongodb/agent-skills.git`. Then restart copilot to activate the MCP server.
+
+### Local install from repository
 
 1. Clone the repository:
 
@@ -26,41 +30,12 @@ Install the extension from the [Gemini marketplace](https://geminicli.com/extens
 
 2. Install the skills for your platform:
 
-   **Supported platforms (Claude Code, Cursor, Gemini CLI)**
-
-   Copy the appropriate plugin directory to your project root:
-
-   - For Claude Code: Copy the `.claude-plugin/` directory
-   - For Cursor: Copy the `.cursor-plugin/` directory
-   - For Gemini CLI: Copy the `skills/` directory
-
-   **Other platforms**
-
    Copy the `skills/` directory to the location where your coding agent
    reads its skills or context files. Refer to your agent's documentation
    for the correct path.
 
-3. Copy `mcp.json` to your project root (if using MCP Server).
-
-4. Configure the MCP Server with your MongoDB connection details.
+3. Install the MCP server: `npx mongodb-mcp-server@1 setup` and follow the instructions.
 
 ## Configuration
 
-### MCP server environment variables
-
-The MongoDB MCP server requires authentication. Set one of the following:
-
-**Option A - Connection string** (direct MongoDB connection):
-
-```bash
-export MDB_MCP_CONNECTION_STRING="mongodb+srv://user:password@cluster.mongodb.net/"
-```
-
-**Option B - API credentials** (MongoDB Atlas Admin API):
-
-```bash
-export MDB_MCP_API_CLIENT_ID="your-client-id"
-export MDB_MCP_API_CLIENT_SECRET="your-client-secret"
-```
-
-Add these to your shell profile (`~/.zshrc`, `~/.bashrc`, or equivalent) so they are available when your IDE starts. For a complete list of configuration options, see the [MongoDB MCP server documentation](https://github.com/mongodb-js/mongodb-mcp-server#configuration-options).
+Using the MCP Server to connect to MongoDB requires authentication - you can use the `mongodb-mcp-setup` skill to guide you through the process. Alternatively, refer to the [MongoDB MCP server documentation](https://www.mongodb.com/docs/mcp-server/configuration/options/) for full list of configuration options.
