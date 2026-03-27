@@ -44,13 +44,15 @@ jobs:
           set -euo pipefail
 
           current_version="$(jq -r '.version' .cursor-plugin/plugin.json)"
-          claude_version="$(jq -r '.version' .claude-plugin/plugin.json)"
+          claude_version="$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)"
+          copilot_version="$(jq -r '.plugins[0].version' .github/plugin/marketplace.json)"
           gemini_version="$(jq -r '.version' gemini-extension.json)"
 
-          if [[ "$current_version" != "$claude_version" || "$current_version" != "$gemini_version" ]]; then
+          if [[ "$current_version" != "$claude_version" || "$current_version" != "$copilot_version" || "$current_version" != "$gemini_version" ]]; then
             echo "Plugin version mismatch detected:" >&2
             echo "  .cursor-plugin/plugin.json: $current_version" >&2
-            echo "  .claude-plugin/plugin.json: $claude_version" >&2
+            echo "  .claude-plugin/marketplace.json: $claude_version" >&2
+            echo "  .github/plugin/marketplace.json: $copilot_version" >&2
             echo "  gemini-extension.json: $gemini_version" >&2
             exit 1
           fi
@@ -85,8 +87,12 @@ jobs:
           mv "$tmp_file" .cursor-plugin/plugin.json
 
           tmp_file="$(mktemp)"
-          jq '.version = "${{ steps.version.outputs.target_version }}"' .claude-plugin/plugin.json > "$tmp_file"
-          mv "$tmp_file" .claude-plugin/plugin.json
+          jq '.plugins[0].version = "${{ steps.version.outputs.target_version }}"' .claude-plugin/marketplace.json > "$tmp_file"
+          mv "$tmp_file" .claude-plugin/marketplace.json
+
+          tmp_file="$(mktemp)"
+          jq '.plugins[0].version = "${{ steps.version.outputs.target_version }}"' .github/plugin/marketplace.json > "$tmp_file"
+          mv "$tmp_file" .github/plugin/marketplace.json
 
           tmp_file="$(mktemp)"
           jq '.version = "${{ steps.version.outputs.target_version }}"' gemini-extension.json > "$tmp_file"

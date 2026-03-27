@@ -16,6 +16,10 @@ Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace)
 
 Install the extension from the [Gemini marketplace](https://geminicli.com/extensions/).
 
+### GitHub Copilot CLI
+
+Add this repository as a marketplace (`copilot plugin marketplace add` with the GitHub repo or a local clone path), then install the `mongodb` plugin using the marketplace name from `copilot plugin marketplace list` (for example `copilot plugin install mongodb@my-marketplace`). See [Creating a plugin marketplace for GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-marketplace).
+
 #### Local install from repository
 
 1. Clone the repository:
@@ -26,12 +30,13 @@ Install the extension from the [Gemini marketplace](https://geminicli.com/extens
 
 2. Install the skills for your platform:
 
-   **Supported platforms (Claude Code, Cursor, Gemini CLI)**
+   **Supported platforms (Claude Code, Cursor, Copilot CLI, Gemini CLI)**
 
    Copy the appropriate plugin directory to your project root:
 
    - For Claude Code: Copy the `.claude-plugin/` directory
    - For Cursor: Copy the `.cursor-plugin/` directory
+   - For GitHub Copilot CLI: Copy the `.github/plugin/` directory
    - For Gemini CLI: Copy the `skills/` directory
 
    **Other platforms**

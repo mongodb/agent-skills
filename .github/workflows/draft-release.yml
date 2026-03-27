@@ -6,7 +6,8 @@ on:
       - main
     paths:
       - ".cursor-plugin/plugin.json"
-      - ".claude-plugin/plugin.json"
+      - ".claude-plugin/marketplace.json"
+      - ".github/plugin/marketplace.json"
       - "gemini-extension.json"
   workflow_dispatch:
 
@@ -27,10 +28,11 @@ jobs:
           set -euo pipefail
 
           release_version="$(jq -r '.version' .cursor-plugin/plugin.json)"
-          claude_version="$(jq -r '.version' .claude-plugin/plugin.json)"
+          claude_version="$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)"
+          copilot_version="$(jq -r '.plugins[0].version' .github/plugin/marketplace.json)"
           gemini_version="$(jq -r '.version' gemini-extension.json)"
 
-          if [[ "$release_version" != "$claude_version" || "$release_version" != "$gemini_version" ]]; then
+          if [[ "$release_version" != "$claude_version" || "$release_version" != "$copilot_version" || "$release_version" != "$gemini_version" ]]; then
             echo "Plugin version mismatch detected; refusing to create release." >&2
             exit 1
           fi
