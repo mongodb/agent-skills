@@ -2,7 +2,7 @@
   "mcpServers": {
     "mongodb": {
       "command": "npx",
-      "args": ["-y", "mongodb-mcp-server"]
+      "args": ["-y", "mongodb-mcp-server@1"]
     }
   }
 }
