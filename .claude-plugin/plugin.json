@@ -7,7 +7,7 @@
     "email": "agent-plugins@mongodb.com",
     "url": "https://www.mongodb.com"
   },
-  "homepage": "https://www.mongodb.com/docs/mcp-server/overview/",
+  "homepage": "https://www.mongodb.com/docs/claude/",
   "repository": "https://github.com/mongodb/agent-skills",
   "license": "Apache-2.0",
   "keywords": [

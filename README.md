@@ -1,6 +1,6 @@
 # MongoDB Agent Skills
 
-Collection of official MongoDB agent skills for use in agentic workflows.
+Collection of official MongoDB agent skills for use in agentic workflows. For more information, refer to the [MongoDB Agent Skills documentation](https://www.mongodb.com/docs/agent-skills/).
 
 ## Installation
 
