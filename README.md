@@ -1,12 +1,19 @@
 # MongoDB Agent Skills
 
-Collection of official MongoDB agent skills for use in agentic workflows.
+Collection of official MongoDB agent skills for use in agentic workflows. For more information, refer to the [MongoDB Agent Skills documentation](https://www.mongodb.com/docs/agent-skills/).
 
 ## Installation
 
 ### Claude
 
-First, add this plugin marketplace to Claude: `claude plugin marketplace add https://github.com/mongodb/agent-skills.git`. Then use the `/plugin` command to look for the `mongodb` plugin.
+1. Add the plugin marketplace to Claude locally:
+
+   ```bash
+   claude plugin marketplace add https://github.com/mongodb/agent-skills.git
+   ```
+
+2. Use the `/plugin` command to look for the `mongodb` plugin.
+3. Install the plugin, then run `/reload-plugins` to activate it.
 
 ### Cursor
 
