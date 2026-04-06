@@ -6,22 +6,40 @@ Collection of official MongoDB agent skills for use in agentic workflows. For mo
 
 ### Claude
 
-1. Add the plugin marketplace to Claude locally:
+Install the plugin from the [Claude marketplace](https://claude.com/plugins/mongodb), or run the following command from a Claude session:
+
+1. Install the plugin:
 
    ```bash
-   claude plugin marketplace add https://github.com/mongodb/agent-skills.git
+   /plugin install mongodb
    ```
 
-2. Use the `/plugin` command to look for the `mongodb` plugin.
-3. Install the plugin, then run `/reload-plugins` to activate it.
+2. Follow the prompts to complete the installation, then run `/reload-plugins` to activate it.
 
 ### Cursor
 
-Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace/mongodb).
+Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace/mongodb), or run the following command from a Cursor session:
+
+1. Install the plugin:
+
+   ```bash
+   /add-plugin mongodb
+   ```
+
+2. Follow the prompts to complete the installation.
 
 ### Gemini
 
-Install the extension from the [Gemini marketplace](https://geminicli.com/extensions/?name=mongodbagent-skills).
+Install the extension from the [Gemini marketplace](https://geminicli.com/extensions/?name=mongodbagent-skills), or run the following command from Gemini CLI:
+
+1. Install the extension:
+
+   ```bash
+   gemini extensions install https://github.com/mongodb/agent-skills
+   ```
+
+2. Follow the prompts to complete the installation.
+
 
 ### Copilot CLI
 
