@@ -1,0 +1,37 @@
+{
+  "skill_name": "mongodb-schema-design",
+  "evals": [
+    {
+      "id": 1,
+      "name": "product-reviews-embed-vs-reference",
+      "prompt": "I'm building an e-commerce platform and I'm stuck on how to model product reviews. Each product can have anywhere from 0 to maybe 5000 reviews (most products have under 100 though). Each review has: reviewer name, rating (1-5 stars), review text (up to 2000 chars), helpful votes count, and timestamp. On the product page, I show the product details plus the 10 most recent reviews, and there's a \"see all reviews\" link that takes you to a paginated list. I also have a separate \"My Reviews\" page where users can see all their own reviews across all products. Should I embed the reviews in the product document or keep them in a separate reviews collection? I'm worried about the 16MB limit but also don't want to do unnecessary lookups.",
+      "expected_output": "A clear recommendation on whether to embed or reference, with specific reasoning about: 1) Access patterns (reviews shown with product vs independently), 2) Cardinality (unbounded growth potential with popular products), 3) Document size concerns (5000 reviews would exceed 16MB), 4) Query patterns (pagination, user's reviews across products). Should recommend a hybrid or reference approach given the unbounded nature and independent access patterns.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "reviews-minimal-context",
+      "prompt": "I'm building an e-commerce platform with mongodb, currently planning a product reviews feature. I'm not sure whether to embed reviews in the product document or keep them in a separate collection.",
+      "expected_output": "Should ask clarifying questions about key schema design factors before giving a recommendation. Important questions to ask: 1) How many reviews per product (cardinality/boundedness), 2) How are reviews accessed/displayed (access patterns), 3) Are reviews queried independently from products (e.g., user's reviews across products), 4) Size considerations (review content length). Should NOT give a firm embed/reference decision without gathering this information.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "asks_about_cardinality",
+          "description": "Response should ask about how many reviews per product or whether the number is bounded/unbounded"
+        },
+        {
+          "name": "asks_about_access_patterns",
+          "description": "Response should ask about how reviews are displayed, queried, or accessed (e.g., shown with product page, paginated list, independent queries)"
+        },
+        {
+          "name": "asks_about_independent_queries",
+          "description": "Response should ask whether reviews are ever queried independently from products (e.g., user's reviews, moderation workflows)"
+        },
+        {
+          "name": "avoids_premature_recommendation",
+          "description": "Should not give a definitive 'you should embed' or 'you should reference' answer without more context. Can discuss tradeoffs but should emphasize need for more information."
+        }
+      ]
+    }
+  ]
+}
