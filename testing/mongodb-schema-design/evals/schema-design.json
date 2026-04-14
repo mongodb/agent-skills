@@ -12,26 +12,37 @@
       "id": 2,
       "name": "reviews-minimal-context",
       "prompt": "I'm building an e-commerce platform with mongodb, currently planning a product reviews feature. I'm not sure whether to embed reviews in the product document or keep them in a separate collection.",
-      "expected_output": "Should ask clarifying questions about key schema design factors before giving a recommendation. Important questions to ask: 1) How many reviews per product (cardinality/boundedness), 2) How are reviews accessed/displayed (access patterns), 3) Are reviews queried independently from products (e.g., user's reviews across products), 4) Size considerations (review content length). Should NOT give a firm embed/reference decision without gathering this information.",
+      "expected_output": "Should ask clarifying questions about key MongoDB schema design factors before giving a recommendation. Important questions: 1) Cardinality (typical and max reviews per product), 2) Boundedness (can grow indefinitely or has hard limit - the unbounded array anti-pattern), 3) Access patterns (always with product vs independently), 4) Document size concerns (16MB limit). Should NOT give a firm recommendation without gathering this information.",
       "files": [],
       "assertions": [
         {
           "name": "asks_about_cardinality",
-          "description": "Response should ask about how many reviews per product or whether the number is bounded/unbounded"
+          "description": "Asks about typical and maximum number of reviews per product (e.g., 'most have 10, some have 1000')"
+        },
+        {
+          "name": "asks_about_boundedness",
+          "description": "Asks whether review growth is bounded (hard limit) or unbounded (can grow indefinitely) - the critical unbounded array anti-pattern"
         },
         {
           "name": "asks_about_access_patterns",
-          "description": "Response should ask about how reviews are displayed, queried, or accessed (e.g., shown with product page, paginated list, independent queries)"
+          "description": "Asks how reviews are accessed: always with product (embed candidate) vs independently/separately (reference candidate)"
         },
         {
-          "name": "asks_about_independent_queries",
-          "description": "Response should ask whether reviews are ever queried independently from products (e.g., user's reviews, moderation workflows)"
+          "name": "mentions_document_size_concerns",
+          "description": "Mentions 16MB limit, document size concerns, or provides size calculations"
         },
         {
           "name": "avoids_premature_recommendation",
-          "description": "Should not give a definitive 'you should embed' or 'you should reference' answer without more context. Can discuss tradeoffs but should emphasize need for more information."
+          "description": "Should not give a definitive recommendation without gathering these key requirements first"
         }
       ]
+    },
+    {
+      "id": 3,
+      "name": "blog-comments-outlier-pattern",
+      "prompt": "I'm modeling blog posts and comments. Most posts have 5-20 comments, but a few viral posts have 50,000+ comments. Should I embed the comments in the post document or use a separate collection?",
+      "expected_output": "Should recognize this as an outlier scenario and suggest the Outlier Pattern: embed comments for normal posts (5-20 comments) for performance, but use a separate collection or overflow strategy for viral posts that exceed a threshold. Pure separation works but misses optimization opportunity for the common case (95%+ of posts).",
+      "files": []
     }
   ]
 }

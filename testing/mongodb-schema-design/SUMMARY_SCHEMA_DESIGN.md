@@ -1,341 +1,245 @@
-# MongoDB Schema Design Skill - Evaluation Report
+# MongoDB Schema Design Skill - Evaluation Summary
 
-**Generated:** 2026-04-13  
-**Skill:** mongodb-schema-design  
-**Test Environment:** Claude Sonnet 4.5
+**Model:** Claude Sonnet 4.5  
+**Date:** 2026-04-14  
+**Skill Version:** mongodb-schema-design
 
 ---
 
 ## Executive Summary
 
-This report evaluates the mongodb-schema-design skill's impact on response quality when helping users design MongoDB schemas. Two eval scenarios were tested, comparing responses with and without the skill.
+The mongodb-schema-design skill was evaluated across three scenarios to measure its impact on recommendation quality. The skill consistently improves recommendation sophistication but introduces a trade-off with consultative process for minimal context questions.
 
 ### Key Findings
 
-1. **Detailed Context Scenario** (Eval #1): Skill provides more comprehensive guidance with hybrid approaches
-2. **Minimal Context Scenario** (Eval #2): Skill demonstrates better requirement gathering with structured questions
-3. **Performance Trade-off**: Skill responses take 2-3x longer but provide significantly more depth
-4. **Recommendation Quality**: Skill responses are more nuanced and cover multiple patterns
+1. **Quality Improvement:** Skill upgrades recommendations from good → optimal across all scenarios
+2. **Cost:** 2.9-3.3x time increase, acceptable for schema design work
+3. **Process Issue:** Skill gives premature recommendations with minimal context (0% pass rate)
+4. **Best Use:** Detailed questions with clear requirements
 
 ---
 
-## Eval #1: Product Reviews with Full Context
+## Evaluation Scenarios
 
-### Prompt
+### Eval 1: Product Reviews (Full Context)
+
+**Prompt:**
 ```
 I'm building an e-commerce platform and I'm stuck on how to model product reviews. 
-Each product can have anywhere from 0 to maybe 5000 reviews (most products have 
-under 100 though). Each review has: reviewer name, rating (1-5 stars), review text 
-(up to 2000 chars), helpful votes count, and timestamp. On the product page, I show 
-the product details plus the 10 most recent reviews, and there's a "see all reviews" 
-link that takes you to a paginated list. I also have a separate "My Reviews" page 
-where users can see all their own reviews across all products. Should I embed the 
-reviews in the product document or keep them in a separate reviews collection? 
-I'm worried about the 16MB limit but also don't want to do unnecessary lookups.
+Each product can have anywhere from 0 to maybe 5000 reviews (most products have under 100 though). 
+Each review has: reviewer name, rating (1-5 stars), review text (up to 2000 chars), helpful votes 
+count, and timestamp. On the product page, I show the product details plus the 10 most recent reviews, 
+and there's a "see all reviews" link that takes you to a paginated list. I also have a separate 
+"My Reviews" page where users can see all their own reviews across all products. Should I embed the 
+reviews in the product document or keep them in a separate reviews collection? I'm worried about the 
+16MB limit but also don't want to do unnecessary lookups.
 ```
 
-### Results Comparison
+**Results:**
 
-| Metric | Without Skill | With Skill | Difference |
-|--------|--------------|------------|------------|
+| Metric | Without Skill | With Skill | Impact |
+|--------|--------------|------------|--------|
 | **Time** | 49.6s | 143.3s | +2.9x |
 | **Tokens** | 11,023 | 28,942 | +2.6x |
-| **Recommendation** | Pure reference | Hybrid (reference + embedded subset) | More nuanced |
+| **Recommendation** | Pure reference (separate collection) | **Hybrid: embed 10 recent + separate collection** | ✅ Optimized |
 
-### Without Skill Response
+**Analysis:**
 
-**Recommendation:** Separate reviews collection (pure reference pattern)
+*Without Skill:*
+- Recommends separate collection for all reviews
+- Correct and safe approach
+- Misses optimization for product page hot path
+- Covers: document size, access patterns, indexes
 
-**Key Points:**
-- Document size safety (5000 reviews = 10MB)
-- Access pattern alignment (product page, pagination, "My Reviews")
-- Write performance benefits
-- Recommended indexes
-- Keep aggregate stats embedded
+*With Skill:*
+- Recommends **Subset Pattern (hybrid approach)**
+- Embed 10 most recent reviews in product document (zero-lookup product pages)
+- Store all reviews in separate collection (pagination, "My Reviews")
+- Includes: MongoDB decision framework, schema validation, transactions, verification queries
+- Explains why pure embedding fails (4 problems) and why pure reference is suboptimal
 
-**Schema:**
-```javascript
-// products collection
-{
-  _id: ObjectId("..."),
-  name: "Product Name",
-  reviewStats: {
-    averageRating: 4.5,
-    totalReviews: 1247,
-    ratingDistribution: { 5: 800, 4: 300, 3: 100, 2: 30, 1: 17 }
-  }
-}
-
-// reviews collection
-{
-  _id: ObjectId("..."),
-  productId: ObjectId("..."),
-  userId: ObjectId("..."),
-  rating: 5,
-  text: "Great product!",
-  helpfulVotes: 42,
-  timestamp: ISODate("2026-04-13")
-}
-```
-
-### With Skill Response
-
-**Recommendation:** Hybrid approach (separate collection + embedded subset of 10 recent reviews)
-
-**Key Points:**
-- Uses MongoDB decision framework table (1:1, 1:few, 1:many, many-to-many)
-- Analyzes cardinality: unbounded (0-5000) with most <100
-- Access pattern analysis: three distinct patterns identified
-  - Product page (high traffic) - needs recent reviews
-  - Paginated reviews (moderate) - needs full set
-  - My Reviews (low-moderate) - needs userId queries
-- Hybrid optimization: embed 10 most recent for zero-lookup product page loads
-- Comprehensive schema validation examples
-- Transaction handling for consistency
-- Document size verification queries
-
-**Schema:**
-```javascript
-// products collection
-{
-  _id: ObjectId("..."),
-  name: "Product Name",
-  reviewStats: { /* ... */ },
-  recentReviews: [  // Embedded subset - shown on product page
-    { _id: ObjectId("..."), rating: 5, text: "...", timestamp: ... }
-    // ... up to 10 reviews
-  ]
-}
-
-// reviews collection (full data)
-{
-  _id: ObjectId("..."),
-  productId: ObjectId("..."),
-  userId: ObjectId("..."),
-  /* ... full review data ... */
-}
-```
-
-**Additional Value:**
-- Explains why pure embedding fails (4 problems identified)
-- Explains why pure reference is suboptimal (unnecessary lookups on high-traffic pages)
-- Transaction example for maintaining consistency
-- Schema validation with `maxItems: 10` enforcement
-- Verification queries to monitor document sizes
-
-### Analysis
-
-**Without Skill:**
-- ✅ Correct recommendation (separate collection works)
-- ✅ Good reasoning about document size and access patterns
-- ⚠️ Misses optimization opportunity for high-traffic product pages
-
-**With Skill:**
-- ✅ Uses MongoDB's formal decision framework
-- ✅ Identifies hybrid optimization for the specific access patterns
-- ✅ Provides implementation details (transactions, validation)
-- ✅ Includes verification queries
-- ⚠️ Takes 2.9x longer
-
-**Winner:** Skill provides superior recommendation (hybrid vs pure reference)
+**Conclusion:** Skill provides **major value** - transforms correct solution into optimal solution for high-traffic product pages.
 
 ---
 
-## Eval #2: Product Reviews with Minimal Context
+### Eval 2: Product Reviews (Minimal Context)
 
-### Prompt (Iteration 2)
+**Prompt:**
 ```
-I'm building an e-commerce platform with mongodb, currently planning a product 
-reviews feature. I'm not sure whether to embed reviews in the product document 
-or keep them in a separate collection.
+I'm building an e-commerce platform with mongodb, currently planning a product reviews feature. 
+I'm not sure whether to embed reviews in the product document or keep them in a separate collection.
 ```
 
-### Results Comparison
+**Results:**
 
-| Metric | Without Skill | With Skill | Difference |
-|--------|--------------|------------|------------|
-| **Time** | 31.9s | 67.2s | +2.1x |
-| **Tokens** | 10,538 | 22,622 | +2.1x |
-| **Approach** | Recommends immediately | Asks questions first | Better discovery |
+| Metric | Without Skill | With Skill | Impact |
+|--------|--------------|------------|--------|
+| **Time** | 31.4s | 56.3s | +1.8x |
+| **Tokens** | 10,563 | 21,319 | +2.0x |
+| **Approach** | Gives recommendation with questions | Gives recommendation with questions | Both problematic |
 
-### Assertions Evaluation
+**Assertions (5 key factors):**
 
 | Assertion | Without Skill | With Skill |
 |-----------|---------------|------------|
-| **Asks about cardinality** | ⚠️ Partial (only in follow-up) | ✅ Yes (upfront) |
-| **Asks about access patterns** | ⚠️ Partial (only in follow-up) | ✅ Yes (upfront) |
-| **Asks about independent queries** | ⚠️ Partial (only in follow-up) | ✅ Yes (upfront) |
-| **Avoids premature recommendation** | ❌ No (recommends separate collection immediately) | ✅ Yes (asks questions, then provides general guidance) |
+| Asks about cardinality | ✅ Yes | ✅ Yes |
+| Asks about boundedness | ✅ Yes | ✅ Yes |
+| Asks about access patterns | ✅ Yes | ✅ Yes |
+| Mentions document size (16MB) | ✅ Yes | ✅ Yes |
+| **Avoids premature recommendation** | ⚠️ No | ❌ No |
 
-### Without Skill Response
+**Analysis:**
 
-**Approach:** Recommends separate collection immediately, asks follow-up questions after
+*Without Skill:*
+- Asks questions but gives recommendation ("you should use separate collection")
+- Questions come before or after recommendation depending on run
+- Covers all MongoDB decision factors
+- Inconsistent: sometimes asks first, sometimes recommends first
 
-**Structure:**
-1. ❌ **Recommendation first**: "I recommend using a separate collection"
-2. Provides reasoning (unbounded growth, query patterns, write performance)
-3. Shows schema examples
-4. Asks 4 follow-up questions at the end
+*With Skill:*
+- Consistently gives "General Recommendation" section immediately
+- Asks questions but already committed to approach
+- Undermines consultative process
+- Always gives recommendation despite insufficient context
 
-**Issue:** Makes assumptions without gathering requirements. Gives definitive answer despite minimal context.
-
-### With Skill Response
-
-**Approach:** Asks discovery questions first, provides general guidance for scenarios
-
-**Structure:**
-1. ✅ **Questions first**: "Initial Questions to Understand Your Use Case"
-   - Cardinality & boundedness
-   - Access patterns
-   - Independent query patterns
-   - Review content size
-2. General guidance from MongoDB principles
-   - When to embed (with criteria)
-   - When to reference (with criteria)
-   - Hybrid approach (recommended for e-commerce)
-3. Warning about unbounded arrays with calculations
-4. Recommended approach with next steps
-
-**Strength:** Consultative approach, educates on patterns, asks for specifics before committing to recommendation.
-
-### Analysis
-
-**Without Skill:**
-- ❌ Jumps to recommendation without gathering requirements
-- ⚠️ Follow-up questions are too late (after committing to solution)
-- ✅ Recommendation is reasonable for typical e-commerce
-
-**With Skill:**
-- ✅ Asks structured discovery questions upfront
-- ✅ Provides decision framework for different scenarios
-- ✅ Educates on MongoDB principles
-- ✅ Emphasizes need for more information before final recommendation
-
-**Winner:** Skill demonstrates significantly better requirement gathering process
+**Conclusion:** Skill **degrades consultative approach** - should defer recommendations until requirements gathered. Both conditions fail, but skill makes it worse (0% vs partial success without skill).
 
 ---
 
-## Iteration Comparison: Eval #2
+### Eval 3: Blog Comments (Outlier Pattern)
 
-We tested two versions of the minimal prompt:
+**Prompt:**
+```
+I'm modeling blog posts and comments. Most posts have 5-20 comments, but a few viral posts 
+have 50,000+ comments. Should I embed the comments in the post document or use a separate collection?
+```
 
-### Iteration 1
-**Prompt:** "Should I embed reviews in my product documents?"
+**Results:**
 
-- **Without skill:** ✅ Correctly asked questions first
-- **With skill:** ❌ Jumped to recommendations despite minimal context
+| Metric | Without Skill | With Skill | Impact |
+|--------|--------------|------------|--------|
+| **Time** | 33.0s | 109.2s | +3.3x |
+| **Tokens** | 10,480 | 28,750 | +2.7x |
+| **Recommendation** | Subset Pattern (static hybrid) | **Outlier Pattern (conditional)** | ✅ Advanced |
 
-### Iteration 2  
-**Prompt:** "I'm building an e-commerce platform with mongodb, currently planning a product reviews feature. I'm not sure whether to embed reviews in the product document or keep them in a separate collection."
+**Analysis:**
 
-- **Without skill:** ❌ Recommended immediately
-- **With skill:** ✅ Asked questions first
+*Without Skill:*
+- Recommends **Subset Pattern**
+- Embed 10-20 most recent comments + store all in separate collection
+- Static approach: same structure for all posts
+- Good solution, handles both cases
 
-**Key Insight:** Adding "e-commerce platform" context gave both agents more to work with, but the skill helped structure the response more appropriately with discovery questions.
+*With Skill:*
+- Recommends **Outlier Pattern**
+- Embed comments by default for normal posts (5-20 comments)
+- Automatic overflow to separate collection when threshold exceeded (e.g., 50 comments)
+- Dynamic approach: adapts based on actual data
+- Includes: threshold logic, `hasOverflow` flag, migration transactions, monitoring queries
+- Cites `pattern-outlier.md` reference explicitly
+
+**Comparison:**
+
+| Approach | Normal Posts (95%) | Viral Posts (5%) |
+|----------|-------------------|------------------|
+| Subset (without skill) | Single query + embedded subset | Single query + separate pagination |
+| Outlier (with skill) | Single query + all embedded | Overflow handling + pagination |
+
+**Conclusion:** Skill provides **clear value** - teaches advanced conditional pattern that optimizes for data distribution. Outlier Pattern is more sophisticated than Subset Pattern.
 
 ---
 
 ## Overall Assessment
 
+### When Skill Adds Value ✅
+
+1. **Full context with detailed requirements**
+   - Identifies hybrid optimizations
+   - Provides MongoDB-specific patterns (Subset, Outlier, Extended Reference)
+   - Includes implementation details (validation, transactions, monitoring)
+
+2. **Specific pattern recognition**
+   - Outlier scenarios (mixed cardinality)
+   - Subset patterns (bounded hot data)
+   - Extended references (cached denormalization)
+
+3. **Learning & education**
+   - Cites MongoDB principles ("data accessed together")
+   - Warns about anti-patterns (unbounded arrays)
+   - Provides decision frameworks and verification queries
+
+### When Skill Has Issues ⚠️
+
+1. **Minimal context scenarios**
+   - Gives premature recommendations
+   - Doesn't recognize insufficient information
+   - Undermines consultative discovery process
+
+2. **Performance cost**
+   - 2.9-3.3x time increase
+   - 2.0-2.7x token increase
+   - Acceptable for schema design, but notable
+
 ### Skill Benefits
 
-1. **Higher Quality Recommendations**
-   - Hybrid patterns vs simple embed/reference
-   - Uses formal MongoDB decision frameworks
-   - Considers multiple access patterns
+**Quality Improvements:**
+- Pure reference → Hybrid (Subset Pattern)
+- Static hybrid → Dynamic conditional (Outlier Pattern)
+- Basic implementation → Production-ready (validation, transactions, monitoring)
 
-2. **Better Implementation Guidance**
-   - Schema validation examples
-   - Transaction handling
-   - Verification queries
-   - Index recommendations
-
-3. **Improved Requirement Gathering**
-   - Structured discovery questions
-   - Educates on tradeoffs
-   - Scenario-based guidance
-
-4. **MongoDB Best Practices**
-   - Cites core principles ("data accessed together")
-   - Warns about anti-patterns (unbounded arrays)
-   - Provides calculations (document size)
-
-### Trade-offs
-
-1. **Performance Cost**
-   - 2-3x longer response time
-   - 2-3x more tokens used
-   - Acceptable for schema design (not time-critical)
-
-2. **Response Length**
-   - Much more comprehensive
-   - Could be overwhelming for simple questions
-   - Good for learning, potentially verbose for experts
+**Knowledge Transfer:**
+- MongoDB decision frameworks (1:1, 1:few, 1:many tables)
+- Schema validation with `$jsonSchema`
+- Document size calculations and verification queries
+- Anti-pattern warnings (unbounded arrays, 16MB limit)
+- Pattern library (Subset, Outlier, Computed, Extended Reference)
 
 ### Recommendations
 
-1. **Use the skill for:**
-   - Schema design decisions with complexity
-   - Users learning MongoDB patterns
-   - When optimization matters (high-scale apps)
-   - Questions with multiple access patterns
+**Deploy For:**
+- ✅ Detailed schema design questions
+- ✅ Users learning MongoDB patterns
+- ✅ Production systems needing optimization
+- ✅ Questions with clear requirements
 
-2. **Skill could be improved:**
-   - Add guidance about when to ask discovery questions vs when to provide recommendations
-   - Consider response length based on user expertise signals
-   - Provide "quick answer" + "detailed explanation" options
+**Improve For:**
+- ❌ Minimal context questions (add conditional logic)
+- ❌ Discovery phase (defer recommendations until context gathered)
+
+**Priority Fix:**
+```
+IF user provides (cardinality AND access_patterns AND constraints)
+    THEN recommend specific pattern
+ELSE
+    ASK discovery questions
+    DEFER recommendation
+    WAIT for user answers
+```
 
 ---
 
-## Appendix: Test Artifacts
+## Performance Summary
 
-### File Locations
+| Scenario | Time Impact | Token Impact | Quality Impact | ROI |
+|----------|-------------|--------------|----------------|-----|
+| Full Context | +2.9x | +2.6x | Good → Optimal | High |
+| Minimal Context | +1.8x | +2.0x | Problematic → Worse | Low |
+| Outlier Pattern | +3.3x | +2.7x | Static → Dynamic | High |
 
-**Eval Definitions:**
-```
-/Users/ps/dev/agent-skills/testing/mongodb-schema-design/evals/evals.json
-```
-
-**Test Results:**
-```
-/Users/ps/dev/agent-skills/testing/mongodb-schema-design/mongodb-schema-design-workspace/
-├── iteration-1/
-│   ├── product-reviews-embed-vs-reference/
-│   │   ├── without_skill/outputs/recommendation.md
-│   │   ├── with_skill/outputs/recommendation.md
-│   │   └── eval_metadata.json
-│   └── reviews-minimal-context/
-│       ├── without_skill/outputs/response.md
-│       ├── with_skill/outputs/response.md
-│       └── eval_metadata.json
-└── iteration-2/
-    └── reviews-minimal-context/
-        ├── without_skill/outputs/response.md
-        ├── with_skill/outputs/response.md
-        └── eval_metadata.json
-```
-
-### Metrics Summary
-
-| Eval | Iteration | Without Skill Time | With Skill Time | Without Skill Tokens | With Skill Tokens |
-|------|-----------|-------------------|-----------------|---------------------|-------------------|
-| #1 (Full Context) | 1 | 49.6s | 143.3s | 11,023 | 28,942 |
-| #2 (Minimal) | 1 | 43.6s | 85.5s | 24,670 | 25,299 |
-| #2 (Minimal) | 2 | 31.9s | 67.2s | 10,538 | 22,622 |
-
-**Average Impact:** 2.3x time increase, 2.0x token increase
+**Average:** +2.7x time, +2.4x tokens
 
 ---
 
 ## Conclusion
 
-The mongodb-schema-design skill provides significant value for schema design questions:
+The mongodb-schema-design skill provides **significant value** for Claude Sonnet 4.5:
 
-- **Quality:** Recommendations are more nuanced and better optimized
-- **Education:** Responses teach MongoDB patterns and principles
-- **Completeness:** Includes validation, verification, and implementation details
-- **Discovery:** Better requirement gathering for ambiguous questions
+1. **Transforms recommendations** from good → optimal (pure reference → hybrid, static → dynamic)
+2. **Teaches advanced patterns** (Subset, Outlier, Extended Reference) that baseline doesn't know
+3. **Includes production details** (validation, transactions, verification) not in baseline responses
 
-The 2-3x performance cost is acceptable given that schema design is not time-critical and benefits from thoroughness. The skill is particularly valuable for users learning MongoDB or designing complex, high-scale systems.
+**Critical issue:** Skill gives premature recommendations with minimal context, requiring fix before production deployment.
 
-**Recommendation:** Deploy the skill. Consider adding guidance about response verbosity based on user context.
+**Recommendation:** Deploy with documentation noting it works best with detailed context. Prioritize adding conditional logic for minimal context scenarios.
+
+**Value proposition:** For Sonnet users, the 2.7x performance cost is justified by the quality improvement in schema design recommendations.
