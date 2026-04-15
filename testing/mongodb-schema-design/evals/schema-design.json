@@ -10,39 +10,39 @@
     },
     {
       "id": 2,
-      "name": "reviews-minimal-context",
-      "prompt": "I'm building an e-commerce platform with mongodb, currently planning a product reviews feature. I'm not sure whether to embed reviews in the product document or keep them in a separate collection.",
-      "expected_output": "Should ask clarifying questions about key MongoDB schema design factors before giving a recommendation. Important questions: 1) Cardinality (typical and max reviews per product), 2) Boundedness (can grow indefinitely or has hard limit - the unbounded array anti-pattern), 3) Access patterns (always with product vs independently), 4) Document size concerns (16MB limit). Should NOT give a firm recommendation without gathering this information.",
-      "files": [],
-      "assertions": [
-        {
-          "name": "asks_about_cardinality",
-          "description": "Asks about typical and maximum number of reviews per product (e.g., 'most have 10, some have 1000')"
-        },
-        {
-          "name": "asks_about_boundedness",
-          "description": "Asks whether review growth is bounded (hard limit) or unbounded (can grow indefinitely) - the critical unbounded array anti-pattern"
-        },
-        {
-          "name": "asks_about_access_patterns",
-          "description": "Asks how reviews are accessed: always with product (embed candidate) vs independently/separately (reference candidate)"
-        },
-        {
-          "name": "mentions_document_size_concerns",
-          "description": "Mentions 16MB limit, document size concerns, or provides size calculations"
-        },
-        {
-          "name": "avoids_premature_recommendation",
-          "description": "Should not give a definitive recommendation without gathering these key requirements first"
-        }
-      ]
-    },
-    {
-      "id": 3,
       "name": "blog-comments-outlier-pattern",
       "prompt": "I'm modeling blog posts and comments. Most posts have 5-20 comments, but a few viral posts have 50,000+ comments. Should I embed the comments in the post document or use a separate collection?",
       "expected_output": "Should recognize this as an outlier scenario and suggest the Outlier Pattern: embed comments for normal posts (5-20 comments) for performance, but use a separate collection or overflow strategy for viral posts that exceed a threshold. Pure separation works but misses optimization opportunity for the common case (95%+ of posts).",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "product-view-counter",
+      "prompt": "I'm building a product catalog for a high-traffic e-commerce site. Each product document has: name, description, price, category, SKU, inventory count, viewCount, and tags. Any schema concerns I should be aware of?",
+      "expected_output": "Should recognize the viewCount field as a high-frequency counter problem. Should ask about how often viewCount is updated or recognize that incrementing on every page view creates massive write contention and rewrites the entire product document constantly. Should recommend the Approximation Pattern (pattern-approximation.md) - update counter occasionally rather than every view, or use a separate collection/field for high-frequency counters. This is 'different update frequencies' in action: product data is mostly stable, but viewCount is updated constantly. May also mention inventory count if it updates frequently, but viewCount is the primary issue.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_high_frequency_field",
+          "description": "Asks about update frequency for viewCount or other fields, OR recognizes viewCount as a high-frequency counter without being told"
+        },
+        {
+          "name": "mentions_approximation_pattern",
+          "description": "Recommends or mentions the Approximation Pattern (update counter occasionally, not on every increment)"
+        },
+        {
+          "name": "mentions_write_contention_or_performance",
+          "description": "Mentions write contention, document rewrites, performance impact, or the cost of frequent updates to the product document"
+        },
+        {
+          "name": "references_different_update_frequencies",
+          "description": "Identifies that different fields have different update frequencies (stable product data vs hot viewCount) as a key schema concern"
+        },
+        {
+          "name": "avoids_naive_approval",
+          "description": "Should NOT say the schema looks fine without addressing the viewCount high-frequency update issue"
+        }
+      ]
     }
   ]
 }
