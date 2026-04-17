@@ -4,3 +4,5 @@
 # User-specific Claude settings
 .claude/settings.local.json
 .score_cache/
+
+.DS_Store
