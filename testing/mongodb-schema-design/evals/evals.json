@@ -1,0 +1,18 @@
+{
+  "skill_name": "mongodb-schema-design",
+  "evals": [
+    {
+      "id": 1,
+      "name": "schema-versioning-migration",
+      "prompt": "We have a 'contacts' collection with 8 million documents. Over 2 years, the schema has drifted, some documents have 'phone' as a string, others have it as an object with 'country' and 'number' fields. Some have a 'fullName' string, others have separate 'firstName' and 'lastName'. We need to standardize without downtime. How should we approach this?",
+      "expected_output": "Recommends the Schema Versioning pattern: add a schema_version field, define the target schema, and migrate using one of three strategies — background batch migration, aggregation pipeline update, or lazy read-time migration. Includes a decision tree for when each strategy is appropriate and adds schema validation with moderate/warn first.",
+      "expectations": [
+        "Recommends adding a schema_version field to track which version each document conforms to",
+        "Proposes at least two distinct migration strategies (e.g., background batch, aggregation pipeline update with $set, or lazy read-time migration) with tradeoffs for each",
+        "Suggests using schema validation with validationLevel 'moderate' and validationAction 'warn' initially to discover violations without breaking existing documents",
+        "Provides a way to discover existing schema drift (e.g., aggregation to find unique field structures, or $nor query against the target validator)",
+        "Explains that backward-compatible changes (new optional fields) don't require a version bump, but breaking changes (rename, type change) do"
+      ]
+    }
+  ]
+}
