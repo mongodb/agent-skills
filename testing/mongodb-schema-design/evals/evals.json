@@ -3,10 +3,22 @@
   "evals": [
     {
       "id": 1,
+      "name": "schema-versioning-migration",
+      "prompt": "We have a 'contacts' collection with 8 million documents. Over 2 years, the schema has drifted, some documents have 'phone' as a string, others have it as an object with 'country' and 'number' fields. Some have a 'fullName' string, others have separate 'firstName' and 'lastName'. We need to standardize without downtime. How should we approach this?",
+      "expected_output": "Recommends the Schema Versioning pattern: add a schema_version field, define the target schema, and migrate using one of three strategies — background batch migration, aggregation pipeline update, or lazy read-time migration. Includes a decision tree for when each strategy is appropriate and adds schema validation with moderate/warn first.",
+      "expectations": [
+        "Recommends adding a schema_version field to track which version each document conforms to",
+        "Proposes at least two distinct migration strategies (e.g., background batch, aggregation pipeline update with $set, or lazy read-time migration) with tradeoffs for each",
+        "Suggests using schema validation with validationLevel 'moderate' and validationAction 'warn' initially to discover violations without breaking existing documents",
+        "Provides a way to discover existing schema drift (e.g., aggregation to find unique field structures, or $nor query against the target validator)",
+        "Explains that backward-compatible changes (new optional fields) don't require a version bump, but breaking changes (rename, type change) do"
+      ]
+    },
+    {
+      "id": 2,
       "name": "product-view-counter",
       "prompt": "I'm building a product catalog. Each product document has: name, description, price, category, SKU, stock level, and tags. I'm also tracking a popularity field that gets incremented when users view the product. Any schema concerns I should be aware of?",
       "expected_output": "Should recognize the viewCount field as a high-frequency counter problem. Should ask about how often viewCount is updated or recognize that incrementing on every page view creates massive write contention and rewrites the entire product document constantly. Should recommend the Approximation Pattern (pattern-approximation.md) - update counter occasionally rather than every view, or use a separate collection/field for high-frequency counters. This is 'different update frequencies' in action: product data is mostly stable, but viewCount is updated constantly. May also mention inventory count if it updates frequently, but viewCount is the primary issue.",
-      "files": [],
       "expectations": [
         "Identifies the popularity/viewCount field as a high-frequency counter problem that gets updated on every page view",
         "Mentions the 'Approximation Pattern' by name as the solution for high-frequency counters",
@@ -16,11 +28,10 @@
       ]
     },
     {
-      "id": 2,
+      "id": 3,
       "name": "product-reviews-embed-vs-reference",
       "prompt": "I'm building an e-commerce platform with product reviews. Each review has: reviewer name, rating, review text, helpful votes count, and timestamp. On the product page, I show the product details plus the 10 most recent reviews, with a link to see all reviews. I also have a \"My Reviews\" page where users can see their reviews across all products. Should I embed reviews in the product document or keep them in a separate collection?",
       "expected_output": "Aids the user to make the best decision for their case with specific reasoning about: 1) Access patterns (reviews shown with product vs independently), 2) Cardinality (unbounded growth potential with popular products), 3) Document size concerns (5000 reviews would exceed 16MB), 4) Query patterns (pagination, user's reviews across products). Should recommend a hybrid or reference approach given the unbounded nature and independent access patterns.",
-      "files": [],
       "expectations": [
         "Identifies that reviews are unbounded and can grow indefinitely",
         "Mentions MongoDB's 16MB document size limit as a concern",
@@ -31,11 +42,10 @@
       ]
     },
     {
-      "id": 3,
+      "id": 4,
       "name": "blog-comments-outlier-pattern",
       "prompt": "I'm building a blog platform. I was planning to embed comments for easier access, but the problem is some posts have 50,000+ comments. Each comment has: author, text, timestamp, and upvotes. I cannot embed them because some posts might go viral and exceed the document size limit. Is there any other optimization I can do to have fast loading of comments?",
       "expected_output": "Should recognize this as an outlier scenario and suggest the Outlier Pattern: embed comments for normal posts (5-20 comments) for performance, but use a separate collection or overflow strategy for viral posts that exceed a threshold. Pure separation works but misses optimization opportunity for the common case (95%+ of posts).",
-      "files": [],
       "expectations": [
         "Mentions the 'Outlier Pattern' by name",
         "Discusses optimizing for the typical case (95%+ of posts) with embedded comments, while handling viral posts differently",
@@ -47,11 +57,10 @@
       ]
     },
     {
-      "id": 4,
+      "id": 5,
       "name": "extended-reference-lookup-performance",
       "prompt": "I have an orders collection that references customers by ID. When displaying the orders list, I use an aggregation with $lookup to get the customer name from the customers collection. This lets me show the customer name alongside each order. The orders list page loads in about 200ms. Does this design look good?",
       "expected_output": "Should recognize that while 200ms seems acceptable now, $lookup operations are expensive and will degrade as data grows. Should recommend the Extended Reference Pattern: denormalize frequently-accessed customer display data (name, maybe email) directly into the order document. This trades some data duplication for eliminating the $lookup join. Should discuss the write trade-off: when customer name changes, must update all their orders.",
-      "files": [],
       "expectations": [
         "Identifies that $lookup operations are expensive and can degrade performance as collections grow, even though 200ms seems acceptable currently",
         "Mentions the 'Extended Reference Pattern' by name as the solution for avoiding $lookup joins on frequently accessed data",
@@ -61,11 +70,10 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "name": "polymorphic-pattern-product-types",
       "prompt": "I have different types of products in my e-commerce site - books, electronics, and clothing. Each type has different fields (books have author/isbn, electronics have warranty/wattage, clothing has size/color). I'm planning to create separate collections: products_books, products_electronics, and products_clothing. This keeps each product type organized and makes it clear what fields each type should have. Does this approach look good?",
       "expected_output": "Should identify the problems with separate collections: querying all products requires $unionWith or multiple queries, cross-type features like search/recommendations become complex, and inventory/ordering systems must handle multiple collections. Should recommend the Polymorphic Pattern: store all products in a single collection with a 'type' field discriminator. Type-specific fields coexist in the same document. Query all products easily, filter by type when needed, and use partial indexes for type-specific fields if needed.",
-      "files": [],
       "expectations": [
         "Identifies the problems with separate collections by product type: cross-product queries require $unionWith, search/browse must hit multiple collections, and application logic becomes more complex",
         "Mentions the 'Polymorphic Pattern' by name as the solution for storing heterogeneous document types in a single collection",
