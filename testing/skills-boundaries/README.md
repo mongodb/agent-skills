@@ -23,6 +23,28 @@ Tests the boundary between:
 - 8 ambiguous cases (the critical gray zone)
 - 4 edge cases (optimization, exact match, case-insensitive, SQL translation)
 
+### query-optimizer-vs-schema-design.json
+
+Tests the boundary between:
+- **mongodb-query-optimizer**: Query/index optimization, slow query analysis, explain plans, Performance Advisor
+- **mongodb-schema-design**: Data modeling, embed vs reference, schema patterns/anti-patterns, migrations
+
+**40 test cases covering:**
+- 5 clear mongodb-query-optimizer cases (slow queries, indexes, explain plans)
+- 7 clear mongodb-schema-design cases (embed/reference, modeling, validation, patterns)
+- 9 ambiguous cases (performance symptoms with schema root causes)
+- 6 edge cases (named patterns, schema reviews, exclusion tests)
+- 5 neither cases (connection, query generation)
+- 8 description gap cases
+
+### natural-language-querying-vs-query-optimizer.json
+
+Tests the boundary between:
+- **mongodb-natural-language-querying**: Query generation, syntax help, SQL translation
+- **mongodb-query-optimizer**: Query/index optimization, slow query analysis, explain plans
+
+**25 test cases** covering clear, ambiguous, and edge cases.
+
 ## Running Tests
 
 ### Manual Testing
