@@ -1,0 +1,471 @@
+{
+  "test_suite": "MongoDB Query Optimizer vs Schema Design - Skill Invocation Tests",
+  "description": "Validates that the correct skill is invoked based on user prompts. Tests boundary between query/index optimization and schema design patterns.",
+  "version": "1.0",
+  "skills_tested": [
+    "mongodb-query-optimizer",
+    "mongodb-schema-design"
+  ],
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "clear_query_optimizer",
+      "prompt": "Why is this query slow? db.orders.find({status: 'shipped', region: 'US'}).sort({date: -1})",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Explicit slow query with existing query provided - needs explain plan and index analysis",
+      "trigger_keywords": ["slow", "query"]
+    },
+    {
+      "id": 2,
+      "category": "clear_query_optimizer",
+      "prompt": "What indexes should I create for db.users.find({email: 1}).sort({createdAt: -1})?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Direct index recommendation request for a specific query",
+      "trigger_keywords": ["indexes", "create"]
+    },
+    {
+      "id": 3,
+      "category": "clear_query_optimizer",
+      "prompt": "Run explain on this aggregation and tell me why it's doing a collection scan",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Explain plan analysis is core optimizer functionality",
+      "trigger_keywords": ["explain", "collection scan"]
+    },
+    {
+      "id": 4,
+      "category": "clear_query_optimizer",
+      "prompt": "Show me the slow queries on my Atlas cluster and suggest indexes",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Performance Advisor slow query analysis with index suggestions",
+      "trigger_keywords": ["slow queries", "cluster", "suggest indexes"]
+    },
+    {
+      "id": 5,
+      "category": "clear_query_optimizer",
+      "prompt": "How do I add a covered query index so MongoDB doesn't need to fetch documents?",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Covered query is an indexing optimization strategy",
+      "trigger_keywords": ["covered query", "index"]
+    },
+    {
+      "id": 6,
+      "category": "clear_schema_design",
+      "prompt": "Should I embed orders inside the customer document or use a separate collection?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Classic embed vs reference decision - core schema design question",
+      "trigger_keywords": ["embed", "separate collection"]
+    },
+    {
+      "id": 7,
+      "category": "clear_schema_design",
+      "prompt": "Help me design a MongoDB schema for an e-commerce application with products, orders, and customers",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "New schema design from scratch",
+      "trigger_keywords": ["design", "schema"]
+    },
+    {
+      "id": 8,
+      "category": "clear_schema_design",
+      "prompt": "I'm migrating from PostgreSQL to MongoDB. How should I convert my normalized tables?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "SQL to MongoDB migration is a schema modeling task",
+      "trigger_keywords": ["migrating", "PostgreSQL", "tables"]
+    },
+    {
+      "id": 9,
+      "category": "clear_schema_design",
+      "prompt": "My documents are hitting the 16MB BSON limit because of a growing comments array",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "16MB limit and unbounded arrays are schema design problems",
+      "trigger_keywords": ["16MB", "limit", "growing array"]
+    },
+    {
+      "id": 10,
+      "category": "clear_schema_design",
+      "prompt": "How do I model a many-to-many relationship between students and courses?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Relationship modeling is fundamental schema design",
+      "trigger_keywords": ["model", "many-to-many", "relationship"]
+    },
+    {
+      "id": 11,
+      "category": "clear_schema_design",
+      "prompt": "Add JSON Schema validation to my users collection to enforce required fields",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Schema validation is exclusively a schema design concern",
+      "trigger_keywords": ["JSON Schema", "validation"]
+    },
+    {
+      "id": 12,
+      "category": "clear_schema_design",
+      "prompt": "Should I use the polymorphic pattern to store different vehicle types in one collection?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Named schema design pattern reference",
+      "trigger_keywords": ["polymorphic pattern", "collection"]
+    },
+    {
+      "id": 13,
+      "category": "ambiguous_performance_root_cause",
+      "prompt": "My queries are slow because I have too many $lookup operations joining collections",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Excessive $lookups indicate over-normalization - the root cause is schema design (excessive-lookups anti-pattern), though user frames it as a performance problem",
+      "trigger_keywords": ["slow", "$lookup", "joining"],
+      "ambiguity_level": "medium",
+      "notes": "Schema design should win because the fix is denormalization, not indexing. But optimizer is acceptable since user mentions 'slow'."
+    },
+    {
+      "id": 14,
+      "category": "ambiguous_index_management",
+      "prompt": "I have too many indexes on my collection and writes are getting slow",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Unnecessary indexes is listed as a schema anti-pattern, but index management also falls under optimizer",
+      "trigger_keywords": ["too many indexes", "slow writes"],
+      "ambiguity_level": "high",
+      "notes": "Both skills address unnecessary indexes. Schema design owns the anti-pattern reference; optimizer owns index analysis via Performance Advisor dropIndexSuggestions."
+    },
+    {
+      "id": 15,
+      "category": "ambiguous_general_performance",
+      "prompt": "How do I improve the overall performance of my MongoDB application?",
+      "expected_skill": "mongodb-query-optimizer",
+      "acceptable_alternative": "mongodb-schema-design",
+      "reasoning": "Very generic performance question - optimizer is the default for performance, but bad schema is often the root cause",
+      "trigger_keywords": ["improve", "performance"],
+      "ambiguity_level": "high",
+      "notes": "Optimizer is the default entry point for performance. It can escalate to schema design if it discovers schema-level problems."
+    },
+    {
+      "id": 16,
+      "category": "ambiguous_schema_for_performance",
+      "prompt": "Should I restructure my data model or add indexes to speed up my reads?",
+      "expected_skill": "mongodb-query-optimizer",
+      "acceptable_alternative": "mongodb-schema-design",
+      "reasoning": "User explicitly asks about both approaches - optimizer can assess whether indexing is sufficient or schema change is needed",
+      "trigger_keywords": ["restructure", "data model", "indexes", "speed up"],
+      "ambiguity_level": "high",
+      "notes": "Either skill is valid. Optimizer may be slightly preferred since user is asking about a performance goal."
+    },
+    {
+      "id": 17,
+      "category": "ambiguous_performance_advisor",
+      "prompt": "Atlas Performance Advisor is showing schema suggestions for my cluster. What should I do?",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Performance Advisor is accessed via optimizer tooling, but schema suggestions are schema design domain",
+      "trigger_keywords": ["Performance Advisor", "schema suggestions"],
+      "ambiguity_level": "medium",
+      "notes": "Schema design should handle the schema suggestions content, though optimizer has the MCP tool to fetch them."
+    },
+    {
+      "id": 18,
+      "category": "ambiguous_unbounded_array_perf",
+      "prompt": "My array field keeps growing and queries on that collection are getting slower",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Unbounded arrays are a schema anti-pattern causing performance degradation. Root cause is schema, symptom is slow queries",
+      "trigger_keywords": ["array", "growing", "slower"],
+      "ambiguity_level": "medium",
+      "notes": "Schema design should win - the fix is restructuring the array (bucket pattern or separate collection), not adding indexes."
+    },
+    {
+      "id": 19,
+      "category": "ambiguous_lookup_optimization",
+      "prompt": "How can I optimize this aggregation pipeline that has three $lookup stages?",
+      "expected_skill": "mongodb-query-optimizer",
+      "acceptable_alternative": "mongodb-schema-design",
+      "reasoning": "User asks to 'optimize' (optimizer keyword) but multiple $lookups may indicate schema problem (excessive-lookups anti-pattern)",
+      "trigger_keywords": ["optimize", "$lookup", "pipeline"],
+      "ambiguity_level": "medium",
+      "notes": "Optimizer is preferred because user says 'optimize'. But if analysis reveals over-normalization, schema design advice may be needed."
+    },
+    {
+      "id": 20,
+      "category": "ambiguous_write_performance",
+      "prompt": "Why are my write operations so slow on this collection?",
+      "expected_skill": "mongodb-query-optimizer",
+      "acceptable_alternative": "mongodb-schema-design",
+      "reasoning": "Slow writes could be caused by too many indexes (schema anti-pattern) or large documents (schema), but optimizer is the default for performance analysis",
+      "trigger_keywords": ["slow", "write operations"],
+      "ambiguity_level": "medium",
+      "notes": "Optimizer should investigate first. May discover the root cause is schema-related (too many indexes, large documents)."
+    },
+    {
+      "id": 21,
+      "category": "ambiguous_index_explosion",
+      "prompt": "I have index explosion from too many optional query filter combinations on my products collection",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Index explosion is listed in the schema design description triggers. The fix may involve the attribute pattern (schema) or wildcard/compound index strategy (optimizer)",
+      "trigger_keywords": ["index explosion", "filter combinations"],
+      "ambiguity_level": "high",
+      "notes": "Schema design owns index explosion as a trigger keyword and the attribute pattern as a fix. Optimizer could also address this via smarter index strategy."
+    },
+    {
+      "id": 22,
+      "category": "edge_case_pattern_for_performance",
+      "prompt": "Should I use the bucket pattern for my IoT sensor data to improve query speed?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Bucket pattern is a named schema design pattern. Even though motivation is performance, the solution is a schema change",
+      "trigger_keywords": ["bucket pattern", "IoT"],
+      "ambiguity_level": "low",
+      "notes": "Named schema patterns always go to schema design regardless of performance motivation."
+    },
+    {
+      "id": 23,
+      "category": "edge_case_computed_pattern",
+      "prompt": "My dashboard queries are slow because they aggregate millions of rows every time. Is there a pattern to pre-compute these?",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Computed pattern is a schema design pattern for pre-calculating expensive aggregations. User mentions slow queries but the solution is schema-level",
+      "trigger_keywords": ["slow", "aggregate", "pre-compute"],
+      "ambiguity_level": "medium",
+      "notes": "Schema design should recognize the computed pattern use case. Optimizer may also provide index-level improvements."
+    },
+    {
+      "id": 24,
+      "category": "edge_case_review_schema",
+      "prompt": "Can you review my schema and tell me if there are any problems?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Explicit schema review request",
+      "trigger_keywords": ["review", "schema"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 25,
+      "category": "edge_case_time_series",
+      "prompt": "What's the best way to store high-frequency time series data in MongoDB?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "Time series data modeling is a schema design question with a dedicated pattern (time-series-collections)",
+      "trigger_keywords": ["time series", "store"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 26,
+      "category": "edge_case_neither",
+      "prompt": "How do I connect to MongoDB from my Node.js application?",
+      "expected_skill": "neither",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "also_should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Connection question belongs to mongodb-connection skill, not optimizer or schema design",
+      "trigger_keywords": ["connect"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 27,
+      "category": "edge_case_neither",
+      "prompt": "Write a query to find all users older than 30",
+      "expected_skill": "neither",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "also_should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Query generation belongs to mongodb-natural-language-querying, not optimizer or schema design",
+      "trigger_keywords": ["write", "query", "find"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 28,
+      "category": "description_gap_optimize_keyword_theft",
+      "prompt": "How do I optimize my document structure for faster reads?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "The user wants to restructure their data model - a schema design concern. But the word 'optimize' is a primary trigger in the optimizer description, risking the wrong skill.",
+      "trigger_keywords": ["optimize", "document structure", "faster reads"],
+      "ambiguity_level": "medium",
+      "description_improvement_target": "mongodb-query-optimizer description overuses 'optimize' as a trigger without distinguishing query optimization from schema/data model optimization. Schema design description should explicitly claim 'optimize schema/data model/document structure' phrasing."
+    },
+    {
+      "id": 29,
+      "category": "description_gap_optimizer_synonym_coverage",
+      "prompt": "This query is taking 10 seconds. How do I speed it up? db.events.find({userId: 123, type: 'click'}).sort({ts: -1}).limit(20)",
+      "expected_skill": "mongodb-query-optimizer",
+      "should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Clear query optimization request - specific slow query provided. Uses 'speed it up' rather than the examples in the optimizer description ('optimize', 'slow queries').",
+      "trigger_keywords": ["10 seconds", "speed it up", "query provided"],
+      "ambiguity_level": "low",
+      "description_improvement_target": "Optimizer description trigger examples only show 'optimize', 'slow', 'index'. Should also include synonyms: 'speed up', 'faster', 'takes too long', 'runs slow'."
+    },
+    {
+      "id": 30,
+      "category": "description_gap_ttl_keyword_mismatch",
+      "prompt": "I want to automatically clean up session documents once they're older than 24 hours",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "This is a TTL use case and data lifecycle management - both in the schema-design trigger list. But the user's language ('automatically clean up', 'older than 24 hours') doesn't use the words 'TTL' or 'data lifecycle'.",
+      "trigger_keywords": ["automatically clean up", "older than", "session documents"],
+      "ambiguity_level": "medium",
+      "description_improvement_target": "Schema-design description lists 'TTL' and 'data lifecycle' as triggers but those are implementation terms, not user language. Description should include natural phrasings: 'automatically expire/delete/clean up documents', 'purge old records', 'age out data'."
+    },
+    {
+      "id": 31,
+      "category": "description_gap_schema_restructuring_as_perf",
+      "prompt": "Would flattening my nested address subdocument into top-level fields make my queries faster?",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "The user is asking whether a schema restructuring (denesting a subdocument) will improve query performance. The root action is schema change, but 'make my queries faster' is an optimizer-sounding motivation.",
+      "trigger_keywords": ["flattening", "nested", "subdocument", "queries faster"],
+      "ambiguity_level": "high",
+      "description_improvement_target": "Schema-design description should explicitly mention document restructuring for performance (flatten, denormalize fields, restructure subdocuments) as schema design territory. Optimizer description should clarify it handles index changes, not structural document changes."
+    },
+    {
+      "id": 32,
+      "category": "description_gap_computed_pattern_no_schema_keywords",
+      "prompt": "Is it better to calculate user reputation scores on every request or store them pre-computed in the document?",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "This is the computed pattern - pre-calculating expensive aggregation results. But the prompt uses no 'schema', 'design', or 'pattern' language, and no 'slow' or 'optimize' language either.",
+      "trigger_keywords": ["calculate", "pre-computed", "store"],
+      "ambiguity_level": "medium",
+      "description_improvement_target": "Schema-design description lists 'approximation pattern' and 'computed' as triggers but users won't say those words. Should cover natural language: 'pre-compute', 'cache aggregation results in document', 'store calculated values', 'avoid recomputing'."
+    },
+    {
+      "id": 33,
+      "category": "description_gap_index_count_antipattern",
+      "prompt": "My collection has 22 indexes. Is that too many? Could it be causing my slow writes?",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Excessive index count is the 'unnecessary indexes' schema anti-pattern. However, 'slow writes' and 'indexes' are optimizer trigger language, and the optimizer can also access dropIndexSuggestions via Performance Advisor.",
+      "trigger_keywords": ["22 indexes", "too many", "slow writes"],
+      "ambiguity_level": "high",
+      "description_improvement_target": "Both descriptions claim this territory: schema-design owns the unnecessary-indexes anti-pattern reference, optimizer owns dropIndexSuggestions. Descriptions should clarify the boundary: schema-design owns 'am I over-indexed?' / 'which indexes to remove?'; optimizer owns finding unused indexes via Performance Advisor tooling."
+    },
+    {
+      "id": 34,
+      "category": "description_gap_archive_storage_framing",
+      "prompt": "My MongoDB Atlas cluster storage is growing fast and costs are increasing. How do I reduce it?",
+      "expected_skill": "mongodb-schema-design",
+      "acceptable_alternative": "mongodb-query-optimizer",
+      "reasoning": "Storage growth is best addressed by the archive pattern (move old data to cold storage) or removing unnecessary indexes - both schema design anti-patterns. But the prompt uses cost/storage language, not schema language.",
+      "trigger_keywords": ["storage", "growing", "costs", "reduce"],
+      "ambiguity_level": "medium",
+      "description_improvement_target": "Schema-design description mentions 'archive' and 'data lifecycle' but not storage costs or Atlas cost reduction. Should explicitly trigger on 'storage growing', 'reduce storage costs', 'Atlas bill', 'collection getting too large'."
+    },
+    {
+      "id": 35,
+      "category": "description_gap_data_lifecycle_natural_language",
+      "prompt": "Orders from this year should stay in the main collection, but I need old orders to be accessible without slowing down current queries",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "reasoning": "This is a data lifecycle / archive pattern use case. The user describes a hot/cold data separation problem. Neither 'archive' nor 'data lifecycle' appears in the prompt.",
+      "trigger_keywords": ["old orders", "accessible", "slowing down"],
+      "ambiguity_level": "medium",
+      "description_improvement_target": "Schema-design description should recognize hot/cold data separation patterns from user-friendly phrasing: 'old records affecting performance', 'keep recent data fast', 'separate historical from current data', 'tiered storage'."
+    },
+    {
+      "id": 36,
+      "category": "neither_connection",
+      "prompt": "My Node.js app keeps getting ECONNREFUSED when connecting to MongoDB Atlas. How do I fix my connection string?",
+      "expected_skill": "neither",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "also_should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Connection errors and connection string configuration belong to mongodb-connection skill. No query performance or schema design signals.",
+      "trigger_keywords": ["ECONNREFUSED", "connecting", "connection string"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 37,
+      "category": "neither_natural_language_querying",
+      "prompt": "Write me an aggregation pipeline that groups orders by month and calculates total revenue",
+      "expected_skill": "neither",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "also_should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Query generation request with no performance or schema concern. Belongs to mongodb-natural-language-querying. Optimizer description says 'Do not invoke for general MongoDB query writing'.",
+      "trigger_keywords": ["write", "aggregation pipeline", "groups", "calculates"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 38,
+      "category": "neither_search",
+      "prompt": "How do I set up Atlas Search with fuzzy matching to build an autocomplete feature for product names?",
+      "expected_skill": "neither",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "also_should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Atlas Search, fuzzy matching, and autocomplete are mongodb-search-and-ai skill territory. No query optimization or schema design signals.",
+      "trigger_keywords": ["Atlas Search", "fuzzy matching", "autocomplete"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 39,
+      "category": "neither_general_mongodb",
+      "prompt": "What's the difference between updateOne and replaceOne in MongoDB?",
+      "expected_skill": "neither",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "also_should_not_trigger": "mongodb-schema-design",
+      "reasoning": "General MongoDB API question. No performance, optimization, indexing, or schema design signals.",
+      "trigger_keywords": ["difference", "updateOne", "replaceOne"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 40,
+      "category": "neither_stream_processing",
+      "prompt": "How do I set up a stream processor in Atlas to read from Kafka and write to my MongoDB collection?",
+      "expected_skill": "neither",
+      "should_not_trigger": "mongodb-query-optimizer",
+      "also_should_not_trigger": "mongodb-schema-design",
+      "reasoning": "Stream processing with Kafka integration belongs to atlas-stream-processing skill. No query optimization or schema design signals.",
+      "trigger_keywords": ["stream processor", "Kafka", "Atlas"],
+      "ambiguity_level": "low"
+    }
+  ],
+  "evaluation_criteria": {
+    "clear_cases": {
+      "count": 14,
+      "description": "5 clear query-optimizer + 7 clear schema-design + 2 original neither cases",
+      "target_accuracy": ">=95%"
+    },
+    "ambiguous_cases": {
+      "count": 9,
+      "description": "Cases where performance symptoms overlap with schema root causes",
+      "target_accuracy": ">=70% expected behavior, acceptable_alternative also valid"
+    },
+    "edge_cases": {
+      "count": 6,
+      "description": "Named patterns, schema reviews, and exclusion tests for other skills",
+      "target_accuracy": "100%"
+    },
+    "neither_cases": {
+      "count": 5,
+      "ids": [36, 37, 38, 39, 40],
+      "description": "Cases that should NOT trigger either query-optimizer or schema-design. Tests false-positive suppression across connection, querying, search, general MongoDB, and stream processing domains.",
+      "target_accuracy": "100%"
+    },
+    "description_gap_cases": {
+      "count": 8,
+      "ids": [28, 29, 30, 31, 32, 33, 34, 35],
+      "description": "Cases designed to expose gaps in skill descriptions that cause wrong skill selection. Each case has a description_improvement_target field explaining what needs fixing.",
+      "gaps_targeted": [
+        "id 28: 'optimize' keyword in optimizer description captures schema restructuring prompts",
+        "id 29: optimizer description missing synonyms 'speed up', 'faster', 'takes too long'",
+        "id 30: schema-design TTL/data lifecycle triggers require implementation terms users won't say",
+        "id 31: schema restructuring for performance (flatten/denest) not claimed by schema-design description",
+        "id 32: computed pattern not triggered by natural 'pre-compute'/'store calculated' language",
+        "id 33: index count / unnecessary indexes claimed by both skills with no clear boundary",
+        "id 34: archive/storage pattern not triggered by 'storage costs', 'Atlas bill' language",
+        "id 35: hot/cold data separation (archive pattern) not triggered without 'archive'/'data lifecycle' words"
+      ],
+      "target_accuracy": ">=50% initially - failures here indicate description improvements needed"
+    },
+    "success_metrics": [
+      "Correct skill triggered for clear cases (>=95% target)",
+      "Reasonable skill choice for ambiguous cases (>=70% target)",
+      "No false positives - neither skill triggered for unrelated prompts",
+      "Named schema patterns always routed to schema design"
+    ],
+    "test_methodology": "Each test case is evaluated by observing which skill the agent invokes when presented with the prompt. The test passes if the expected skill is invoked and the should_not_trigger skill is not invoked."
+  }
+}

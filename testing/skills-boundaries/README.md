@@ -35,15 +35,6 @@ Tests the boundary between:
 # 4. Mark as pass/fail
 ```
 
-### Automated Testing (Future)
-
-```bash
-# When you have automated skill invocation testing:
-npm run test:skill-boundaries
-# or
-python test_skill_boundaries.py
-```
-
 ## Test Case Structure
 
 ```json
