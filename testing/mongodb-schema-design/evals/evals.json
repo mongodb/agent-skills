@@ -18,12 +18,12 @@
       "id": 2,
       "name": "product-view-counter",
       "prompt": "I'm building a product catalog. Each product document has: name, description, price, category, SKU, stock level, and tags. I'm also tracking a popularity field that gets incremented when users view the product. Any schema concerns I should be aware of?",
-      "expected_output": "Should recognize the viewCount field as a high-frequency counter problem. Should ask about how often viewCount is updated or recognize that incrementing on every page view creates massive write contention and rewrites the entire product document constantly. Should recommend the Approximation Pattern (pattern-approximation.md) - update counter occasionally rather than every view, or use a separate collection/field for high-frequency counters. This is 'different update frequencies' in action: product data is mostly stable, but viewCount is updated constantly. May also mention inventory count if it updates frequently, but viewCount is the primary issue.",
+      "expected_output": "Should recognize the popularity field as a high-frequency counter problem. Should ask about how often popularity is updated or recognize that incrementing on every page view creates massive write contention and rewrites the entire product document constantly. Should recommend the Approximation Pattern (pattern-approximation.md) - update counter occasionally rather than every view, or use a separate collection/field for high-frequency counters. This is 'different update frequencies' in action: product data is mostly stable, but popularity is updated constantly. May also mention inventory count if it updates frequently, but popularity is the primary issue.",
       "expectations": [
-        "Identifies the popularity/viewCount field as a high-frequency counter problem that gets updated on every page view",
+        "Identifies the popularity field as a high-frequency counter problem that gets updated on every page view",
         "Mentions the 'Approximation Pattern' by name as the solution for high-frequency counters",
         "Discusses write contention, document rewrites, or performance impact of frequent updates to the product document",
-        "Explains that different fields have different update frequencies (stable product data vs hot viewCount counter)",
+        "Explains that different fields have different update frequencies (stable product data vs hot popularity counter)",
         "Does NOT say the schema looks fine without addressing the high-frequency update issue"
       ]
     },
@@ -38,7 +38,6 @@
         "Discusses both access patterns: product page (10 recent reviews) AND 'My Reviews' page (user's reviews across products)",
         "Recommends using either the hybrid approach or separate reviews collection rather than pure embedding",
         "Mentions Extended Reference Pattern by name, or suggests caching/embedding a subset of recent reviews in the product document as a performance optimization",
-        "Mentions the Outlier Pattern for handling viral products with excessive reviews (optional but demonstrates advanced pattern knowledge)"
       ]
     },
     {
