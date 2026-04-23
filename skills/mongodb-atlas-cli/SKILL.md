@@ -11,7 +11,7 @@ compatibility: >-
 
 # MongoDB Atlas CLI
 
-Use the MongoDB Atlas CLI (`atlas`) to interact with MongoDB Atlas from the terminal. Complete `## Set up CLI` before running any other section. Full CLI docs: https://www.mongodb.com/docs/atlas/cli/current/index.md.
+Use the MongoDB Atlas CLI (`atlas`) to interact with MongoDB Atlas from the terminal. Complete `## Set up CLI` first. Detailed playbooks below cover cluster management; for other surfaces, see `## What you can do with the Atlas CLI` and `atlas <command> --help`. Full docs: https://www.mongodb.com/docs/atlas/cli/current/index.md.
 
 > When unsure about a command or flag, run `atlas <command> --help` instead of guessing.
 
