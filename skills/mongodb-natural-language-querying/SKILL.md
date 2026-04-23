@@ -47,19 +47,10 @@ Also review the available indexes to understand which query patterns will perfor
 
 Prefer find queries over aggregation pipelines because find queries are simpler and easier for other developers to understand.
 
-**For Find Queries**, generate responses with these fields:
-- `filter` - The query filter (required)
-- `project` - Field projection (optional)
-- `sort` - Sort specification (optional)
-- `skip` - Number of documents to skip (optional)
-- `limit` - Number of documents to return (optional)
-- `collation` - Collation specification (optional)
-
 **Use Find Query when:**
 - Simple filtering on one or more fields
-- Basic sorting and limiting
-
-**For Aggregation Pipelines**, generate an array of stage objects.
+- Basic sorting, limiting, or projecting specific fields
+- No need for grouping, complex transformations, or multi-stage processing
 
 **Use Aggregation Pipeline when the request requires:**
 - Grouping or aggregation functions (sum, count, average, etc.)
