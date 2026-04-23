@@ -69,8 +69,7 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 
 ### 4. Format Your Response
 
-Output queries in the workspace's language. When there is
-not a language or expected format supplied, always use MongoDB shell syntax (with unquoted keys and single quotes) for readability and compatibility with MongoDB tools.
+Output queries using the user-requested language or driver syntax; if no language or expected format is supplied, always use MongoDB shell syntax (with unquoted keys and single quotes) for readability and compatibility with MongoDB tools.
 
 **Find Query Response:**
 ```js
