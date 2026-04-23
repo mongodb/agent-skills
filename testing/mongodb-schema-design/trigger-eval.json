@@ -72,14 +72,6 @@
     "should_trigger": true
   },
   {
-    "prompt": "How can I optimize this aggregation pipeline that has three $lookup stages?",
-    "should_trigger": true
-  },
-  {
-    "prompt": "Why are my write operations so slow on this collection?",
-    "should_trigger": true
-  },
-  {
     "prompt": "I have index explosion from too many optional query filter combinations on my products collection",
     "should_trigger": true
   },
