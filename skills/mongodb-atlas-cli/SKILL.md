@@ -2,8 +2,8 @@
 name: mongodb-atlas-cli
 description: >-
   Use the MongoDB Atlas CLI (`atlas`) to interact with MongoDB Atlas from the terminal:
-  install and authenticate the CLI, then run commands against Atlas resources
-  (clusters, projects, users, network access, data migration, etc.).
+  install and authenticate the CLI, then run commands against Atlas resources.
+  Detailed guidance on cluster management with high level guidance on other CLI commands.
 compatibility: >-
   Requires the Atlas CLI and a shell. Cloud operations need Atlas auth.
   Local Atlas clusters need Docker.
@@ -247,9 +247,9 @@ Surface to the user: **30-day cap** (Atlas auto-resumes and billing restarts), *
 - **M0:** no manual pause — Atlas auto-pauses after 30 days idle and resumes on connect.
 - **FLEX:** not supported; delete and recreate instead.
 
-## Delete Cluster
+### Delete Cluster
 
-### Delete Cloud Cluster
+#### Delete Cloud Cluster
 
 ```bash
 atlas clusters delete <clusterName> --force
@@ -259,7 +259,7 @@ atlas clusters delete <clusterName> --force
 
 > **Don't pass `--watch`.** Deletion takes several minutes. Poll with `atlas clusters describe <clusterName>` — errors once gone.
 
-### Delete Local Cluster
+#### Delete Local Cluster
 
 ```bash
 atlas local delete <deploymentName> --force
@@ -267,7 +267,7 @@ atlas local delete <deploymentName> --force
 
 Removes the container **and the local data volume** — no undo.
 
-## Migrate Cluster
+### Migrate Cluster
 
 Data movement between deployments. In-place changes (scale, pause, provider/region, version) belong in `### Modify Cluster` — clarify intent, since users often call those "migrations."
 
