@@ -58,11 +58,19 @@ Reference these guidelines when:
 Use one or more of the following sources to analyze access patterns. Ensure the user understands the strengths
 and tradeoffs of each source. Work with the user to determine which are most relevant to their situation.
 
-- [Query statistics](references/source-query-stats) - Returns runtime statistics for recorded queries. Currently only `find`, `aggregate` and `distinct` are supported.
+- [Query statistics](references/source-query-stats) - Returns runtime statistics for recorded queries. **Limitation**: Currently only captures `find`, `aggregate` and `distinct` operations - best for read heavy workloads.
 - [Atlas Slow Query Logs](references/source-slow-query-logs) - Review slow queries to identify performance bottlenecks and access patterns.
 - [System Profiler](references/source-system-profiler) - Collects detailed information about Database Commands executed against a running mongod instance, including CRUD operations and administration commands. Can significantly degrade production performance. Propose as an alternative when other sources are unavailable or insufficient, explain the impact.
 - Codebase - Examine actual queries in application code to understand access patterns, especially for new applications or with changing workloads. Can be used in conjunction with query stats for a more complete picture.
 - Natural language input - Ask the user to describe their typical queries and access patterns in natural language. Can be used as the only source or to supplement and validate other sources - the user might have contextual knowledge that is not reflected in the data or codebase.
+
+#### Determining Workload Type
+
+Before choosing a diagnostic source, assess whether the workload is read-heavy or write-heavy.
+
+Ask the user: "Is your application primarily reading data (analytics, reports, searches) or writing data (logging, IoT ingestion, frequent updates)?"
+
+Verify with `db.serverStatus().opcounters`.
 
 #### What to Look For
 

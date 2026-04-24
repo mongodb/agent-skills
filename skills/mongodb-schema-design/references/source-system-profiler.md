@@ -22,7 +22,7 @@ db.setProfilingLevel(0)
 
 Example queries to identify access patterns:
 
-**Example 1: Find collections always queried together (embedding candidates)**
+**Example 1: Find collections frequently queried together (embedding candidates)**
 ```javascript
 // Which collections are joined via $lookup?
 db.system.profile.find({
@@ -41,43 +41,47 @@ db.system.profile.find({
 ```javascript
 // What fields are queried together?
 db.system.profile.aggregate([
-  { $match: { 
-    ns: "<database>.<collection>",  // e.g., "myshop.products"
-    op: "query"
-  }},
-  { $group: {
-    _id: {
-      filter: "$command.filter",
-      projection: "$command.projection"
-    },
-    count: { $sum: 1 },
-    avgMs: { $avg: "$millis" }
-  }},
+  {
+    $match: { 
+      ns: "<database>.<collection>",  // e.g., "myshop.products"
+      op: "query"
+    }
+  },
+  {
+    $group: {
+      _id: {
+        filter: "$command.filter",
+        projection: "$command.projection"
+      },
+      count: { $sum: 1 },
+      avgMs: { $avg: "$millis" }
+    }
+  },
   { $sort: { count: -1 } },
   { $limit: 10 }
 ])
-
-// Results show which fields are repeatedly accessed together:
-// { _id: { filter: { userId: 1 }, projection: { name: 1, email: 1, avatar: 1 } }, count: <number> }
-//   ↑ These fields are always accessed together → keep in same document
 ```
 
 **Example 3: Find most frequent access patterns (optimize for hot paths)**
 ```javascript
 // What operations run most often? (finds, aggregations, updates, etc.)
 db.system.profile.aggregate([
-  { $match: { 
-    ns: "<database>.<collection>"
-    // No op filter - captures all operation types
-  }},
-  { $group: {
-    _id: {
-      op: "$op",
-      command: "$command"
-    },
-    count: { $sum: 1 },
-    avgMs: { $avg: "$millis" }
-  }},
+  {
+    $match: { 
+      ns: "<database>.<collection>"
+      // No op filter - captures all operation types
+    }
+  },
+  {
+    $group: {
+      _id: {
+        op: "$op",
+        command: "$command"
+      },
+      count: { $sum: 1 },
+      avgMs: { $avg: "$millis" }
+    }
+  },
   { $sort: { count: -1 } },
   { $limit: 10 }
 ])
