@@ -1,0 +1,40 @@
+{
+  "skill_name": "mongodb-atlas-cli",
+  "evals": [
+    {
+      "id": 1,
+      "name": "hand-off-interactive-login",
+      "prompt": "I just installed the Atlas CLI. Can you log me in?",
+      "expected_output": "Does NOT run `atlas auth login` or `atlas auth register` itself (both are interactive and will hang a non-interactive shell). Runs `atlas auth whoami` to check current state. Hands authentication off to the user with both options: (a) interactive login the user runs in their own terminal, or (b) programmatic Service Account auth via `MONGODB_ATLAS_CLIENT_ID` / `MONGODB_ATLAS_CLIENT_SECRET` exported in the user's shell profile. Does not ask the user to paste credentials into chat.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "upgrade-m0-to-m10-correct-command",
+      "prompt": "I have a free-tier cluster called demo and I want to move it to M10 on AWS with 10GB disk.",
+      "expected_output": "Uses `atlas clusters upgrade demo --tier M10 --diskSizeGB 10` (NOT `atlas clusters update` — that command only works on M10+ dedicated clusters and will fail on M0/FLEX). Surfaces three warnings before running: (1) the upgrade incurs downtime during the tier change, (2) billing starts once the cluster is on a paid tier, (3) it's one-way — you can't scale back down to M0 or FLEX later.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "self-managed-migration-handoff",
+      "prompt": "I want to migrate my self-hosted MongoDB 7.0 replica set into Atlas. Can you set up the live migration?",
+      "expected_output": "Does NOT try to drive the migration with `atlas liveMigrations` — that CLI surface only handles push migrations from Cloud-Manager-monitored (or Ops-Manager-monitored) sources, not arbitrary self-managed deployments. Asks whether the source is monitored by Cloud Manager. If not, hands off to the appropriate docs and tools: Pull Live Migration (Atlas UI-driven, for public-IP-reachable sources) at https://www.mongodb.com/docs/atlas/import/c2c-pull-live-migration.md, or `mongosync` / `mongomirror` for scripted or private-network migrations. Mentions M0/FLEX are not valid destinations — destination must be M10+.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "change-region-requires-file",
+      "prompt": "We need to move our prod-cluster from AWS us-east-1 to us-west-2 for latency reasons. How do we change the region?",
+      "expected_output": "Recognizes that `atlas clusters update` does NOT expose a `--region` or `--provider` flag — region/provider changes require `--file cluster-config.json`. Describes the workflow: dump the current spec via `atlas clusters describe prod-cluster --output json`, edit the region, then apply with `atlas clusters update prod-cluster --file new-config.json`. References the cluster config file format (https://dochub.mongodb.org/core/cluster-config-file-atlascli). Warns that cross-region moves trigger an initial sync — not rolling, duration scales with data size, potential impact on the cluster during the move.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "pause-m10-30day-cap",
+      "prompt": "Pause my staging-v2 cluster. I'll be back in about a month after we finish the Q4 launch.",
+      "expected_output": "Runs `atlas clusters pause staging-v2`. Critically surfaces the 30-day auto-resume cap — since the user said 'about a month', Atlas will likely auto-resume the cluster before they return and billing will restart silently. Suggests the user either check on it near the 30-day mark or accept that compute billing may resume early. Also notes storage is still billed while paused, and the 60-minute minimum uptime before re-pausing. `Project Cluster Manager` role required.",
+      "files": []
+    }
+  ]
+}
