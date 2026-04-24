@@ -3,7 +3,7 @@ name: mongodb-atlas-cli
 description: >-
   Use the MongoDB Atlas CLI (`atlas`) to interact with MongoDB Atlas from the terminal:
   install and authenticate the CLI, then run commands against Atlas resources.
-  Detailed guidance on cluster management with high level guidance on other CLI commands.
+  Detailed guidance on cluster management with high-level guidance on other CLI commands.
 compatibility: >-
   Requires the Atlas CLI and a shell. Cloud operations need Atlas auth.
   Local Atlas clusters need Docker.
@@ -17,7 +17,7 @@ Use the MongoDB Atlas CLI (`atlas`) to interact with MongoDB Atlas from the term
 
 > When navigating to CLI documentation, you can append `.md` to the URL to get the markdown version of the page.
 
-> Append `--output json` for the full field set in machine-parseable form
+> Append `--output json` for the full field set in machine-parseable form.
 
 ## What you can do with the Atlas CLI
 
