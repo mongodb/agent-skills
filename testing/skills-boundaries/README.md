@@ -17,11 +17,17 @@ Tests the boundary between:
 - **mongodb-natural-language-querying**: Standard queries, filtering, aggregation, basic data retrieval
 - **search-and-ai**: Atlas Search, vector search, fuzzy matching, semantic similarity, full-text search
 
-**25 test cases covering:**
-- 5 clear mongodb-natural-language-querying cases (basic filtering, aggregation, SQL translation)
-- 8 clear search-and-ai cases (fuzzy matching, semantic search, full-text search, autocomplete)
-- 8 ambiguous cases (the critical gray zone)
-- 4 edge cases (optimization, exact match, case-insensitive, SQL translation)
+### query-optimizer-vs-schema-design.json
+
+Tests the boundary between:
+- **mongodb-query-optimizer**: Query/index optimization, slow query analysis, explain plans, Performance Advisor
+- **mongodb-schema-design**: Data modeling, embed vs reference, schema patterns/anti-patterns, migrations
+
+### natural-language-querying-vs-query-optimizer.json
+
+Tests the boundary between:
+- **mongodb-natural-language-querying**: Query generation, syntax help, SQL translation
+- **mongodb-query-optimizer**: Query/index optimization, slow query analysis, explain plans
 
 ## Running Tests
 
@@ -33,15 +39,6 @@ Tests the boundary between:
 # 2. Record which skill(s) get invoked
 # 3. Compare against expected_skill
 # 4. Mark as pass/fail
-```
-
-### Automated Testing (Future)
-
-```bash
-# When you have automated skill invocation testing:
-npm run test:skill-boundaries
-# or
-python test_skill_boundaries.py
 ```
 
 ## Test Case Structure
@@ -63,48 +60,18 @@ python test_skill_boundaries.py
 
 ### Success Criteria
 
-**Clear Cases (13 tests):**
+**Clear Cases:**
 - ✅ **>=95% accuracy**: Expected skill invoked, should_not_trigger skill not invoked
 - 5 mongodb-natural-language-querying tests (basic filtering, aggregation)
 - 8 search-and-ai tests (fuzzy matching, semantic search, full-text search)
 
-**Ambiguous Cases (8 tests):**
+**Ambiguous Cases:**
 - ✅ **>=70% expected behavior**: Expected skill invoked
 - ⚠️ **Acceptable**: If test has `acceptable_alternative`, either skill is valid
 - Includes cases where text search could use either regex or Atlas Search
 
-**Edge Cases (4 tests):**
+**Edge Cases:**
 - ✅ **100% accuracy**: These test exclusions (e.g., optimization shouldn't trigger either skill)
-
-### High-Priority Failure Cases
-
-If these tests fail, descriptions need immediate revision:
-
-1. **Test #13**: "I need to search my products database"
-   - HIGH AMBIGUITY - monitor which skill wins
-   - Should default to mongodb-natural-language-querying but search-and-ai is acceptable
-
-2. **Test #20**: "I want users to be able to search products on my website"
-   - HIGH AMBIGUITY - "build search" context
-   - Preference: search-and-ai (building a feature) but ambiguous
-
-3. **Test #25**: "can you find all movies about batman"
-   - HIGH AMBIGUITY - content search scenario
-   - Preference: search-and-ai (hybrid search captures semantic matches)
-   - Acceptable: mongodb-natural-language-querying (regex pattern matching)
-   - Tests whether agent recognizes content search benefits from full-text/semantic search
-
-4. **Test #11-12**: Simple text pattern matching
-   - "Find products where name contains 'laptop'"
-   - "Query users where email includes '@gmail.com'"
-   - Expected: search-and-ai (full-text search and custom analyzers)
-   - Tests whether agent prefers Atlas Search for text operations
-
-5. **Test #6-10**: Clear Atlas Search features
-   - MUST trigger search-and-ai, never mongodb-natural-language-querying
-
-6. **Test #1-5**: Clear basic queries
-   - MUST trigger mongodb-natural-language-querying, never search-and-ai
 
 ## Ambiguity Levels
 
@@ -168,22 +135,22 @@ Update tests when:
 # Skill Boundary Test Results - [Date]
 
 ## Summary
-- Total Tests: 25
-- Passed: X/25
-- Failed: Y/25
+- Total Tests: X
+- Passed: X/X
+- Failed: Y/X
 - Success Rate: Z%
 
-## Clear Cases (13 tests)
-- mongodb-natural-language-querying: X/5 correct
-- search-and-ai: X/8 correct
+## Clear Cases
+- mongodb-natural-language-querying: X/X correct
+- search-and-ai: X/X correct
 
-## Ambiguous Cases (8 tests)
-- Expected behavior: X/8
-- Acceptable alternative: Y/8
-- Unexpected: Z/8
+## Ambiguous Cases
+- Expected behavior: X/X
+- Acceptable alternative: Y/Y
+- Unexpected: Z/Z
 
-## Edge Cases (4 tests)
-- Passed: X/4
+## Edge Cases
+- Passed: X/X
 
 ## Failures
 [List any failed tests with details]

@@ -1,0 +1,154 @@
+[
+  {
+    "prompt": "Why is this query slow? db.orders.find({status: 'shipped', region: 'US'}).sort({date: -1})",
+    "should_trigger": false
+  },
+  {
+    "prompt": "What indexes should I create for db.users.find({email: 1}).sort({createdAt: -1})?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Run explain on this aggregation and tell me why it's doing a collection scan",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Show me the slow queries on my Atlas cluster and suggest indexes",
+    "should_trigger": false
+  },
+  {
+    "prompt": "How do I add a covered query index so MongoDB doesn't need to fetch documents?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Should I embed orders inside the customer document or use a separate collection?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Help me design a MongoDB schema for an e-commerce application with products, orders, and customers",
+    "should_trigger": true
+  },
+  {
+    "prompt": "I'm migrating from PostgreSQL to MongoDB. How should I convert my normalized tables?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My documents are hitting the 16MB BSON limit because of a growing comments array",
+    "should_trigger": true
+  },
+  {
+    "prompt": "How do I model a many-to-many relationship between students and courses?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Add JSON Schema validation to my users collection to enforce required fields",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Should I use the polymorphic pattern to store different vehicle types in one collection?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My queries are slow because I have too many $lookup operations joining collections",
+    "should_trigger": true
+  },
+  {
+    "prompt": "I have too many indexes on my collection and writes are getting slow",
+    "should_trigger": true
+  },
+  {
+    "prompt": "How do I improve the overall performance of my MongoDB application?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Should I restructure my data model or add indexes to speed up my reads?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Atlas Performance Advisor is showing schema suggestions for my cluster. What should I do?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My array field keeps growing and queries on that collection are getting slower",
+    "should_trigger": true
+  },
+  {
+    "prompt": "I have index explosion from too many optional query filter combinations on my products collection",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Should I use the bucket pattern for my IoT sensor data to improve query speed?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My dashboard queries are slow because they aggregate millions of rows every time. Is there a pattern to pre-compute these?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Can you review my schema and tell me if there are any problems?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "What's the best way to store high-frequency time series data in MongoDB?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "How do I connect to MongoDB from my Node.js application?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Write a query to find all users older than 30",
+    "should_trigger": false
+  },
+  {
+    "prompt": "How do I optimize my document structure for faster reads?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "This query is taking 10 seconds. How do I speed it up? db.events.find({userId: 123, type: 'click'}).sort({ts: -1}).limit(20)",
+    "should_trigger": false
+  },
+  {
+    "prompt": "I want to automatically clean up session documents once they're older than 24 hours",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Would flattening my nested address subdocument into top-level fields make my queries faster?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Is it better to calculate user reputation scores on every request or store them pre-computed in the document?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My collection has 22 indexes. Is that too many? Could it be causing my slow writes?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My MongoDB Atlas cluster storage is growing fast and costs are increasing. How do I reduce it?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Orders from this year should stay in the main collection, but I need old orders to be accessible without slowing down current queries",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My Node.js app keeps getting ECONNREFUSED when connecting to MongoDB Atlas. How do I fix my connection string?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Write me an aggregation pipeline that groups orders by month and calculates total revenue",
+    "should_trigger": false
+  },
+  {
+    "prompt": "How do I set up Atlas Search with fuzzy matching to build an autocomplete feature for product names?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "What's the difference between updateOne and replaceOne in MongoDB?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "How do I set up a stream processor in Atlas to read from Kafka and write to my MongoDB collection?",
+    "should_trigger": false
+  }
+]
