@@ -63,19 +63,24 @@ Prefer find queries over aggregation pipelines because find queries are simpler 
 Output queries using the user-requested language or driver syntax; if no language or expected format is supplied, always use MongoDB shell syntax (with unquoted keys and single quotes) for readability and compatibility with MongoDB tools.
 
 **Find Query Response:**
-```js
-db.collection.find(
-  { age: { $gte: 25 } },
-  { name: 1, age: 1, _id: 0 }
-).sort({ age: -1 }).limit(10)
+```json
+{
+  "query": {
+    "filter": "{ age: { $gte: 25 } }",
+    "projection": "{ name: 1, age: 1, _id: 0 }",
+    "sort": "{ age: -1 }",
+    "limit": "10"
+  }
+}
 ```
 
 **Aggregation Pipeline Response:**
-```js
-db.collection.aggregate([
-  { $match: { status: 'active' } },
-  { $group: { _id: '$category', total: { $sum: '$amount' } } }
-])
+```json
+{
+  "aggregation": {
+    "pipeline": "[{ $match: { status: 'active' } }, { $group: { _id: '$category', total: { $sum: '$amount' } } }]"
+  }
+}
 ```
 
 ## Best Practices
@@ -164,11 +169,13 @@ If you cannot generate a query:
 5. Suggest creating an index if no appropriate index exists for the query filters
 
 **Generated Query:**
-```js
-db.users.find(
-  { status: 'active', age: { $gt: 25 } },
-  { name: 1, age: 1, registrationDate: 1, _id: 0 }
-).sort({ registrationDate: -1 })
+```json
+{
+  "query": {
+    "filter": "{ status: 'active', age: { $gt: 25 } }",
+    "sort": "{ registrationDate: -1 }"
+  }
+}
 ```
 
 ## Managing Context Size
