@@ -1,0 +1,21 @@
+{
+    "name": "mongodb-agent-skills",
+    "interface": {
+        "displayName": "MongoDB Agent Skills"
+    },
+    "plugins": [
+        {
+            "name": "mongodb",
+            "source": {
+                "source": "url",
+                "url": "https://github.com/mongodb/agent-skills.git",
+                "ref": "main"
+            },
+            "policy": {
+                "installation": "AVAILABLE",
+                "authentication": "ON_INSTALL"
+            },
+            "category": "Databases"
+        }
+    ]
+}
