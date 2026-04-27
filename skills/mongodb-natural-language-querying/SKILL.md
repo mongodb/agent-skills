@@ -181,5 +181,12 @@ If you cannot generate a query:
 ## Managing Context Size
 
 Fetching large or numerous sample documents wastes context and can degrade query quality.
-- When sample documents are large, use fewer samples (minimum 1)
-- For very large documents, project only essential fields when sampling
+
+**Adjust sample count by schema width:**
+- < 30 fields: `limit: 4` (default)
+- 30–80 fields: `limit: 2`
+- 80–150 fields: `limit: 1`
+- 150+ fields: `limit: 1` with a projection of only the fields relevant to the user's query
+
+**Preview large array fields and strings:**
+- If schema documents contains arrays, use `$slice: 3` in the sample projection to cap array size. Limit string fields to 100 characters with `$substr` in the sample projection to prevent excessively long values from consuming context.
