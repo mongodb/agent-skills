@@ -56,7 +56,7 @@ env | grep "^MDB_MCP" | sed '/^MDB_MCP_READ_ONLY=/!s/=.*/=[set]/'
 **For Codex** — search `~/.codex/config.toml` (macOS/Linux) or `%USERPROFILE%\.codex\config.toml` (Windows):
 
 ```bash
-grep -E 'MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)' ~/.codex/config.toml 2>/dev/null | sed '/MDB_MCP_READ_ONLY/!s/ = .*/ = "[set]"/'
+grep -E 'MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)' ~/.codex/config.toml 2>/dev/null | sed '/MDB_MCP_READ_ONLY/!s/[[:space:]]*=[[:space:]].*/ = "[set]"/'
 ```
 
 **Interpretation (both):**
@@ -257,6 +257,7 @@ Codex: `MDB_MCP_READ_ONLY = "true"` under the same `[mcp_servers.mongodb.env]` s
 Restrict permissions on `~/.mcp-env`:
 
 ```bash
+# adjust for windows if needed
 chmod 600 ~/.mcp-env
 ```
 
@@ -276,7 +277,8 @@ env | grep "^MDB_MCP" | sed '/^MDB_MCP_READ_ONLY=/!s/=.*/=[set]/'
 **Codex:**
 
 ```bash
-grep -E 'MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)' ~/.codex/config.toml | sed '/MDB_MCP_READ_ONLY/!s/ = .*/ = "[set]"/'
+# adjust path if on Windows
+grep -E 'MDB_MCP_(CONNECTION_STRING|API_CLIENT_ID|API_CLIENT_SECRET|READ_ONLY)' ~/.codex/config.toml 2>/dev/null | sed '/MDB_MCP_READ_ONLY/!s/[[:space:]]*=[[:space:]].*/ = "[set]"/'
 ```
 
 Expected output shows the configured key(s) with values redacted to `[set]`. If nothing appears, check that credentials were saved and (for shell-based clients) that the profile was reloaded.
