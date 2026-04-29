@@ -47,14 +47,14 @@
       "id": 7,
       "name": "relative-date-find-last-year",
       "prompt": "find all of the movies from last year",
-      "expected_output": "Find query with date filter for 2025 (current year - 1)",
+      "expected_output": "Find query with date filter for 2025 (current year - 1, or uses $$NOW to calculate dynamically)",
       "files": []
     },
     {
       "id": 8,
       "name": "relative-date-find-30-years-ago",
       "prompt": "Which comments were posted 30 years ago. consider all comments from that year. return name and date",
-      "expected_output": "Find query with date range for 1996 (30 years before 2026), project name and date",
+      "expected_output": "Find query with date range for 1996 (30 years before 2026, or uses $$NOW to calculate dynamically), project name and date",
       "files": []
     },
     {
@@ -102,21 +102,21 @@
     {
       "id": 15,
       "name": "basic-aggregate",
-      "prompt": "find all the movies released in 1983",
+      "prompt": "aggregate all the movies released in 1983",
       "expected_output": "Aggregation pipeline with $match on year 1983 (or preferably suggests find query)",
       "files": []
     },
     {
       "id": 16,
       "name": "agg-filter-and-projection",
-      "prompt": "find all the violations for the violation code 21 and only return the car plate",
+      "prompt": "match all the violations for the violation code 21 and only return the car plate",
       "expected_output": "Aggregation with $match on violation_code, $project for plate",
       "files": []
     },
     {
       "id": 17,
       "name": "geo-based-agg",
-      "prompt": "find all the bars 10km from the berlin center, only return their names. Berlin center is at longitude 13.4050 and latitude 52.5200. use correct key for coordinates.",
+      "prompt": "give me an aggregation to find all the bars 10km from the berlin center, only return their names. Berlin center is at longitude 13.4050 and latitude 52.5200. use correct key for coordinates.",
       "expected_output": "Aggregation with $geoNear or $match with geospatial query, coordinates in correct order [13.4050, 52.5200]",
       "files": []
     },
@@ -124,7 +124,7 @@
       "id": 18,
       "name": "agg-nested-fields-match",
       "prompt": "Return all the properties of type \"Hotel\" and with ratings lte 70",
-      "expected_output": "Aggregation with $match on nested property_type and ratings fields",
+      "expected_output": "Aggregation with $match on nested property_type and ratings fields. Or a find with the fields",
       "files": []
     },
     {
@@ -144,42 +144,42 @@
     {
       "id": 21,
       "name": "relative-date-agg-30-years",
-      "prompt": "Which movies were released 30 years ago (consider whole year). return title and year",
-      "expected_output": "Aggregation with $match for year 1996, $project title and year",
+      "prompt": "Which movies were released 30 years ago (consider whole year). return title and year. as an aggregation",
+      "expected_output": "Aggregation with $match for year 1996 (or uses $$NOW to calculate dynamically), $project title and year",
       "files": []
     },
     {
       "id": 22,
       "name": "relative-date-agg-last-year",
-      "prompt": "find all of the movies from last year",
-      "expected_output": "Aggregation with $match for 2025",
+      "prompt": "$match all of the movies from last year",
+      "expected_output": "Aggregation with $match for 2025, or uses $$NOW to calculate last year dynamically",
       "files": []
     },
     {
       "id": 23,
       "name": "agg-array-slice",
       "prompt": "give me just the price and the first 3 amenities (in a field called amenities) of the listing that has \"Step-free access\" in its amenities.",
-      "expected_output": "Aggregation with $match on amenities array, $project with $slice",
+      "expected_output": "Aggregation with $match on amenities array, $project with $slice. Or as a find with array filter and projection with $slice",
       "files": []
     },
     {
       "id": 24,
       "name": "agg-multiple-conditions-match",
-      "prompt": "Return only the Plate IDs of Acura vehicles registered in New York",
+      "prompt": "Write an aggrgation returning only the Plate IDs of Acura vehicles registered in New York",
       "expected_output": "Aggregation with $match for vehicle make and state, $project plate_id",
       "files": []
     },
     {
       "id": 25,
       "name": "agg-non-english",
-      "prompt": "¿Qué alojamiento tiene el precio más bajo? devolver el número en un campo llamado \"precio\"",
+      "prompt": "¿Qué alojamiento tiene el precio más bajo? devolver el número en un campo llamado \"precio\". agregación",
       "expected_output": "Aggregation with $sort by price, $limit 1, $project to rename field",
       "files": []
     },
     {
       "id": 26,
       "name": "agg-simple-sort-limit",
-      "prompt": "give me only cancellation policy and listing url of the most expensive listing",
+      "prompt": "give me only cancellation policy and listing url of the most expensive listing with the $sort stage",
       "expected_output": "Aggregation with $sort descending, $limit 1, $project specific fields",
       "files": []
     },
@@ -237,6 +237,20 @@
       "name": "no-redundant-exists-with-comparison",
       "prompt": "find all documents where age exists and is greater than 20",
       "expected_output": "Find query with ONLY { age: { $gt: 20 } }, should NOT include $exists operator since comparison already implies existence",
+      "files": []
+    },
+    {
+      "id": 35,
+      "name": "max-time-ms-option-used",
+      "prompt": "how do I write a find for where age exists and is greater than 20? I want it to have a maximum time of 5 seconds",
+      "expected_output": "Find query with ONLY { age: { $gt: 20 } }, should NOT include $exists operator since comparison already implies existence, with maxTimeMS option set to 5000",
+      "files": []
+    },
+    {
+      "id": 36,
+      "name": "find-in-java",
+      "prompt": "how do I write a find in java for properties of type \"Hotel\" and with ratings lte 70",
+      "expected_output": "Find query in Java using MongoDB driver with Filters for property_type and ratings",
       "files": []
     }
   ]
