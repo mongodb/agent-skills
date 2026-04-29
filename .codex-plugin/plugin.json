@@ -1,0 +1,40 @@
+{
+    "name": "mongodb",
+    "version": "1.1.0",
+    "description": "Official Codex plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+    "author": {
+        "name": "MongoDB",
+        "email": "agent-plugins@mongodb.com",
+        "url": "https://www.mongodb.com"
+    },
+    "homepage": "https://www.mongodb.com/docs/codex/",
+    "repository": "https://github.com/mongodb/agent-skills",
+    "license": "Apache-2.0",
+    "keywords": [
+        "mongodb",
+        "database",
+        "mcp",
+        "vector-search"
+    ],
+    "skills": "./skills/",
+    "mcpServers": "./mcp.json",
+    "interface": {
+        "displayName": "MongoDB",
+        "shortDescription": "Official MongoDB plugin: MCP server, skills, and best practices for database workflows.",
+        "longDescription": "The official MongoDB plugin bundles the MongoDB MCP server and a curated set of agent skills covering query writing, query optimization, schema design, Atlas Search and Vector Search, connection best practices, and Atlas Stream Processing. It gives your agent the tools and knowledge to connect to any MongoDB deployment, explore data, generate reliable code, and implement MongoDB best practices end to end.",
+        "developerName": "MongoDB",
+        "category": "Databases",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://www.mongodb.com",
+        "privacyPolicyURL": "https://www.mongodb.com/legal/privacy/privacy-policy",
+        "defaultPrompt": [
+            "Set up my MongoDB connection using the mongodb-mcp-setup skill.",
+            "Connect to my MongoDB database and explore its collections.",
+            "Write a MongoDB aggregation pipeline to analyze my data.",
+            "Optimize the slow queries in my MongoDB deployment.",
+            "Design a MongoDB schema for my use case."
+        ],
+        "logo": "./assets/logo.png",
+        "brandColor": "#00ED64"
+    }
+}
