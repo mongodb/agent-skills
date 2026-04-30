@@ -30,13 +30,19 @@ Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace/
 
 ### Codex
 
-Install the plugin by running the following command from a Codex session:
+1. Install the plugin by running the following command from a Codex session:
 
-```bash
-codex plugin marketplace add mongodb/agent-skills
-```
+   ```bash
+   codex plugin marketplace add mongodb/agent-skills
+   ```
 
-Follow the prompts to complete the installation.
+2. Start Codex and open the plugins browser:
+
+   ```bash
+   /plugins
+   ```
+
+3. Navigate to the "MongoDB Agent Skills" tab and install the `mongodb` plugin.
 
 ### Gemini
 
