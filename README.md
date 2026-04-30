@@ -30,7 +30,7 @@ Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace/
 
 ### Codex
 
-1. Install the plugin by running the following command from a Codex session:
+1. Add the mongodb/agent-skills marketplace to Codex:
 
    ```bash
    codex plugin marketplace add mongodb/agent-skills
