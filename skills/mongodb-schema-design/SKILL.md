@@ -51,6 +51,36 @@ Reference these guidelines when:
 - [pattern-schema-versioning](references/pattern-schema-versioning.md) - Schema evolution, preventing drift, and safe online migrations. Consult when encountering inconsistent document structures, or when planning a schema change that cannot be applied atomically.
 - [pattern-time-series-collections](references/pattern-time-series-collections.md) - Use native time series collections for high-frequency time series data
 
+### Access Pattern Analysis
+
+#### Sources
+
+Use one or more of the following sources to analyze access patterns. Ensure the user understands the strengths
+and tradeoffs of each source. Work with the user to determine which are most relevant to their situation.
+
+- [Query statistics](references/source-query-stats) - Returns runtime statistics for recorded queries. **Limitation**: Currently only captures `find`, `aggregate` and `distinct` operations - best for read heavy workloads.
+- [Atlas Slow Query Logs](references/source-slow-query-logs) - Review slow queries to identify performance bottlenecks and access patterns.
+- [System Profiler](references/source-system-profiler) - Collects detailed information about Database Commands executed against a running mongod instance, including CRUD operations and administration commands. Can significantly degrade production performance. Propose as an alternative when other sources are unavailable or insufficient, explain the impact.
+- Codebase - Examine actual queries in application code to understand access patterns, especially for new applications or with changing workloads. Can be used in conjunction with query stats for a more complete picture.
+- Natural language input - Ask the user to describe their typical queries and access patterns in natural language. Can be used as the only source or to supplement and validate other sources - the user might have contextual knowledge that is not reflected in the data or codebase.
+
+#### Determining Workload Type
+
+Before choosing a diagnostic source, assess whether the workload is read-heavy or write-heavy.
+
+Ask the user: "Is your application primarily reading data (analytics, reports, searches) or writing data (logging, IoT ingestion, frequent updates)?"
+
+Verify with `db.serverStatus().opcounters`.
+
+#### What to Look For
+
+When analyzing access patterns, identify:
+  - **Co-accessed fields** - Which fields are queried or updated together
+  - **Co-accessed collections** - Which collections are queried or updated together
+  - **Query frequency** - High-frequency queries should drive schema design decisions
+	- **Different update patterns** - If certain fields are updated much more frequently than others, it may make sense to separate them to avoid unnecessary document updates
+  - **Array growth** - Unbounded arrays that grow over time (risk hitting 16MB limit)
+
 ## Key Principle
 
 > **"Data that is accessed together should be stored together."**
