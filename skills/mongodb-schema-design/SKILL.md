@@ -53,10 +53,27 @@ Reference these guidelines when:
 
 ### Access Pattern Analysis
 
-#### Sources
+#### Workflow
 
-Use one or more of the following sources to analyze access patterns. Ensure the user understands the strengths
-and tradeoffs of each source. Work with the user to determine which are most relevant to their situation.
+**Step 1: Assess the environment**
+Ask the user:
+  - Is this a new design or is there a production database with existing access patterns to analyze?
+  - If there is production data, is it on Atlas? If yes, what tier? (M0/M2/M5 vs M10+)
+
+**Step 2: Determine workload type**
+Is the workload read-heavy, write-heavy, or balanced? This will influence which diagnostic sources are most relevant.
+Ask the user:
+  - Is your application primarily reading data (analytics, reports, searches) or writing data (logging, IoT ingestion, frequent updates)?
+
+Verify with `db.serverStatus().opcounters`.
+
+**Step 3: Work with the user to choose the best source(s)**
+  Recommend the best source(s) for their situation, explaining the tradeoffs. For schema design decisions, we often need to combine multiple sources for a complete picture.
+
+**Step 4: Proceed with analysis**
+  Only after source selection, fetch data or guide the user through analysis.
+
+#### Sources
 
 - [Query statistics](references/source-query-stats.md) - Returns runtime statistics for recorded queries showing query shapes and frequency. **Limitation**: Currently only captures `find`, `aggregate` and `distinct` operations - best for read heavy workloads. Requires Atlas M10+ tier.
 - [Atlas Slow Query Logs](references/source-slow-query-logs.md) - Review slow queries (actual queries, not shapes) to identify performance bottlenecks. Captures all operation types including writes. Requires Atlas M10+ tier.
@@ -70,14 +87,6 @@ Use both together for comprehensive analysis:
 1. Query Stats → identify frequent access patterns (which queries run most often)
 2. Slow Query Logs → identify performance bottlenecks (which queries are slow)
 3. Focus schema optimization on queries that are both frequent AND slow (highest impact)
-
-#### Determining Workload Type
-
-Before choosing a diagnostic source, assess whether the workload is read-heavy or write-heavy.
-
-Ask the user: "Is your application primarily reading data (analytics, reports, searches) or writing data (logging, IoT ingestion, frequent updates)?"
-
-Verify with `db.serverStatus().opcounters`.
 
 #### What to Look For
 
