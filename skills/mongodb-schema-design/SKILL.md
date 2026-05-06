@@ -53,6 +53,8 @@ Reference these guidelines when:
 
 ### Access Pattern Analysis
 
+Do not immediately recommend a pattern or schema change without understanding the broader context. Together with the user, analyze access patterns to identify pain points and opportunities for optimization.
+
 #### Workflow
 
 **Step 1: Assess the environment**

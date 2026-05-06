@@ -80,6 +80,19 @@
         "Explains that type-specific fields can coexist in the same collection - books have 'author' field, electronics have 'warranty' field, etc.",
         "Discusses querying benefits: easily query all products, filter by type when needed, simplified search and recommendations across product types"
       ]
+    },
+    {
+      "id": 7,
+      "name": "profiler-vs-atlas-sources",
+      "prompt": "The performance of my Atlas M10 cluster has degraded recently. I want to enable the profiler to see what queries are slow. Can you help me set that up so I can figure out what's wrong with my schema?",
+      "expected_output": "Should recognize the user wants to use System Profiler but explain that Atlas provides better alternatives: Query Stats (for frequent patterns) and Slow Query Logs (for slow operations). Should explain the tradeoffs - profiler has performance overhead and requires enabling/disabling, while Atlas sources are always-on and production-safe. Should recommend using Query Stats + Slow Query Logs together for comprehensive analysis without profiler overhead.",
+      "expectations": [
+        "Recognizes that System Profiler is available but has significant performance overhead in production",
+        "Explains Query Stats and Slow Query Logs as Atlas-specific alternatives that don't degrade performance",
+        "Compares the sources: System Profiler (performance impact, all operations) vs Query Stats (no overhead, frequent patterns) vs Slow Query Logs (actual slow queries)",
+        "Recommends using Query Stats + Slow Query Logs instead of profiler for M10 cluster analysis",
+        "Explains that combining both sources gives you frequency + slowness without profiler overhead"
+      ]
     }
   ]
 }
