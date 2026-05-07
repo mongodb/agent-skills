@@ -19,13 +19,25 @@ releases by hand.
    included, and confirm that the draft release tag matches the release PR
    version and targets the merged `main` commit. Then publish the draft release.
 7. Manually submit plugin updates for [Cursor](#cursor) and [Claude](#claude).
-   The release is complete after both updates have been submitted; marketplace
-   approval and indexing can happen afterward.
+8. Coordinate the [VS Code](#vs-code) extension update.
+
+The repo release is complete after the GitHub release is published and the
+Cursor and Claude updates have been submitted. Marketplace approval, marketplace
+indexing, and downstream extension releases can happen afterward.
 
 The `Draft Release` workflow also supports manual dispatch. If a release already
 exists for the release tag, the workflow skips release creation.
 
 ### Releasing individual plugins
+
+| Plugin or surface | Visible to users when | Operator action |
+| --- | --- | --- |
+| [Gemini](#gemini) | The extension gallery picks up the latest GitHub release | None |
+| [Cursor](#cursor) | The Cursor Marketplace publishes the submitted update | Submit the update form |
+| [Claude](#claude) | The Claude plugin directory publishes the submitted update | Submit the update form |
+| [Copilot CLI](#copilot-cli) | Changes are merged to `main` | None |
+| [Codex](#codex) | Changes are merged to `main` | None |
+| [VS Code](#vs-code) | The VS Code extension publishes a release with the updated skills | Coordinate the extension update |
 
 #### Gemini
 
@@ -58,7 +70,7 @@ ask for the required submission details.
 
 #### Copilot CLI
 
-No manual submission is required after publishing the GitHub release.
+No manual submission is required after the release PR is merged.
 
 Copilot CLI users install this plugin from the GitHub repository and pull
 updates with `copilot plugin update mongodb` or `copilot plugin update --all`.
@@ -72,3 +84,11 @@ No manual submission is required after the release PR is merged.
 This repo's Codex marketplace entry points at the GitHub repository with
 `ref: "main"`. Codex does not have a native "latest GitHub release" source
 selector.
+
+#### VS Code
+
+The VS Code extension is released from the
+[mongodb-js/vscode](https://github.com/mongodb-js/vscode) repository. To include
+skill changes from this repo, update the extension's `agent-skills` submodule to
+the latest released tag, then run `pnpm run sync-skills` in the extension repo
+to pull in any skill changes before releasing the extension.
