@@ -59,7 +59,7 @@ db.getSiblingDB("admin").aggregate([
       command: "$key.queryShape.command",
       collection: "$key.queryShape.cmdNs.coll",
       queryShape: "$key.queryShape",
-      executions: "$metrics.execCount",
+      execCount: "$metrics.execCount",
       avgMs: {
         $divide: [
           { $divide: ["$metrics.totalExecMicros.sum", 1000] },
@@ -71,6 +71,5 @@ db.getSiblingDB("admin").aggregate([
 ])
 
 // High execCount = hot path → design your schema for these queries first
-// Note: Does not include write patterns (update, insert)
-// Filter + projection show which fields are accessed together
+// Note: Query stats do not include write patterns (update, insert)
 ```
