@@ -7,6 +7,7 @@ on:
     paths:
       - ".cursor-plugin/plugin.json"
       - ".claude-plugin/plugin.json"
+      - ".codex-plugin/plugin.json"
       - "gemini-extension.json"
   workflow_dispatch:
 
@@ -28,9 +29,10 @@ jobs:
 
           release_version="$(jq -r '.version' .cursor-plugin/plugin.json)"
           claude_version="$(jq -r '.version' .claude-plugin/plugin.json)"
+          codex_version="$(jq -r '.version' .codex-plugin/plugin.json)"
           gemini_version="$(jq -r '.version' gemini-extension.json)"
 
-          if [[ "$release_version" != "$claude_version" || "$release_version" != "$gemini_version" ]]; then
+          if [[ "$release_version" != "$claude_version" || "$release_version" != "$codex_version" || "$release_version" != "$gemini_version" ]]; then
             echo "Plugin version mismatch detected; refusing to create release." >&2
             exit 1
           fi
