@@ -18,16 +18,14 @@ With mcp-server, use the `mcp__mongodb__aggregateDB` tool with database set to `
 db.getSiblingDB("admin").aggregate([{ $queryStats: {} }])
 ```
 
-**Example 1: Find collections frequently queried together (embedding candidates)**
+**Example 1: Find collections frequently queried together with others (embedding candidates)**
 ```javascript
 db.getSiblingDB("admin").aggregate([
   { $queryStats: {} },
   {
     $match: {
       "key.queryShape.command": "aggregate",
-      "key.queryShape.pipeline": {
-        $elemMatch: { $lookup: { $exists: true } }
-      }
+      "key.queryShape.pipeline.$lookup": { $exists: true }
     }
   },
   {
@@ -50,33 +48,7 @@ db.getSiblingDB("admin").aggregate([
 // High execCount + high avgMs = consider embedding instead of $lookup
 ```
 
-**Example 2: Identify co-accessed fields (co-location candidates)**
-```javascript
-db.getSiblingDB("admin").aggregate([
-  { $queryStats: {} },
-  {
-    $match: {
-      "key.queryShape.cmdNs.coll": "<collection>"  // e.g., "products"
-    }
-  },
-  {
-    $group: {
-      _id: {
-        filter: "$key.queryShape.filter",
-        projection: "$key.queryShape.projection"
-      },
-      execCount: { $sum: "$metrics.execCount" }
-    }
-  },
-  { $sort: { execCount: -1 } },
-  { $limit: 5 }
-])
-
-// Fields in filter + projection accessed together should stay in same document
-// queryShape normalizes values: {price: {$gte: "?number"}} groups all price range queries
-```
-
-**Example 3: Find most frequent access patterns (optimize hot paths)**
+**Example 2: Find top most frequent query shapes (optimize hot paths)**
 ```javascript
 db.getSiblingDB("admin").aggregate([
   { $queryStats: {} },
@@ -84,9 +56,9 @@ db.getSiblingDB("admin").aggregate([
   { $limit: 10 },
   {
     $project: {
+      command: "$key.queryShape.command",
       collection: "$key.queryShape.cmdNs.coll",
-      filter: "$key.queryShape.filter",
-      projection: "$key.queryShape.projection",
+      queryShape: "$key.queryShape",
       executions: "$metrics.execCount",
       avgMs: {
         $divide: [
