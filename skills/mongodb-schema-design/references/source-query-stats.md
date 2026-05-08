@@ -2,7 +2,7 @@
 
 ## When to use
 
-Analyzes query access patterns with minimal performance overhead. Use for identifying co-accessed fields, collection relationships, and query frequencies. Preferred over system.profile for production analysis. Only supports `find`, `aggregate`, and `distinct` operations.
+Analyzes query access patterns with minimal performance overhead. Use for identifying co-accessed fields, collection relationships, and query frequencies. Only supports `find`, `aggregate`, and `distinct` operations.
 
 ## Requirements
 

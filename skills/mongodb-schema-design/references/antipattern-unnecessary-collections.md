@@ -80,16 +80,15 @@ for (const d of db.adminCommand({ listDatabases: 1 }).databases) {
 }
 // Count alone is not sufficient: combine with access and index/storage evidence
 
-// Check if collections are always accessed together
-// If orders always needs customer, items, addresses
-// → they should be embedded
-db.system.profile.aggregate([
-  { $match: { op: "query" } },
-  { $group: { _id: "$ns", count: { $sum: 1 } } },
-  { $sort: { count: -1 } }
-])
 // Collections with similar access patterns should be combined
 ```
+
+### Check if collections are always accessed together.
+
+For Atlas M10+ use $queryStats (see ./source-query-stats.md)
+Use codebase if available, ask the user.
+As a last resort, use the system profiler (see ./source-system-profile.md)
+
 
 Atlas Schema Suggestions flags: "Reduce number of collections"
 
