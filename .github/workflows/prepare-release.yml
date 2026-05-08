@@ -45,12 +45,14 @@ jobs:
 
           current_version="$(jq -r '.version' .cursor-plugin/plugin.json)"
           claude_version="$(jq -r '.version' .claude-plugin/plugin.json)"
+          codex_version="$(jq -r '.version' .codex-plugin/plugin.json)"
           gemini_version="$(jq -r '.version' gemini-extension.json)"
 
-          if [[ "$current_version" != "$claude_version" || "$current_version" != "$gemini_version" ]]; then
+          if [[ "$current_version" != "$claude_version" || "$current_version" != "$codex_version" || "$current_version" != "$gemini_version" ]]; then
             echo "Plugin version mismatch detected:" >&2
             echo "  .cursor-plugin/plugin.json: $current_version" >&2
             echo "  .claude-plugin/plugin.json: $claude_version" >&2
+            echo "  .codex-plugin/plugin.json: $codex_version" >&2
             echo "  gemini-extension.json: $gemini_version" >&2
             exit 1
           fi
@@ -87,6 +89,10 @@ jobs:
           tmp_file="$(mktemp)"
           jq '.version = "${{ steps.version.outputs.target_version }}"' .claude-plugin/plugin.json > "$tmp_file"
           mv "$tmp_file" .claude-plugin/plugin.json
+
+          tmp_file="$(mktemp)"
+          jq '.version = "${{ steps.version.outputs.target_version }}"' .codex-plugin/plugin.json > "$tmp_file"
+          mv "$tmp_file" .codex-plugin/plugin.json
 
           tmp_file="$(mktemp)"
           jq '.version = "${{ steps.version.outputs.target_version }}"' gemini-extension.json > "$tmp_file"
