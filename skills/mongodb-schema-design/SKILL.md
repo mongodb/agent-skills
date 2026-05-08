@@ -81,6 +81,7 @@ Verify with `db.serverStatus().opcounters`.
 - [Atlas Slow Query Logs](references/source-slow-query-logs.md) - Review slow queries (actual queries, not shapes) to identify performance bottlenecks. Captures all operation types including writes. Requires Atlas M10+ tier.
 - Codebase - Examine actual queries in application code to understand access patterns, especially for new applications or with changing workloads. Can be used in conjunction with query stats for a more complete picture.
 - Natural language input - Ask the user to describe their typical queries and access patterns in natural language. Can be used as the only source or to supplement and validate other sources - the user might have contextual knowledge that is not reflected in the data or codebase.
+- [System Profiler](references/source-system-profiler.md) - Can significantly degrade production performance. Propose as an alternative when other sources are unavailable or insufficient, explain the impact. Collects detailed information about Database Commands executed against a running mongod instance, including CRUD operations and administration commands. 
 
 **Combining Query Stats and Slow Query Logs:**
 
@@ -88,15 +89,6 @@ Use both together for comprehensive analysis:
 1. Query Stats → identify frequent access patterns (which queries run most often)
 2. Slow Query Logs → identify performance bottlenecks (which queries are slow)
 3. Focus schema optimization on queries that are both frequent AND slow (highest impact)
-
-#### What to Look For
-
-When analyzing access patterns, identify:
-  - **Co-accessed fields** - Which fields are queried or updated together
-  - **Co-accessed collections** - Which collections are queried or updated together
-  - **Query frequency** - High-frequency queries should drive schema design decisions
-	- **Different update patterns** - If certain fields are updated much more frequently than others, it may make sense to separate them to avoid unnecessary document updates
-  - **Array growth** - Unbounded arrays that grow over time (risk hitting 16MB limit)
 
 ## Key Principle
 
