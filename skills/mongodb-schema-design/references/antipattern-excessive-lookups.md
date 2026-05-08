@@ -52,15 +52,13 @@ When category data changes (a rare event), use `updateMany` to update all produc
 
 ## Verify with
 
+####  Find pipelines with $lookup stages 
+
+For Atlas M10+ use $queryStats (see ./source-query-stats.md)
+Use codebase if available, ask the user.
+As a last resort, use the system profiler (see ./source-system-profile.md)
+
 ```javascript
-// Find pipelines with multiple $lookup stages
-db.setProfilingLevel(1, { slowms: 50 }) // Disable afterwards
-db.system.profile.find({
-  "command.aggregate": { $exists: true },
-  "command.pipeline.$lookup": {
-    $exists: true
-  }
-}).sort({ millis: -1 })
 
 // Check if $lookup foreign fields are indexed
 db.reviews.aggregate([

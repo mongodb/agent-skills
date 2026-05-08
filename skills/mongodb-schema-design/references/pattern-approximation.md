@@ -56,15 +56,15 @@ Use Approximation when staleness is acceptable. Use Computed when exact values a
 
 ## Verify with
 
-```javascript
-// Check write frequency on counter fields
-db.setProfilingLevel(1, { slowms: 0 })
-db.system.profile.find({
-  "command.update": "articles",
-  "command.updates.u.$inc.viewCount": { $exists: true }
-}).count()
-// High count relative to read count suggests approximation would help
+### Check write frequency on counter fields
 
+Use codebase if available, ask the user.
+Consult the documentation to see if $queryStats already supports write commands.
+As a last resort, use the system profiler (see ./source-system-profile.md)
+
+High count relative to read count suggests approximation would help
+
+```javascript
 // Compare counter staleness
 db.articles.aggregate([
   { $project: {
