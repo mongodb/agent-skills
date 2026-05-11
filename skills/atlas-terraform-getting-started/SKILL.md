@@ -10,7 +10,7 @@ description: >-
   Does NOT trigger for: general Terraform questions unrelated to Atlas, optimizing or refactoring
   existing Atlas Terraform configs, Atlas Search or Vector Search index management via Terraform,
   or cloud-specific integrations (PrivateLink, KMS/CMEK, backup export) — those are separate skills.
-allowed-tools: mcp__mongodb__*, WebSearch, Bash(gh *)
+allowed-tools: mcp__mongodb__*, mcp__plugin_terraform_terraform__get_latest_provider_version, WebSearch, Bash(gh *)
 ---
 
 # MongoDB Atlas Terraform — Getting Started
@@ -35,8 +35,9 @@ Fetch the latest versions before generating any HCL. Never hardcode versions —
 
 Try each source in order until one succeeds:
 
-1. `WebSearch`: query `mongodb/mongodbatlas terraform provider latest release site:github.com`
-2. `Bash`: `gh api repos/mongodb/terraform-provider-mongodbatlas/releases/latest --jq '.tag_name'`
+1. `mcp__plugin_terraform_terraform__get_latest_provider_version`: namespace `mongodb`, type `mongodbatlas`
+2. `WebSearch`: query `mongodb/mongodbatlas terraform provider latest release site:github.com`
+3. `Bash`: `gh api repos/mongodb/terraform-provider-mongodbatlas/releases/latest --jq '.tag_name'`
 
 Strip the leading `v`. Use this as `PROVIDER_VERSION`. Constraint in HCL: `~> 2.0`.
 
@@ -167,9 +168,23 @@ variable "region" {
   description = "Atlas cloud region name, e.g. US_EAST_1 (AWS), EUROPE_WEST (Azure), CENTRAL_US (GCP)."
   type        = string
 }
+
+# Authentication — API Key (alternative to Service Account)
+# Atlas UI → Access Manager → API Keys → Create API Key
+variable "atlas_public_key" {
+  description = "MongoDB Atlas API public key. Alternative to Service Account credentials."
+  type        = string
+  sensitive   = true
+}
+
+variable "atlas_private_key" {
+  description = "MongoDB Atlas API private key. Alternative to Service Account credentials."
+  type        = string
+  sensitive   = true
+}
 ```
 
-Omit `variable "project_id"` entirely when the user is creating a new project.
+Omit `variable "project_id"` entirely when the user is creating a new project. Omit the API key variables if using a Service Account (and vice versa).
 
 ---
 
