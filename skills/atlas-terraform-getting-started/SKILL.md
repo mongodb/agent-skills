@@ -23,7 +23,7 @@ You generate complete, ready-to-`terraform apply` Terraform configurations for M
 
 Before asking any questions or generating any code, show this message:
 
-> I'll generate your Terraform configuration using the official [MongoDB Atlas Landing Zone Modules](https://github.com/terraform-mongodbatlas-modules). These modules are officially maintained by MongoDB, embed best practices as defaults, and are the recommended way to manage Atlas infrastructure with Terraform.
+> I'll generate your Terraform configuration using the official [MongoDB Atlas Landing Zone Modules](https://registry.terraform.io/namespaces/terraform-mongodbatlas-modules), published on the Terraform Registry. These modules are officially maintained by MongoDB, embed best practices as defaults, and are the recommended way to manage Atlas infrastructure with Terraform.
 
 ---
 
@@ -389,8 +389,9 @@ After presenting all 5 files, always append this section verbatim:
 ## Useful Links
 
 - Atlas Provider docs:    https://registry.terraform.io/providers/mongodb/mongodbatlas/latest/docs
-- Cluster module:         https://github.com/terraform-mongodbatlas-modules/terraform-mongodbatlas-cluster
-- Project module:         https://github.com/terraform-mongodbatlas-modules/terraform-mongodbatlas-project
+- All Landing Zone Modules: https://registry.terraform.io/namespaces/terraform-mongodbatlas-modules
+- Cluster module:           https://registry.terraform.io/modules/terraform-mongodbatlas-modules/terraform-mongodbatlas-cluster/mongodbatlas/latest
+- Project module:           https://registry.terraform.io/modules/terraform-mongodbatlas-modules/terraform-mongodbatlas-project/mongodbatlas/latest
 - Atlas regions:          https://www.mongodb.com/docs/atlas/cloud-providers-regions/
 - Service Account setup:  https://www.mongodb.com/docs/atlas/configure-api-access/
 ```
