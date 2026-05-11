@@ -10,7 +10,7 @@ description: >-
   Does NOT trigger for: general Terraform questions unrelated to Atlas, optimizing or refactoring
   existing Atlas Terraform configs, Atlas Search or Vector Search index management via Terraform,
   or cloud-specific integrations (PrivateLink, KMS/CMEK, backup export) — those are separate skills.
-allowed-tools: mcp__MongoDB__*, mcp__plugin_terraform_terraform__get_latest_provider_version, WebSearch, Bash(gh *)
+allowed-tools: mcp__MongoDB__*, mcp__plugin_terraform_terraform__get_latest_provider_version, WebSearch, Bash(gh *), Bash(terraform *), Bash(mkdir *), Bash(rm -rf /tmp/atlas-tf-validate-*)
 ---
 
 # MongoDB Atlas Terraform — Getting Started
@@ -365,7 +365,42 @@ If MCP is connected, replace `<replace-me>` with real values for `org_id` and `p
 
 ---
 
-## Step 4: Post-Generation Block
+## Step 4: Validate the Generated Configuration
+
+Before presenting the files to the user, validate the HCL to catch syntax errors.
+
+1. Create a temp directory:
+
+   ```bash
+   mkdir -p /tmp/atlas-tf-validate-tmp
+   ```
+
+2. Write versions.tf, variables.tf, main.tf, and outputs.tf to `/tmp/atlas-tf-validate-tmp/`. Omit `terraform.tfvars.example` — it is not valid HCL.
+
+3. Initialize without backend (downloads providers and modules for schema validation — takes ~30 s):
+
+   ```bash
+   terraform -chdir=/tmp/atlas-tf-validate-tmp init -backend=false -no-color
+   ```
+
+4. Validate:
+
+   ```bash
+   terraform -chdir=/tmp/atlas-tf-validate-tmp validate -no-color
+   ```
+
+5. If output is `Success! The configuration is valid.` → proceed to Step 5.
+   If validation fails → read the error, fix the affected generated file, and re-validate before presenting anything to the user.
+
+6. Always clean up:
+
+   ```bash
+   rm -rf /tmp/atlas-tf-validate-tmp
+   ```
+
+---
+
+## Step 5: Post-Generation Block
 
 After presenting all 5 files, always append this section verbatim:
 
