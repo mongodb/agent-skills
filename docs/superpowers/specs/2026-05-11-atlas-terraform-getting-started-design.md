@@ -20,7 +20,7 @@ This spec covers the **getting-started** scope only: project + cluster. Cloud-sp
 |---|---|
 | **Name** | `atlas-terraform-getting-started` |
 | **Location** | `skills/atlas-terraform-getting-started/SKILL.md` |
-| **Allowed tools** | `mcp__mongodb__*` (optional) |
+| **Allowed tools** | `mcp__mongodb__*` (optional), `web_search`, `github` |
 | **Terraform registry tool** | `mcp__plugin_terraform_terraform__get_latest_provider_version` (optional, for version pinning) |
 
 ### Trigger Description
@@ -75,7 +75,7 @@ Options: **AWS** / **Azure** / **GCP**
 | Option | Cluster tier | Backup | Security defaults |
 |---|---|---|---|
 | **Minimal** | M0 (free) or M10 | Off | Basic |
-| **Production-ready** | M30+ | Enabled | Full recommended set |
+| **Production-ready** | M60+ | Enabled | Full recommended set + autoscaling |
 
 ### Step 5 — Cluster name (optional)
 
@@ -105,7 +105,7 @@ terraform {
 }
 ```
 
-The provider version is always `~> 2.0`, with the exact latest `2.x` patch fetched at generation time via `mcp__plugin_terraform_terraform__get_latest_provider_version` (if available) or the Terraform registry API.
+The provider version is always `~> 2.0`, with the exact latest `2.x` patch fetched at generation time via `mcp__plugin_terraform_terraform__get_latest_provider_version` (if available), the Terraform registry API, or `web_search` / `github` as a fallback. The same freshness strategy applies to all module version pins — the skill actively resolves the latest release rather than hardcoding a version.
 
 ### `main.tf`
 
@@ -129,7 +129,10 @@ Contains two module blocks:
    }
    ```
 
-Minimal configs use M0/M10 with minimal variables. Production-ready configs use M30+, enable backup, and set all recommended security defaults exposed by the cluster module.
+**Cluster topology rules (both tiers):**
+- Clusters are **always sharded** (no single-region replica sets). The cluster module's `regions` variable drives sharding topology.
+- **Autoscaling is always enabled for production-ready configs** (`auto_scaling_disk_gb_enabled = true`, compute autoscaling enabled with appropriate min/max bounds).
+- Minimal configs (M0/M10) use the simplest valid sharded topology. Production-ready configs use M60+, enable backup, autoscaling, and all recommended security defaults exposed by the cluster module.
 
 ### `variables.tf`
 
