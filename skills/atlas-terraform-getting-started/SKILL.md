@@ -389,8 +389,8 @@ Before presenting the files to the user, validate the HCL to catch syntax errors
    terraform -chdir=/tmp/atlas-tf-validate-tmp validate -no-color
    ```
 
-5. If output is `Success! The configuration is valid.` → proceed to Step 5.
-   If validation fails → read the error, fix the affected generated file, and re-validate before presenting anything to the user.
+5. If output **contains** `Success! The configuration is valid.` → proceed to Step 5.
+   If validation fails → read the error, fix the affected generated file, and re-validate. If the same error persists after two fix attempts, present the files to the user with a note that HCL validation could not be completed.
 
 6. Always clean up:
 
