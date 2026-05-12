@@ -6,3 +6,6 @@
 .score_cache/
 
 .DS_Store
+docs/superpowers/
+testing/atlas-terraform-getting-started/fixture/.terraform/
+testing/atlas-terraform-getting-started/fixture/.terraform.lock.hcl
