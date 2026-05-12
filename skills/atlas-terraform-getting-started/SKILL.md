@@ -36,8 +36,8 @@ Fetch the latest versions before generating any HCL. Never hardcode versions —
 Try each source in order until one succeeds:
 
 1. `mcp__plugin_terraform_terraform__get_latest_provider_version`: namespace `mongodb`, type `mongodbatlas`
-2. `WebSearch`: query `mongodb/mongodbatlas terraform provider latest release site:github.com`
-3. `Bash`: `gh api repos/mongodb/terraform-provider-mongodbatlas/releases/latest --jq '.tag_name'`
+2. `Bash`: `gh api repos/mongodb/terraform-provider-mongodbatlas/releases/latest --jq '.tag_name'`
+3. `WebSearch`: query `mongodb/mongodbatlas terraform provider latest release site:github.com`
 
 Strip the leading `v`. Use this as `PROVIDER_VERSION`. Constraint in HCL: `~> 2.0`.
 
@@ -45,8 +45,8 @@ Strip the leading `v`. Use this as `PROVIDER_VERSION`. Constraint in HCL: `~> 2.
 
 Try each source in order:
 
-1. `WebSearch`: query `terraform-mongodbatlas-modules/project/mongodbatlas terraform registry latest version`
-2. `Bash`: `gh api repos/terraform-mongodbatlas-modules/terraform-mongodbatlas-project/releases/latest --jq '.tag_name'`
+1. `Bash`: `gh api repos/terraform-mongodbatlas-modules/terraform-mongodbatlas-project/releases/latest --jq '.tag_name'`
+2. `WebSearch`: query `terraform-mongodbatlas-modules/project/mongodbatlas terraform registry latest version`
 
 This is a Public Preview (v0) module. Use constraint `>= 0.1, < 1.0`.
 
@@ -54,8 +54,8 @@ This is a Public Preview (v0) module. Use constraint `>= 0.1, < 1.0`.
 
 Try each source in order:
 
-1. `WebSearch`: query `terraform-mongodbatlas-modules/cluster/mongodbatlas terraform registry latest version`
-2. `Bash`: `gh api repos/terraform-mongodbatlas-modules/terraform-mongodbatlas-cluster/releases/latest --jq '.tag_name'`
+1. `Bash`: `gh api repos/terraform-mongodbatlas-modules/terraform-mongodbatlas-cluster/releases/latest --jq '.tag_name'`
+2. `WebSearch`: query `terraform-mongodbatlas-modules/cluster/mongodbatlas terraform registry latest version`
 
 This is a Public Preview (v0) module. Use constraint `>= 0.1, < 1.0`.
 
