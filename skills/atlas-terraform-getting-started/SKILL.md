@@ -63,8 +63,6 @@ This is a Public Preview (v0) module. Use constraint `>= 0.1, < 1.0`.
 
 ## Step 2: Gather User Inputs
 
-Ask questions in sequence. Stop after each answer before asking the next.
-
 ### Question 1 — Project
 
 > "Do you have an existing Atlas project, or do you need to create a new one?"
@@ -109,6 +107,18 @@ Full region reference: https://www.mongodb.com/docs/atlas/cloud-providers-region
 
 > "What would you like to name your cluster?" (press Enter to use `my-cluster`)
 
+### Question 6 — IP Access
+
+> "What CIDR should be allowed to connect? (e.g. `203.0.113.10/32`, `10.0.0.0/8`, or `0.0.0.0/0`)"
+
+Always use CIDR notation. Store as `USER_IP_CIDR`.
+
+### Question 7 — Database user
+
+> "What username for your initial database user?" (default: `db-user`)
+
+Always generate a sensitive `db_password` variable — never hardcode a password.
+
 ---
 
 ## Step 3: Generate the 5 Files
@@ -143,8 +153,6 @@ terraform {
 }
 ```
 
----
-
 ### File 2: `variables.tf`
 
 ```hcl
@@ -167,35 +175,47 @@ variable "org_id" {
   type        = string
 }
 
-# Only include this block when using an EXISTING project (omit when creating a new one)
 variable "project_id" {
-  description = "Existing MongoDB Atlas Project ID. Atlas UI → Project Settings → Project ID."
+  description = "Existing Atlas Project ID. Atlas UI → Project Settings → Project ID."
   type        = string
 }
 
 variable "region" {
-  description = "Atlas cloud region name, e.g. US_EAST_1 (AWS), EUROPE_WEST (Azure), CENTRAL_US (GCP)."
+  description = "Atlas cloud region, e.g. US_EAST_1 (AWS), EUROPE_WEST (Azure), CENTRAL_US (GCP)."
   type        = string
 }
 
-# Authentication — API Key (alternative to Service Account)
-# Atlas UI → Access Manager → API Keys → Create API Key
+# API Key credentials (alternative to Service Account — use one or the other, not both)
 variable "atlas_public_key" {
-  description = "MongoDB Atlas API public key. Alternative to Service Account credentials."
+  description = "MongoDB Atlas API public key."
   type        = string
   sensitive   = true
 }
 
 variable "atlas_private_key" {
-  description = "MongoDB Atlas API private key. Alternative to Service Account credentials."
+  description = "MongoDB Atlas API private key."
+  type        = string
+  sensitive   = true
+}
+
+variable "ip_access_cidr" {
+  description = "CIDR block allowed to connect to Atlas (e.g. 203.0.113.10/32)."
+  type        = string
+}
+
+variable "db_username" {
+  description = "Initial database username."
+  type        = string
+}
+
+variable "db_password" {
+  description = "Initial database user password."
   type        = string
   sensitive   = true
 }
 ```
 
-Omit `variable "project_id"` entirely when the user is creating a new project. Omit `variable "org_id"` when using an existing project (it is not consumed in that path). Omit the API key variables if using a Service Account (and vice versa).
-
----
+Omit `project_id` when creating a new project; omit `org_id` for existing project. Omit API key variables if using a Service Account (and vice versa). Always include `ip_access_cidr`, `db_username`, `db_password`.
 
 ### File 3a: `main.tf` — creating a new project
 
@@ -209,8 +229,9 @@ module "project" {
   source  = "terraform-mongodbatlas-modules/project/mongodbatlas"
   version = ">= 0.1, < 1.0"
 
-  org_id = var.org_id
-  name   = "PROJECT_NAME"
+  org_id         = var.org_id
+  name           = "PROJECT_NAME"
+  ip_access_list = [{ source = var.ip_access_cidr }]
 }
 
 module "cluster" {
@@ -234,9 +255,21 @@ module "cluster" {
   # MINIMAL ONLY — omit for production (autoscaling handles instance size)
   instance_size = "M10"
 }
+
+resource "mongodbatlas_database_user" "app" {
+  project_id         = module.project.id
+  username           = var.db_username
+  password           = var.db_password
+  auth_database_name = "admin"
+
+  roles {
+    database_name = "admin"
+    role_name     = "readWrite"
+  }
+}
 ```
 
-For **production-ready**, replace the `instance_size` line with:
+For **production-ready**, replace `instance_size = "M10"` with:
 
 ```hcl
   auto_scaling = {
@@ -250,9 +283,7 @@ For **production-ready**, replace the `instance_size` line with:
   backup_enabled = true
 ```
 
-### File 3b: `main.tf` — using an existing project
-
-Replace the `module "project"` block with a `locals` block:
+### File 3b: `main.tf` — existing project
 
 ```hcl
 provider "mongodbatlas" {
@@ -262,6 +293,11 @@ provider "mongodbatlas" {
 
 locals {
   project_id = var.project_id
+}
+
+resource "mongodbatlas_project_ip_access_list" "allow" {
+  project_id = local.project_id
+  cidr_block = var.ip_access_cidr
 }
 
 module "cluster" {
@@ -285,13 +321,25 @@ module "cluster" {
   # MINIMAL ONLY
   instance_size = "M10"
 }
+
+resource "mongodbatlas_database_user" "app" {
+  project_id         = local.project_id
+  username           = var.db_username
+  password           = var.db_password
+  auth_database_name = "admin"
+
+  roles {
+    database_name = "admin"
+    role_name     = "readWrite"
+  }
+}
 ```
 
 ---
 
 ### File 4: `outputs.tf`
 
-When creating a **new project**:
+Use `module.project.id` for the new-project path; use `var.project_id` for the existing-project path.
 
 ```hcl
 output "connection_string" {
@@ -301,31 +349,17 @@ output "connection_string" {
 
 output "project_id" {
   description = "Atlas project ID."
-  value       = module.project.id
+  value       = module.project.id  # existing-project path: var.project_id
 }
 
 output "cluster_id" {
   description = "Atlas cluster ID."
   value       = module.cluster.cluster_id
 }
-```
 
-When using an **existing project**, replace `module.project.id` with `var.project_id`:
-
-```hcl
-output "connection_string" {
-  description = "MongoDB SRV connection string."
-  value       = module.cluster.connection_strings.standard_srv
-}
-
-output "project_id" {
-  description = "Atlas project ID."
-  value       = var.project_id
-}
-
-output "cluster_id" {
-  description = "Atlas cluster ID."
-  value       = module.cluster.cluster_id
+output "db_username" {
+  description = "Database username."
+  value       = mongodbatlas_database_user.app.username
 }
 ```
 
@@ -356,18 +390,23 @@ project_id = "<replace-me>"
 #   GCP:   CENTRAL_US, WESTERN_EUROPE, EASTERN_ASIA_PACIFIC
 region = "<replace-me>"
 
+# IP access — CIDR notation required (use 1.2.3.4/32 for a single IP)
+ip_access_cidr = "<your-ip>/32"
+
+# Database user — never commit db_password to version control
+db_username = "db-user"
+db_password = "<replace-me>"
+
 # API Key credentials (alternative to Service Account — use one or the other, not both)
 # atlas_public_key  = "<replace-me>"
 # atlas_private_key = "<replace-me>"
 ```
 
-If MCP is connected, replace `<replace-me>` with real values for `org_id` and `project_id`.
+Pre-populate `org_id` and `project_id` with real values if MCP is connected.
 
 ---
 
 ## Step 4: Validate the Generated Configuration
-
-Before presenting the files to the user, validate the HCL to catch syntax errors.
 
 1. Create a temp directory:
 
@@ -447,11 +486,11 @@ After presenting all 5 files, always append this section verbatim:
 
 ## Out of Scope
 
-If the user asks about any of the following, explain this skill covers getting-started only and point them to the right resource:
-
 | Request | Resource |
 |---|---|
-| PrivateLink, KMS/CMEK, backup export, S3 log integration | `atlas-terraform-cloud-integration` skill (coming soon) — covers `terraform-mongodbatlas-atlas-aws/azure/gcp` modules |
+| AWS PrivateLink, KMS, S3 backup export | `atlas-terraform-aws-harden` skill |
+| Azure Private Link, Key Vault, Blob backup export | `atlas-terraform-azure-harden` skill |
+| GCP Private Service Connect, Cloud KMS, GCS backup | `atlas-terraform-gcp-harden` skill |
 | Optimizing or importing existing Terraform configs | `terraform import` docs + provider resource docs |
 | Organization management | `terraform-mongodbatlas-organization` module README |
 | Atlas Search / Vector Search indexes | Atlas Search Terraform resource docs |
