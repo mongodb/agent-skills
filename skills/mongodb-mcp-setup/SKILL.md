@@ -137,9 +137,10 @@ Direct the user to create a MongoDB Atlas Service Account:
 Walk them through the key steps:
 
 1. **Navigate to MongoDB Atlas** — [cloud.mongodb.com](https://cloud.mongodb.com)
-2. **Go to Access Manager** → **Service Accounts** → **Create Service Account**
-3. **Set Permissions** — Grant Organization Member or Project Owner (see docs for exact permission mappings)
-4. **Generate Credentials** — Create Client ID and Secret
+2. **Select your organization** from the ORGANIZATION section near the top of the page
+3. **Go to "Project Identity and Access"** on the left sidebar → **Applications** → **Create Service Account**
+4. **Set Permissions** — Grant Organization Member or Project Owner (see docs for exact permission mappings)
+5. **Generate Credentials** — Create Client ID and Secret
    - ⚠️ The **Client Secret is shown only once** — save it immediately before leaving the page
 5. **Note both values** — you'll need Client ID and Client Secret for Step 5
 
