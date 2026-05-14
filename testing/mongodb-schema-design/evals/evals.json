@@ -37,7 +37,7 @@
         "Mentions MongoDB's 16MB document size limit as a concern",
         "Discusses both access patterns: product page (10 recent reviews) AND 'My Reviews' page (user's reviews across products)",
         "Recommends using either the hybrid approach or separate reviews collection rather than pure embedding",
-        "Mentions Extended Reference Pattern by name, or suggests caching/embedding a subset of recent reviews in the product document as a performance optimization",
+        "Mentions Extended Reference Pattern by name, or suggests caching/embedding a subset of recent reviews in the product document as a performance optimization"
       ]
     },
     {
