@@ -70,6 +70,7 @@
     {
       "id": 6,
       "prompt": "For a MongoDB app, advise the best pool config I can use with this setup. I'm in a dedicated cluster with 2 shards, 1 mongos router, 1 replica member per shard. Cluster RAM is 400MB for db operations. Keep memory utilization at 80% or less; I aim for 15k ops/sec on regular operation and 100k ops/sec during peaks. Expect 5 app instances. Assume avg operation time is 20ms. Give me a minimal code snippet.",
+      "expected_output": "Agent recognizes that the target peak throughput is unachievable with the given topology and resource constraints, recommends a maxPoolSize between 60 and 80 for normal operations, and presents calculations grounded in the topology that estimate 1MB per connection.",
       "expectations": [
         "Recognizes that target peak ops/sec is unachievable with the current topology and resource constraints",
         "Recommends a maxPoolSize between 60 and 80 for the normal operational throughput",
