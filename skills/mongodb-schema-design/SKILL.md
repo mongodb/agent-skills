@@ -65,7 +65,7 @@ Ask the user:
 **Step 2: Determine workload type**
 Is the workload read-heavy, write-heavy, or balanced? This will influence which diagnostic sources are most relevant.
 Ask the user:
-  - Is your application primarily reading data (analytics, reports, searches) or writing data (logging, IoT ingestion, frequent updates)?
+- What's the primary workload for these collections — read-heavy (analytics, reports, searches), write-heavy (logging, IoT ingestion, frequent updates), or balanced?
 
 Verify with `db.serverStatus().opcounters`.
 
@@ -77,7 +77,7 @@ Verify with `db.serverStatus().opcounters`.
 
 #### Sources
 
-- [Query statistics](references/source-query-stats.md) - Returns runtime statistics for recorded queries showing query shapes and frequency. **Limitation**: Currently only captures `find`, `aggregate` and `distinct` operations - best for read heavy workloads. Requires Atlas M10+ tier.
+- [Query statistics](references/source-query-stats.md) - Returns runtime statistics for recorded queries showing query shapes and frequency. **Limitation**: Currently only captures `find`, `aggregate` and `distinct` operations (pair with other sources for write patterns). Requires Atlas M10+ tier.
 - [Atlas Slow Query Logs](references/source-slow-query-logs.md) - Review slow queries (actual queries, not shapes) to identify performance bottlenecks. Captures all operation types including writes. Requires Atlas M10+ tier.
 - Codebase - Examine actual queries in application code to understand access patterns, especially for new applications or with changing workloads. Can be used in conjunction with query stats for a more complete picture.
 - Natural language input - Ask the user to describe their typical queries and access patterns in natural language. Can be used as the only source or to supplement and validate other sources - the user might have contextual knowledge that is not reflected in the data or codebase.
