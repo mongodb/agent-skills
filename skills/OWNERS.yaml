@@ -1,0 +1,71 @@
+# Agent Skill ownership and review manifest.
+#
+# Every skill under skills/ must have an entry here. The PR template for agent
+# skills should require authors to add or update an entry when a skill is added
+# or changed.
+#
+# Fields:
+#   name                  string. Skill directory name (matches skills/<name>/).
+#   dris                  list of 1-2 strings. Directly Responsible
+#                         Individuals. Each entry is a GitHub username
+#                         (no leading @). The first entry is the primary DRI;
+#                         the second, if present, is the backup. DRIs own
+#                         maintenance, review, and response to issues for this
+#                         skill.
+#   last_reviewed         string (ISO date, YYYY-MM-DD). The most recent
+#                         review date. Update on any substantive change and
+#                         on periodic review passes.
+#   review_cadence_days   integer. Maximum days between reviews before the
+#                         skill is considered stale. Default 90.
+#
+# Example:
+#   - name: example-skill
+#     dris:
+#       - octocat
+#       - hubot
+#     last_reviewed: 2026-04-22
+#     review_cadence_days: 90
+
+skills:
+  - name: mongodb-atlas-stream-processing
+    dris:
+      - laurazhukas
+    last_reviewed: 2026-03-24
+    review_cadence_days: 90
+
+  - name: mongodb-connection
+    dris:
+      - RaschidJFR
+    last_reviewed: 2026-03-25
+    review_cadence_days: 90
+
+  - name: mongodb-mcp-setup
+    dris:
+      - nirinchev
+    last_reviewed: 2026-05-19
+    review_cadence_days: 90
+
+  - name: mongodb-natural-language-querying
+    dris:
+      - betsybutton
+    last_reviewed: 2026-04-29
+    review_cadence_days: 90
+
+  - name: mongodb-query-optimizer
+    dris:
+      - davidjahn
+    last_reviewed: 2026-03-25
+    review_cadence_days: 90
+
+  - name: mongodb-schema-design
+    dris:
+      - jaoppenheim
+      - addaleax
+    last_reviewed: 2026-03-20
+    review_cadence_days: 90
+
+  - name: mongodb-search-and-ai
+    dris:
+      - AyaanH123
+    last_reviewed: 2026-03-25
+    review_cadence_days: 90
