@@ -417,7 +417,7 @@
       "expected_skill": "neither",
       "should_not_trigger": "mongodb-query-optimizer",
       "also_should_not_trigger": "mongodb-schema-design",
-      "reasoning": "Stream processing with Kafka integration belongs to atlas-stream-processing skill. No query optimization or schema design signals.",
+      "reasoning": "Stream processing with Kafka integration belongs to mongodb-atlas-stream-processing skill. No query optimization or schema design signals.",
       "trigger_keywords": ["stream processor", "Kafka", "Atlas"],
       "ambiguity_level": "low"
     }

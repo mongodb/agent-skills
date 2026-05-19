@@ -1,6 +1,6 @@
 # Atlas Stream Processing Skill - Evaluations
 
-Automated test suite for the `atlas-stream-processing` skill.
+Automated test suite for the `mongodb-atlas-stream-processing` skill.
 
 ## Overview
 
@@ -80,7 +80,7 @@ Each eval validates that the skill:
 ## Running the Tests
 
 These evaluations are designed to be run with LLM-based evaluation frameworks that:
-1. Send the prompt to an agent with the `atlas-stream-processing` skill loaded
+1. Send the prompt to an agent with the `mongodb-atlas-stream-processing` skill loaded
 2. Verify the agent's response matches the expected behavior
 3. Check for proper MCP tool calls and sequencing
 4. Validate safety checks and user confirmations

@@ -1,5 +1,5 @@
 {
-  "skill_name": "atlas-stream-processing",
+  "skill_name": "mongodb-atlas-stream-processing",
   "evals": [
     {
       "id": 1,
