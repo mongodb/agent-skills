@@ -43,6 +43,10 @@
 
 - [ ] Ran `review-skill` skill to self-review structure, format, content quality, and novelty
 - [ ] Tested skill with LLMs using the five prompts above
+- [ ] Added or updated an entry in `skills/OWNERS.yaml` with the skill's
+      `dris` (1-2 GitHub usernames; first is primary, second is backup) and
+      today's `last_reviewed` date. New skills must include at least one
+      non-`TBD` entry in `dris` before merge.
 
 ## SME Review
 
