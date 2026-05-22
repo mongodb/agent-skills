@@ -71,7 +71,7 @@ https://skills.sh/ is a popular directory and a CLI that automates the installat
    npx skills add mongodb/agent-skills
    ```
 
-2. Install the MCP server: `npx mongodb-mcp-server@1 setup` and follow the instructions.
+2. Install the MCP server: `npx "mongodb-mcp-server@<3" setup` and follow the instructions.
 
 ### Local install from repository
 
@@ -87,7 +87,7 @@ https://skills.sh/ is a popular directory and a CLI that automates the installat
    reads its skills or context files. Refer to your agent's documentation
    for the correct path.
 
-3. Install the MCP server: `npx mongodb-mcp-server@1 setup` and follow the instructions.
+3. Install the MCP server: `npx "mongodb-mcp-server@<3" setup` and follow the instructions.
 
 ## Configuration
 
