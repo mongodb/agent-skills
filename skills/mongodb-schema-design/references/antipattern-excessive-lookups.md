@@ -56,7 +56,6 @@ When category data changes (a rare event), use `updateMany` to update all produc
 
 For Atlas M10+ use $queryStats (see ./source-query-stats.md)
 Use codebase if available, ask the user.
-As a last resort, use the system profiler (see ./source-system-profile.md)
 
 ```javascript
 

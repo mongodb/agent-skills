@@ -68,7 +68,5 @@ Find lookup-heavy aggregations. See how often lookups hit the same collection. H
 
 For Atlas M10+ use $queryStats (see ./source-query-stats.md) and slow query logs (see ./source-slow-query-logs.md)
 Use codebase if available, ask the user.
-As a last resort, use the system profiler (see ./source-system-profile.md)
-
 
 Reference: [Reduce $lookup Operations](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-lookup-operations/)

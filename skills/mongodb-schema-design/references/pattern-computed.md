@@ -151,16 +151,12 @@ On-demand materialized views are not automatically refreshed—you control when 
 
 For Atlas M10+ use slow query logs to find the slowest aggregations (see ./source-slow-query-logs.md). 
 Use codebase if available, ask the user.
-As a last resort, use the system profiler (see ./source-system-profile.md)
 
 ### Check if same aggregation runs repeatedly
 
 For Atlas M10+ use $queryStats (see ./source-query-stats.md)
 Use codebase if available, ask the user.
-As a last resort, use the system profiler (see ./source-system-profile.md)
-
 
 High count + high avgMs = candidate for computed pattern
-
 
 Reference: [Computed Schema Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/computed-schema-pattern/)

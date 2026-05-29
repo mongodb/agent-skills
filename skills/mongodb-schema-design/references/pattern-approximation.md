@@ -60,7 +60,6 @@ Use Approximation when staleness is acceptable. Use Computed when exact values a
 
 Use codebase if available, ask the user.
 Consult the documentation to see if $queryStats already supports write commands.
-As a last resort, use the system profiler (see ./source-system-profile.md)
 
 High count relative to read count suggests approximation would help
 

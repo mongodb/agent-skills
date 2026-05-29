@@ -81,7 +81,6 @@ Verify with `db.serverStatus().opcounters`.
 - [Atlas Slow Query Logs](references/source-slow-query-logs.md) - Review slow queries (actual queries, not shapes) to identify performance bottlenecks. Captures all operation types including writes. Requires Atlas M10+ tier.
 - Codebase - Examine actual queries in application code to understand access patterns, especially for new applications or with changing workloads. Can be used in conjunction with query stats for a more complete picture.
 - Natural language input - Ask the user to describe their typical queries and access patterns in natural language. Can be used as the only source or to supplement and validate other sources - the user might have contextual knowledge that is not reflected in the data or codebase.
-- [System Profiler](references/source-system-profiler.md) - Can significantly degrade production performance. Propose as an alternative when other sources are unavailable or insufficient, explain the impact. Collects detailed information about Database Commands executed against a running mongod instance, including CRUD operations and administration commands. 
 
 **Combining Query Stats and Slow Query Logs:**
 
