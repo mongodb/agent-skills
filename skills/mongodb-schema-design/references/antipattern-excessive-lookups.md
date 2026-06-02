@@ -60,9 +60,15 @@ Use codebase if available, ask the user.
 ```javascript
 
 // Check if $lookup foreign fields are indexed
-db.reviews.aggregate([
+
+// Example A - $indexStats
+db.categories.aggregate([
   { $indexStats: {} }
 ])
+
+// Example B - getIndexes()
+db.categories.getIndexes()
+
 // Look for index supporting the query in result
 
 // Measure $lookup impact

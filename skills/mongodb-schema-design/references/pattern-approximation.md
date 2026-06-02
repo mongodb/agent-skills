@@ -59,9 +59,8 @@ Use Approximation when staleness is acceptable. Use Computed when exact values a
 ### Check write frequency on counter fields
 
 Use codebase if available, ask the user.
-Consult the documentation to see if $queryStats already supports write commands.
 
-High count relative to read count suggests approximation would help
+High count relative to read count on a specific field suggests approximation would help
 
 ```javascript
 // Compare counter staleness

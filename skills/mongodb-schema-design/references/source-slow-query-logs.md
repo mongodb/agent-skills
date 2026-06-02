@@ -52,7 +52,7 @@ When analyzing slow query logs, focus on:
 
 **Slow $lookup operations:**
 - Look for `$lookup` in the log line
-- Slow $lookup = candidate for embedding or denormalization
+- Consider embedding to reduce slow $lookup operations
 - Cross-reference with Query Stats to identify frequent lookups
 - High executionTimeMillis + high frequency = urgent schema redesign
 
