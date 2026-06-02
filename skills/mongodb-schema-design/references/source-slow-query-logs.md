@@ -56,6 +56,6 @@ When analyzing slow query logs, focus on:
 - Cross-reference with Query Stats to identify frequent lookups
 - High executionTimeMillis + high frequency = urgent schema redesign
 
-**Schema design insights:**
-- Queries on related collections (multiple namespaces accessed together) → consider embedding
-- Operations on array fields with high docsExamined → potential unbounded array issues
+**Other slow aggregations:**
+- Consider the Computed Pattern to avoid slow aggregations
+

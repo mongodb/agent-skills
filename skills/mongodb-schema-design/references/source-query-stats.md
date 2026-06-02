@@ -30,6 +30,7 @@ db.getSiblingDB("admin").aggregate([
   },
   {
     $project: {
+      database: "$key.queryShape.cmdNs.db",
       collection: "$key.queryShape.cmdNs.coll",
       pipeline: "$key.queryShape.pipeline",
       execCount: "$metrics.execCount",
@@ -57,6 +58,7 @@ db.getSiblingDB("admin").aggregate([
   {
     $project: {
       command: "$key.queryShape.command",
+      database: "$key.queryShape.cmdNs.db",
       collection: "$key.queryShape.cmdNs.coll",
       queryShape: "$key.queryShape",
       execCount: "$metrics.execCount",
@@ -71,5 +73,6 @@ db.getSiblingDB("admin").aggregate([
 ])
 
 // High execCount = hot path → design your schema for these queries first
+// Cross reference with avgMS or slow query logs to find queries that are both frequent and slow
 // Note: Query stats do not include write patterns (update, insert)
 ```
