@@ -69,7 +69,7 @@ db.categories.aggregate([
 // Example B - getIndexes()
 db.categories.getIndexes()
 
-// Look for index supporting the query in result
+// Look for index supporting the query (either a direct index on the foreign field or a compound index that has the foreign field as a prefix, note the collation)
 
 // Measure $lookup impact
 db.products.aggregate([
