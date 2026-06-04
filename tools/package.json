@@ -1,0 +1,22 @@
+{
+  "name": "agent-skills-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repo tooling (plugin skill sync). Run with Node's built-in TypeScript type-stripping; no build step.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "sync": "node sync-plugin-skills.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "semver": "^7"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/semver": "^7",
+    "typescript": "^5.8"
+  }
+}

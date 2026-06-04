@@ -29,12 +29,22 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
         with:
-          node-version: "20"
+          version: 11
 
-      - name: Compute target version
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          # Node 24 runs the TypeScript release tooling directly via type-stripping.
+          node-version: "24"
+
+      - name: Install tools dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: tools
+
+      - name: Compute and apply version bump
         id: version
         shell: bash
         env:
@@ -42,61 +52,14 @@ jobs:
           EXACT_VERSION: ${{ inputs.exact_version }}
         run: |
           set -euo pipefail
-
-          current_version="$(jq -r '.version' .cursor-plugin/plugin.json)"
-          claude_version="$(jq -r '.version' .claude-plugin/plugin.json)"
-          codex_version="$(jq -r '.version' .codex-plugin/plugin.json)"
-          gemini_version="$(jq -r '.version' gemini-extension.json)"
-
-          if [[ "$current_version" != "$claude_version" || "$current_version" != "$codex_version" || "$current_version" != "$gemini_version" ]]; then
-            echo "Plugin version mismatch detected:" >&2
-            echo "  .cursor-plugin/plugin.json: $current_version" >&2
-            echo "  .claude-plugin/plugin.json: $claude_version" >&2
-            echo "  .codex-plugin/plugin.json: $codex_version" >&2
-            echo "  gemini-extension.json: $gemini_version" >&2
-            exit 1
-          fi
-
+          # Validates lockstep, computes the next version, rewrites every plugin
+          # manifest in place (format-preserving), and emits current_version /
+          # target_version / branch_name to $GITHUB_OUTPUT.
           if [[ "$VERSION_SOURCE" == "exact" ]]; then
-            if [[ -z "${EXACT_VERSION:-}" ]]; then
-              echo "Input exact_version is required when version_source=exact." >&2
-              exit 1
-            fi
-
-            target_version="$(npx --yes semver "$EXACT_VERSION")"
+            node tools/plugin-version.ts bump exact "${EXACT_VERSION:-}"
           else
-            target_version="$(npx --yes semver "$current_version" -i "$VERSION_SOURCE")"
+            node tools/plugin-version.ts bump "$VERSION_SOURCE"
           fi
-
-          if [[ "$target_version" == "$current_version" ]]; then
-            echo "Target version matches current version ($current_version); nothing to release." >&2
-            exit 1
-          fi
-
-          echo "current_version=$current_version" >> "$GITHUB_OUTPUT"
-          echo "target_version=$target_version" >> "$GITHUB_OUTPUT"
-          echo "branch_name=release/v$target_version" >> "$GITHUB_OUTPUT"
-
-      - name: Update plugin versions
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          tmp_file="$(mktemp)"
-          jq '.version = "${{ steps.version.outputs.target_version }}"' .cursor-plugin/plugin.json > "$tmp_file"
-          mv "$tmp_file" .cursor-plugin/plugin.json
-
-          tmp_file="$(mktemp)"
-          jq '.version = "${{ steps.version.outputs.target_version }}"' .claude-plugin/plugin.json > "$tmp_file"
-          mv "$tmp_file" .claude-plugin/plugin.json
-
-          tmp_file="$(mktemp)"
-          jq '.version = "${{ steps.version.outputs.target_version }}"' .codex-plugin/plugin.json > "$tmp_file"
-          mv "$tmp_file" .codex-plugin/plugin.json
-
-          tmp_file="$(mktemp)"
-          jq '.version = "${{ steps.version.outputs.target_version }}"' gemini-extension.json > "$tmp_file"
-          mv "$tmp_file" gemini-extension.json
 
       - name: Create release pull request
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # 8.1.0

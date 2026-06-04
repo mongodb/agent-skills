@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mongodb-atlas": {
+      "type": "http",
+      "url": "https://mcp-dev.mongodb.com/",
+      "oauth": {
+        "clientId": "claude-PLACEHOLDER_REPLACE_WITH_REGISTERED_CLAUDE_CLIENT_ID-dev"
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+    "name": "mongodb-atlas",
+    "version": "1.1.0",
+    "description": "Official Codex plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+    "author": {
+        "name": "MongoDB",
+        "email": "agent-plugins@mongodb.com",
+        "url": "https://www.mongodb.com"
+    },
+    "homepage": "https://www.mongodb.com/docs/codex/",
+    "repository": "https://github.com/mongodb/agent-skills",
+    "license": "Apache-2.0",
+    "keywords": [
+        "mongodb",
+        "atlas",
+        "database",
+        "mcp",
+        "vector-search"
+    ],
+    "skills": "./skills/",
+    "apps": "./app.json",
+    "interface": {
+        "displayName": "MongoDB Atlas",
+        "shortDescription": "Official MongoDB Atlas plugin: hosted MCP server, skills, and best practices for database workflows.",
+        "longDescription": "The official MongoDB Atlas plugin connects your agent to the MongoDB-hosted Atlas MCP server and bundles a curated set of agent skills covering query writing, query optimization, schema design, Atlas Search and Vector Search, connection best practices, and Atlas Stream Processing. It gives your agent the tools and knowledge to work with MongoDB Atlas, explore data, generate reliable code, and implement MongoDB best practices end to end.",
+        "developerName": "MongoDB",
+        "category": "Databases",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://www.mongodb.com",
+        "privacyPolicyURL": "https://www.mongodb.com/legal/privacy/privacy-policy",
+        "defaultPrompt": [
+            "Connect to my MongoDB Atlas deployment and explore its collections.",
+            "Write a MongoDB aggregation pipeline to analyze my data.",
+            "Optimize the slow queries in my Atlas cluster.",
+            "Design a MongoDB schema for my use case.",
+            "Use Atlas Search to add full-text search to my collection."
+        ],
+        "logo": "./assets/logo.png",
+        "brandColor": "#00ED64"
+    }
+}

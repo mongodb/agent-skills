@@ -2,28 +2,35 @@
 
 Collection of official MongoDB agent skills for use in agentic workflows. For more information, refer to the [MongoDB Agent Skills documentation](https://www.mongodb.com/docs/agent-skills/).
 
+This README covers the **`mongodb-atlas`** plugin, which connects your agent to the **MongoDB-hosted Atlas MCP server** over HTTP using OAuth. It bundles the official MongoDB agent skills for writing queries, designing schemas, optimizing queries, using Atlas Search and Vector Search, and more.
+
+> **Connecting to MongoDB Community or Enterprise Advanced?**
+> For self-managed deployments, use the **`mongodb`** plugin instead — it runs the MongoDB MCP server locally and connects to your own deployment. See **[Community & Enterprise Advanced setup](README.community.md)** for installation and configuration instructions.
+
+The `mongodb-atlas` plugin is available on Claude, Cursor, and Codex.
+
 ## Installation
 
 ### Claude
 
-Install the plugin from the [Claude marketplace](https://claude.com/plugins/mongodb), or run the following command from a Claude session:
+Install `mongodb-atlas` from the [Claude marketplace](https://claude.com/plugins/mongodb-atlas), or run the following command from a Claude session:
 
 1. Install the plugin:
 
    ```bash
-   /plugin install mongodb
+   /plugin install mongodb-atlas
    ```
 
 2. Follow the prompts to complete the installation, then run `/reload-plugins` to activate it.
 
 ### Cursor
 
-Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace/mongodb), or run the following command from a Cursor session:
+Install `mongodb-atlas` from the [Cursor marketplace](https://cursor.com/marketplace/mongodb-atlas), or run the following command from a Cursor session:
 
 1. Install the plugin:
 
    ```bash
-   /add-plugin mongodb
+   /add-plugin mongodb-atlas
    ```
 
 2. Follow the prompts to complete the installation.
@@ -42,36 +49,23 @@ Install the plugin from the [Cursor marketplace](https://cursor.com/marketplace/
    /plugins
    ```
 
-3. Navigate to the "MongoDB Agent Skills" tab and install the `mongodb` plugin.
+3. Navigate to the "MongoDB Agent Skills" tab and install the `mongodb-atlas` plugin.
 
-### Gemini
+## Authentication
 
-Install the extension from the [Gemini marketplace](https://geminicli.com/extensions/?name=mongodbagent-skills), or run the following command from Gemini CLI:
+The `mongodb-atlas` plugin connects to the MongoDB-hosted Atlas MCP server using OAuth. The first time your agent uses the server, you'll be prompted to sign in to MongoDB Atlas in your browser.
 
-1. Install the extension:
+## Installing the skills directly
 
-   ```bash
-   gemini extensions install https://github.com/mongodb/agent-skills
-   ```
+The methods below install just the agent skills — the same skills both plugins bundle — for agents or workflows that don't use a plugin marketplace. They don't configure an MCP server; to add one, run `npx "mongodb-mcp-server@latest" setup`, which can configure either the hosted Atlas MCP server or a self-managed deployment. Installing the `mongodb-atlas` or `mongodb` plugin just does this for you as a convenience (bundling the MCP configuration); for self-managed specifics, see [Community & Enterprise Advanced setup](README.community.md).
 
-2. Follow the prompts to complete the installation.
+### Vercel's Agent Skills Directory
 
+[https://skills.sh/](https://skills.sh/) is a popular directory and CLI that automates installing skills:
 
-### Copilot CLI
-
-Install the plugin from the GitHub repository: `/plugin install https://github.com/mongodb/agent-skills.git`. Then restart Copilot CLI to activate the MCP server.
-
-### Install using Vercel's Agent Skills Directory
-
-https://skills.sh/ is a popular directory and a CLI that automates the installation of skills.
-
-1. Add the skills you want to your agent:
-
-   ```bash
-   npx skills add mongodb/agent-skills
-   ```
-
-2. Install the MCP server: `npx "mongodb-mcp-server@<3" setup` and follow the instructions.
+```bash
+npx skills add mongodb/agent-skills
+```
 
 ### Local install from repository
 
@@ -81,14 +75,4 @@ https://skills.sh/ is a popular directory and a CLI that automates the installat
    git clone https://github.com/mongodb/agent-skills.git
    ```
 
-2. Install the skills for your platform:
-
-   Copy the `skills/` directory to the location where your coding agent
-   reads its skills or context files. Refer to your agent's documentation
-   for the correct path.
-
-3. Install the MCP server: `npx "mongodb-mcp-server@<3" setup` and follow the instructions.
-
-## Configuration
-
-Using the MCP Server to connect to MongoDB requires authentication - you can use the `mongodb-mcp-setup` skill to guide you through the process. Alternatively, refer to the [MongoDB MCP server documentation](https://www.mongodb.com/docs/mcp-server/configuration/options/) for a full list of configuration options.
+2. Copy the `skills/` directory to the location where your coding agent reads its skills or context files. Refer to your agent's documentation for the correct path.

@@ -9,12 +9,20 @@
 # Plugin packaging infrastructure
 /.claude-plugin/ @mongodb/dbx-devtools @mongodb/apix-devtools
 /.cursor-plugin/ @mongodb/dbx-devtools @mongodb/apix-devtools
-/mcp.json @mongodb/dbx-devtools @mongodb/apix-devtools
+/.agents/ @mongodb/dbx-devtools @mongodb/apix-devtools
+/gemini-extension.json @mongodb/dbx-devtools @mongodb/apix-devtools
+/plugins/ @mongodb/dbx-devtools @mongodb/apix-devtools
 /assets/ @mongodb/dbx-devtools
+
+# Repo tooling (sync + release scripts). review-skill/ is overridden below.
+/tools/ @mongodb/dbx-devtools @mongodb/apix-devtools
 
 # Review tooling
 /tools/review-skill/ @mongodb/devdocs
 
-# Skill content
+# Skill content (canonical source of truth)
 /skills/ @mongodb/devdocs
+
+# Generated per-plugin skill copies follow canonical skill ownership
+/plugins/*/skills/ @mongodb/devdocs
 

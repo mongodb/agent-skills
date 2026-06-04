@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mongodb-atlas": {
+      "url": "https://mcp-dev.mongodb.com/",
+      "auth": {
+        "CLIENT_ID": "cursor-PLACEHOLDER_REPLACE_WITH_REGISTERED_CURSOR_CLIENT_ID-dev"
+      }
+    }
+  }
+}
