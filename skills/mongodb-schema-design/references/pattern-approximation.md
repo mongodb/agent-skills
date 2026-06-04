@@ -65,14 +65,14 @@ High count relative to read count on a specific field suggests approximation wou
 ```javascript
 // Compare counter staleness
 db.articles.aggregate([
+  { $sort: { staleness: -1 } },
+  { $limit: 10 },
   { $project: {
     title: 1,
     viewCount: 1,
     lastSyncedAt: 1,
     staleness: { $subtract: ["$$NOW", "$lastSyncedAt"] }
-  }},
-  { $sort: { staleness: -1 } },
-  { $limit: 10 }
+  }}
 ])
 // Verify staleness is within acceptable bounds for your use case
 ```

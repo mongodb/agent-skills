@@ -79,8 +79,6 @@ for (const d of db.adminCommand({ listDatabases: 1 }).databases) {
   print(`${d.name}: ${colls} collections`)
 }
 // Count alone is not sufficient: combine with access and index/storage evidence
-
-// Collections with similar access patterns should be combined
 ```
 
 ### Check if collections are always accessed together.

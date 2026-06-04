@@ -157,6 +157,6 @@ Use codebase if available, ask the user.
 For Atlas M10+ use $queryStats (see ./source-query-stats.md)
 Use codebase if available, ask the user.
 
-High count + high avgMs = candidate for computed pattern
+High count + high avgMs on an aggregation that computes a result = candidate for computed pattern
 
 Reference: [Computed Schema Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/computed-schema-pattern/)
