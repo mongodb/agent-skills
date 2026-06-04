@@ -1,0 +1,6 @@
+# The per-plugin skills/ and assets/ directories are generated copies, produced
+# from the canonical repo-root skills/ and assets/ by tools/sync-plugin-skills.ts.
+# Mark them as generated so GitHub collapses them in diffs and omits them from
+# language statistics. (The canonical root skills/ and assets/ are NOT matched.)
+plugins/*/skills/** linguist-generated=true
+plugins/*/assets/** linguist-generated=true
