@@ -92,7 +92,6 @@ db.aggregate([
   { $sort: { execCount: -1 } },
   { $limit: 10 }
 ])
-// Search for query shapes that use $lookup on specific collections
 ```
 
 **Example 2: Find top most frequent query shapes (optimize hot paths)**
