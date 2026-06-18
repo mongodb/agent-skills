@@ -74,19 +74,17 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use MongoDB\BSON\ObjectId;
 use MongoDB\Laravel\Eloquent\Model;
 
 final class Post extends Model
 {
     protected $connection = 'mongodb';
-    protected $collection = 'posts';
+    protected $table      = 'posts';   // use $table, not $collection (removed in v5.0)
 
-    protected $fillable = ['title', 'body', 'author_id', 'tags', 'published_at'];
+    protected $fillable = ['title', 'body', 'author_id', 'published_at'];
 
     protected $casts = [
-        'author_id'    => 'string',   // ObjectId stored as string in PHP
-        'tags'         => 'array',
+        'author_id'    => 'string',   // store FK as string for Eloquent relationship matching
         'published_at' => 'datetime',
     ];
 }

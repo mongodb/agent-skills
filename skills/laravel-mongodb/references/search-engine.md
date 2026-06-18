@@ -2,6 +2,13 @@
 
 When to use this reference: adding full-text or vector search to Laravel models backed by MongoDB Atlas. The `mongodb/laravel-mongodb` package ships a Scout engine that targets Atlas Search natively — no Algolia, Meilisearch, or Elasticsearch needed.
 
+## Installation
+
+```
+composer require laravel/scout
+php artisan vendor:publish --provider="Laravel\Scout\ScoutServiceProvider"
+```
+
 ## Configuration
 
 ```php
@@ -10,6 +17,7 @@ return [
     'driver' => env('SCOUT_DRIVER', 'mongodb'),
 
     'mongodb' => [
+        'connection' => env('SCOUT_MONGODB_CONNECTION', 'mongodb'),
         'index-definitions' => [
             // optional pre-defined Atlas Search index definitions
         ],
@@ -53,50 +61,74 @@ final class Product extends Model
 
     public function searchableAs(): string
     {
-        return 'products';   // Atlas Search index name
+        return 'products';   // searchable collection name (not the Atlas Search index name)
     }
 }
 ```
+
+> The MongoDB Scout engine uses a **constant** Atlas Search index name `scout` by default — `searchableAs()` returns the collection name, not the index name.
+> Scout stores searchable documents in a **separate** collection. Do not use the same collection name as the model's main collection.
 
 ## Creating the Atlas Search index
 
-Define the index in the Atlas UI or via the Atlas Admin API. A minimal definition:
+Atlas Search indexes can be managed through Laravel migrations using the package's schema builder:
 
-```json
-{
-    "mappings": {
-        "dynamic": false,
-        "fields": {
-            "name":        { "type": "string" },
-            "description": { "type": "string" },
-            "tags":        { "type": "string" },
-            "price":       { "type": "number" }
-        }
-    }
-}
+```php
+Schema::connection('mongodb')->create('products', function (Blueprint $c): void {
+    $c->searchIndex([
+        'mappings' => [
+            'dynamic' => false,
+            'fields'  => [
+                'name'        => ['type' => 'string'],
+                'description' => ['type' => 'string'],
+                'tags'        => ['type' => 'string'],
+                'price'       => ['type' => 'number'],
+            ],
+        ],
+    ]);
+});
 ```
+
+Alternatively, create the index via the Atlas UI or Atlas Admin API.
 
 ## Queries
 
 ```php
-// Full-text
+// Full-text search
 $results = Product::search('wireless headphones')->get();
-
-// With filters (translated to $search compound)
-$results = Product::search('headphones')
-    ->where('price', '<=', 200)
-    ->take(20)
-    ->get();
 
 // Pagination
 $page = Product::search('headphones')->paginate(15);
 ```
 
-## Vector search
-
-For semantic / RAG use cases, store embeddings in a `vector` field and create an Atlas **Vector Search** index. Run the query through the aggregation pipeline rather than Scout:
+> Scout's `where()` only supports **equality** filters in the MongoDB engine (translated to Atlas Search `equals`). Range filters like `->where('price', '<=', 200)` are not supported via Scout — use a raw aggregation instead.
 
 ```php
+// WRONG — range filter not supported via Scout
+$results = Product::search('headphones')->where('price', '<=', 200)->get();
+
+// CORRECT — use aggregation pipeline for range filters
+$results = Product::raw(fn ($c) => $c->aggregate([
+    ['$search' => ['index' => 'scout', 'text' => ['query' => 'headphones', 'path' => 'name']]],
+    ['$match'  => ['price' => ['$lte' => 200]]],
+]));
+```
+
+## Vector search
+
+For semantic / RAG use cases, store embeddings in a `vector` field and create an Atlas **Vector Search** index. Use either the package's `vectorSearch()` builder method or a raw aggregation pipeline:
+
+```php
+// Using the package builder (available in v5.x)
+$matches = Product::vectorSearch(
+    index: 'products_vector',
+    path: 'embedding',
+    queryVector: $queryVector,
+    numCandidates: 200,
+    limit: 10,
+);
+
+// Or via raw aggregation
 $matches = Product::raw(fn ($c) => $c->aggregate([
     [
         '$vectorSearch' => [

@@ -21,19 +21,19 @@ return [
 ];
 ```
 
-Create a TTL index so expired entries are purged automatically:
+Create a TTL index so expired entries are purged automatically. The package writes the expiry timestamp into `expires_at`:
 
 ```php
 Schema::connection('mongodb')->create('cache', function (Blueprint $c): void {
-    $c->unique('key');
-    $c->expire('expiration', 0);
+    $c->expire('expires_at', 0);
 });
 
 Schema::connection('mongodb')->create('cache_locks', function (Blueprint $c): void {
-    $c->unique('key');
-    $c->expire('expiration', 0);
+    $c->expire('expires_at', 0);
 });
 ```
+
+> The TTL field is `expires_at`, **not** `expiration`. Cache keys are stored in `_id` — no separate unique index needed.
 
 ## Sessions
 
@@ -49,11 +49,13 @@ return [
 
 ```php
 Schema::connection('mongodb')->create('sessions', function (Blueprint $c): void {
-    $c->unique('id');
     $c->index('user_id');
     $c->index('last_activity');
+    $c->expire('expires_at', 0);  // session handler writes expires_at
 });
 ```
+
+> Session IDs are stored in `_id` — do not add `$c->unique('id')`.
 
 ## Usage
 

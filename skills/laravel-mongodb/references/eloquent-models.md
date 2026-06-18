@@ -26,19 +26,20 @@ use MongoDB\Laravel\Eloquent\Model;
 final class Movie extends Model
 {
     protected $connection = 'mongodb';
-    protected $collection = 'movies';      // not $table
-    protected $primaryKey = '_id';         // default
-    protected $keyType    = 'string';      // ObjectId surfaced as string
+    protected $table      = 'movies';   // use $table, not $collection (removed in v5.0)
+    protected $keyType    = 'string';   // ObjectId surfaced as string (already default)
 
-    protected $fillable = ['title', 'year', 'genres', 'released_at'];
+    protected $fillable = ['title', 'year', 'released_at'];
 
     protected $casts = [
         'year'        => 'integer',
-        'genres'      => 'array',
         'released_at' => 'datetime',
     ];
 }
 ```
+
+> Do **not** use `protected $collection` — it was removed in v5.0. Use `protected $table`.
+> Do **not** cast native MongoDB arrays to `'array'` — they are stored natively. An `'array'` cast triggers deprecation and may serialize as JSON.
 
 ## `_id` vs `id`
 
@@ -58,15 +59,18 @@ public function toArray(Request $request): array
 
 ## ObjectId casts
 
-Foreign keys are stored as ObjectId but Eloquent compares them as strings. Always cast:
+Foreign keys are stored as ObjectId but Eloquent compares them as strings. Use the package-provided cast or store as string:
 
 ```php
 protected $casts = [
-    'author_id' => 'string',           // simplest, recommended
-    // OR keep the native type:
-    // 'author_id' => \MongoDB\BSON\ObjectId::class,
+    'author_id' => 'string',   // simplest: store/read as string for Eloquent matching
+
+    // OR keep native BSON ObjectId with the package cast:
+    // 'author_id' => MongoDB\Laravel\Eloquent\Casts\ObjectId::class,
 ];
 ```
+
+Use `MongoDB\Laravel\Eloquent\Casts\ObjectId::class` (not `\MongoDB\BSON\ObjectId::class`) when you need the BSON type preserved at the database level.
 
 When the FK is stored as `ObjectId` *and* read as `ObjectId`, `belongsTo()` fails to match unless both sides agree. Casting to `string` on both ends is the safest default.
 
@@ -89,8 +93,7 @@ final class AuditLog extends BaseModel
     use DocumentModel;
 
     protected $connection = 'mongodb';
-    protected $collection = 'audit_logs';
-    protected $primaryKey = '_id';
+    protected $table      = 'audit_logs';
     protected $keyType    = 'string';
 }
 ```

@@ -19,31 +19,40 @@ return [
             'collection'   => 'jobs',
             'queue'        => 'default',
             'retry_after'  => 90,
-            'after_commit' => false,
+            'after_commit' => false,      // set true if dispatching inside DB::transaction()
         ],
     ],
 
     'failed' => [
-        'driver'     => 'mongodb',
+        'driver'   => 'mongodb',
+        'database' => 'mongodb',
+        'table'    => 'failed_jobs',
+    ],
+
+    // Job batching (requires MongoDBBusServiceProvider)
+    'batching' => [
         'database'   => 'mongodb',
-        'collection' => 'failed_jobs',
+        'collection' => 'job_batches',
     ],
 ];
 ```
+
+> Use `table` (not `collection`) in the `failed` config — Laravel's failed job provider reads the `table` key.
+> Register `MongoDB\Laravel\MongoDBBusServiceProvider::class` in `bootstrap/providers.php` to enable job batching.
 
 ## Required indexes
 
 Create these once via a migration to keep `queue:work` polling fast:
 
 ```php
-Schema::connection('mongodb')->create('jobs', function (Blueprint $c): void {
-    $c->index('queue');
-    $c->index('reserved_at');
-    $c->index('available_at');
+Schema::connection('mongodb')->create('jobs', function (Blueprint $collection): void {
+    $collection->index(['queue' => 1, 'reserved' => 1, 'available_at' => 1]);
+    $collection->index('reserved_at');
 });
 
-Schema::connection('mongodb')->create('failed_jobs', function (Blueprint $c): void {
-    $c->index('failed_at');
+Schema::connection('mongodb')->create('failed_jobs', function (Blueprint $collection): void {
+    $collection->unique('uuid');
+    $collection->index('failed_at');
 });
 ```
 
@@ -104,4 +113,4 @@ final class IndexPostJob implements ShouldQueue
 ## Notes
 
 - Pass `string` IDs into job constructors, never `ObjectId` instances — they must serialize cleanly.
-- `after_commit => false` because MongoDB transactions are opt-in; if you wrap dispatching inside `DB::transaction()` on a replica set, set it to `true`.
+- `after_commit => false` because MongoDB transactions are opt-in. Set to `true` if you dispatch inside `DB::connection('mongodb')->transaction()` on a replica set.

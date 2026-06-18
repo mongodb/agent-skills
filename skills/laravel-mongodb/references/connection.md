@@ -19,7 +19,7 @@ return [
             'database' => env('MONGODB_DATABASE', 'laravel'),
             // Optional driver options (forwarded to MongoDB\Client)
             'options'  => [
-                'appname' => env('APP_NAME', 'laravel'),
+                'appName' => env('APP_NAME', 'laravel'),
             ],
         ],
 
@@ -44,12 +44,12 @@ Prefer the full `mongodb+srv://` URI when targeting Atlas. Pool sizing, timeouts
 
 ## Service-provider registration
 
-The package auto-registers via Laravel's package discovery. If you opted out, add:
+The package auto-registers via Laravel's package discovery. If you opted out, add to `bootstrap/providers.php`:
 
 ```php
-'providers' => [
+return [
     MongoDB\Laravel\MongoDBServiceProvider::class,
-],
+];
 ```
 
 ## Using the connection from code
@@ -57,10 +57,19 @@ The package auto-registers via Laravel's package discovery. If you opted out, ad
 ```php
 use Illuminate\Support\Facades\DB;
 
-DB::connection('mongodb')->collection('logs')->insert(['msg' => 'hi']);
-$db = DB::connection('mongodb')->getMongoDB();        // MongoDB\Database
-$client = DB::connection('mongodb')->getMongoClient(); // MongoDB\Client
+// Query builder
+DB::connection('mongodb')->table('logs')->insert(['msg' => 'hi']);
+
+// Raw MongoDB objects (use these instead of deprecated getMongoDB/getMongoClient)
+$db     = DB::connection('mongodb')->getDatabase();  // MongoDB\Database
+$client = DB::connection('mongodb')->getClient();    // MongoDB\Client
+
+// Raw collection (bypasses Eloquent/query builder)
+$collection = DB::connection('mongodb')->getCollection('logs');
 ```
+
+> `getMongoDB()` and `getMongoClient()` are deprecated since v5.2. Use `getDatabase()` and `getClient()`.
+> `DB::connection('mongodb')->collection()` does not exist. Use `->table()` for the query builder.
 
 ## Connection pooling and timeouts
 

@@ -13,7 +13,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Schema;
 use MongoDB\Laravel\Schema\Blueprint;
 
-return new class extends Migration {
+return new class extends Migration
+{
     protected $connection = 'mongodb';
 
     public function up(): void
@@ -21,10 +22,10 @@ return new class extends Migration {
         Schema::connection('mongodb')->create('posts', function (Blueprint $collection): void {
             $collection->index('author_id');
             $collection->unique('slug');
-            $collection->index(['created_at' => -1]);          // descending
-            $collection->index(['author_id' => 1, 'created_at' => -1]); // compound
+            $collection->index(['created_at' => -1]);                        // descending
+            $collection->index(['author_id' => 1, 'created_at' => -1]);     // compound
             $collection->geospatial('location', '2dsphere');
-            $collection->expire('expires_at', 0);              // TTL index
+            $collection->expire('expires_at', 0);                           // TTL index
         });
     }
 
@@ -45,27 +46,41 @@ php artisan migrate --database=mongodb
 
 | Method | Purpose |
 |---|---|
-| `$collection->index($field)` | single-field ascending index |
-| `$collection->index([f => 1, g => -1])` | compound / sort-aware index |
-| `$collection->unique($field)` | unique index |
-| `$collection->expire($field, $seconds)` | TTL index — auto-delete docs after N seconds |
-| `$collection->geospatial($field, '2dsphere')` | geo index |
-| `$collection->sparse($field)` | sparse index |
-| `$collection->dropIndex($name)` | remove an index |
+| `->index($field)` | single-field ascending index |
+| `->index([f => 1, g => -1])` | compound / sort-aware index |
+| `->unique($field)` | unique index |
+| `->sparse($field)` | sparse index |
+| `->expire($field, $seconds)` | TTL index — auto-delete docs after N seconds |
+| `->geospatial($field, '2dsphere')` | geo index |
+| `->dropIndex($name)` | remove a regular index |
+| `->dropIndexIfExists($name)` | remove if exists (safe for idempotent migrations) |
+| `->searchIndex($definition)` | create an Atlas Search index |
+| `->vectorSearchIndex($definition)` | create an Atlas Vector Search index |
+| `->dropSearchIndex($name)` | drop an Atlas Search or Vector Search index |
 
-## Atlas Search indexes
+## Atlas Search and Vector Search indexes
 
-Atlas Search indexes are **not** managed by Laravel migrations. Create them via the Atlas UI, the Atlas Admin API, or the MongoDB MCP server. Reference them by name from `$search` aggregation stages.
+These can be managed via Laravel migrations using the schema builder methods above, or via the Atlas UI, Atlas Admin API, or MongoDB MCP server:
+
+```php
+$collection->searchIndex([
+    'mappings' => ['dynamic' => true],
+]);
+
+$collection->vectorSearchIndex([
+    'fields' => [['type' => 'vector', 'path' => 'embedding', 'numDimensions' => 1536, 'similarity' => 'cosine']],
+]);
+```
 
 ## No column definitions
 
 ```php
-// WRONG — MongoDB does not have columns
+// WRONG — column methods silently do nothing in MongoDB (no columns exist)
 $collection->string('title');
 $collection->integer('views');
 
 // CORRECT — schema is enforced at the model level (casts, validation rules)
-// Optionally apply JSON Schema validation server-side via Atlas / shell.
+// Optionally apply JSON Schema validation server-side via $jsonSchema.
 ```
 
 ## Cross-references

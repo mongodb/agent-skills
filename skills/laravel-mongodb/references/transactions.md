@@ -5,7 +5,7 @@ When to use this reference: wrapping multi-document writes in an atomic transact
 ## Requirements
 
 - A MongoDB **replica set** or **sharded cluster**. Standalone `mongod` does not support transactions.
-- All collections involved must already exist (transactions cannot create collections in older versions).
+- All collections involved must exist **before** the transaction starts — create collections and indexes in migrations, not inside transaction callbacks.
 
 ## Usage
 
@@ -51,10 +51,20 @@ try {
 
 ```php
 // Single-document update is atomic — no transaction needed
+Post::whereKey($id)->increment('views');
+
+// Equivalent raw update — also atomic at the single-document level
 Post::where('_id', $id)->update(['$inc' => ['views' => 1]]);
 ```
 
-Prefer schema design that keeps related data in a single document (embedding) so you can avoid transactions entirely. Transactions are slower and increase contention.
+Prefer schema design that keeps related data in a single document (embedding) to avoid transactions entirely. Transactions increase latency and lock contention.
+
+## Known limitations
+
+- **Nested transactions** are not supported.
+- **Laravel testing traits** `DatabaseTransactions` and `RefreshDatabase` are **not supported** — they rely on SQL transaction behaviour. Use `RefreshDatabase` with the `$connectionsToTransact` property set, or seed/truncate collections manually in tests.
+- **Parallel operations** within a single session/transaction are not supported.
+- Transactions require a replica set or sharded cluster. A standalone `mongod` will throw at runtime.
 
 ## Cross-references
 
