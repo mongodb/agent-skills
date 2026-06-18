@@ -86,6 +86,14 @@ The methods below install just the agent skills — the same skills both plugins
 npx skills add mongodb/agent-skills
 ```
 
+### Laravel (skills.laravel.cloud)
+
+Skills are listed on [skills.laravel.cloud](https://skills.laravel.cloud). Install individual skills from a Laravel project using the `boost` CLI:
+
+```bash
+php artisan boost:add-skill mongodb/agent-skills --skill laravel-mongodb
+```
+
 ### Local install from repository
 
 1. Clone the repository:
