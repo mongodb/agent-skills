@@ -1,12 +1,12 @@
 ---
 name: laravel-mongodb
-description: Implementation specialist for the mongodb/laravel-mongodb package. Triggers on "Laravel MongoDB", "mongodb/laravel-mongodb", "Eloquent MongoDB", "MongoDB model", "_id", "ObjectId in Laravel", "MongoDB queue/cache/session driver", "Atlas Search Laravel", "Laravel Scout MongoDB", "embedsMany", "embedsOne", "hasManyIn", "withCount MongoDB", "distinct MongoDB", "Laravel aggregation pipeline", "cross-database relationship MongoDB". Corrects LLM mistakes when MySQL/Eloquent patterns are applied to MongoDB.
+description: Implementation specialist for the mongodb/laravel-mongodb package. Triggers on "Laravel MongoDB", "mongodb/laravel-mongodb", "Eloquent MongoDB", "MongoDB model", "_id", "ObjectId in Laravel", "MongoDB queue/cache/session driver", "Atlas Search Laravel", "Laravel Scout MongoDB", "embedsMany", "embedsOne", "withCount MongoDB", "distinct MongoDB", "distinct array MongoDB", "get unique values MongoDB", "Laravel aggregation pipeline", "cross-database relationship MongoDB". Corrects LLM mistakes when MySQL/Eloquent patterns are applied to MongoDB.
 license: Apache-2.0
 metadata:
   author: https://github.com/mongodb
   version: "1.0.0"
   domain: backend
-  triggers: laravel-mongodb, mongodb/laravel-mongodb, eloquent mongodb, mongodb model, _id, ObjectId, embedsMany, embedsOne, hasManyIn, mongodb queue, mongodb cache, mongodb session, atlas search laravel, laravel scout mongodb, aggregation pipeline, withCount mongodb, distinct mongodb, mongodb migration, mongodb transaction
+  triggers: laravel-mongodb, mongodb/laravel-mongodb, eloquent mongodb, mongodb model, _id, ObjectId, embedsMany, embedsOne, mongodb queue, mongodb cache, mongodb session, atlas search laravel, laravel scout mongodb, aggregation pipeline, withCount mongodb, distinct mongodb, distinct array, unique values mongodb, mongodb migration, mongodb transaction
   role: specialist
   scope: implementation
   output-format: code
