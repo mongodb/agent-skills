@@ -1,27 +1,25 @@
 # Query Builder
 
-When to use this reference: writing any Eloquent or `DB::` query against a MongoDB connection, especially when an LLM is reaching for `withCount`, `toSql`, `distinct`, `groupBy`, `JOIN`, or `inRandomOrder`. Covers the unsupported helpers and their MongoDB replacements.
-
 ## Unsupported helpers and replacements
 
 | Standard Eloquent | Status | MongoDB replacement |
 |---|---|---|
-| `toSql()` / `toRawSql()` | unsupported | `->dump()` / `->dd()` — prints the MongoDB filter array |
+| `toSql()` / `toRawSql()` | unsupported | `->dump()` / `->dd()` / `->toMql()` |
 | `withCount()` / `withAvg()` / `withSum()` | unsupported | aggregation `$lookup` + `$size` / `$avg` / `$sum` |
 | `groupByRaw()` / `orderByRaw()` / `havingRaw()` | unsupported | aggregation `$group` / `$sort` |
 | `whereFulltext()` | unsupported | Atlas Search `$search` stage |
 | `union()` | unsupported | aggregation `$unionWith` |
-| `whereColumn()` | unsupported | aggregation `$expr` with `$eq` |
+| `whereColumn()` | unsupported | aggregation `$expr` + `$eq` |
 | `inRandomOrder()` | unsupported | aggregation `$sample` |
 | SQL `JOIN` | unsupported | aggregation `$lookup` |
 
-## `distinct()` returns a Collection, not an array
+## `distinct()` returns a Collection, not scalars
 
 ```php
-// WRONG — caller expects scalar array, gets Collection of stdClass / arrays
+// WRONG — returns Collection of stdClass/arrays, not scalar array
 $genres = Movie::distinct('genre')->get();
 
-// CORRECT — Collection of scalars
+// CORRECT
 $genres = Movie::distinct()->pluck('genre');
 
 // CORRECT — explicit aggregation
@@ -37,7 +35,7 @@ $genres = Movie::raw(fn ($c) => $c->aggregate([
 // WRONG
 $posts = Post::withCount('comments')->get();
 
-// CORRECT — server-side via aggregation
+// CORRECT
 $posts = Post::raw(fn ($c) => $c->aggregate([
     ['$lookup' => [
         'from'         => 'comments',
@@ -48,7 +46,6 @@ $posts = Post::raw(fn ($c) => $c->aggregate([
     ['$addFields' => ['comments_count' => ['$size' => '$comments']]],
     ['$project'   => ['comments' => 0]],
 ]));
-
 ```
 
 ## Inspecting the generated query
@@ -57,9 +54,8 @@ $posts = Post::raw(fn ($c) => $c->aggregate([
 // WRONG — toSql() does not exist
 $sql = User::where('active', true)->toSql();
 
-// CORRECT — dump the MongoDB filter / pipeline
+// CORRECT
 User::query()->where('active', true)->dump();
-// or with the helper
 dd(User::query()->where('active', true)->toMql());
 ```
 
@@ -98,14 +94,9 @@ Post::where('metadata.draft', true)->get();                // dotted path into s
 
 ```php
 $result = Post::raw(fn ($collection) => $collection->aggregate([
-    ['$match' => ['published' => true]],
-    ['$group' => ['_id' => '$author_id', 'total' => ['$sum' => 1]]],
-    ['$sort'  => ['total' => -1]],
-    ['$limit' => 10],
+    ['$match'  => ['published' => true]],
+    ['$group'  => ['_id' => '$author_id', 'total' => ['$sum' => 1]]],
+    ['$sort'   => ['total' => -1]],
+    ['$limit'  => 10],
 ]));
 ```
-
-## Cross-references
-
-> For query plan analysis, index hints, and slow-query diagnosis, see the **mongodb-query-optimizer** skill.
-> For full-text and vector search inside aggregation, see the **mongodb-search-and-ai** skill.

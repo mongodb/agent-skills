@@ -1,6 +1,6 @@
 # Schema and Migrations
 
-When to use this reference: creating collections, defining indexes, or writing migrations. MongoDB is schema-flexible — migrations exist almost exclusively to manage indexes and to seed data.
+MongoDB is schema-flexible — migrations exist almost exclusively to manage indexes and seed data.
 
 ## Migration template
 
@@ -36,13 +36,11 @@ return new class extends Migration
 };
 ```
 
-Run with:
-
 ```
 php artisan migrate --database=mongodb
 ```
 
-## Useful Blueprint methods
+## Blueprint methods
 
 | Method | Purpose |
 |---|---|
@@ -53,14 +51,12 @@ php artisan migrate --database=mongodb
 | `->expire($field, $seconds)` | TTL index — auto-delete docs after N seconds |
 | `->geospatial($field, '2dsphere')` | geo index |
 | `->dropIndex($name)` | remove a regular index |
-| `->dropIndexIfExists($name)` | remove if exists (safe for idempotent migrations) |
-| `->searchIndex($definition)` | create an Atlas Search index |
-| `->vectorSearchIndex($definition)` | create an Atlas Vector Search index |
-| `->dropSearchIndex($name)` | drop an Atlas Search or Vector Search index |
+| `->dropIndexIfExists($name)` | remove if exists (idempotent migrations) |
+| `->searchIndex($definition)` | create Atlas Search index |
+| `->vectorSearchIndex($definition)` | create Atlas Vector Search index |
+| `->dropSearchIndex($name)` | drop Atlas Search or Vector Search index |
 
 ## Atlas Search and Vector Search indexes
-
-These can be managed via Laravel migrations using the schema builder methods above, or via the Atlas UI, Atlas Admin API, or MongoDB MCP server:
 
 ```php
 $collection->searchIndex([
@@ -72,18 +68,15 @@ $collection->vectorSearchIndex([
 ]);
 ```
 
+Can also be managed via the Atlas UI, Atlas Admin API, or MongoDB MCP server.
+
 ## No column definitions
 
 ```php
-// WRONG — column methods silently do nothing in MongoDB (no columns exist)
+// WRONG — column methods silently do nothing in MongoDB
 $collection->string('title');
 $collection->integer('views');
 
 // CORRECT — schema is enforced at the model level (casts, validation rules)
-// Optionally apply JSON Schema validation server-side via $jsonSchema.
+// For server-side enforcement, use $jsonSchema validator.
 ```
-
-## Cross-references
-
-> For embedding vs referencing, document size, time series, and validation rules, see the **mongodb-schema-design** skill.
-> For index selection and query plan tuning, see the **mongodb-query-optimizer** skill.

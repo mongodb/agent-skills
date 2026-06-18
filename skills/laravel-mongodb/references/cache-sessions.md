@@ -1,7 +1,5 @@
 # Cache and Sessions
 
-When to use this reference: configuring Laravel's cache or session store to use MongoDB. Both ship with the `mongodb/laravel-mongodb` package and need only configuration plus a TTL index.
-
 ## Cache
 
 ```php
@@ -21,7 +19,7 @@ return [
 ];
 ```
 
-Create a TTL index so expired entries are purged automatically. The package writes the expiry timestamp into `expires_at`:
+TTL index — expiry timestamp field is `expires_at` (not `expiration`). Cache keys stored in `_id`, no extra unique index needed.
 
 ```php
 Schema::connection('mongodb')->create('cache', function (Blueprint $c): void {
@@ -33,8 +31,6 @@ Schema::connection('mongodb')->create('cache_locks', function (Blueprint $c): vo
 });
 ```
 
-> The TTL field is `expires_at`, **not** `expiration`. Cache keys are stored in `_id` — no separate unique index needed.
-
 ## Sessions
 
 ```php
@@ -42,20 +38,20 @@ Schema::connection('mongodb')->create('cache_locks', function (Blueprint $c): vo
 return [
     'driver'     => env('SESSION_DRIVER', 'mongodb'),
     'connection' => 'mongodb',
-    'table'      => 'sessions',   // collection name; keep the key 'table' for Laravel compatibility
+    'table'      => 'sessions',   // collection name; keep key 'table' for Laravel compatibility
     'lifetime'   => 120,
 ];
 ```
+
+Session IDs stored in `_id` — do not add `$c->unique('id')`.
 
 ```php
 Schema::connection('mongodb')->create('sessions', function (Blueprint $c): void {
     $c->index('user_id');
     $c->index('last_activity');
-    $c->expire('expires_at', 0);  // session handler writes expires_at
+    $c->expire('expires_at', 0);
 });
 ```
-
-> Session IDs are stored in `_id` — do not add `$c->unique('id')`.
 
 ## Usage
 
@@ -65,5 +61,3 @@ use Illuminate\Support\Facades\Cache;
 Cache::put('user:1', $user, now()->addMinutes(10));
 Cache::remember('movies:top10', 300, fn () => Movie::orderBy('rating', 'desc')->take(10)->get());
 ```
-
-No code changes are required at the call site — only configuration and indexes.

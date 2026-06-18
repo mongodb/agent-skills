@@ -1,7 +1,5 @@
 # Queue Driver
 
-When to use this reference: configuring the MongoDB queue driver, dispatching jobs to a MongoDB queue, or running `queue:work` against a MongoDB-backed queue.
-
 ## `config/queue.php`
 
 ```php
@@ -19,17 +17,17 @@ return [
             'collection'   => 'jobs',
             'queue'        => 'default',
             'retry_after'  => 90,
-            'after_commit' => false,      // set true if dispatching inside DB::transaction()
+            'after_commit' => false,      // set true when dispatching inside DB::transaction()
         ],
     ],
 
     'failed' => [
         'driver'   => 'mongodb',
         'database' => 'mongodb',
-        'table'    => 'failed_jobs',
+        'table'    => 'failed_jobs',  // use 'table' not 'collection' — Laravel reads this key
     ],
 
-    // Job batching (requires MongoDBBusServiceProvider)
+    // Job batching — requires MongoDBBusServiceProvider
     'batching' => [
         'database'   => 'mongodb',
         'collection' => 'job_batches',
@@ -37,12 +35,9 @@ return [
 ];
 ```
 
-> Use `table` (not `collection`) in the `failed` config — Laravel's failed job provider reads the `table` key.
-> Register `MongoDB\Laravel\MongoDBBusServiceProvider::class` in `bootstrap/providers.php` to enable job batching.
+Register `MongoDB\Laravel\MongoDBBusServiceProvider::class` in `bootstrap/providers.php` for job batching.
 
 ## Required indexes
-
-Create these once via a migration to keep `queue:work` polling fast:
 
 ```php
 Schema::connection('mongodb')->create('jobs', function (Blueprint $collection): void {
@@ -59,12 +54,6 @@ Schema::connection('mongodb')->create('failed_jobs', function (Blueprint $collec
 ## Dispatch and worker
 
 ```php
-<?php
-
-declare(strict_types=1);
-
-use App\Jobs\IndexPostJob;
-
 IndexPostJob::dispatch((string) $post->_id)
     ->onConnection('mongodb')
     ->onQueue('indexing');
@@ -93,15 +82,13 @@ use Illuminate\Queue\SerializesModels;
 
 final class IndexPostJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries   = 3;
     public int $timeout = 60;
 
     public function __construct(public readonly string $postId) {}
+    // Pass string IDs, never ObjectId instances — they must serialize cleanly.
 
     public function handle(): void
     {
@@ -109,8 +96,3 @@ final class IndexPostJob implements ShouldQueue
     }
 }
 ```
-
-## Notes
-
-- Pass `string` IDs into job constructors, never `ObjectId` instances — they must serialize cleanly.
-- `after_commit => false` because MongoDB transactions are opt-in. Set to `true` if you dispatch inside `DB::connection('mongodb')->transaction()` on a replica set.
