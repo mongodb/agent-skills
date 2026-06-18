@@ -7,7 +7,7 @@ When to use this reference: writing any Eloquent or `DB::` query against a Mongo
 | Standard Eloquent | Status | MongoDB replacement |
 |---|---|---|
 | `toSql()` / `toRawSql()` | unsupported | `->dump()` / `->dd()` — prints the MongoDB filter array |
-| `withCount()` / `withAvg()` / `withSum()` | unsupported | aggregation `$lookup` + `$size` / `$avg` / `$sum`, or `loadCount()` after fetch |
+| `withCount()` / `withAvg()` / `withSum()` | unsupported | aggregation `$lookup` + `$size` / `$avg` / `$sum` |
 | `groupByRaw()` / `orderByRaw()` / `havingRaw()` | unsupported | aggregation `$group` / `$sort` |
 | `whereFulltext()` | unsupported | Atlas Search `$search` stage |
 | `union()` | unsupported | aggregation `$unionWith` |
@@ -49,9 +49,6 @@ $posts = Post::raw(fn ($c) => $c->aggregate([
     ['$project'   => ['comments' => 0]],
 ]));
 
-// CORRECT — client-side via loadCount (extra round-trip, OK for small sets)
-$posts = Post::all();
-$posts->loadCount('comments');
 ```
 
 ## Inspecting the generated query

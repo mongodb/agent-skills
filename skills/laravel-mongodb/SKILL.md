@@ -1,6 +1,6 @@
 ---
 name: laravel-mongodb
-description: Implementation specialist for the mongodb/laravel-mongodb package. Use this skill whenever a Laravel project uses MongoDB as a database, cache, session, queue, or search backend. Triggers on "Laravel MongoDB", "mongodb/laravel-mongodb", "Eloquent MongoDB", "MongoDB model", "MongoDB Eloquent", "_id", "ObjectId in Laravel", "MongoDB queue driver", "MongoDB cache driver", "MongoDB session driver", "Atlas Search Laravel", "Laravel Scout MongoDB", "embedsMany", "embedsOne", "hasManyIn", "withCount MongoDB", "distinct MongoDB Eloquent", "Laravel aggregation pipeline", "cross-database relationship MongoDB". Corrects the common LLM mistakes that arise when standard Laravel/MySQL patterns are applied to MongoDB (auto-increment IDs, withCount/withAvg/withSum, toSql, raw SQL helpers, distinct returning arrays, JOIN, native ObjectId in relationships, inRandomOrder, whereFulltext, union, whereColumn).
+description: Implementation specialist for the mongodb/laravel-mongodb package. Use this skill whenever a Laravel project uses MongoDB as a database, cache, session, queue, or search backend. Triggers on "Laravel MongoDB", "mongodb/laravel-mongodb", "Eloquent MongoDB", "MongoDB model", "MongoDB Eloquent", "_id", "ObjectId in Laravel", "MongoDB queue driver", "MongoDB cache driver", "MongoDB session driver", "Atlas Search Laravel", "Laravel Scout MongoDB", "embedsMany", "embedsOne", "hasManyIn", "withCount MongoDB", "distinct MongoDB Eloquent", "Laravel aggregation pipeline", "cross-database relationship MongoDB". Corrects the common LLM mistakes that arise when standard Laravel/MySQL patterns are applied to MongoDB.
 license: Apache-2.0
 metadata:
   author: https://github.com/mongodb
@@ -104,7 +104,6 @@ namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
 use MongoDB\Laravel\Relations\BelongsTo;
 use MongoDB\Laravel\Relations\EmbedsMany;
-use MongoDB\Laravel\Relations\HasMany;
 
 final class Post extends Model
 {
@@ -119,12 +118,6 @@ final class Post extends Model
     public function comments(): EmbedsMany
     {
         return $this->embedsMany(Comment::class);
-    }
-
-    public function relatedPosts(): HasMany
-    {
-        // hasManyIn → foreign key is an *array* of ObjectIds in this document
-        return $this->hasManyIn(Post::class, 'related_ids');
     }
 }
 ```

@@ -1,6 +1,6 @@
 # Relationships
 
-When to use this reference: defining `belongsTo`, `hasMany`, `hasOne`, embedded, or cross-database (MongoDB + SQL) relationships. Covers the ObjectId / string casting trap that breaks `belongsTo()` and the MongoDB-only relations `embedsMany`, `embedsOne`, `hasManyIn`.
+When to use this reference: defining `belongsTo`, `hasMany`, `hasOne`, embedded, or cross-database (MongoDB + SQL) relationships. Covers the ObjectId / string casting trap that breaks `belongsTo()` and the MongoDB-only relations `embedsMany`, `embedsOne`.
 
 ## The ObjectId vs string trap
 
@@ -74,18 +74,6 @@ $post->comments->where('approved', true);
 ```
 
 `Comment` and `Author` here extend `MongoDB\Laravel\Eloquent\Model` but are never persisted on their own — they belong to `$post`.
-
-## `hasManyIn` — array of foreign keys
-
-When the parent document stores **an array of ObjectIds** referencing siblings:
-
-```php
-// Document shape: { _id, related_ids: [ObjectId, ObjectId, ...] }
-public function related(): HasMany
-{
-    return $this->hasManyIn(Post::class, 'related_ids');
-}
-```
 
 ## Cross-database relationships (MongoDB ↔ SQL)
 
