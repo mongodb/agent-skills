@@ -14,7 +14,7 @@ final class Post extends Model
     }
 }
 
-// CORRECT — cast FK to string on child; string keyType on parent
+// CORRECT — cast FK to string on child; string keyType on parent (MongoDB model)
 final class Post extends Model
 {
     protected $casts = ['author_id' => 'string'];
@@ -25,7 +25,7 @@ final class Post extends Model
     }
 }
 
-final class User extends Model
+final class User extends Model  // MongoDB model — keyType needed here
 {
     protected $keyType = 'string';
 }
@@ -88,12 +88,12 @@ final class MongoUser extends \MongoDB\Laravel\Eloquent\Model
     }
 }
 
-// SQL model → MongoDB child (apply HybridRelations on the SQL side)
+// SQL model → MongoDB parent (HybridRelations on the SQL side — no $keyType needed here)
 use MongoDB\Laravel\Eloquent\HybridRelations;
 
 final class Order extends \Illuminate\Database\Eloquent\Model
 {
-    use HybridRelations;
+    use HybridRelations;  // required; do NOT add $keyType = 'string' on SQL models
 
     public function user(): \MongoDB\Laravel\Relations\BelongsTo
     {

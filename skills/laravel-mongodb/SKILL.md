@@ -60,7 +60,9 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 - `groupByRaw()`, `orderByRaw()`, `havingRaw()`, `whereFulltext()`, `union()`, `whereColumn()` — use aggregation.
 - `inRandomOrder()` — use `Model::raw(fn($c) => $c->aggregate([['$sample' => ['size' => N]]]))`.
 - Auto-increment IDs — primary keys are ObjectIds.
+- `protected $collection` — removed in v5.0. Use `protected $table` instead.
 - Native `ObjectId` FKs with default `belongsTo()` without casting to string.
+- `$keyType = 'string'` on a SQL model in a cross-database relationship — only needed on MongoDB models. The `HybridRelations` trait handles the comparison on the SQL side.
 - Unencrypted PII — use Laravel encrypted casts or Queryable Encryption.
 
 ## Code Templates
