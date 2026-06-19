@@ -51,11 +51,10 @@
     {
       "id": 5,
       "prompt": "My `belongsTo` always returns null but the `user_id` field exists in the document. My Post model has `public function author(): BelongsTo { return $this->belongsTo(User::class, 'author_id'); }`. What is wrong?",
-      "expected_output": "Identify the ObjectId/string type mismatch as root cause, and fix it by casting author_id to string on Post and setting $keyType = 'string' on User (when User is a MongoDB model).",
+      "expected_output": "Identify that the FK field may be stored as BSON ObjectId while the query expects a string, and fix it by casting author_id to string on Post. Note that belongsTo() coerces types during relation matching so it may work anyway, but direct where() queries require consistent BSON types.",
       "expectations": [
-        "Identifies an ObjectId vs string type mismatch (or BSON ObjectId vs string) as the root cause",
-        "Adds `protected $casts = ['author_id' => 'string']` (or equivalent) on the Post model",
-        "Mentions `protected $keyType = 'string'` on the User model when User is a MongoDB model",
+        "Identifies a possible BSON type mismatch on the FK field (ObjectId vs string) as the likely root cause",
+        "Recommends adding `protected $casts = ['author_id' => 'string']` on the Post model",
         "Does NOT recommend adding `$keyType = 'string'` on a SQL/MySQL User model as the fix",
         "Does NOT suggest the relationship method name is the cause of the null return"
       ]

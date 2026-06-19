@@ -31,8 +31,10 @@ $genres = Movie::raw(fn ($c) => $c->aggregate([
 
 ## Replacing `withCount`
 
+`withCount()`, `withAvg()`, and `withSum()` are **not supported** on MongoDB models — they silently return wrong results or throw. Replace with a `$lookup` + `$size` / `$avg` / `$sum` aggregation pipeline.
+
 ```php
-// WRONG
+// WRONG — withCount is not supported on MongoDB models
 $posts = Post::withCount('comments')->get();
 
 // CORRECT
