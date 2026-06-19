@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Order;
 use App\Models\Payment;
 
-DB::connection('mongodb')->transaction(function (): void {
+DB::connection('mongodb')->transaction(function () use ($customerId): void {
     $order = Order::create(['customer_id' => $customerId, 'total' => 9900]);
 
     Payment::create([

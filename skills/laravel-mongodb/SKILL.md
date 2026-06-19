@@ -46,10 +46,10 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 - PHP 8.2+ with `declare(strict_types=1);` and typed properties/return types.
 - Extend `MongoDB\Laravel\Eloquent\Model` (or apply `DocumentModel` trait to base classes you cannot change).
 - Cast `_id` to string in every API resource: `'id' => (string) $this->_id`.
-- Cast ObjectId FKs to `string` via `$casts` or `protected $keyType = 'string'` so Eloquent relations match.
+- Cast ObjectId FKs to `string` via `$casts` on the child model; set `protected $keyType = 'string'` on the parent MongoDB model so its primary key is also exposed as string and Eloquent relations match.
 - Eager-load with `::with()` — MongoDB does no server-side joins for Eloquent relations.
 - Use aggregation pipeline for grouping, counting per group, `$lookup`, and `$sample`.
-- Create indexes in migrations: `Schema::create('posts', fn (Blueprint $c) => $c->index('user_id'))`.
+- Create indexes in migrations: `Schema::connection('mongodb')->create('posts', fn (Blueprint $c) => $c->index('user_id'))`.
 - Use `DB::connection('mongodb')->transaction(...)` only on replica set / sharded cluster.
 
 ### MUST NOT DO
@@ -107,8 +107,7 @@ use MongoDB\Laravel\Relations\EmbedsMany;
 
 final class Post extends Model
 {
-    protected $keyType = 'string';
-    protected $casts   = ['author_id' => 'string'];
+    protected $casts = ['author_id' => 'string'];  // cast FK to string for relation matching
 
     public function author(): BelongsTo
     {
@@ -119,6 +118,11 @@ final class Post extends Model
     {
         return $this->embedsMany(Comment::class);
     }
+}
+
+final class User extends Model
+{
+    protected $keyType = 'string';  // expose primary key as string so Post.author_id matches
 }
 ```
 
