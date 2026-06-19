@@ -38,6 +38,8 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 | Transactions | `references/transactions.md` | Multi-document atomic writes |
 | Cache & sessions | `references/cache-sessions.md` | Configuring cache / session stores |
 | Atlas Search / Scout | `references/search-engine.md` | Full-text or vector search |
+| Installation | `references/installation.md` | Setting up ext-mongodb and the package |
+| Support & issue reporting | `references/support.md` | Reporting bugs, finding the right repo |
 
 ## Constraints
 
