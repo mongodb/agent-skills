@@ -22,7 +22,7 @@ use MongoDB\Laravel\Eloquent\Model;
 final class Movie extends Model
 {
     protected $connection = 'mongodb';
-    protected $table      = 'movies';   // $table not $collection (removed in v5.0)
+    protected $table      = 'movies';   // $table not $collection
     protected $keyType    = 'string';   // ObjectId surfaced as string (already default)
 
     protected $fillable = ['title', 'year', 'released_at'];
@@ -38,14 +38,14 @@ final class Movie extends Model
 
 ## `_id` vs `id`
 
-- BSON field is `_id` (ObjectId); PHP exposes both `id` and `_id`.
+- BSON field is `_id` (ObjectId); PHP exposes both `$model->id` and `$model->_id` — both return a string.
 - In API resources, always cast to string so clients receive `"6708..."` not `{"$oid":"6708..."}`:
 
 ```php
 public function toArray(Request $request): array
 {
     return [
-        'id'    => (string) $this->_id,
+        'id'    => (string) $this->_id,  // or $this->id — equivalent
         'title' => $this->title,
     ];
 }
@@ -53,7 +53,7 @@ public function toArray(Request $request): array
 
 ## ObjectId casts for foreign keys
 
-Eloquent compares keys with `==`. A native `ObjectId` and a string `"6708..."` are **not equal** — casting to string on both ends is the safest default.
+Eloquent coerces types during relation matching so `belongsTo()` works without explicit casts. Add `'author_id' => 'string'` in `$casts` when FK values may come from outside model attributes (imports, raw ObjectIds) — it normalises the BSON type on write and prevents mismatches on direct `where()` queries.
 
 ```php
 protected $casts = [

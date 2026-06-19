@@ -57,7 +57,7 @@ DB::connection('mongodb')->table('logs')->insert(['msg' => 'hi']);
 
 $db     = DB::connection('mongodb')->getDatabase();   // MongoDB\Database
 $client = DB::connection('mongodb')->getClient();     // MongoDB\Client
-// deprecated: getMongoDB() → getDatabase(), getMongoClient() → getClient() (since v5.2)
+// deprecated: getMongoDB() → getDatabase(), getMongoClient() → getClient()
 
 $collection = DB::connection('mongodb')->getCollection('logs');
 // note: ->collection() does not exist; use ->table() for the query builder

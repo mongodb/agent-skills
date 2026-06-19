@@ -104,7 +104,7 @@ $results = Product::raw(fn ($c) => $c->aggregate([
 ## Vector search
 
 ```php
-// Using the package builder (v5.x+)
+// Using the package builder
 $matches = Product::vectorSearch(
     index: 'products_vector',
     path: 'embedding',

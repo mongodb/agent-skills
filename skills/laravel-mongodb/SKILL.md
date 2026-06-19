@@ -46,7 +46,7 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 - PHP 8.2+ with `declare(strict_types=1);` and typed properties/return types.
 - Extend `MongoDB\Laravel\Eloquent\Model` (or apply `DocumentModel` trait to base classes you cannot change).
 - Cast `_id` to string in every API resource: `'id' => (string) $this->_id`.
-- Cast ObjectId FKs to `string` via `$casts` on the child model; set `protected $keyType = 'string'` on the parent MongoDB model so its primary key is also exposed as string and Eloquent relations match.
+- Cast FK fields to `string` via `$casts` on the child model when FK values may come from outside model attributes (imports, raw ObjectIds) — prevents BSON type mismatches on direct `where('author_id', $id)` queries.
 - Eager-load with `::with()` — MongoDB does no server-side joins for Eloquent relations.
 - Use aggregation pipeline for grouping, counting per group, `$lookup`, and `$sample`.
 - Create indexes in migrations: `Schema::connection('mongodb')->create('posts', fn (Blueprint $c) => $c->index('user_id'))`.
@@ -60,8 +60,7 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 - `groupByRaw()`, `orderByRaw()`, `havingRaw()`, `whereFulltext()`, `union()`, `whereColumn()` — use aggregation.
 - `inRandomOrder()` — use `Model::raw(fn($c) => $c->aggregate([['$sample' => ['size' => N]]]))`.
 - Auto-increment IDs — primary keys are ObjectIds.
-- `protected $collection` — removed in v5.0. Use `protected $table` instead.
-- Native `ObjectId` FKs with default `belongsTo()` without casting to string.
+- `protected $collection` — removed. Use `protected $table` instead.
 - `$keyType = 'string'` on a SQL model in a cross-database relationship — only needed on MongoDB models. The `HybridRelations` trait handles the comparison on the SQL side.
 - Unencrypted PII — use Laravel encrypted casts or Queryable Encryption.
 
@@ -81,7 +80,7 @@ use MongoDB\Laravel\Eloquent\Model;
 final class Post extends Model
 {
     protected $connection = 'mongodb';
-    protected $table      = 'posts';   // $table not $collection (removed in v5.0)
+    protected $table      = 'posts';   // $table not $collection
 
     protected $fillable = ['title', 'body', 'author_id', 'published_at'];
 

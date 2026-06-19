@@ -1,23 +1,13 @@
 # Relationships
 
-## The ObjectId vs string trap
+## FK and primary key types
 
-Eloquent compares keys with `==`. A native `ObjectId` and a string `"6708..."` are **not equal** — `belongsTo()` silently returns null when both sides hold a native ObjectId.
+Eloquent coerces types during relation matching, so `belongsTo()` works without explicit casts. Add a `string` cast on FK fields when values may come from outside model attributes (imports, raw ObjectIds) to normalise the BSON type on write:
 
 ```php
-// WRONG — both sides store native ObjectId; belongsTo returns null
 final class Post extends Model
 {
-    public function author(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'author_id');
-    }
-}
-
-// CORRECT — cast FK to string on child; string keyType on parent (MongoDB model)
-final class Post extends Model
-{
-    protected $casts = ['author_id' => 'string'];
+    protected $casts = ['author_id' => 'string'];  // optional but recommended when FK source is uncertain
 
     public function author(): BelongsTo
     {
@@ -25,7 +15,7 @@ final class Post extends Model
     }
 }
 
-final class User extends Model  // MongoDB model — keyType needed here
+final class User extends Model
 {
     protected $keyType = 'string';
 }
