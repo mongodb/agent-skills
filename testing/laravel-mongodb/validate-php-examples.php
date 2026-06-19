@@ -25,6 +25,11 @@ foreach ($mdFiles as $file) {
     }
 
     $content = file_get_contents($file->getPathname());
+    if ($content === false) {
+        fwrite(STDERR, "Error: cannot read {$file->getPathname()}\n");
+        exit(2);
+    }
+
     preg_match_all('/```php\n(.*?)```/s', $content, $matches);
 
     foreach ($matches[1] as $i => $snippet) {
@@ -34,14 +39,20 @@ foreach ($mdFiles as $file) {
 
         $snippet = rtrim($snippet);
 
-        // Skip WRONG/CORRECT comparison blocks (use-only snippets, no class body)
-        if (!str_contains($snippet, 'class ') && !str_contains($snippet, 'function ') && !str_contains($snippet, 'return ') && !str_contains($snippet, '$')) {
+        // Skip non-executable fragments (comparison snippets, bare import lists)
+        if (
+            !str_contains($snippet, '$')
+            && !str_contains($snippet, 'class ')
+            && !str_contains($snippet, 'function ')
+            && !str_contains($snippet, 'return ')
+            && !str_contains($snippet, 'declare')
+            && !str_contains($snippet, 'namespace')
+        ) {
             $skipped++;
             continue;
         }
 
         // Wrap orphan class-body snippets (properties/methods without a class declaration)
-        // Must be done BEFORE prepending <?php to avoid double-tag
         $raw          = ltrim($snippet);
         $hasClassBody = (bool) preg_match('/^\s*(protected|public|private)\s+[\$\w]/m', $raw);
         $hasClass     = str_contains($raw, 'class ');
@@ -54,12 +65,15 @@ foreach ($mdFiles as $file) {
             $snippet = "<?php\n" . $snippet;
         }
 
-        $tmpFile = tempnam(sys_get_temp_dir(), 'skill_php_') . '.php';
+        // Write to a .php temp file directly (avoid tempnam orphan from appending .php)
+        $tmpFile = tempnam(sys_get_temp_dir(), 'skill_php_');
+        rename($tmpFile, $tmpFile . '.php');
+        $tmpFile .= '.php';
         file_put_contents($tmpFile, $snippet);
 
         $output   = [];
         $exitCode = 0;
-        exec('php -l ' . escapeshellarg($tmpFile) . ' 2>&1', $output, $exitCode);
+        exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($tmpFile) . ' 2>&1', $output, $exitCode);
         unlink($tmpFile);
 
         if ($exitCode === 0) {
@@ -70,7 +84,6 @@ foreach ($mdFiles as $file) {
                 fn($l) => str_replace($tmpFile, '<snippet>', $l),
                 $output,
             ));
-            // Filter out "No syntax errors" lines from previous accumulated output
             $relevantLines = array_filter(
                 explode("\n", $outputClean),
                 fn($l) => !str_starts_with(trim($l), 'No syntax errors'),
