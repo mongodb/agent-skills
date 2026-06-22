@@ -116,6 +116,42 @@
         "Does NOT add the `HybridRelations` trait to the MongoDB Post model (only to the SQL side)",
         "Indicates the SQL model stores or relates the MongoDB `_id` as a string value"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "I want to add a search feature to my Laravel app so users can search products by name and description. My products are stored in MongoDB. What's the simplest approach?",
+      "expected_output": "Recommend querying Atlas Search directly via a raw $search aggregation pipeline on the model's collection, and clarify that Laravel Scout is not required — Atlas indexes MongoDB collections automatically without a sync job.",
+      "expectations": [
+        "Recommends using Atlas Search via a raw `$search` aggregation pipeline directly on the collection",
+        "Explicitly states that Laravel Scout is NOT required for full-text search on MongoDB with Atlas Search",
+        "Mentions that Atlas indexes the collection automatically — no import job or sync pipeline needed",
+        "Does NOT present Scout as the only or default approach for search on MongoDB",
+        "Does NOT recommend Algolia, Meilisearch, or Elasticsearch as the primary solution"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "How do I implement semantic search on my MongoDB Product collection in Laravel? I want to find products similar to a user's query using embeddings.",
+      "expected_output": "Explain how to create a vector search index, generate an embedding for the query, and run a $vectorSearch aggregation pipeline via Model::raw() or Model::vectorSearch().",
+      "expectations": [
+        "Creates a vector search index with a `vector` type field specifying `numDimensions` and `similarity`",
+        "Generates a query embedding from the user's text using an embedding model (OpenAI, Laravel AI SDK, etc.)",
+        "Uses `$vectorSearch` aggregation stage with `queryVector`, `numCandidates`, and `limit`",
+        "Calls the aggregation via `Model::raw(...)` or `Model::vectorSearch(...)`",
+        "Does NOT use `$search` (full-text) as the solution for semantic/embedding similarity"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "I want to add semantic search to my MongoDB Laravel app but I don't want to manage an embedding pipeline myself. Is there a simpler way?",
+      "expected_output": "Recommend auto-embedding via the autoEmbed index type, which lets Atlas generate and maintain embeddings automatically. Show the vectorSearchIndex() migration with type: 'autoEmbed' and a queryText query.",
+      "expectations": [
+        "Recommends auto-embedding as the approach that removes the need to manage an embedding pipeline",
+        "Shows a vector search index definition using `type: 'autoEmbed'` with `modality`, `path`, and `model` fields",
+        "Uses `queryText` (not `queryVector`) in the `$vectorSearch` aggregation stage",
+        "Mentions that documents are automatically embedded by Atlas on insert and update",
+        "Does NOT require the user to call an external embedding API in PHP to index documents"
+      ]
     }
   ]
 }
