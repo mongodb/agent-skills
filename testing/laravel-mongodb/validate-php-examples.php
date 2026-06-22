@@ -78,7 +78,11 @@ foreach ($mdFiles as $file) {
             fwrite(STDERR, "Error: could not create temp file\n");
             exit(2);
         }
-        file_put_contents($tmpFile, $snippet);
+        if (file_put_contents($tmpFile, $snippet) === false) {
+            unlink($tmpFile);
+            fwrite(STDERR, "Error: could not write temp file\n");
+            exit(2);
+        }
 
         $output   = [];
         $exitCode = 0;

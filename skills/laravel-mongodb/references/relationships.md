@@ -80,7 +80,7 @@ final class User extends \Illuminate\Database\Eloquent\Model
     }
 }
 
-// MongoDB model (e.g. Post) — no HybridRelations, no $keyType = 'string'
+// MongoDB model (e.g. Post) — no HybridRelations needed here
 final class Post extends \MongoDB\Laravel\Eloquent\Model
 {
     protected $casts = ['user_id' => 'string'];  // cast FK to string for direct queries

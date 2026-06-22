@@ -84,9 +84,8 @@ final class Product extends Model
 
     public function searchableAs(): string
     {
-        return 'products';   // collection name, not the Atlas Search index name
-        // The Atlas Search index name is always 'scout' by default.
-        // Scout stores documents in a SEPARATE collection — do not use the model's main collection.
+        // Return the collection name; Scout uses 'scout' as the Atlas Search index name by default.
+        return 'products';
     }
 }
 ```

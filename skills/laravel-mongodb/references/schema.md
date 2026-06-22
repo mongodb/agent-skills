@@ -51,7 +51,7 @@ php artisan migrate --database=mongodb
 | `->dropIndex($name)` | remove a regular index |
 | `->dropIndexIfExists($name)` | remove if exists (idempotent migrations) |
 | `->searchIndex($definition)` | create Atlas Search index |
-| `->vectorSearchIndex($definition)` | create Atlas Vector Search index |
+| `->vectorSearchIndex($name, $definition)` | create Atlas Vector Search index |
 | `->dropSearchIndex($name)` | drop Atlas Search or Vector Search index |
 
 ## Atlas Search and Vector Search indexes
@@ -61,7 +61,7 @@ $collection->searchIndex([
     'mappings' => ['dynamic' => true],
 ]);
 
-$collection->vectorSearchIndex([
+$collection->vectorSearchIndex('products_vector', [
     'fields' => [['type' => 'vector', 'path' => 'embedding', 'numDimensions' => 1536, 'similarity' => 'cosine']],
 ]);
 ```
