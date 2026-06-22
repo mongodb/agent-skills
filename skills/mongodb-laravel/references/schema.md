@@ -43,7 +43,7 @@ php artisan migrate --database=mongodb
 | Method | Purpose |
 |---|---|
 | `->index($field)` | single-field ascending index |
-| `->index([f => 1, g => -1])` | compound / sort-aware index |
+| `->index(['f' => 1, 'g' => -1])` | compound / sort-aware index |
 | `->unique($field)` | unique index |
 | `->sparse($field)` | sparse index |
 | `->expire($field, $seconds)` | TTL index — auto-delete docs after N seconds |

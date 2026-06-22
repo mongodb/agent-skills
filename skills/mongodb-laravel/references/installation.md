@@ -21,7 +21,7 @@ brew install php && brew install --build-from-source php-mongodb
 **pie (cross-platform PHP extension installer):**
 
 ```bash
-pie install mongodb/mongodb
+pie install mongodb/mongodb-extension
 ```
 
 **PECL (last resort):**

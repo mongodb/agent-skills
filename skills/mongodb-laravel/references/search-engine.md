@@ -32,14 +32,14 @@ $results = Product::raw(fn ($c) => $c->aggregate([
 
 ## Scout integration
 
-## Installation
+### Installation
 
 ```
 composer require laravel/scout
 php artisan vendor:publish --provider="Laravel\Scout\ScoutServiceProvider"
 ```
 
-## Configuration
+### Configuration
 
 ```php
 // config/scout.php
@@ -56,7 +56,7 @@ return [
 SCOUT_DRIVER=mongodb
 ```
 
-## Searchable model
+### Searchable model
 
 ```php
 <?php
@@ -90,7 +90,7 @@ final class Product extends Model
 }
 ```
 
-## Creating the Atlas Search index
+### Creating the Atlas Search index
 
 ```php
 Schema::connection('mongodb')->create('products', function (Blueprint $c): void {
@@ -108,7 +108,7 @@ Schema::connection('mongodb')->create('products', function (Blueprint $c): void 
 });
 ```
 
-## Queries
+### Queries
 
 ```php
 $results = Product::search('wireless headphones')->get();
