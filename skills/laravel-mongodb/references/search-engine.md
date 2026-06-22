@@ -1,6 +1,36 @@
-# Search Engine (Atlas Search via Laravel Scout)
+# Atlas Search
 
-No Algolia, Meilisearch, or Elasticsearch needed — `mongodb/laravel-mongodb` ships a Scout engine targeting Atlas Search natively.
+## Scout is optional
+
+**With Atlas Search on a MongoDB collection, no sync pipeline is needed.** Atlas indexes the collection directly — documents are automatically indexed on insert or update, with no Scout import job to run.
+
+Use Scout only if you need the `Searchable` trait API (`Model::search()`, `paginate()`, cross-driver portability). For full control or range filters, query Atlas Search directly via raw aggregation.
+
+| Approach | When to use |
+|---|---|
+| **Raw `$search` aggregation** | Full control, range filters, Atlas-only apps — no Scout needed |
+| **Laravel Scout** | `Model::search()` convenience, paginate(), cross-driver portability |
+
+## Raw Atlas Search (no Scout required)
+
+Query directly on the model's collection — no separate index or import step:
+
+```php
+<?php
+
+use App\Models\Product;
+
+$results = Product::raw(fn ($c) => $c->aggregate([
+    ['$search' => [
+        'index' => 'default',
+        'text'  => ['query' => 'wireless headphones', 'path' => ['name', 'description']],
+    ]],
+    ['$match'  => ['price' => ['$lte' => 200]]],
+    ['$limit'  => 10],
+]));
+```
+
+## Scout integration
 
 ## Installation
 
@@ -30,8 +60,6 @@ SCOUT_DRIVER=mongodb
 
 ```php
 <?php
-
-declare(strict_types=1);
 
 namespace App\Models;
 
@@ -103,24 +131,4 @@ $results = Product::raw(fn ($c) => $c->aggregate([
 
 ## Vector search
 
-```php
-// Using the package builder
-$matches = Product::vectorSearch(
-    index: 'products_vector',
-    path: 'embedding',
-    queryVector: $queryVector,
-    numCandidates: 200,
-    limit: 10,
-);
-
-// Or via raw aggregation
-$matches = Product::raw(fn ($c) => $c->aggregate([
-    ['$vectorSearch' => [
-        'index'         => 'products_vector',
-        'path'          => 'embedding',
-        'queryVector'   => $queryVector,
-        'numCandidates' => 200,
-        'limit'         => 10,
-    ]],
-]));
-```
+See `references/vector-search.md` for vector search, auto-embedding, and hybrid search.

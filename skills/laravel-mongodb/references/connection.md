@@ -5,8 +5,6 @@
 ```php
 <?php
 
-declare(strict_types=1);
-
 return [
     'default' => env('DB_CONNECTION', 'mongodb'),
 

@@ -13,8 +13,6 @@ use MongoDB\Laravel\Eloquent\Model;
 ```php
 <?php
 
-declare(strict_types=1);
-
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
@@ -69,8 +67,6 @@ protected $casts = [
 
 ```php
 <?php
-
-declare(strict_types=1);
 
 namespace App\Models;
 

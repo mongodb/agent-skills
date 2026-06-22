@@ -5,8 +5,6 @@
 ```php
 <?php
 
-declare(strict_types=1);
-
 return [
     'default' => env('QUEUE_CONNECTION', 'mongodb'),
 
@@ -69,8 +67,6 @@ php artisan queue:retry all
 
 ```php
 <?php
-
-declare(strict_types=1);
 
 namespace App\Jobs;
 

@@ -7,8 +7,6 @@ MongoDB is schema-flexible — migrations exist almost exclusively to manage ind
 ```php
 <?php
 
-declare(strict_types=1);
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Schema;
 use MongoDB\Laravel\Schema\Blueprint;

@@ -35,8 +35,6 @@ Embedded relations live inside the parent document — no second collection, no 
 ```php
 <?php
 
-declare(strict_types=1);
-
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;

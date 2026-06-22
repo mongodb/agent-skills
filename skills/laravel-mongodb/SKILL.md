@@ -37,7 +37,8 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 | Queue driver | `references/queues.md` | Dispatching jobs, queue config |
 | Transactions | `references/transactions.md` | Multi-document atomic writes |
 | Cache & sessions | `references/cache-sessions.md` | Configuring cache / session stores |
-| Atlas Search / Scout | `references/search-engine.md` | Full-text or vector search |
+| Atlas Search / Scout | `references/search-engine.md` | Full-text search, Scout integration |
+| Vector search, auto-embedding | `references/vector-search.md` | Semantic search, embedding pipelines, hybrid search |
 | Installation | `references/installation.md` | Setting up ext-mongodb and the package |
 | Support & issue reporting | `references/support.md` | Reporting bugs, finding the right repo |
 
@@ -73,8 +74,6 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 ```php
 <?php
 
-declare(strict_types=1);
-
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
@@ -97,8 +96,6 @@ final class Post extends Model
 
 ```php
 <?php
-
-declare(strict_types=1);
 
 namespace App\Models;
 
@@ -132,8 +129,6 @@ final class User extends Model
 ```php
 <?php
 
-declare(strict_types=1);
-
 use App\Models\Post;
 
 // WRONG: Post::withCount('comments')->get();
@@ -153,8 +148,6 @@ $posts = Post::raw(fn ($collection) => $collection->aggregate([
 
 ```php
 <?php
-
-declare(strict_types=1);
 
 namespace App\Jobs;
 
@@ -180,8 +173,6 @@ IndexPostJob::dispatch((string) $post->_id)->onConnection('mongodb');
 
 ```php
 <?php
-
-declare(strict_types=1);
 
 use App\Models\Post;
 
