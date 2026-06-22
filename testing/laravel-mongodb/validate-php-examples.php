@@ -2,13 +2,19 @@
 <?php
 
 /**
- * Validates PHP syntax of all code blocks in the laravel-mongodb skill markdown files.
+ * Validates PHP syntax of eligible code blocks in the laravel-mongodb skill markdown files.
+ * Skips non-executable fragments (bare config arrays, comparison snippets without statements).
  *
  * Usage (from repo root):
  *   php testing/laravel-mongodb/validate-php-examples.php [path/to/skill]
  */
 
 $skillDir = $argv[1] ?? 'skills/laravel-mongodb';
+
+if (!is_dir($skillDir)) {
+    fwrite(STDERR, "Error: directory not found: {$skillDir}\n");
+    exit(2);
+}
 
 $mdFiles = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($skillDir, FilesystemIterator::SKIP_DOTS),
@@ -30,14 +36,15 @@ foreach ($mdFiles as $file) {
         exit(2);
     }
 
-    preg_match_all('/```php\n(.*?)```/s', $content, $matches);
+    // Match ```php blocks with Unix or Windows line endings
+    preg_match_all('/```php\r?\n(.*?)```/s', $content, $matches);
 
     foreach ($matches[1] as $i => $snippet) {
         $blockNum = $i + 1;
         $relPath  = $file->getPathname();
         $label    = "{$relPath} (block {$blockNum})";
 
-        $snippet = rtrim($snippet);
+        $snippet = rtrim(str_replace("\r\n", "\n", $snippet));
 
         // Skip non-executable fragments (comparison snippets, bare import lists)
         if (
@@ -65,10 +72,12 @@ foreach ($mdFiles as $file) {
             $snippet = "<?php\n" . $snippet;
         }
 
-        // Write to a .php temp file directly (avoid tempnam orphan from appending .php)
+        // php -l works with any extension; skip the rename to avoid failure edge cases
         $tmpFile = tempnam(sys_get_temp_dir(), 'skill_php_');
-        rename($tmpFile, $tmpFile . '.php');
-        $tmpFile .= '.php';
+        if ($tmpFile === false) {
+            fwrite(STDERR, "Error: could not create temp file\n");
+            exit(2);
+        }
         file_put_contents($tmpFile, $snippet);
 
         $output   = [];
