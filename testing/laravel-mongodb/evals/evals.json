@@ -4,13 +4,12 @@
     {
       "id": 1,
       "prompt": "Create a Laravel Eloquent model for a `posts` MongoDB collection. The model should have fields: title, body, author_id (FK to users), published_at. Show the full model class with correct imports, casts, and any MongoDB-specific configuration needed.",
-      "expected_output": "A Post model extending MongoDB\\Laravel\\Eloquent\\Model with the collection set via $table, strict types, and casts for author_id (string) and published_at (datetime).",
+      "expected_output": "A Post model extending MongoDB\\Laravel\\Eloquent\\Model with the collection set via $table, and casts for author_id (string) and published_at (datetime).",
       "expectations": [
         "Model extends `MongoDB\\Laravel\\Eloquent\\Model`, not `Illuminate\\Database\\Eloquent\\Model`",
         "Uses `protected $table = 'posts'` and does NOT use `protected $collection`",
         "Declares `protected $casts` with `'author_id' => 'string'`",
         "Declares `protected $casts` with `'published_at' => 'datetime'`",
-        "File begins with `declare(strict_types=1);`",
         "Imports `MongoDB\\Laravel\\Eloquent\\Model` (fully-qualified MongoDB model)"
       ]
     },

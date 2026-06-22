@@ -15,19 +15,23 @@
 
 ## `distinct()` returns a Collection, not scalars
 
+**Common mistake:** `Movie::distinct('genre')->get()` returns a Collection of model objects, **not** an array of scalar strings. Always use `->distinct()->pluck('field')` to get scalar values.
+
 ```php
-// WRONG — returns Collection of stdClass/arrays, not scalar array
+// WRONG — returns Collection of model objects, NOT ['Action', 'Comedy', 'Drama']
 $genres = Movie::distinct('genre')->get();
 
-// CORRECT
+// CORRECT — returns a flat Collection of scalar strings
 $genres = Movie::distinct()->pluck('genre');
 
-// CORRECT — explicit aggregation
+// CORRECT — explicit aggregation when you need sorting or more control
 $genres = Movie::raw(fn ($c) => $c->aggregate([
     ['$group' => ['_id' => '$genre']],
     ['$sort'  => ['_id' => 1]],
 ]))->pluck('_id');
 ```
+
+Do **not** use `Movie::raw(fn ($c) => $c->distinct('field'))` via Eloquent if you expect a Collection — use `->distinct()->pluck()` instead.
 
 ## Replacing `withCount`
 

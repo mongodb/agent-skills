@@ -62,30 +62,32 @@ $post->comments->where('approved', true);
 
 ## Cross-database relationships (MongoDB ↔ SQL)
 
+**Rule:** `HybridRelations` goes on the **SQL model only** — never on the MongoDB model.
+
 The SQL table must store the MongoDB `_id` as a **string column** (`VARCHAR(24)`).
 
 ```php
-// MongoDB model → SQL child
-use MongoDB\Laravel\Relations\HasMany;
+// SQL model (e.g. User in MySQL) — HybridRelations MUST be here, on the SQL side
+use MongoDB\Laravel\Eloquent\HybridRelations;
 
-final class MongoUser extends \MongoDB\Laravel\Eloquent\Model
+final class User extends \Illuminate\Database\Eloquent\Model
 {
-    public function orders(): HasMany
+    use HybridRelations;  // ONLY on the SQL model — do NOT add to the MongoDB model
+
+    public function posts(): \MongoDB\Laravel\Relations\HasMany
     {
-        return $this->hasMany(\App\Models\Order::class, 'user_id');
+        return $this->hasMany(\App\Models\Post::class, 'user_id');
     }
 }
 
-// SQL model → MongoDB parent (HybridRelations on the SQL side — no $keyType needed here)
-use MongoDB\Laravel\Eloquent\HybridRelations;
-
-final class Order extends \Illuminate\Database\Eloquent\Model
+// MongoDB model (e.g. Post) — no HybridRelations, no $keyType = 'string'
+final class Post extends \MongoDB\Laravel\Eloquent\Model
 {
-    use HybridRelations;  // required; do NOT add $keyType = 'string' on SQL models
+    protected $casts = ['user_id' => 'string'];  // cast FK to string for direct queries
 
     public function user(): \MongoDB\Laravel\Relations\BelongsTo
     {
-        return $this->belongsTo(MongoUser::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
 ```

@@ -90,6 +90,8 @@ Use `queryText` (string) when the index uses `autoEmbed`. Use `queryVector` (flo
 
 Use when you generate vectors yourself (Laravel AI SDK, OpenAI PHP, etc.) and store them in the document.
 
+Always show all three steps: **create the index**, **store the embedding on write**, **query by vector**.
+
 ### 1. Create the Vector Search index
 
 ```php
