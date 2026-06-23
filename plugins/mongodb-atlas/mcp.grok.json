@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://mcp-dev.mongodb.com/",
       "oauth": {
-        "clientId": "https://claude.ai/oauth/claude-code-client-metadata"
+        "clientId": "xai-grok-cli"
       }
     }
   }
