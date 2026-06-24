@@ -3,6 +3,12 @@
     "mongodb": {
       "command": "npx",
       "args": ["-y", "mongodb-mcp-server@<3"]
+    },
+    "mongodb-atlas": {
+      "url": "https://mcp-dev.mongodb.com/",
+      "auth": {
+        "CLIENT_ID": "anysphere-cursor"
+      }
     }
   }
 }

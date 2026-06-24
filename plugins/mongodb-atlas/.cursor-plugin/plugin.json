@@ -1,7 +1,7 @@
 {
   "name": "mongodb-atlas",
-  "version": "1.1.0",
-  "description": "Official Cursor plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+  "version": "1.2.0",
+  "description": "TEST: Official Cursor plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
   "author": {
     "name": "MongoDB",
     "email": "agent-plugins@mongodb.com",

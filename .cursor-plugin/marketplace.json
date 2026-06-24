@@ -6,18 +6,18 @@
     "url": "https://www.mongodb.com"
   },
   "metadata": {
-    "description": "Official MongoDB plugins for Cursor (MCP Server + Skills)."
+    "description": "???Official MongoDB plugins for Cursor (MCP Server + Skills)."
   },
   "plugins": [
     {
       "name": "mongodb",
       "source": "./plugins/mongodb",
-      "description": "Official Cursor plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more."
+      "description": "??? Official Cursor plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more."
     },
     {
       "name": "mongodb-atlas",
       "source": "./plugins/mongodb-atlas",
-      "description": "Official Cursor plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more."
+      "description": "??? Official Cursor plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more."
     }
   ]
 }
