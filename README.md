@@ -7,7 +7,7 @@ This README covers the **`mongodb-atlas`** plugin, which connects your agent to 
 > **Connecting to MongoDB Community or Enterprise Advanced?**
 > For self-managed deployments, use the **`mongodb`** plugin instead — it runs the MongoDB MCP server locally and connects to your own deployment. See **[Community & Enterprise Advanced setup](README.community.md)** for installation and configuration instructions.
 
-The `mongodb-atlas` plugin is available on Claude, Cursor, and Codex.
+The `mongodb-atlas` plugin is available on Claude, Cursor, Codex, GitHub Copilot (CLI and VS Code), and Grok.
 
 ## Installation
 
@@ -37,19 +37,38 @@ Install `mongodb-atlas` from the [Cursor marketplace](https://cursor.com/marketp
 
 ### Codex
 
-1. Add the mongodb/agent-skills marketplace to Codex:
-
-   ```bash
-   codex plugin marketplace add mongodb/agent-skills
-   ```
-
-2. Start Codex and open the plugins browser:
+1. Open the plugins browser:
 
    ```bash
    /plugins
    ```
 
-3. Navigate to the "MongoDB Agent Skills" tab and install the `mongodb-atlas` plugin.
+2. Find the `mongodb-atlas` plugin and install it.
+
+### GitHub Copilot CLI
+
+1. Install the plugin:
+
+   ```bash
+   copilot plugin install mongodb-atlas
+   ```
+
+   To browse first, run `copilot plugin marketplace browse`.
+
+### VS Code
+
+Open the Extensions view (`⇧⌘X` / `Ctrl+Shift+X`), search for `@agentPlugins`,
+find `mongodb-atlas`, and select **Install**.
+
+### Grok
+
+1. Open the marketplace browser in Grok Build:
+
+   ```bash
+   /marketplace
+   ```
+
+2. Find `mongodb-atlas` and press `i` to install it.
 
 ## Authentication
 

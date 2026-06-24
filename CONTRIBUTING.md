@@ -7,10 +7,33 @@ This repo publishes two plugins from `plugins/`:
 - `plugins/mongodb/` — the community plugin (local `npx` MCP server).
 - `plugins/mongodb-atlas/` — the Atlas plugin (MongoDB-hosted HTTP MCP server).
   Its OAuth client ID and config syntax differ per client, so it ships one MCP
-  config per client: `mcp.claude.json` (Claude — `oauth.clientId`) and
-  `mcp.cursor.json` (Cursor — `auth.CLIENT_ID`). On Codex it points at a connector
-  via `app.json`. The Claude and Cursor client IDs and the Codex connector ID are
-  **placeholders** until they are registered.
+  config per client:
+  - `mcp.claude.json` — Claude (`oauth.clientId`, a CIMD URL)
+  - `mcp.cursor.json` — Cursor (`auth.CLIENT_ID`)
+  - `mcp.grok.json` — Grok (`oauth.clientId`)
+  - `mcp.copilot.json` — GitHub Copilot / VS Code (`oauth.clientId`, a CIMD URL)
+  - On Codex it points at a connector via `app.json`.
+
+  The pre-registered client IDs the Atlas auth server accepts are defined in the
+  [`atlas-iam` OAuth client seed](https://github.com/10gen/atlas-iam/blob/main/system/oauth/cmd/server/seed/client/seed)
+  (private; MongoDB employees only).
+
+Each plugin is published to several ecosystems, and each looks for its catalog
+index and per-plugin manifest in a different location. The same `skills/` and MCP
+configs back all of them:
+
+| Ecosystem | Plugins listed | Marketplace index | Per-plugin manifest |
+| --- | --- | --- | --- |
+| Claude | `mongodb`, `mongodb-atlas` | `.claude-plugin/marketplace.json` | `plugins/<name>/.claude-plugin/plugin.json` |
+| Cursor | `mongodb`, `mongodb-atlas` | `.cursor-plugin/marketplace.json` | `plugins/<name>/.cursor-plugin/plugin.json` |
+| Codex | `mongodb`, `mongodb-atlas` | `.agents/plugins/marketplace.json` | `plugins/<name>/.codex-plugin/plugin.json` |
+| Grok (xAI) | `mongodb`, `mongodb-atlas` | `.grok-plugin/marketplace.json` | `plugins/<name>/.grok-plugin/plugin.json` |
+| Copilot / VS Code | `mongodb-atlas` only | `.github/plugin/marketplace.json` | `plugins/<name>/.github/plugin/plugin.json` |
+
+The plugin format is shared across Grok, Copilot, VS Code, and Claude —
+Copilot/VS Code even accept `.claude-plugin/` files as a fallback, so the
+dedicated `.github/plugin/marketplace.json` is what keeps Copilot scoped to
+`mongodb-atlas` only.
 
 The repo-root `skills/` directory is the canonical source of truth for all skill
 content. Each plugin ships its own committed copy under `plugins/<name>/skills/`,
@@ -48,8 +71,8 @@ validates that all plugin manifests share one version, and
 6. Review the generated notes, add any platform-specific context that should be
    included, and confirm that the draft release tag matches the release PR
    version and targets the merged `main` commit. Then publish the draft release.
-7. Manually submit plugin updates for [Cursor](#cursor) and [Claude](#claude).
-8. Coordinate the [VS Code](#vs-code) extension update.
+7. Manually submit plugin updates for [Cursor](#cursor), [Claude](#claude), [Grok (xAI)](#grok-xai), and [Github Copilot](#github-copilot-cli-and-vs-code-agent-plugins).
+8. Coordinate the [VS Code extension](#vs-code-extension) update.
 
 The repo release is complete after the GitHub release is published and the
 Cursor and Claude updates have been submitted. Marketplace approval, marketplace
@@ -65,9 +88,10 @@ exists for the release tag, the workflow skips release creation.
 | [Gemini](#gemini) | The extension gallery picks up the latest GitHub release | None |
 | [Cursor](#cursor) | The Cursor Marketplace publishes the submitted update | Submit the update form |
 | [Claude](#claude) | The Claude plugin directory publishes the submitted update | Submit the update form |
-| [Copilot CLI](#copilot-cli) | Changes are merged to `main` | None |
+| [Copilot (CLI / VS Code agent plugins)](#github-copilot-cli-and-vs-code-agent-plugins) | Custom marketplace: changes merged to `main`. Official marketplace: after the `awesome-copilot` PR is merged | Open or refresh the `github/awesome-copilot` PR (and bump the ref/sha) |
 | [Codex](#codex) | Changes are merged to `main` | None |
-| [VS Code](#vs-code) | The VS Code extension publishes a release with the updated skills | Coordinate the extension update |
+| [Grok (xAI)](#grok-xai) | Custom marketplace: changes merged to `main`. Official catalog: after the upstream PR is merged | Open or refresh the `xai-org/plugin-marketplace` PR (and bump the commit SHA) |
+| [VS Code extension](#vs-code-extension) | The VS Code extension publishes a release with the updated skills | Coordinate the extension update |
 
 #### Gemini
 
@@ -99,14 +123,19 @@ scanned before it is shared in the plugin directory. Submit both the `mongodb` a
 for what to include in the form. If you cannot access that document, stop and
 ask for the required submission details.
 
-#### Copilot CLI
+#### GitHub Copilot (CLI and VS Code agent plugins)
 
-No manual submission is required after the release PR is merged.
+After publishing the GitHub release, open a PR adding `mongodb-atlas` to
+[`github/awesome-copilot`](https://github.com/github/awesome-copilot)'s
+`.github/plugin/marketplace.json`, using a `github` source pinned to the release
+commit:
 
-Copilot CLI users install this plugin from the GitHub repository and pull
-updates with `copilot plugin update mongodb` or `copilot plugin update --all`.
-Copilot CLI can also recognize this repo's `.claude-plugin/marketplace.json` as
-a marketplace manifest.
+```json
+{ "source": "github", "repo": "mongodb/agent-skills", "path": "plugins/mongodb-atlas", "ref": "<release-tag>", "sha": "<commit-sha>" }
+```
+
+Each update bumps the `ref`/`sha`. Only `mongodb-atlas` is published to Copilot,
+not the community `mongodb` plugin.
 
 #### Codex
 
@@ -116,7 +145,14 @@ This repo's Codex marketplace entry points at the GitHub repository with
 `ref: "main"`. Codex does not have a native "latest GitHub release" source
 selector.
 
-#### VS Code
+#### Grok (xAI)
+
+After publishing the GitHub release, open a PR adding the plugins to
+[`xai-org/plugin-marketplace`](https://github.com/xai-org/plugin-marketplace)'s
+`.grok-plugin/marketplace.json`, pinned to the release commit SHA, and regenerate
+its `plugin-index.json`.
+
+#### VS Code extension
 
 The VS Code extension is released from the
 [mongodb-js/vscode](https://github.com/mongodb-js/vscode) repository. To include
