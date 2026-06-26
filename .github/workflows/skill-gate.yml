@@ -5,10 +5,23 @@
 # `skill-gate` commit status. Triggered manually by a maintainer comment so the
 # Grove (LLM) spend is tied to deliberate runs, not every push.
 #
-# Trigger:   comment `/skill-gate` on a PR (authorized users only).
+# Trigger:   comment `/skill-gate` on a PR (OWNER/MEMBER only).
 # Enforce:   the `main` ruleset requires the `skill-gate` status check; this job
 #            posts that status to the PR HEAD sha (see skill-gate-required.yml
-#            for the default-red seed that blocks un-scanned PRs).
+#            for the default seed that blocks un-scanned PRs).
+#
+# Security — privileged trigger + untrusted PR content (accepted risk; this is
+# why the two CodeQL "untrusted-checkout" alerts on the checkout step are
+# dismissed): `issue_comment` is privileged (it carries the Grove key), and the
+# judge stage must read the PR's content, so untrusted content necessarily meets
+# the key in one job — that co-location is unavoidable. We instead foreclose
+# untrusted-code *execution*:
+#   - skill-gate is installed (pinned, trusted) BEFORE the untrusted checkout;
+#   - the checkout is DATA-ONLY: sparse `skills/`, SHA-pinned, persist-credentials
+#     false (no token left in .git/config), and excludes root subdirs (.github, …);
+#   - the only step after the checkout runs the pinned `skill-gate` binary over
+#     markdown as DATA — nothing builds or executes the checked-out code;
+#   - the Grove key is scoped to the scan step's env and only egresses to Grove.
 name: skill-gate
 
 on:
@@ -64,11 +77,9 @@ jobs:
             -f state=pending -f context=skill-gate -f description="Scanning…" \
             -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-      - name: Check out PR head
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          ref: ${{ steps.pr.outputs.head_sha }}
-
+      # Toolchain is set up and skill-gate installed FIRST, while no untrusted
+      # content is on disk — the untrusted checkout happens last, just before the
+      # scan (see the Security note at the top of this file).
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
@@ -84,11 +95,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Written to RUNNER_TEMP so the data-only checkout's clean step (below)
+          # doesn't wipe it from the workspace.
           gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}/files" --paginate \
             --jq '.[].filename' \
-            | grep '^skills/' | cut -d/ -f1-2 | sort -u > changed_skills.txt || true
-          count=$(grep -c . changed_skills.txt || true)
+            | grep '^skills/' | cut -d/ -f1-2 | sort -u > "$RUNNER_TEMP/changed_skills.txt" || true
+          count=$(grep -c . "$RUNNER_TEMP/changed_skills.txt" || true)
           echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out changed skill content (data only)
+        # DATA-ONLY untrusted checkout: SHA-pinned, no persisted token, and a
+        # sparse `skills/` tree (excludes .github/, tools/, etc.). Nothing here is
+        # built or executed — only read as markdown by the pinned binary below.
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          persist-credentials: false
+          sparse-checkout: skills
 
       - name: Run skill-gate (complete scan — static + LLM judge)
         id: scan
@@ -117,7 +140,7 @@ jobs:
             printf '%s\n' "$out"                                             # annotations -> run log / PR Checks
             printf '%s\n' "$out" | grep -v '^::' >> "$GITHUB_STEP_SUMMARY"   # report -> job summary
             [ "$rc" -gt "$worst" ] && worst=$rc
-          done < changed_skills.txt
+          done < "$RUNNER_TEMP/changed_skills.txt"
           # Exit codes: 0 AUTO-PASS, 1 WARN, 2 ESCALATE. Fail closed on anything
           # unexpected (e.g. a judge tool-error returns non-0/1/2).
           echo "verdict_code=$worst" >> "$GITHUB_OUTPUT"
