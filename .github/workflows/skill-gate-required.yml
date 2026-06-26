@@ -1,0 +1,50 @@
+# skill-gate required-check seeder.
+#
+# Manages the DEFAULT state of the required `skill-gate` status check so a PR
+# can't merge until the real scan (skill-gate.yml) has run on the current head:
+#   - PR doesn't touch skills/**  -> success ("not required")
+#   - PR touches skills/**        -> pending ("run /skill-gate")
+# A `pending` required check still blocks merge, but renders neutral (not a red
+# failure) so it isn't off-putting and isn't confused with a real CI failure.
+# Every push (synchronize) re-seeds against the new head sha, so a stale pass on
+# an old commit never satisfies the new head.
+#
+# NOTE (forks): on fork PRs the built-in GITHUB_TOKEN is READ-ONLY, so the
+# statuses POST would be denied. The job-level `if:` below SKIPS fork PRs to
+# avoid a cosmetic errored run. This is NOT a hole: the `skill-gate` required
+# check is then simply unseeded → stays "Expected" → merge blocked by absence,
+# and the ruleset enforces the check independently of this seeder. Fork PRs here
+# are expected to touch skills/** (new/updated skills), so they need a
+# /skill-gate scan regardless.
+name: skill-gate-required
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: read    # read changed files (skills/** detection)
+  statuses: write        # post the default `skill-gate` status
+
+jobs:
+  seed:
+    # Skip fork PRs: the read-only token can't post a status there, and the
+    # required check stays unseeded → blocked by absence (see NOTE above).
+    if: github.event.pull_request.head.repo.fork == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Seed required check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          touched=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate \
+            --jq '.[].filename' | grep -c '^skills/' || true)
+          if [ "${touched:-0}" -eq 0 ]; then
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=success -f context=skill-gate -f description="No skill changes — skill-gate not required"
+          else
+            # pending (not failure): blocks merge but renders neutral, so it
+            # doesn't look like a broken build or drown out real CI failures.
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=pending -f context=skill-gate -f description="Run /skill-gate to scan (required before merge)"
+          fi
