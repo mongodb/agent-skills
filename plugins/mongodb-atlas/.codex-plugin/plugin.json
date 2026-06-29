@@ -18,7 +18,7 @@
         "vector-search"
     ],
     "skills": "./skills/",
-    "apps": "./app.json",
+    "apps": "./.app.json",
     "interface": {
         "displayName": "MongoDB Atlas",
         "shortDescription": "Official MongoDB Atlas plugin: hosted MCP server, skills, and best practices for database workflows.",

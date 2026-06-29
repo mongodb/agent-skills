@@ -7,10 +7,8 @@
         {
             "name": "mongodb",
             "source": {
-                "source": "git-subdir",
-                "url": "https://github.com/mongodb/agent-skills.git",
-                "path": "./plugins/mongodb",
-                "ref": "main"
+                "source": "local",
+                "path": "./plugins/mongodb"
             },
             "policy": {
                 "installation": "AVAILABLE",
@@ -21,10 +19,8 @@
         {
             "name": "mongodb-atlas",
             "source": {
-                "source": "git-subdir",
-                "url": "https://github.com/mongodb/agent-skills.git",
-                "path": "./plugins/mongodb-atlas",
-                "ref": "main"
+                "source": "local",
+                "path": "./plugins/mongodb-atlas"
             },
             "policy": {
                 "installation": "AVAILABLE",

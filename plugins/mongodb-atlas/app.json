@@ -1,7 +1,0 @@
-{
-  "apps": {
-    "mongodb-atlas": {
-      "id": "connector_PLACEHOLDER_REPLACE_WITH_REGISTERED_ATLAS_CONNECTOR_ID"
-    }
-  }
-}

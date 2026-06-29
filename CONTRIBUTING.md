@@ -12,7 +12,7 @@ This repo publishes two plugins from `plugins/`:
   - `mcp.cursor.json` — Cursor (`auth.CLIENT_ID`)
   - `mcp.grok.json` — Grok (`oauth.clientId`)
   - `mcp.copilot.json` — GitHub Copilot / VS Code (`oauth.clientId`, a CIMD URL)
-  - On Codex it points at a connector via `app.json`.
+  - On Codex it points at a connector via `.app.json`.
 
   The pre-registered client IDs the Atlas auth server accepts are defined in the
   [`atlas-iam` OAuth client seed](https://github.com/10gen/atlas-iam/blob/main/system/oauth/cmd/server/seed/client/seed)
@@ -141,9 +141,10 @@ not the community `mongodb` plugin.
 
 No manual submission is required after the release PR is merged.
 
-This repo's Codex marketplace entry points at the GitHub repository with
-`ref: "main"`. Codex does not have a native "latest GitHub release" source
-selector.
+This repo's Codex marketplace is added from the GitHub repository at
+`ref: "main"`, and its plugin entries use local paths relative to that checked
+out marketplace root. Codex does not have a native "latest GitHub release"
+source selector.
 
 #### Grok (xAI)
 
