@@ -118,6 +118,6 @@ db.getSiblingDB("admin").aggregate([
 ])
 
 // High execCount = hot path → design your schema for these queries first
-// Cross reference with avgMS or slow query logs to find queries that are both frequent and slow
+// Cross reference with avgMS or [slow query logs](references/source-slow-query-logs.md) to find queries that are both frequent and slow
 // Note: Query stats do not include write patterns (update, insert)
 ```

@@ -10,6 +10,8 @@ Retrieves log lines for slow queries as determined by the Performance Advisor. U
 - Atlas API credentials configured
 - Performance Advisor enabled (enabled by default on M10+)
 
+If the API call returns auth or access errors, see the [Performance Advisor docs](https://www.mongodb.com/docs/atlas/performance-advisor/).
+
 ## How to use
 
 Atlas Admin API endpoint ([query parameters reference](https://www.mongodb.com/docs/ops-manager/current/reference/api/performance-advisor/get-slow-queries/#request-query-parameters)):
