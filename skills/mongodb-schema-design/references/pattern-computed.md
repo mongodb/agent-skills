@@ -149,12 +149,12 @@ On-demand materialized views are not automatically refreshed—you control when 
 
 ### Find expensive aggregations that should be pre-computed
 
-For Atlas M10+ use slow query logs to find the slowest aggregations (see ./source-slow-query-logs.md). 
+For Atlas M10+ use slow query logs to find the slowest aggregations. See [Slow query logs](references/source-slow-query-logs.md). 
 Use codebase if available, ask the user.
 
 ### Check if same aggregation runs repeatedly
 
-For Atlas M10+ use $queryStats (see ./source-query-stats.md)
+For Atlas M10+ use $queryStats. See [Query Stats](references/source-query-stats.md)
 Use codebase if available, ask the user.
 
 High count + high avgMs on an aggregation that computes a result = candidate for computed pattern

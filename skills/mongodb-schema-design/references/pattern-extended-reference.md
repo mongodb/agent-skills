@@ -66,7 +66,7 @@ Keep both a bare reference (`customerId`) and an optional cache subdocument (`cu
 
 Find lookup-heavy aggregations. See how often lookups hit the same collection. High count = candidate for extended reference
 
-For Atlas M10+ use $queryStats (see ./source-query-stats.md) and slow query logs (see ./source-slow-query-logs.md)
+For Atlas M10+ use $queryStats. See [Query Stats](references/source-query-stats.md) and [Slow query logs](references/source-slow-query-logs.md)
 Use codebase if available, ask the user.
 
 Reference: [Reduce $lookup Operations](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-lookup-operations/)

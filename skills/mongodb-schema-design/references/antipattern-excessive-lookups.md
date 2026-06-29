@@ -54,7 +54,7 @@ When category data changes (a rare event), use `updateMany` to update all produc
 
 ####  Find pipelines with $lookup stages 
 
-For Atlas M10+ use $queryStats (see ./source-query-stats.md)
+For Atlas M10+ use $queryStats. See [Query Stats](references/source-query-stats.md)
 Use codebase if available, ask the user.
 
 ```javascript
