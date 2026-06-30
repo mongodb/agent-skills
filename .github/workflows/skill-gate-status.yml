@@ -16,7 +16,7 @@
 # and the ruleset enforces the check independently of this seeder. Fork PRs here
 # are expected to touch skills/** (new/updated skills), so they need a
 # /skill-gate scan regardless.
-name: skill-gate-required
+name: skill-gate-status
 
 on:
   pull_request:

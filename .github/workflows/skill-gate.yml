@@ -7,7 +7,7 @@
 #
 # Trigger:   comment `/skill-gate` on a PR (OWNER/MEMBER only).
 # Enforce:   the `main` ruleset requires the `skill-gate` status check; this job
-#            posts that status to the PR HEAD sha (see skill-gate-required.yml
+#            posts that status to the PR HEAD sha (see skill-gate-status.yml
 #            for the default seed that blocks un-scanned PRs).
 #
 # Security — privileged trigger + untrusted PR content (accepted risk; this is
