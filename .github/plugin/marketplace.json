@@ -6,15 +6,13 @@
     "url": "https://www.mongodb.com"
   },
   "metadata": {
-    "description": "Official MongoDB plugins for GitHub Copilot and VS Code (MCP Server + Skills).",
-    "version": "1.0.0"
+    "description": "Official MongoDB plugins for GitHub Copilot and VS Code (MCP Server + Skills)."
   },
   "plugins": [
     {
       "name": "mongodb-atlas",
       "source": "./plugins/mongodb-atlas",
       "description": "Official GitHub Copilot plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
-      "version": "1.1.0",
       "homepage": "https://www.mongodb.com/docs/mcp-server/overview/",
       "keywords": [
         "mongodb atlas",

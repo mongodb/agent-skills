@@ -31,8 +31,10 @@ type BumpKind = "major" | "minor" | "patch" | "exact";
 
 // Versioned manifests that live at the repo root and aren't named plugin.json.
 const ROOT_MANIFESTS = ["gemini-extension.json"];
-// Directories never worth descending into when hunting for plugin.json.
-const SKIP_DIRS = new Set(["node_modules", ".git"]);
+// Directories never worth descending into when hunting for plugin.json. skills/
+// and assets/ are large generated copies (see tools/sync-plugin-skills.ts) that
+// never contain a manifest, so skip them rather than walking every copied file.
+const SKIP_DIRS = new Set(["node_modules", ".git", "skills", "assets"]);
 // Targeted, format-preserving edit of just the version value (not a semver parse).
 const VERSION_FIELD_RE = /("version"\s*:\s*")[^"]*(")/;
 

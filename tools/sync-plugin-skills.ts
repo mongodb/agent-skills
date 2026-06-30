@@ -25,7 +25,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 type SkillSelection = "all" | { include: string[] } | { exclude: string[] };
 type PluginsConfig = Record<string, { skills: SkillSelection }>;
@@ -46,10 +46,7 @@ const PLUGINS_DIR = "plugins";
 
 // Never copy these into the published plugin copies.
 const EXCLUDE_NAMES = new Set([".score_cache", ".DS_Store"]);
-const copyFilter = (src: string): boolean => {
-  const name = src.slice(src.lastIndexOf("/") + 1);
-  return !EXCLUDE_NAMES.has(name);
-};
+const copyFilter = (src: string): boolean => !EXCLUDE_NAMES.has(basename(src));
 
 const repoRoot = execSync("git rev-parse --show-toplevel").toString().trim();
 process.chdir(repoRoot);
@@ -72,6 +69,16 @@ function selectSkills(plugin: string, spec: SkillSelection): string[] {
   throw new Error(`[${plugin}] invalid "skills" spec: ${JSON.stringify(spec)}`);
 }
 
+// The skill names a spec explicitly references, for validation. "all" references
+// none. We validate these raw lists (not the post-selection result) so a typo in
+// an exclude list fails loudly instead of being silently ignored.
+function referencedSkills(spec: SkillSelection): string[] {
+  if (spec === "all") return [];
+  if ("include" in spec) return spec.include;
+  if ("exclude" in spec) return spec.exclude;
+  return [];
+}
+
 let totalErrors = 0;
 for (const [plugin, cfg] of Object.entries(PLUGINS)) {
   const pluginDir = join(PLUGINS_DIR, plugin);
@@ -81,13 +88,14 @@ for (const [plugin, cfg] of Object.entries(PLUGINS)) {
     continue;
   }
 
-  const selected = selectSkills(plugin, cfg.skills);
-  const unknown = selected.filter((s) => !canonicalSkills.includes(s));
+  const unknown = referencedSkills(cfg.skills).filter((s) => !canonicalSkills.includes(s));
   if (unknown.length > 0) {
     console.error(`[${plugin}] unknown skills: ${unknown.join(", ")}`);
     totalErrors++;
     continue;
   }
+
+  const selected = selectSkills(plugin, cfg.skills);
 
   // Regenerate skills/.
   const destSkills = join(pluginDir, SKILLS_SRC);
