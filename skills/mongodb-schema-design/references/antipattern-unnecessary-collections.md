@@ -83,7 +83,7 @@ for (const d of db.adminCommand({ listDatabases: 1 }).databases) {
 
 ### Check if collections are always accessed together.
 
-For Atlas M10+ use $queryStats (see ./source-query-stats.md)
+For Atlas M10+ use $queryStats. See [Query Stats](references/source-query-stats.md)
 Use codebase if available, ask the user.
 
 Atlas Schema Suggestions flags: "Reduce number of collections"
