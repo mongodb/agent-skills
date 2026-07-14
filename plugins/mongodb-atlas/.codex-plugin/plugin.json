@@ -22,7 +22,7 @@
     "interface": {
         "displayName": "MongoDB Atlas",
         "shortDescription": "Connect to MongoDB Atlas clusters via the Atlas Managed MCP Server to explore data, manage resources, and generate best-practice code.",
-        "longDescription": "Connect to MongoDB Atlas clusters only through the Atlas Managed MCP Server. Sign in with your Atlas account to explore data, manage collections, optimize queries, generate reliable code with MongoDB best practices, and manage Atlas resources such as clusters, projects, database users, and network access.\n\nIf you are running a different MongoDB deployment or want to run a local MongoDB MCP Server, install the MongoDB (Self-Managed MCP) plugin instead.",
+        "longDescription": "Connect to MongoDB Atlas clusters only through the Atlas Managed MCP Server. Sign in with your Atlas account to explore data, manage collections, optimize queries, generate reliable code with MongoDB best practices, and manage Atlas resources such as clusters, projects, database users, and network access.",
         "developerName": "MongoDB",
         "category": "Databases",
         "capabilities": [
