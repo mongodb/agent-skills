@@ -2,25 +2,15 @@
   "name": "mongodb-plugins",
   "owner": {
     "name": "MongoDB",
-    "email": "agent-plugins@mongodb.com",
-    "url": "https://www.mongodb.com"
+    "email": "agent-plugins@mongodb.com"
   },
   "metadata": {
-    "description": "Official MongoDB plugins for GitHub Copilot and VS Code (MCP Server + Skills)."
+    "description": "Official MongoDB plugins for GitHub Copilot and VS Code"
   },
   "plugins": [
     {
       "name": "mongodb-atlas",
-      "source": "./plugins/mongodb-atlas",
-      "description": "Official GitHub Copilot plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
-      "homepage": "https://www.mongodb.com/docs/mcp-server/overview/",
-      "keywords": [
-        "mongodb atlas",
-        "atlas",
-        "mongodb",
-        "atlas search",
-        "atlas vector search"
-      ]
+      "source": "./plugins/mongodb-atlas"
     }
   ]
 }

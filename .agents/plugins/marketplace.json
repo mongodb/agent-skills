@@ -1,7 +1,7 @@
 {
-    "name": "mongodb-agent-skills",
+    "name": "mongodb-plugins",
     "interface": {
-        "displayName": "MongoDB Agent Skills"
+        "displayName": "MongoDB Plugins"
     },
     "plugins": [
         {

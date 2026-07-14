@@ -6,12 +6,12 @@ This repo publishes two plugins from `plugins/`:
 
 - `plugins/mongodb/` — the community plugin (local `npx` MCP server).
 - `plugins/mongodb-atlas/` — the Atlas plugin (MongoDB-hosted HTTP MCP server).
-  Its OAuth client ID and config syntax differ per client, so it ships one MCP
-  config per client:
-  - `mcp.claude.json` — Claude (`oauth.clientId`, a CIMD URL)
-  - `mcp.cursor.json` — Cursor (`auth.CLIENT_ID`)
-  - `mcp.grok.json` — Grok (`oauth.clientId`)
-  - `mcp.copilot.json` — GitHub Copilot / VS Code (`oauth.clientId`, a CIMD URL)
+  Its OAuth client ID and config syntax differ per client, so each client's
+  `plugin.json` inlines its own `mcpServers` config:
+  - `.claude-plugin/plugin.json` — Claude (`oauth.clientId`, a CIMD URL)
+  - `.cursor-plugin/plugin.json` — Cursor (`auth.CLIENT_ID`)
+  - `.grok-plugin/plugin.json` — Grok (`oauth.clientId`)
+  - `.github/plugin/plugin.json` — GitHub Copilot / VS Code (`oauth.clientId`, a CIMD URL)
   - On Codex it points at a connector via `.app.json`.
 
   The pre-registered client IDs the Atlas auth server accepts are defined in the
@@ -19,8 +19,8 @@ This repo publishes two plugins from `plugins/`:
   (private; MongoDB employees only).
 
 Each plugin is published to several ecosystems, and each looks for its catalog
-index and per-plugin manifest in a different location. The same `skills/` and MCP
-configs back all of them:
+index and per-plugin manifest in a different location. The same `skills/` content
+backs all of them:
 
 | Ecosystem | Plugins listed | Marketplace index | Per-plugin manifest |
 | --- | --- | --- | --- |

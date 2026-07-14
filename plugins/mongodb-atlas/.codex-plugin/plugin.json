@@ -1,7 +1,7 @@
 {
     "name": "mongodb-atlas",
-    "version": "1.1.0",
-    "description": "Official Codex plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+    "version": "1.2.0",
+    "description": "Connect to MongoDB Atlas clusters only through the Atlas Managed MCP Server. Sign in with your Atlas account to explore data, manage collections, optimize queries, generate reliable code with MongoDB best practices, and manage Atlas resources such as clusters, projects, database users, and network access.\n\nIf you are running a different MongoDB deployment or want to run a local MongoDB MCP Server, install the MongoDB (Self-Managed MCP) plugin instead.",
     "author": {
         "name": "MongoDB",
         "email": "agent-plugins@mongodb.com",
@@ -20,12 +20,15 @@
     "skills": "./skills/",
     "apps": "./.app.json",
     "interface": {
-        "displayName": "MongoDB Atlas",
+        "displayName": "MongoDB Atlas (Managed MCP)",
         "shortDescription": "Official MongoDB Atlas plugin: hosted MCP server, skills, and best practices for database workflows.",
-        "longDescription": "The official MongoDB Atlas plugin connects your agent to the MongoDB-hosted Atlas MCP server and bundles a curated set of agent skills covering query writing, query optimization, schema design, Atlas Search and Vector Search, connection best practices, and Atlas Stream Processing. It gives your agent the tools and knowledge to work with MongoDB Atlas, explore data, generate reliable code, and implement MongoDB best practices end to end.",
+        "longDescription": "Connect to MongoDB Atlas clusters only through the Atlas Managed MCP Server. Sign in with your Atlas account to explore data, manage collections, optimize queries, generate reliable code with MongoDB best practices, and manage Atlas resources such as clusters, projects, database users, and network access.\n\nIf you are running a different MongoDB deployment or want to run a local MongoDB MCP Server, install the MongoDB (Self-Managed MCP) plugin instead.",
         "developerName": "MongoDB",
         "category": "Databases",
-        "capabilities": ["Read", "Write"],
+        "capabilities": [
+            "Read",
+            "Write"
+        ],
         "websiteURL": "https://www.mongodb.com",
         "privacyPolicyURL": "https://www.mongodb.com/legal/privacy/privacy-policy",
         "defaultPrompt": [

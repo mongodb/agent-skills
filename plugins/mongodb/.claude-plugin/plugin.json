@@ -1,7 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "mongodb",
-  "version": "1.1.0",
-  "description": "Official Claude plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+  "displayName": "MongoDB (Self-Managed MCP)",
+  "version": "1.2.0",
+  "description": "Connect to any MongoDB deployment (Community, Enterprise Advanced, local dev container via Atlas CLI or Atlas clusters) through a self-managed MongoDB MCP Server using your connection string. Explore data, manage collections, optimize queries, and generate reliable code with MongoDB best practices.",
   "author": {
     "name": "MongoDB",
     "email": "agent-plugins@mongodb.com",

@@ -1,10 +1,9 @@
 {
   "name": "mongodb-plugins",
-  "description": "Official MongoDB plugins for Grok (MCP Server + Skills).",
+  "description": "Official MongoDB plugins for Grok",
   "owner": {
     "name": "MongoDB",
-    "email": "agent-plugins@mongodb.com",
-    "url": "https://www.mongodb.com"
+    "email": "agent-plugins@mongodb.com"
   },
   "plugins": [
     {
@@ -12,44 +11,14 @@
       "source": {
         "type": "local",
         "path": "./plugins/mongodb"
-      },
-      "description": "Official Grok plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
-      "category": "database",
-      "homepage": "https://www.mongodb.com/docs/mcp-server/overview/",
-      "keywords": [
-        "mongodb",
-        "mongo",
-        "mongosh",
-        "mongodb atlas",
-        "mongoose"
-      ],
-      "domains": [
-        "mongodb.com",
-        "cloud.mongodb.com",
-        "mcp.mongodb.com"
-      ]
+      }
     },
     {
       "name": "mongodb-atlas",
       "source": {
         "type": "local",
         "path": "./plugins/mongodb-atlas"
-      },
-      "description": "Official Grok plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
-      "category": "database",
-      "homepage": "https://www.mongodb.com/docs/mcp-server/overview/",
-      "keywords": [
-        "mongodb atlas",
-        "atlas",
-        "mongodb",
-        "atlas search",
-        "atlas vector search"
-      ],
-      "domains": [
-        "mongodb.com",
-        "cloud.mongodb.com",
-        "mcp.mongodb.com"
-      ]
+      }
     }
   ]
 }
