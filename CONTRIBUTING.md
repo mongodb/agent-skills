@@ -36,12 +36,12 @@ Copilot/VS Code even accept `.claude-plugin/` files as a fallback, so the
 dedicated `.github/plugin/marketplace.json` is what keeps Copilot scoped to
 `mongodb-atlas` only.
 
-Antigravity is the exception to the shared format: it has no
-marketplace index and its `.agy-plugin/plugin.json`. It discovers the MCP config
-and skills by folder convention — `.agy-plugin/mcp_config.json` and
-`.agy-plugin/skills/` — rather than the `mcpServers`/`skills` manifest fields
-the other clients use. Because it treats `.agy-plugin/` as the plugin root,
-that folder needs its own physical `skills/` copy.
+Antigravity has no plugin marketplace. It discovers the MCP config
+and skills by folder convention — `.agy-plugin/mcp_config.json`
+and `.agy-plugin/skills/` — rather than the `mcpServers`/`skills`
+manifest fields the other clients use. Because it treats
+`.agy-plugin/` as the plugin root, that folder needs its own
+physical `skills/` copy.
 
 The repo-root `skills/` directory is the canonical source of truth for all skill
 content. Each plugin ships its own committed copy under `plugins/<name>/skills/`,
