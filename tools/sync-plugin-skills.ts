@@ -97,15 +97,24 @@ for (const [plugin, cfg] of Object.entries(PLUGINS)) {
 
   const selected = selectSkills(plugin, cfg.skills);
 
-  // Regenerate skills/.
-  const destSkills = join(pluginDir, SKILLS_SRC);
-  rmSync(destSkills, { recursive: true, force: true });
-  mkdirSync(destSkills, { recursive: true });
-  for (const skill of selected) {
-    cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
-      recursive: true,
-      filter: copyFilter,
-    });
+  // Regenerate skills/
+  const destSkillsDirs = [join(pluginDir, SKILLS_SRC)];
+  const agyPluginDir = join(pluginDir, ".agy-plugin");
+  if (!existsSync(agyPluginDir)) {
+    console.error(`[${plugin}] .agy-plugin directory not found: ${agyPluginDir}`);
+    totalErrors++;
+    continue;
+  }
+  destSkillsDirs.push(join(agyPluginDir, SKILLS_SRC));
+  for (const destSkills of destSkillsDirs) {
+    rmSync(destSkills, { recursive: true, force: true });
+    mkdirSync(destSkills, { recursive: true });
+    for (const skill of selected) {
+      cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
+        recursive: true,
+        filter: copyFilter,
+      });
+    }
   }
 
   // Regenerate assets/.

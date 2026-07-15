@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "mongodb-atlas": {
+            "serverUrl": "https://mcp.mongodb.com/",
+            "oauth": {
+                "clientId": "google-antigravity"
+            }
+        }
+    }
+}
