@@ -100,9 +100,12 @@ for (const [plugin, cfg] of Object.entries(PLUGINS)) {
   // Regenerate skills/
   const destSkillsDirs = [join(pluginDir, SKILLS_SRC)];
   const agyPluginDir = join(pluginDir, ".agy-plugin");
-  if (existsSync(agyPluginDir)) {
-    destSkillsDirs.push(join(agyPluginDir, SKILLS_SRC));
+  if (!existsSync(agyPluginDir)) {
+    console.error(`[${plugin}] .agy-plugin directory not found: ${agyPluginDir}`);
+    totalErrors++;
+    continue;
   }
+  destSkillsDirs.push(join(agyPluginDir, SKILLS_SRC));
   for (const destSkills of destSkillsDirs) {
     rmSync(destSkills, { recursive: true, force: true });
     mkdirSync(destSkills, { recursive: true });
