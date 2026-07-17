@@ -21,7 +21,7 @@
   "skills": "./skills/",
   "mcpServers": {
     "mongodb-atlas": {
-      "url": "https://mcp.mongodb.com/",
+      "url": "https://mcp-dev.mongodb.com/",
       "auth": {
         "CLIENT_ID": "anysphere-cursor"
       }

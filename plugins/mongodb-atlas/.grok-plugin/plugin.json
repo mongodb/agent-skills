@@ -21,7 +21,7 @@
   "mcpServers": {
     "mongodb-atlas": {
       "type": "http",
-      "url": "https://mcp.mongodb.com/",
+      "url": "https://mcp-dev.mongodb.com/",
       "oauth": {
         "clientId": "xai-grok-cli"
       }

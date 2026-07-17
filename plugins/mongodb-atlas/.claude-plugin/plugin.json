@@ -23,7 +23,7 @@
   "mcpServers": {
     "mongodb-atlas": {
       "type": "http",
-      "url": "https://mcp.mongodb.com/",
+      "url": "https://mcp-dev.mongodb.com/",
       "oauth": {
         "clientId": "https://claude.ai/oauth/claude-code-client-metadata"
       }
