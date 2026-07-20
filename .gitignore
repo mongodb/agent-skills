@@ -5,4 +5,7 @@
 .claude/settings.local.json
 .score_cache/
 
+# Node tooling dependencies
+node_modules/
+
 .DS_Store

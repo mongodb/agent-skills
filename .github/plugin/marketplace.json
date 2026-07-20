@@ -1,0 +1,16 @@
+{
+  "name": "mongodb-plugins",
+  "owner": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com"
+  },
+  "metadata": {
+    "description": "Official MongoDB plugins for GitHub Copilot and VS Code"
+  },
+  "plugins": [
+    {
+      "name": "mongodb-atlas",
+      "source": "./plugins/mongodb-atlas"
+    }
+  ]
+}

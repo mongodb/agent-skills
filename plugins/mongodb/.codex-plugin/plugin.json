@@ -1,0 +1,43 @@
+{
+    "name": "mongodb",
+    "version": "1.2.0",
+    "description": "Connect to any MongoDB deployment (Community, Enterprise Advanced, local dev container via Atlas CLI or Atlas clusters) through a self-managed MongoDB MCP Server using your connection string. Explore data, manage collections, optimize queries, and generate reliable code with MongoDB best practices.",
+    "author": {
+        "name": "MongoDB",
+        "email": "agent-plugins@mongodb.com",
+        "url": "https://www.mongodb.com"
+    },
+    "homepage": "https://www.mongodb.com/docs/mcp-server/get-started/",
+    "repository": "https://github.com/mongodb/agent-skills",
+    "license": "Apache-2.0",
+    "keywords": [
+        "mongodb",
+        "database",
+        "mcp",
+        "vector-search"
+    ],
+    "skills": "./skills/",
+    "mcpServers": "./mcp.json",
+    "interface": {
+        "displayName": "MongoDB (Self-Managed MCP)",
+        "shortDescription": "Official MongoDB plugin: MCP server, skills, and best practices for database workflows.",
+        "longDescription": "Connect to any MongoDB deployment (Community, Enterprise Advanced, local dev container via Atlas CLI or Atlas clusters) through a self-managed MongoDB MCP Server using your connection string. Explore data, manage collections, optimize queries, and generate reliable code with MongoDB best practices.",
+        "developerName": "MongoDB",
+        "category": "Databases",
+        "capabilities": [
+            "Read",
+            "Write"
+        ],
+        "websiteURL": "https://www.mongodb.com",
+        "privacyPolicyURL": "https://www.mongodb.com/legal/privacy/privacy-policy",
+        "defaultPrompt": [
+            "Set up my MongoDB connection using the mongodb-mcp-setup skill.",
+            "Connect to my MongoDB database and explore its collections.",
+            "Write a MongoDB aggregation pipeline to analyze my data.",
+            "Optimize the slow queries in my MongoDB deployment.",
+            "Design a MongoDB schema for my use case."
+        ],
+        "logo": "./assets/logo.png",
+        "brandColor": "#00ED64"
+    }
+}

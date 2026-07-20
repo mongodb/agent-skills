@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "mongodb-atlas",
+  "displayName": "MongoDB Atlas (Managed MCP)",
+  "version": "1.2.0",
+  "description": "Connect to MongoDB Atlas clusters only through the Atlas Managed MCP Server. Sign in with your Atlas account to explore data, manage collections, optimize queries, generate reliable code with MongoDB best practices, and manage Atlas resources such as clusters, projects, database users, and network access.\n\nIf you are running a different MongoDB deployment or want to run a local MongoDB MCP Server, install the MongoDB (Self-Managed MCP) plugin instead.",
+  "author": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com",
+    "url": "https://www.mongodb.com"
+  },
+  "homepage": "https://www.mongodb.com/docs/mcp-server/get-started/",
+  "repository": "https://github.com/mongodb/agent-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mongodb",
+    "atlas",
+    "database",
+    "mcp",
+    "vector-search"
+  ],
+  "skills": "./skills/",
+  "mcpServers": {
+    "mongodb-atlas": {
+      "type": "http",
+      "url": "https://mcp-dev.mongodb.com/",
+      "oauth": {
+        "clientId": "https://claude.ai/oauth/claude-code-client-metadata"
+      }
+    }
+  }
+}
