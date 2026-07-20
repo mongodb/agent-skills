@@ -22,7 +22,7 @@
   "mcpServers": {
     "mongodb-atlas": {
       "type": "http",
-      "url": "https://mcp-dev.mongodb.com/",
+      "url": "https://mcp.mongodb.com/",
       "oauth": {
         "clientId": "https://vscode.dev/oauth/client-metadata.json"
       }
