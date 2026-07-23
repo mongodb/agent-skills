@@ -97,6 +97,41 @@
         "Suggests a compound index for the high-value branch's $match on total and createdAt"
       ],
       "_note": "Requires live Atlas cluster with perftest data from setup-slow-queries.ts. The $facet → $unionWith optimization is specific skill knowledge that differentiates from base LLM advice."
+    },
+    {
+      "id": 20,
+      "name": "esr-compound-index-type-then-ts",
+      "prompt": "Queries against the `sample` database, `events` collection filter by an exact `type` and return the most recent matching events first (sorted by `ts` descending). They are slow. Create the single most appropriate index so these queries are served entirely by the index — both the equality filter and the sort — with no in-memory sort stage and without scanning documents that do not match the filter. Use the MongoDB MCP server tools directly to inspect the data and create the index — do not delegate to a subagent, and do not ask for confirmation before creating it.",
+      "expectations": [
+        "Uses the MongoDB MCP server to inspect the collection and diagnose the slow query",
+        "Creates a compound index with the equality field (type) before the sort field (ts) — applies the ESR rule",
+        "Avoids an in-memory sort and avoids scanning non-matching documents"
+      ],
+      "seed": "seeded_events",
+      "functional_check": {
+        "type": "explain",
+        "database": "sample",
+        "collection": "events",
+        "filter": {
+          "type": "purchase"
+        },
+        "sort": {
+          "ts": -1
+        },
+        "require_ixscan": true,
+        "forbid_in_memory_sort": true,
+        "max_docs_examined_ratio": 1.1
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "type": "called",
+          "match": {
+            "any_mcp": true
+          },
+          "critical": true
+        }
+      ]
     }
   ]
 }
