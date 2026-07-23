@@ -24,6 +24,6 @@ jobs:
         with:
           node-version: "20"
       - name: Install validator deps
-        run: npm install --prefix testing --no-audit --no-fund
+        run: npm ci --prefix testing --no-audit --no-fund
       - name: Validate eval cases against schema
         run: node testing/validate-evals.mjs
