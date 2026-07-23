@@ -1,0 +1,29 @@
+name: Validate Eval Cases
+
+# Schema-validate testing/<skill>/evals/evals.json against testing/evals.schema.json so a
+# malformed eval case (incl. the optional functional_check / trajectory_checks fields) fails
+# where it's authored, not later in the QA harness. Scoped to testing/** so it only runs when
+# eval cases or the schema change.
+on:
+  pull_request:
+    paths:
+      - "testing/**/evals/evals.json"
+      - "testing/evals.schema.json"
+      - "testing/validate-evals.mjs"
+      - "testing/package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-eval-cases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install validator deps
+        run: npm install --prefix testing --no-audit --no-fund
+      - name: Validate eval cases against schema
+        run: node testing/validate-evals.mjs

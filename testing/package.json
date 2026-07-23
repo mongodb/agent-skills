@@ -1,0 +1,13 @@
+{
+  "name": "agent-skills-testing",
+  "private": true,
+  "type": "module",
+  "description": "Shared test tooling for agent-skills evals (schema validation of evals.json).",
+  "scripts": {
+    "validate:evals": "node validate-evals.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "glob": "^11.0.0"
+  }
+}
