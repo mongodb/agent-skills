@@ -4,7 +4,10 @@
   "title": "Agent-skills QA eval cases (extended)",
   "description": "Schema for agent-skills/testing/<skill>/evals/evals.json. Extends the current judge-only shape (prompt/expected_output/expectations/files) with OPTIONAL functional-grading fields (seed, functional_check, trajectory_checks) so the QA harness can grade against a real MongoDB. All functional fields are optional and additive: existing knowledge-only cases validate unchanged. Fixtures referenced by `seed` live in the sibling `fixtures/` directory as deterministic <seed-name>.js scripts.",
   "type": "object",
-  "required": ["skill_name", "evals"],
+  "required": [
+    "skill_name",
+    "evals"
+  ],
   "additionalProperties": false,
   "properties": {
     "skill_name": {
@@ -15,16 +18,22 @@
     "evals": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/case" }
+      "items": {
+        "$ref": "#/$defs/case"
+      }
     }
   },
   "$defs": {
     "case": {
       "type": "object",
-      "required": ["id"],
+      "required": [
+        "id"
+      ],
       "additionalProperties": false,
       "patternProperties": {
-        "^_": { "description": "Author comment key (e.g. _note); ignored by the harness." }
+        "^_": {
+          "description": "Author comment key (e.g. _note); ignored by the harness."
+        }
       },
       "description": "One test case. Single-turn cases use `prompt`; multi-turn cases use `workflow`.",
       "properties": {
@@ -32,7 +41,10 @@
           "type": "integer",
           "description": "Stable case id (unique within the skill; used to correlate results across runs)."
         },
-        "name": { "type": "string", "description": "Optional human-readable case label." },
+        "name": {
+          "type": "string",
+          "description": "Optional human-readable case label."
+        },
         "prompt": {
           "type": "string",
           "description": "The task given to the agent (single-turn). Required unless `workflow` is present."
@@ -43,11 +55,19 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["turn", "prompt"],
+            "required": [
+              "turn",
+              "prompt"
+            ],
             "additionalProperties": false,
             "properties": {
-              "turn": { "type": "integer", "minimum": 1 },
-              "prompt": { "type": "string" }
+              "turn": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "prompt": {
+                "type": "string"
+              }
             }
           }
         },
@@ -58,49 +78,98 @@
         "expectations": {
           "type": "array",
           "description": "Skill-level checkable criteria. Judge target when present and no per-case metadata assertions exist.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "files": {
           "type": "array",
           "description": "Relative paths (under the evals dir) of asset files inlined into the prompt.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "seed": {
           "type": "string",
           "description": "Names a DB fixture in the sibling fixtures/ dir (fixtures/<seed>.js), applied to the sandbox MongoDB before the agent runs. 'clean_slate' = empty DB (no fixture file). Required for any functional_check that reads real data.",
           "pattern": "^[a-z0-9_]+$"
         },
-        "functional_check": { "$ref": "#/$defs/functional_check" },
+        "functional_check": {
+          "$ref": "#/$defs/functional_check"
+        },
         "trajectory_checks": {
           "type": "array",
           "description": "Deterministic tool-use assertions on the agent's trajectory.",
-          "items": { "$ref": "#/$defs/trajectory_check" }
+          "items": {
+            "$ref": "#/$defs/trajectory_check"
+          }
         }
       },
       "oneOf": [
-        { "required": ["prompt"], "not": { "required": ["workflow"] } },
-        { "required": ["workflow"], "not": { "required": ["prompt"] } }
+        {
+          "required": [
+            "prompt"
+          ],
+          "not": {
+            "required": [
+              "workflow"
+            ]
+          }
+        },
+        {
+          "required": [
+            "workflow"
+          ],
+          "not": {
+            "required": [
+              "prompt"
+            ]
+          }
+        }
       ]
     },
-
     "functional_check": {
       "type": "object",
       "description": "Grades the agent's produced query/index against the seeded DB by RE-EXECUTING it (not trusting the agent's text). Discriminated by `type`.",
-      "required": ["type", "database", "collection"],
+      "required": [
+        "type",
+        "database",
+        "collection"
+      ],
       "properties": {
-        "type": { "enum": ["aggregation", "index", "explain"] },
-        "database": { "type": "string" },
-        "collection": { "type": "string" }
+        "type": {
+          "enum": [
+            "aggregation",
+            "index",
+            "explain"
+          ]
+        },
+        "database": {
+          "type": "string"
+        },
+        "collection": {
+          "type": "string"
+        }
       },
       "oneOf": [
         {
-          "title": "aggregation — re-run the agent's pipeline, compare returned docs",
-          "required": ["type", "artifact", "expected"],
+          "title": "aggregation \u2014 re-run the agent's pipeline, compare returned docs",
+          "required": [
+            "type",
+            "artifact",
+            "expected"
+          ],
           "additionalProperties": false,
           "properties": {
-            "type": { "const": "aggregation" },
-            "database": { "type": "string" },
-            "collection": { "type": "string" },
+            "type": {
+              "const": "aggregation"
+            },
+            "database": {
+              "type": "string"
+            },
+            "collection": {
+              "type": "string"
+            },
             "artifact": {
               "type": "string",
               "description": "Path the agent writes its JSON pipeline array to, e.g. /workspace/pipeline.json."
@@ -108,12 +177,16 @@
             "expected": {
               "type": "array",
               "description": "Expected result documents (subset of fields compared).",
-              "items": { "type": "object" }
+              "items": {
+                "type": "object"
+              }
             },
             "compare_fields": {
               "type": "array",
               "description": "If set, compare only these keys of each doc.",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "ordered": {
               "type": "boolean",
@@ -123,32 +196,64 @@
           }
         },
         {
-          "title": "index — assert an index with the expected key exists",
-          "required": ["type", "expected_key"],
+          "title": "index \u2014 assert an index with the expected key exists",
+          "required": [
+            "type",
+            "expected_key"
+          ],
           "additionalProperties": false,
           "properties": {
-            "type": { "const": "index" },
-            "database": { "type": "string" },
-            "collection": { "type": "string" },
+            "type": {
+              "const": "index"
+            },
+            "database": {
+              "type": "string"
+            },
+            "collection": {
+              "type": "string"
+            },
             "expected_key": {
-              "description": "An index key spec, OR a list of acceptable specs (any match passes — e.g. an ESR index and its reverse-scan inverse).",
+              "description": "An index key spec, OR a list of acceptable specs (any match passes \u2014 e.g. an ESR index and its reverse-scan inverse).",
               "oneOf": [
-                { "type": "object" },
-                { "type": "array", "items": { "type": "object" }, "minItems": 1 }
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  },
+                  "minItems": 1
+                }
               ]
             }
           }
         },
         {
-          "title": "explain — grade the query PLAN (robust to which optimal index was built)",
-          "required": ["type", "filter"],
+          "title": "explain \u2014 grade the query PLAN (robust to which optimal index was built)",
+          "required": [
+            "type",
+            "filter"
+          ],
           "additionalProperties": false,
           "properties": {
-            "type": { "const": "explain" },
-            "database": { "type": "string" },
-            "collection": { "type": "string" },
-            "filter": { "type": "object", "description": "Query predicate for explain()." },
-            "sort": { "type": "object", "description": "Optional sort spec." },
+            "type": {
+              "const": "explain"
+            },
+            "database": {
+              "type": "string"
+            },
+            "collection": {
+              "type": "string"
+            },
+            "filter": {
+              "type": "object",
+              "description": "Query predicate for explain()."
+            },
+            "sort": {
+              "type": "object",
+              "description": "Optional sort spec."
+            },
             "require_ixscan": {
               "type": "boolean",
               "default": true,
@@ -168,7 +273,6 @@
         }
       ]
     },
-
     "matcher": {
       "type": "object",
       "description": "Selects tool calls in the trajectory. Combine fields (all must hold).",
@@ -186,52 +290,110 @@
         "where": {
           "type": "object",
           "description": "Param equalities the call's arguments must satisfy (path -> value)."
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Require the matched call's joined result to have succeeded (true) or failed (false). Implied by type=called_successfully."
         }
       }
     },
-
     "trajectory_check": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "description": "A mechanical tool-use assertion. `critical: true` gates the score; non-critical are recorded only.",
       "properties": {
-        "id": { "type": "string" },
-        "critical": { "type": "boolean", "default": false },
-        "type": { "enum": ["called", "absent", "order", "param"] }
+        "id": {
+          "type": "string"
+        },
+        "critical": {
+          "type": "boolean",
+          "default": false
+        },
+        "type": {
+          "enum": [
+            "called",
+            "absent",
+            "order",
+            "param",
+            "called_successfully"
+          ],
+          "description": "called = the call was ATTEMPTED (passes even if it errored); called_successfully = the call was attempted AND returned without error. Prefer called_successfully for any gating check: counting attempts is what false-passed the AXP MCP investigation, where every mcp__mongodb__* call returned 'No such tool available' yet attempt-counting looked healthy."
+        }
       },
       "oneOf": [
         {
-          "title": "called / absent — a matching call must be present / absent",
-          "required": ["type", "match"],
+          "title": "called / absent \u2014 a matching call must be present / absent",
+          "required": [
+            "type",
+            "match"
+          ],
           "additionalProperties": false,
           "properties": {
-            "id": { "type": "string" },
-            "critical": { "type": "boolean" },
-            "type": { "enum": ["called", "absent"] },
-            "match": { "$ref": "#/$defs/matcher" }
+            "id": {
+              "type": "string"
+            },
+            "critical": {
+              "type": "boolean"
+            },
+            "type": {
+              "enum": [
+                "called",
+                "absent"
+              ]
+            },
+            "match": {
+              "$ref": "#/$defs/matcher"
+            }
           }
         },
         {
-          "title": "order — every `first` match precedes every `then` match",
-          "required": ["type", "first", "then"],
+          "title": "order \u2014 every `first` match precedes every `then` match",
+          "required": [
+            "type",
+            "first",
+            "then"
+          ],
           "additionalProperties": false,
           "properties": {
-            "id": { "type": "string" },
-            "critical": { "type": "boolean" },
-            "type": { "const": "order" },
-            "first": { "$ref": "#/$defs/matcher" },
-            "then": { "$ref": "#/$defs/matcher" }
+            "id": {
+              "type": "string"
+            },
+            "critical": {
+              "type": "boolean"
+            },
+            "type": {
+              "const": "order"
+            },
+            "first": {
+              "$ref": "#/$defs/matcher"
+            },
+            "then": {
+              "$ref": "#/$defs/matcher"
+            }
           }
         },
         {
-          "title": "param — the matched call's arguments satisfy `match.where`",
-          "required": ["type", "match"],
+          "title": "param \u2014 the matched call's arguments satisfy `match.where`",
+          "required": [
+            "type",
+            "match"
+          ],
           "additionalProperties": false,
           "properties": {
-            "id": { "type": "string" },
-            "critical": { "type": "boolean" },
-            "type": { "const": "param" },
-            "match": { "$ref": "#/$defs/matcher" }
+            "id": {
+              "type": "string"
+            },
+            "critical": {
+              "type": "boolean"
+            },
+            "type": {
+              "const": "param"
+            },
+            "match": {
+              "$ref": "#/$defs/matcher"
+            }
           }
         }
       ]
