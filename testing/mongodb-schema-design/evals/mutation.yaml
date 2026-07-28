@@ -1,0 +1,23 @@
+# Per-skill mutation battery config — see mongodb-query-optimizer/mutation.yaml for the
+# full rationale (config, not code; every `find` string verified against the live file).
+#
+# schema-design's core principle is "data accessed together is stored together", so
+# inverting the embed/reference decision inverts the whole skill rather than a detail.
+inversions:
+  - find: "Reference only when you must."
+    replace: "Embed only when you must; reference by default."
+    target_file: SKILL.md
+  - find: >-
+      embed when data is always accessed together (1:1, 1:few, bounded arrays, atomic
+      updates needed); reference when data is accessed independently, relationships are
+      many-to-many, or arrays can grow without bound
+    replace: >-
+      reference when data is always accessed together (1:1, 1:few, bounded arrays, atomic
+      updates needed); embed when data is accessed independently, relationships are
+      many-to-many, or arrays can grow without bound
+    target_file: SKILL.md
+
+# The reference whose removal should hurt most. Without this, drop_reference takes the
+# alphabetically-first file, which for schema-design is an antipattern doc rather than the
+# fundamental the cases actually turn on.
+key_reference: fundamental-embed-vs-reference.md

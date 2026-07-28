@@ -1,0 +1,26 @@
+# Per-skill mutation battery config for mutate_skill.py's `invert_rule` operator and
+# `drop_reference`'s target choice. Lives here (config) rather than hardcoded in shared
+# harness Python, so adding/updating a skill's mutation battery is a data change, not a code
+# change -- authored the same way evals.yaml is.
+#
+# Every `find` string here must be VERIFIED against the live skill file: a guessed string
+# silently yields a no-op mutant. mutate_skill.py raises on a miss rather than pretending, so
+# a bad entry here fails loudly the first time the battery runs, not silently.
+#
+# Note the target files: the actual ESR rule lives in references/core-indexing-principles.md,
+# not SKILL.md, which only alludes to it. Inverting only SKILL.md would leave the real rule
+# intact and understate detectability.
+inversions:
+  - find: "**Equality → Sort → Range** order is most often preferred"
+    replace: "**Range → Sort → Equality** order is most often preferred"
+    target_file: references/core-indexing-principles.md
+  - find: "following ESR (two equality fields, then sort)"
+    replace: "following SRE (sort field first, then equality fields)"
+    target_file: SKILL.md
+  - find: "Prefer creating an index that fully covers the query if possible"
+    replace: "Avoid compound indexes; prefer a single-field index on one filter field"
+    target_file: SKILL.md
+
+# The reference whose removal should hurt most. Without this, drop_reference takes the
+# alphabetically-first file, which may not be the fundamental the cases actually turn on.
+key_reference: core-indexing-principles.md
