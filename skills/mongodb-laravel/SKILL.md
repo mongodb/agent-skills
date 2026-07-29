@@ -1,5 +1,5 @@
 ---
-name: laravel-mongodb
+name: mongodb-laravel
 description: Implementation specialist for the mongodb/laravel-mongodb package. Triggers on "Laravel MongoDB", "mongodb/laravel-mongodb", "Eloquent MongoDB", "MongoDB model", "_id", "ObjectId in Laravel", "MongoDB queue/cache/session driver", "Atlas Search Laravel", "Laravel Scout MongoDB", "embedsMany", "embedsOne", "withCount MongoDB", "distinct MongoDB", "distinct array MongoDB", "get unique values MongoDB", "Laravel aggregation pipeline", "cross-database relationship MongoDB". Corrects LLM mistakes when MySQL/Eloquent patterns are applied to MongoDB.
 license: Apache-2.0
 metadata:

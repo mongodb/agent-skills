@@ -2,14 +2,14 @@
 <?php
 
 /**
- * Validates PHP syntax of eligible code blocks in the laravel-mongodb skill markdown files.
+ * Validates PHP syntax of eligible code blocks in the mongodb-laravel skill markdown files.
  * Skips non-executable fragments (bare config arrays, comparison snippets without statements).
  *
  * Usage (from repo root):
- *   php testing/laravel-mongodb/validate-php-examples.php [path/to/skill]
+ *   php testing/mongodb-laravel/validate-php-examples.php [path/to/skill]
  */
 
-$skillDir = $argv[1] ?? 'skills/laravel-mongodb';
+$skillDir = $argv[1] ?? 'skills/mongodb-laravel';
 
 if (!is_dir($skillDir)) {
     fwrite(STDERR, "Error: directory not found: {$skillDir}\n");
