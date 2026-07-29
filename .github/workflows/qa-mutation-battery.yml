@@ -1,0 +1,172 @@
+name: QA Mutation Battery
+
+# DRAFT — checked in but deliberately not wired to fire automatically yet.
+#
+# What this does: for a skill, materializes each mutant in its damage battery (see
+# agent-skills-evals/inspect/mutate_skill.py), runs the QA harness against baseline +
+# every mutant, and commits the resulting sensitivity report to
+# agent-skills-evals/baselines/<skill>-mutation.json. Advisory only — this job never
+# blocks a PR; it exists to keep the "what can this suite actually detect?" measurement
+# (see agent-skills-evals/DESIGN.md, Minimum Detectable Damage) fresh as skills change.
+#
+# Why `workflow_dispatch` only for now, with `push`/`schedule` commented out below:
+#   1. Needs real Grove model-call credentials in CI. Whether that's safe (static key as
+#      a GH Actions secret vs. some other custody model) is pending an Application
+#      Security review — see the #ask-ai-infra thread. Nothing below should be treated
+#      as the final shape of that until it lands.
+#   2. Needs the existing agent-skills-evals GitHub App's installation extended to this
+#      repo (read-only checkout access is enough — no new permission grant on the App
+#      itself, since it already has Contents:Read/Write on agent-skills-evals for the
+#      baseline commit step).
+#
+# Once both land: uncomment the `push`/`schedule` triggers, remove this notice, and set
+# AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY / GROVE_API_KEY /
+# GROVE_BASE_URL as repo (or org) secrets.
+
+on:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "skills/*/SKILL.md"
+  #     - "skills/*/references/**"
+  #     - "testing/*/evals/mutation.yaml"
+  # schedule:
+  #   - cron: "0 6 1 */3 *" # quarterly safety-net census, all skills
+  workflow_dispatch:
+    inputs:
+      skill:
+        description: "Skill to run the battery for (blank = all 7)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  ALL_SKILLS: >-
+    ["mongodb-atlas-stream-processing","mongodb-connection","mongodb-mcp-setup",
+    "mongodb-natural-language-querying","mongodb-query-optimizer",
+    "mongodb-schema-design","mongodb-search-and-ai"]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.list.outputs.skills }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # need history to diff against the pre-push SHA
+
+      - name: Determine which skill(s) to run
+        id: list
+        env:
+          SKILL_INPUT: ${{ github.event.inputs.skill }}
+        run: |
+          set -euo pipefail
+          if [ -n "$SKILL_INPUT" ]; then
+            SKILLS=$(jq -cn --arg s "$SKILL_INPUT" '[$s]')
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # scope to the skill(s) actually touched by this push, not a full census
+            SKILLS=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+              | grep -oE '^(skills|testing)/[^/]+' \
+              | sed -E 's#^(skills|testing)/##' \
+              | sort -u \
+              | jq -R . | jq -sc .)
+          else
+            SKILLS='${{ env.ALL_SKILLS }}'
+          fi
+          echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
+          echo "Will run the battery for: $SKILLS"
+
+  battery:
+    needs: detect
+    if: needs.detect.outputs.skills != '[]'
+    strategy:
+      fail-fast: false # one skill's battery failing must not cancel the others
+      matrix:
+        skill: ${{ fromJSON(needs.detect.outputs.skills) }}
+    runs-on: ubuntu-latest
+    services:
+      # job-local metadata store for qa_runs / mutation_report.py — ephemeral, no secret,
+      # unrelated to the functional-slice sandbox Mongo the harness seeds per sample.
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: qa_mutation_battery
+      # TODO(pending Application Security review): confirmed-safe custody for these two.
+      # Until that review lands, this job only runs via manual workflow_dispatch, so a
+      # missing secret here just fails the harness step loudly rather than firing
+      # unattended on every push.
+      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
+      GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
+    steps:
+      - name: Checkout agent-skills (this repo, public)
+        uses: actions/checkout@v6
+        with:
+          path: agent-skills
+
+      - name: Generate a token for the agent-skills-evals GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - name: Checkout agent-skills-evals (private, sibling checkout)
+        uses: actions/checkout@v6
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+          path: agent-skills-evals
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Run baseline + every mutant for ${{ matrix.skill }}
+        working-directory: agent-skills-evals/inspect
+        run: |
+          set -euo pipefail
+          uv sync
+
+          echo "== BASELINE (unmutated skill, skill-on) =="
+          uv run python harness.py \
+            --skill "${{ matrix.skill }}" --epochs 1 --max-samples 4
+
+          echo "== MUTATION BATTERY =="
+          MUT_DIR=$(mktemp -d)
+          uv run python mutate_skill.py --skill "${{ matrix.skill }}" --all --out "$MUT_DIR"
+          for d in "$MUT_DIR"/mut-*; do
+            [ -d "$d" ] || continue
+            echo "-- $(basename "$d") --"
+            SKILL_BASE_DIR="$d" uv run python harness.py \
+              --skill "${{ matrix.skill }}" --epochs 1 --max-samples 4
+          done
+
+          echo "== REPORT =="
+          mkdir -p ../baselines
+          uv run python mutation_report.py --skill "${{ matrix.skill }}" --json \
+            > "../baselines/${{ matrix.skill }}-mutation.json"
+
+      - name: Commit updated baseline
+        working-directory: agent-skills-evals
+        run: |
+          set -euo pipefail
+          git config user.name "agent-skills-evals-bot"
+          git config user.email "noreply@mongodb.com"
+          git add "baselines/${{ matrix.skill }}-mutation.json"
+          if git diff --cached --quiet; then
+            echo "No change to baselines/${{ matrix.skill }}-mutation.json"
+          else
+            git commit -m "chore: refresh mutation baseline for ${{ matrix.skill }}"
+            git push
+          fi
