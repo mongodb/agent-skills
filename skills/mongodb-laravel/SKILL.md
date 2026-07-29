@@ -20,20 +20,20 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 
 ## Reference Guide
 
-| Topic | Reference file | Load When |
-|---|---|---|
-| Models, casts, `_id` mapping | `references/eloquent-models.md` | Defining or modifying a model |
-| Query builder gotchas, aggregation | `references/query-builder.md` | Writing queries, `withCount`, `distinct`, grouping |
-| Embedded, hybrid, cross-database relations | `references/relationships.md` | `belongsTo`, `hasMany`, `embedsMany`, `hasManyIn` |
-| Connection setup | `references/connection.md` | `config/database.php`, multiple connections |
-| Indexes, migrations | `references/schema.md` | Creating indexes, migrations, collections |
-| Queue driver | `references/queues.md` | Dispatching jobs, queue config |
-| Transactions | `references/transactions.md` | Multi-document atomic writes |
-| Cache & sessions | `references/cache-sessions.md` | Configuring cache / session stores |
-| Atlas Search / Scout | `references/search-engine.md` | Full-text search, Scout integration |
-| Vector search, auto-embedding | `references/vector-search.md` | Semantic search, embedding pipelines, hybrid search |
-| Installation | `references/installation.md` | Setting up ext-mongodb and the package |
-| Support & issue reporting | `references/support.md` | Reporting bugs, finding the right repo |
+| Reference file | Load when |
+|---|---|
+| `references/eloquent-models.md` | The user is defining a new model, changing its base class, or mapping `_id` / ObjectId fields |
+| `references/query-builder.md` | The user is writing a query and hits a missing Eloquent helper (`withCount`, `toSql`, `distinct`, grouping, random ordering, raw SQL builders) |
+| `references/relationships.md` | The user is defining a relationship between models, especially embedded, hybrid, or cross-database (MongoDB ↔ SQL) relations |
+| `references/connection.md` | The user is configuring `config/database.php`, setting up multiple connections, or accessing the underlying MongoDB client |
+| `references/schema.md` | The user is writing a migration or creating an index (regular, unique, TTL, geospatial, Atlas Search, Vector Search) |
+| `references/queues.md` | The user is configuring the MongoDB queue driver or dispatching jobs onto it |
+| `references/transactions.md` | The user needs to write multiple documents atomically or is asking about `beginTransaction`, replica set requirements, or transactional testing traits |
+| `references/cache-sessions.md` | The user is configuring MongoDB as a cache store or session driver |
+| `references/search-engine.md` | The user is implementing full-text search on a MongoDB collection or is deciding whether to use Laravel Scout |
+| `references/vector-search.md` | The user is implementing semantic search, storing embeddings, using `autoEmbed`, or combining full-text and vector search |
+| `references/installation.md` | The user is setting up `ext-mongodb`, installing the package, or configuring the connection for the first time |
+| `references/support.md` | The user has hit a suspected bug and needs to route the issue to the correct MongoDB repository |
 
 ## Constraints
 
