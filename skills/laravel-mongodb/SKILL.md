@@ -16,7 +16,7 @@ Implementation skill for `mongodb/laravel-mongodb`. Exists to prevent the common
 2. Confirm model extends `MongoDB\Laravel\Eloquent\Model` (or uses `DocumentModel` trait).
 3. Map every FK and `_id`: ObjectId in DB, **string** in Eloquent — cast accordingly.
 4. Replace unsupported helpers (`withCount`, `toSql`, `groupByRaw`, `whereFulltext`, `union`, `inRandomOrder`, `whereColumn`) with MongoDB alternatives.
-5. Validate: `php artisan migrate`, Pest tests, `phpcs`/`phpstan`.
+5. Validate: `php artisan migrate --database=mongodb`, inspect queries with `->dump()`.
 
 ## Reference Guide
 
@@ -180,8 +180,5 @@ it('creates a post with an ObjectId primary key', function (): void {
 
 | Stage | Command | Expected Result |
 |---|---|---|
-| Style | `vendor/bin/phpcbf && vendor/bin/phpcs` | No violations |
-| Static analysis | `vendor/bin/phpstan analyse` | Level 8 clean |
 | Indexes / migration | `php artisan migrate --database=mongodb` | Migrations run; indexes created |
-| Tests | `vendor/bin/pest` | All green |
 | Query inspection | `Model::query()->where(...)->dump()` | Prints MongoDB filter array (no SQL) |
