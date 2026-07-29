@@ -1,16 +1,21 @@
 name: Validate Eval Cases
 
-# Schema-validate testing/<skill>/evals/evals.json against testing/evals.schema.json so a
-# malformed eval case (incl. the optional functional_check / trajectory_checks fields) fails
-# where it's authored, not later in the QA harness. Scoped to testing/** so it only runs when
-# eval cases or the schema change.
+# Schema-validate testing/<skill>/evals/evals.json against testing/evals.schema.json (also
+# checks referenced `files`/`seed` assets actually exist) so a malformed or broken-pathed eval
+# case fails where it's authored, not later in the QA harness. Also lints for items that echo
+# their own skill's guidance text (advisory: reports, does not block, until the containment
+# threshold has been checked against a few real PRs of item additions). Scoped to testing/**
+# so it only runs when eval cases, skills, or the schema change.
 on:
   pull_request:
     paths:
       - "testing/**/evals/evals.json"
       - "testing/evals.schema.json"
       - "testing/validate-evals.mjs"
+      - "testing/lint-item-echo.mjs"
       - "testing/package.json"
+      - "skills/**/SKILL.md"
+      - "skills/**/references/**"
 
 permissions:
   contents: read
@@ -25,5 +30,7 @@ jobs:
           node-version: "20"
       - name: Install validator deps
         run: npm ci --prefix testing --no-audit --no-fund
-      - name: Validate eval cases against schema
+      - name: Validate eval cases against schema, check referenced assets exist
         run: node testing/validate-evals.mjs
+      - name: Lint for items that echo their own skill's guidance text (advisory)
+        run: node testing/lint-item-echo.mjs
