@@ -13,8 +13,8 @@
  * CWD-independent: paths resolve relative to this file, so it works from the repo root or
  * from testing/.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { globSync } from "glob";
 // draft 2020-12: the schema declares $schema 2020-12, so use Ajv2020 (default Ajv is draft-07).
@@ -59,8 +59,42 @@ function checkAssetsExist(evalsDir, doc) {
   const problems = [];
   for (const ev of doc.evals ?? []) {
     for (const ref of ev.files ?? []) {
-      if (!existsSync(join(evalsDir, ref))) {
-        problems.push(`case ${ev.id}: files entry not found: ${join(evalsDir, ref)}`);
+      // Containment BEFORE existence, and with resolve() rather than join(). The schema
+      // pattern already rejects a leading '/' and any '..' segment; this is the
+      // authoritative check, because a pattern cannot reason about what a path resolves to.
+      //
+      // Why it matters is eval integrity, not filesystem safety: the harness inlines these
+      // files into the prompt, and lint-item-echo.mjs deliberately excludes `files` from its
+      // overlap analysis on the grounds that they are provided input data. A case pointing at
+      // ../../skills/<name>/SKILL.md would therefore hand the agent its own answer key, pass
+      // this validator (the file does exist), and be invisible to the echo lint. Note the
+      // contrast with `seed`, where the schema's ^[a-z0-9_]+$ makes traversal unexpressible.
+      //
+      // join() also disagrees with the harness on absolute paths: join('/a', '/etc/x') nests
+      // to '/a/etc/x', while Python's Path('/a') / '/etc/x' honours the absolute and yields
+      // '/etc/x'. resolve() matches the harness, so the two agree on what is being checked.
+      const resolved = resolve(evalsDir, ref);
+      const rel = relative(evalsDir, resolved);
+      if (isAbsolute(ref) || rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+        problems.push(
+          `case ${ev.id}: files entry escapes the evals dir: ${ref} -> ${resolved}. ` +
+            `Assets must live under ${evalsDir}.`,
+        );
+      } else if (!existsSync(resolved)) {
+        problems.push(`case ${ev.id}: files entry not found: ${resolved}`);
+      } else {
+        // And again after following symlinks. A symlink inside evals/ needs no '..' and no
+        // leading '/', so it satisfies both the schema pattern and the resolve() check above
+        // while still pointing anywhere -- verified: a `leak.md -> ../../../skills/<name>/
+        // SKILL.md` symlink passed cleanly before this branch existed.
+        const realEvalsDir = realpathSync(evalsDir);
+        const realRel = relative(realEvalsDir, realpathSync(resolved));
+        if (realRel.startsWith("..") || isAbsolute(realRel)) {
+          problems.push(
+            `case ${ev.id}: files entry resolves outside the evals dir via a symlink: ` +
+              `${ref} -> ${realpathSync(resolved)}`,
+          );
+        }
       }
     }
     if (ev.seed && !RESERVED_SEEDS.has(ev.seed)) {

@@ -92,9 +92,10 @@
         },
         "files": {
           "type": "array",
-          "description": "Relative paths (under the evals dir) of asset files inlined into the prompt.",
+          "description": "Relative paths (under the evals dir) of asset files inlined into the prompt. Must stay INSIDE the evals dir: no leading '/' and no '..' segment. This is an eval-integrity rule, not a filesystem one -- the harness inlines these into the prompt (case_source.build_prompt), and the answer-echo lint deliberately excludes `files` from its overlap analysis because they are provided input data. A case that escaped upward to its own skills/<name>/SKILL.md would hand the agent the answer key with nothing flagging it.",
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$"
           }
         },
         "seed": {
