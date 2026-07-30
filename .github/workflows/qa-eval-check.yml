@@ -10,6 +10,16 @@
 #
 # To generate or refresh a report:
 #   cd agent-skills && npx tsx scripts/run-qa-eval.ts --skill <name>
+#
+# SUPERSEDED IF THE EVERGREEN PATH LANDS -- and then this file should be DELETED, not kept.
+# If a mongodb/agent-skills Evergreen project runs the QA eval, Evergreen posts the status
+# itself under its own GitHub App. That works for fork PRs, which this cannot: a fork's
+# GITHUB_TOKEN is read-only, so the POST above is denied and no context is ever created.
+#
+# The trap is leaving both in place. Someone then adds the ACTIONS `qa-eval` context to the
+# ruleset's required checks, it never posts on a fork PR, and with bypass_actors empty every
+# external contribution wedges permanently -- while a green Evergreen check sits next to it.
+# Whatever posts the status must be the single thing named in the ruleset.
 name: QA Eval Check
 
 on:

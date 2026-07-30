@@ -8,7 +8,10 @@ name: QA PR Screen Check
 #      THIS repo — a secrets-provisioning step, not an App-installation change; see that
 #      file's header for why the App does not need to be installed on agent-skills for this
 #      workflow's cross-repo checkout to work.
-#   3. FORK PRs. This repo is public and takes community contributions
+#   3. FORK PRs -- and note this whole blocker DISSOLVES if the eval moves to Evergreen,
+#      which runs inside the network and gates outside-org patches natively. If that lands,
+#      this workflow is superseded and should be deleted rather than maintained alongside.
+#      Until then: this repo is public and takes community contributions
 #      (README.community.md), and a `pull_request` run from a fork gets NO secrets. So the
 #      moment that trigger goes live, every external contributor's PR would get a screen
 #      job with no GROVE_API_KEY, failing on the harness step — an intimidating red X on a
