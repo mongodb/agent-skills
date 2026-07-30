@@ -70,7 +70,7 @@ jobs:
     outputs:
       skills: ${{ steps.list.outputs.skills }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0 # need history to diff against the pre-push SHA
 
@@ -146,13 +146,13 @@ jobs:
       GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
     steps:
       - name: Checkout agent-skills (this repo, public)
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           path: agent-skills
 
       - name: Generate a token for the agent-skills-evals GitHub App
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
           private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
@@ -160,13 +160,13 @@ jobs:
           repositories: agent-skills-evals
 
       - name: Checkout agent-skills-evals (private, sibling checkout)
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           repository: 10gen/agent-skills-evals
           token: ${{ steps.app-token.outputs.token }}
           path: agent-skills-evals
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
         with:
           python-version: "3.12"
 
@@ -199,7 +199,7 @@ jobs:
       # first wins, the rest fail on non-fast-forward, and with fail-fast:false a census
       # would quietly lose most of its results.
       - name: Upload the sensitivity report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutation-baseline-${{ matrix.skill }}
           path: ${{ runner.temp }}/${{ matrix.skill }}-mutation.json
@@ -212,14 +212,14 @@ jobs:
     steps:
       - name: Generate a token for the agent-skills-evals GitHub App
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
           private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
           owner: 10gen
           repositories: agent-skills-evals
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           repository: 10gen/agent-skills-evals
           token: ${{ steps.app-token.outputs.token }}
@@ -227,7 +227,7 @@ jobs:
       # Whatever succeeded gets published: a skill whose battery failed simply has no
       # artifact, so a partial census still lands its usable half.
       - name: Download every skill's report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: mutation-baseline-*
           path: incoming

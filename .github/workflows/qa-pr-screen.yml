@@ -96,7 +96,7 @@ jobs:
     outputs:
       skills: ${{ steps.list.outputs.skills }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
 
@@ -158,14 +158,14 @@ jobs:
       GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
     steps:
       - name: Checkout agent-skills at the PR head
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           path: agent-skills
           ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.pull_request.head.sha }}
 
       - name: Generate a token for the agent-skills-evals GitHub App
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
           private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
@@ -173,13 +173,13 @@ jobs:
           repositories: agent-skills-evals
 
       - name: Checkout agent-skills-evals (private, sibling checkout)
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           repository: 10gen/agent-skills-evals
           token: ${{ steps.app-token.outputs.token }}
           path: agent-skills-evals
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
         with:
           python-version: "3.12"
 
