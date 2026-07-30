@@ -1,0 +1,50 @@
+# qa-eval required-check seeder.
+#
+# Manages the DEFAULT state of the `qa-eval` status check so a PR can't merge until a
+# fresh eval report has been committed for every changed skill:
+#   - PR doesn't touch skills/**  -> success ("not required")
+#   - PR touches skills/**        -> pending ("run run-qa-eval.ts and push report")
+# `pending` renders neutral (not a red failure) so it isn't confused with a broken build.
+# Every push re-seeds against the new HEAD sha, so a stale pass on an old commit never
+# satisfies the new head.
+#
+# NOTE: this posts a status context, but does not by itself make merging conditional on
+# it -- that requires "qa-eval" to be added under required status checks in this repo's
+# branch protection settings, a separate, repo-admin action.
+#
+# NOTE (forks): on fork PRs the built-in GITHUB_TOKEN is read-only, so the statuses POST
+# is denied. The job-level `if:` skips fork PRs to avoid a cosmetic errored run. Fork PRs
+# touching skills/ still need a QA eval; a maintainer must run it and push the report on
+# their behalf.
+name: QA Eval Status
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+  statuses: write
+
+jobs:
+  seed:
+    if: ${{ github.event.pull_request.head.repo.fork == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Seed required check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          touched=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate --jq '.[].filename' | grep -c '^skills/' || true)
+          if [ "${touched:-0}" -eq 0 ]; then
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=success \
+              -f context=qa-eval \
+              -f description="No skill changes — qa-eval not required"
+          else
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=pending \
+              -f context=qa-eval \
+              -f description="Run scripts/run-qa-eval.ts and push the report to enable merge"
+          fi

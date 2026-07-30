@@ -1,0 +1,114 @@
+# Posts the final `qa-eval` commit status (success/failure) after the eval report is
+# committed. Fires when testing/*/eval-report.json changes -- i.e. when run-qa-eval.ts
+# pushes the report back to the branch. qa-eval-status.yml handles the initial `pending`
+# seed on skill pushes; this workflow resolves it.
+#
+# Checks for every skill changed in the PR:
+#   - eval-report.json exists in testing/<skill>/
+#   - headSha in the report matches the latest commit touching skills/<skill>/
+#   - status is "completed" and passed is true
+#
+# To generate or refresh a report:
+#   cd agent-skills && npx tsx scripts/run-qa-eval.ts --skill <name>
+name: QA Eval Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "testing/*/eval-report.json"
+
+permissions:
+  pull-requests: read
+  statuses: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check eval report freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find all skills touched anywhere in this PR (not just this push).
+          skills=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate --jq '.[].filename' \
+            | grep '^skills/' \
+            | sed 's|skills/\([^/]*\)/.*|\1|' \
+            | sort -u)
+
+          if [ -z "$skills" ]; then
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=success \
+              -f context=qa-eval \
+              -f description="No skill changes — qa-eval not required"
+            exit 0
+          fi
+
+          failed=0
+          summary=""
+          for skill in $skills; do
+            report="testing/$skill/eval-report.json"
+
+            if [ ! -f "$report" ]; then
+              echo "::error file=$report::Missing eval report for '$skill'."
+              summary="$summary Missing report for $skill."
+              failed=1
+              continue
+            fi
+
+            latest_skill_sha=$(git log --format='%H' -1 -- "skills/$skill/")
+            report_sha=$(jq -r '.headSha // empty' "$report")
+
+            if [ -z "$report_sha" ]; then
+              echo "::error file=$report::Eval report for '$skill' has no headSha field. Re-run the eval."
+              summary="$summary $skill: no headSha."
+              failed=1
+              continue
+            fi
+
+            if [ "$report_sha" != "$latest_skill_sha" ]; then
+              echo "::error file=$report::Eval report for '$skill' is stale (report: ${report_sha:0:8}, skill head: ${latest_skill_sha:0:8}). Re-run the eval."
+              summary="$summary $skill: stale report."
+              failed=1
+              continue
+            fi
+
+            status=$(jq -r '.status' "$report")
+            if [ "$status" != "completed" ]; then
+              echo "::error file=$report::Eval for '$skill' did not complete (status: $status)."
+              summary="$summary $skill: status=$status."
+              failed=1
+              continue
+            fi
+
+            passed=$(jq -r '.passed' "$report")
+            if [ "$passed" != "true" ]; then
+              echo "::error file=$report::Eval for '$skill' did not pass."
+              summary="$summary $skill: failed."
+              failed=1
+              continue
+            fi
+
+            echo "✅ $skill: fresh and passing"
+          done
+
+          if [ "$failed" -eq 0 ]; then
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=success \
+              -f context=qa-eval \
+              -f description="All skill evals passed" \
+              -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=failure \
+              -f context=qa-eval \
+              -f description="QA eval failed:$summary" \
+              -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+
+          exit $failed
