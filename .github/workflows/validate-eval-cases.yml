@@ -13,6 +13,7 @@ on:
       - "testing/**/evals/evals.json"
       - "testing/evals.schema.json"
       - "testing/validate-evals.mjs"
+      - "testing/validate-evals.test.mjs"
       - "testing/lint-item-echo.mjs"
       - "testing/echo-thresholds.json"
       - "testing/package.json"
@@ -41,6 +42,8 @@ jobs:
         run: npm ci --prefix testing --no-audit --no-fund
       - name: Validate eval cases against schema, check referenced assets exist
         run: node testing/validate-evals.mjs
+      - name: Pin the files-containment rule (cross-skill answer-key handover guard)
+        run: node --test testing/validate-evals.test.mjs
       - name: Lint for items that echo their own skill's guidance text (advisory)
         # --base enables the co-movement check: an edit to SKILL.md that RAISES an eval
         # item's overlap with SKILL.md is teaching to the test, and it is detectable from

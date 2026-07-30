@@ -15,7 +15,7 @@
  */
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { globSync } from "glob";
 // draft 2020-12: the schema declares $schema 2020-12, so use Ajv2020 (default Ajv is draft-07).
 import Ajv2020 from "ajv/dist/2020.js";
@@ -38,44 +38,60 @@ function readJson(file) {
   }
 }
 
-const schema = readJson(join(here, "evals.schema.json"));
-const ajv = new Ajv2020({ allErrors: true, strict: false });
-const validate = ajv.compile(schema);
-
 // The seed/fixture naming contract comes from the schema (x-fixtureContract) rather than
 // being hardcoded here, because agent-skills-evals/solvers/seed_db.py resolves fixtures
 // against the same convention at run time. Two independent hardcoded copies is how a case
 // starts passing this check and then failing to seed inside the harness.
-const contract = schema["x-fixtureContract"] ?? {};
-const FIXTURE_DIR = contract.fixtureDir ?? "fixtures";
-const FIXTURE_EXT = contract.fixtureExtension ?? ".js";
-const RESERVED_SEEDS = new Set(contract.reservedSeeds ?? ["clean_slate"]);
+function contractFrom(schema) {
+  const contract = schema["x-fixtureContract"] ?? {};
+  return {
+    FIXTURE_DIR: contract.fixtureDir ?? "fixtures",
+    FIXTURE_EXT: contract.fixtureExtension ?? ".js",
+    RESERVED_SEEDS: new Set(contract.reservedSeeds ?? ["clean_slate"]),
+  };
+}
+
+/**
+ * Does a `files` entry escape the case's own evals dir? Pure (no fs), so the eval-integrity
+ * rule the schema regex alone cannot express is unit-testable.
+ *
+ * The schema pattern rejects a leading '/' and any '..' segment, but a pattern cannot reason
+ * about what a path RESOLVES to. This is the authoritative containment check. It is what
+ * blocks cross-skill answer-key handover — a case pointing at ../mongodb-other-skill/evals/
+ * or ../../skills/<name>/SKILL.md would hand the agent its own answer key, pass the schema
+ * regex (no leading '/', and '..' is a segment the pattern already forbids — but a regex
+ * forbidding '..' and a resolve() that catches '..' are two different defenses, and only the
+ * latter reasons about the resolved target), and be invisible to lint-item-echo.mjs (which
+ * excludes `files` from overlap analysis because they are provided input data).
+ *
+ * resolve() rather than join() because join() disagrees with the harness on absolute paths:
+ * join('/a', '/etc/x') nests to '/a/etc/x', while Python's Path('/a') / '/etc/x' honours the
+ * absolute and yields '/etc/x'. resolve() matches the harness, so the two agree on what is
+ * being checked.
+ */
+export function filesEntryEscapes(evalsDir, ref) {
+  const resolved = resolve(evalsDir, ref);
+  const rel = relative(evalsDir, resolved);
+  return isAbsolute(ref) || rel === "" || rel.startsWith("..") || isAbsolute(rel);
+}
 
 // A case's `files` entries and `seed` name point at real paths, but nothing in the schema
 // itself can check a path exists. Missing here means agent-skills-evals's case_source.py
 // (build_prompt) or seed_db.py would only discover it deep inside a harness run, as a
 // FileNotFoundError instead of a one-line message pointing at the bad path in this PR.
-function checkAssetsExist(evalsDir, doc) {
+//
+// Exported (and takes the fixture contract as a param) so the containment rule is pinned by
+// validate-evals.test.mjs — without that, the cross-skill-escape guard is code that only runs
+// in CI and has no test that fails when it regresses.
+export function checkAssetsExist(evalsDir, doc, contract) {
+  const { FIXTURE_DIR, FIXTURE_EXT, RESERVED_SEEDS } = contract;
   const problems = [];
   for (const ev of doc.evals ?? []) {
     for (const ref of ev.files ?? []) {
-      // Containment BEFORE existence, and with resolve() rather than join(). The schema
-      // pattern already rejects a leading '/' and any '..' segment; this is the
-      // authoritative check, because a pattern cannot reason about what a path resolves to.
-      //
-      // Why it matters is eval integrity, not filesystem safety: the harness inlines these
-      // files into the prompt, and lint-item-echo.mjs deliberately excludes `files` from its
-      // overlap analysis on the grounds that they are provided input data. A case pointing at
-      // ../../skills/<name>/SKILL.md would therefore hand the agent its own answer key, pass
-      // this validator (the file does exist), and be invisible to the echo lint. Note the
-      // contrast with `seed`, where the schema's ^[a-z0-9_]+$ makes traversal unexpressible.
-      //
-      // join() also disagrees with the harness on absolute paths: join('/a', '/etc/x') nests
-      // to '/a/etc/x', while Python's Path('/a') / '/etc/x' honours the absolute and yields
-      // '/etc/x'. resolve() matches the harness, so the two agree on what is being checked.
+      // Containment BEFORE existence. A path that escapes is rejected whether or not the
+      // target happens to exist — the answer-key file under skills/<name>/ DOES exist.
       const resolved = resolve(evalsDir, ref);
-      const rel = relative(evalsDir, resolved);
-      if (isAbsolute(ref) || rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+      if (filesEntryEscapes(evalsDir, ref)) {
         problems.push(
           `case ${ev.id}: files entry escapes the evals dir: ${ref} -> ${resolved}. ` +
             `Assets must live under ${evalsDir}.`,
@@ -107,30 +123,40 @@ function checkAssetsExist(evalsDir, doc) {
   return problems;
 }
 
-const files = globSync(join(here, "*/evals/evals.json")).sort();
-let failed = false;
+function main() {
+  const schema = readJson(join(here, "evals.schema.json"));
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const validate = ajv.compile(schema);
+  const contract = contractFrom(schema);
 
-for (const file of files) {
-  const doc = readJson(file);
-  const schemaOk = validate(doc);
-  const assetProblems = checkAssetsExist(dirname(file), doc);
+  const files = globSync(join(here, "*/evals/evals.json")).sort();
+  let failed = false;
 
-  if (schemaOk && assetProblems.length === 0) {
-    console.log(`✓ ${file} (${doc.evals?.length ?? 0} cases)`);
-  } else {
-    failed = true;
-    console.error(`✗ ${file}`);
-    for (const e of (validate.errors ?? []).slice(0, 10)) {
-      console.error(`    ${e.instancePath || "(root)"}: ${e.message}`);
-    }
-    for (const p of assetProblems) {
-      console.error(`    ${p}`);
+  for (const file of files) {
+    const doc = readJson(file);
+    const schemaOk = validate(doc);
+    const assetProblems = checkAssetsExist(dirname(file), doc, contract);
+
+    if (schemaOk && assetProblems.length === 0) {
+      console.log(`✓ ${file} (${doc.evals?.length ?? 0} cases)`);
+    } else {
+      failed = true;
+      console.error(`✗ ${file}`);
+      for (const e of (validate.errors ?? []).slice(0, 10)) {
+        console.error(`    ${e.instancePath || "(root)"}: ${e.message}`);
+      }
+      for (const p of assetProblems) {
+        console.error(`    ${p}`);
+      }
     }
   }
+
+  if (files.length === 0) {
+    console.error("No testing/*/evals/evals.json found.");
+    process.exit(1);
+  }
+  process.exit(failed ? 1 : 0);
 }
 
-if (files.length === 0) {
-  console.error("No testing/*/evals/evals.json found.");
-  process.exit(1);
-}
-process.exit(failed ? 1 : 0);
+// Run as a CLI only when invoked directly, not when imported by the test.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main();

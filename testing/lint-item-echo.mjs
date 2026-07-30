@@ -72,6 +72,31 @@ const STRICT = args.includes("--strict");
 const baseIdx = args.indexOf("--base");
 const BASE_REF = baseIdx !== -1 ? args[baseIdx + 1] : null;
 
+// In GitHub Actions, surface findings as PR annotations (file-attached ::warning) so they
+// appear in the Files Changed review view even while the lint is advisory (exit 0). A stdout
+// line in a green workflow log is invisible to a reviewer; an annotation is not. The lint
+// stays non-blocking — these are ::warning, not ::error — matching the advisory intent and
+// the dated TODO to flip to --strict. Locally (no GITHUB_ACTIONS), keep the human-readable
+// line so `node lint-item-echo.mjs` output is unchanged.
+const IN_CI = process.env.GITHUB_ACTIONS === "true";
+
+/**
+ * Report one finding. `file` is the evals.json path; `message` is a one-line human message.
+ * Emits a GitHub `::warning file=…::` workflow command in CI (attaching to the file in PR
+ * review) and the `⚠ …` line in both environments.
+ */
+function reportFinding(file, message) {
+  const rel = relative(repoRoot, file);
+  if (IN_CI) {
+    // `file` is required for the annotation to attach; line/column are omitted (the lint
+    // works on whole-file JSON, not source positions). Percent/newline escaping per the
+    // workflow-command spec; `message` is single-line by construction here.
+    const escaped = message.replace(/%/g, "%25").replace(/\n/g, "%0A").replace(/\r/g, "%0D");
+    process.stdout.write(`::warning file=${rel}::${escaped}\n`);
+  }
+  console.log(`⚠ ${rel}: ${message}`);
+}
+
 const STOPWORDS = new Set(
   "a an the of to in on for and or is are was were be been being with as at by from this " +
     "that it its into if then else not do does did you your".split(" "),
@@ -278,7 +303,7 @@ for (const item of perItem) {
     const why = bySpan
       ? `verbatim span of ~${span} words shared with its own skill`
       : `${(m.own * 100).toFixed(0)}% containment against ${item.skillName}`;
-    console.log(`⚠ ${item.file} case ${item.id} [${role}]: ${why} — ${ROLE_NOTE[role]}`);
+    reportFinding(item.file, `case ${item.id} [${role}]: ${why} — ${ROLE_NOTE[role]}`);
   }
 }
 
@@ -309,8 +334,9 @@ if (BASE_REF) {
         const delta = after - before;
         if (delta < CO_MOVEMENT_MIN_DELTA) continue;
         coMoved++;
-        console.log(
-          `⚠ CO-MOVEMENT ${file} case ${ev.id} [${role}]: this PR's edit to ${skillName}'s ` +
+        reportFinding(
+          file,
+          `CO-MOVEMENT case ${ev.id} [${role}]: this PR's edit to ${skillName}'s ` +
             `guidance raised containment ${before.toFixed(2)} → ${after.toFixed(2)} ` +
             `(+${delta.toFixed(2)}). Added guidance text that overlaps an eval item is ` +
             `teaching to the test, whatever the absolute number is.`,

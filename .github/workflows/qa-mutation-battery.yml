@@ -157,6 +157,25 @@ jobs:
       GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
       GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
     steps:
+      # Fail loud, not silent no-op — same rationale as qa-pr-screen.yml's credential
+      # gate. The push/schedule triggers above are commented out pending the Application
+      # Security review; if they are uncommented before these secrets exist, the harness
+      # would otherwise burn a multi-hour battery failing opaquely, or a future skip-on-
+      # missing-creds guard would let a census quietly no-op while looking green.
+      - name: Require model-API credentials
+        env:
+          GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
+          GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -z "${GROVE_API_KEY:-}" ] && missing+=("GROVE_API_KEY")
+          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::${missing[*]} not set as Actions secrets on this repo. This workflow must not be enabled (uncomment its push/schedule triggers) until the Application Security review lands and these secrets are provisioned. A missing secret should fail loudly here, not let a multi-hour battery no-op or fail with an opaque 401."
+            exit 1
+          fi
+
       - name: Checkout agent-skills (this repo, public)
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:

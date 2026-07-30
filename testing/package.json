@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Shared test tooling for agent-skills evals (schema validation of evals.json).",
   "scripts": {
-    "validate:evals": "node validate-evals.mjs"
+    "validate:evals": "node validate-evals.mjs",
+    "test": "node --test validate-evals.test.mjs"
   },
   "devDependencies": {
     "ajv": "^8.17.1",
