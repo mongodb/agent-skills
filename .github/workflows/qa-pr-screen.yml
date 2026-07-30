@@ -1,9 +1,12 @@
 name: QA PR Screen Check
 
-# DRAFT — checked in but deliberately not wired to fire automatically yet. Same two
-# blockers as qa-mutation-battery.yml (Grove-secret custody pending Application Security
-# review; agent-skills-evals GitHub App install-scope extension) — see that file's header
-# for detail. Nothing below should be treated as final until both land.
+# DRAFT — checked in but deliberately not wired to fire automatically yet. Same blockers
+# as qa-mutation-battery.yml: pending the Grove-secret custody review, and needing
+# AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY as Actions secrets on
+# THIS repo (a secrets-provisioning step, not an App-installation change — see that
+# file's header for why the App does not need to be installed on agent-skills for this
+# workflow's cross-repo checkout to work). Nothing below should be treated as final until
+# both land.
 #
 # What this does: for a changed skill, runs the skill-on (and skill-off, for the lift
 # number) arm ONCE (k=1 — this is a screen, not a measurement; see harness.py's --epochs

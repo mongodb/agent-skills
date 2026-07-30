@@ -14,14 +14,13 @@ name: QA Mutation Battery
 #      a GH Actions secret vs. some other custody model) is pending an Application
 #      Security review — see the #ask-ai-infra thread. Nothing below should be treated
 #      as the final shape of that until it lands.
-#   2. Needs the existing agent-skills-evals GitHub App's installation extended to this
-#      repo (read-only checkout access is enough — no new permission grant on the App
-#      itself, since it already has Contents:Read/Write on agent-skills-evals for the
-#      baseline commit step).
+#   2. Needs AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY set as Actions
+#      secrets on THIS repo. NOT an App-installation or permission change — the App
+#      already has Contents:Read/Write on agent-skills-evals (the only repo this token is
+#      ever scoped to below), which is all checkout + the baseline commit need. Nothing
+#      here requires the App to be installed on agent-skills itself.
 #
-# Once both land: uncomment the `push`/`schedule` triggers, remove this notice, and set
-# AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY / GROVE_API_KEY /
-# GROVE_BASE_URL as repo (or org) secrets.
+# Once both land: uncomment the `push`/`schedule` triggers and remove this notice.
 
 on:
   # push:
