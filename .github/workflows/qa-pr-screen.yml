@@ -67,10 +67,6 @@ env:
   # a drift between the two defaults doesn't produce a wrong number — it produces "no
   # skill-on qa_runs doc found" and a failure nobody can read.
   PANEL_MODEL: anthropic/claude-sonnet-4-6
-  ALL_SKILLS: >-
-    ["mongodb-atlas-stream-processing","mongodb-connection","mongodb-mcp-setup",
-    "mongodb-natural-language-querying","mongodb-query-optimizer",
-    "mongodb-schema-design","mongodb-search-and-ai"]
 
 jobs:
   # A fork PR cannot reach the model API, so say so once instead of failing a contributor's
@@ -102,10 +98,18 @@ jobs:
 
       - name: Determine which skill(s) changed in this PR
         id: list
-        env:
-          ALL_SKILLS: ${{ env.ALL_SKILLS }}
         run: |
           set -euo pipefail
+          # DERIVED from the working tree, never a hardcoded list. Because `pull_request`
+          # checks out the merge ref, a skill ADDED by this PR is already on disk here — so a
+          # community PR contributing a brand-new skill gets screened, which a literal list of
+          # today's skills would silently exclude (the case that motivated this: mongodb/agent-skills#50).
+          ALL_SKILLS=$(
+            for d in skills/*/; do
+              [ -f "${d}SKILL.md" ] || continue
+              basename "$d"
+            done | sort -u | jq -R . | jq -sc .
+          )
           # `|| true` on the grep: no match must yield an empty list, but under `pipefail` a
           # non-matching grep exits 1 and fails the whole job instead.
           CANDIDATES=$(git diff --name-only \
@@ -115,14 +119,18 @@ jobs:
             | sed -E 's#^(skills|testing)/##' \
             | sort -u \
             | jq -R . | jq -sc .)
-          # Intersect against the known skills: testing/ also holds non-skill directories
+          # Intersect against what is on disk: testing/ also holds non-skill directories
           # (skills-boundaries/) and loose files, so a path-derived name is a CANDIDATE, not
           # a skill. Passing one through becomes a matrix entry that fails deep inside the
           # harness on a skill that does not exist.
           SKILLS=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" \
             '$c - ($c - $all)')
+          DROPPED=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" '$c - $all')
           echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
           echo "Will screen: $SKILLS"
+          # Say what was dropped. A silent skip and "nothing to screen" look identical, and
+          # for a path that SHOULD have been a skill that is the wrong thing to be quiet about.
+          [ "$DROPPED" = "[]" ] || echo "::notice::Ignored non-skill paths: $DROPPED"
 
   screen:
     needs: [detect]

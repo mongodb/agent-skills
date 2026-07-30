@@ -154,9 +154,20 @@ function readCorpus(files) {
   return parts.join("\n\n");
 }
 
-/** The same files as they were at `ref`. Missing-at-base (a new file) reads as empty. */
+/**
+ * The same files as they were at `ref`.
+ *
+ * Returns `anyPresent` alongside the text because "" is ambiguous and the two readings call
+ * for opposite behaviour: a file that existed and was empty really is a before-state to
+ * compare against, whereas a skill that did not exist at base has no before-state at all.
+ * Co-movement asks "did this PR's edit move an item's overlap", and for a brand-new skill
+ * nothing moved -- every item would trivially measure 0 → n and get reported as a rise that
+ * never happened. An item that copies a NEW skill's text is still echoing, but that is the
+ * static check's finding to report, in its own words.
+ */
 function readCorpusAtRef(files, ref) {
   const parts = [];
+  let anyPresent = false;
   for (const f of files) {
     try {
       parts.push(
@@ -166,11 +177,12 @@ function readCorpusAtRef(files, ref) {
           stdio: ["ignore", "pipe", "ignore"],
         }),
       );
+      anyPresent = true;
     } catch {
       /* not present at base -- a newly added reference file contributes nothing "before" */
     }
   }
-  return parts.join("\n\n");
+  return { text: parts.join("\n\n"), anyPresent };
 }
 
 /**
@@ -274,8 +286,16 @@ for (const item of perItem) {
 let coMoved = 0;
 if (BASE_REF) {
   for (const { file, skillName, doc, corpusFiles } of bySkill) {
-    const beforeText = readCorpusAtRef(corpusFiles, BASE_REF);
+    const base = readCorpusAtRef(corpusFiles, BASE_REF);
     const afterText = readCorpus(corpusFiles);
+    if (!base.anyPresent) {
+      console.log(
+        `Co-movement: skipping ${skillName} — no guidance at base, so this PR adds the ` +
+          `skill. Nothing moved; the static check above covers its items.`,
+      );
+      continue;
+    }
+    const beforeText = base.text;
     if (beforeText === afterText) continue; // guidance untouched in this PR
     const beforeGrams = ngrams(tokenize(beforeText), N);
     const afterGrams = ngrams(tokenize(afterText), N);

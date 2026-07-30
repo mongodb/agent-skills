@@ -34,7 +34,7 @@ on:
   workflow_dispatch:
     inputs:
       skill:
-        description: "Skill to run the battery for (blank = all 7)"
+        description: "Skill to run the battery for (blank = every skill under skills/)"
         required: false
         type: string
       epochs:
@@ -58,12 +58,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  ALL_SKILLS: >-
-    ["mongodb-atlas-stream-processing","mongodb-connection","mongodb-mcp-setup",
-    "mongodb-natural-language-querying","mongodb-query-optimizer",
-    "mongodb-schema-design","mongodb-search-and-ai"]
-
 jobs:
   detect:
     runs-on: ubuntu-latest
@@ -78,9 +72,20 @@ jobs:
         id: list
         env:
           SKILL_INPUT: ${{ github.event.inputs.skill }}
-          ALL_SKILLS: ${{ env.ALL_SKILLS }}
         run: |
           set -euo pipefail
+          # The skill list is DERIVED from the working tree, never hardcoded. A literal list
+          # silently excludes any skill added since it was written -- including community
+          # contributions, which are exactly the ones nobody remembers to add. Derived, a new
+          # skill is in scope the moment its SKILL.md exists.
+          ALL_SKILLS=$(
+            for d in skills/*/; do
+              [ -f "${d}SKILL.md" ] || continue
+              basename "$d"
+            done | sort -u | jq -R . | jq -sc .
+          )
+          echo "Skills on disk: $ALL_SKILLS"
+
           if [ -n "$SKILL_INPUT" ]; then
             CANDIDATES=$(jq -cn --arg s "$SKILL_INPUT" '[$s]')
           elif [ "${{ github.event_name }}" = "push" ]; then
@@ -96,7 +101,7 @@ jobs:
             CANDIDATES="$ALL_SKILLS"
           fi
 
-          # Intersect against the known skill list. `testing/` also holds non-skill
+          # Intersect against what is actually on disk. `testing/` also holds non-skill
           # directories (skills-boundaries/) and loose files, so a path-derived name is a
           # CANDIDATE, not a skill — passing one through becomes a matrix entry that fails
           # deep inside mutate_skill.py with "no SKILL.md under ...".
@@ -106,6 +111,13 @@ jobs:
           echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
           echo "Will run the battery for: $SKILLS"
           [ "$DROPPED" = "[]" ] || echo "::notice::Ignored non-skill paths: $DROPPED"
+
+          # A typo'd dispatch input must fail loudly. Silently running nothing looks like a
+          # completed census that found no work, which is the same shape as success.
+          if [ -n "$SKILL_INPUT" ] && [ "$SKILLS" = "[]" ]; then
+            echo "::error::No skill named '$SKILL_INPUT' under skills/. Available: $ALL_SKILLS"
+            exit 1
+          fi
 
   battery:
     needs: detect
