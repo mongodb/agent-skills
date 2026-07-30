@@ -1,12 +1,23 @@
 name: QA PR Screen Check
 
-# DRAFT — checked in but deliberately not wired to fire automatically yet. Same blockers
-# as qa-mutation-battery.yml: pending the Grove-secret custody review, and needing
-# AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY as Actions secrets on
-# THIS repo (a secrets-provisioning step, not an App-installation change — see that
-# file's header for why the App does not need to be installed on agent-skills for this
-# workflow's cross-repo checkout to work). Nothing below should be treated as final until
-# both land.
+# DRAFT — checked in but deliberately not wired to fire automatically yet. Three blockers,
+# all of which must land before the `pull_request` trigger below is uncommented:
+#
+#   1. The Grove-secret custody review (see qa-mutation-battery.yml's header).
+#   2. AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY as Actions secrets on
+#      THIS repo — a secrets-provisioning step, not an App-installation change; see that
+#      file's header for why the App does not need to be installed on agent-skills for this
+#      workflow's cross-repo checkout to work.
+#   3. FORK PRs. This repo is public and takes community contributions
+#      (README.community.md), and a `pull_request` run from a fork gets NO secrets. So the
+#      moment that trigger goes live, every external contributor's PR would get a screen
+#      job with no GROVE_API_KEY, failing on the harness step — an intimidating red X on a
+#      first-time contribution, for a check that is explicitly advisory. Handled below by
+#      scoping `screen` to same-repo PRs and telling forks once, in the job summary, that a
+#      maintainer can dispatch it. The alternative that DOES get secrets,
+#      `pull_request_target`, would run harness code and eval cases from an untrusted PR
+#      head with credentials in the environment; that needs a maintainer approval gate in
+#      front of it and is a deliberate decision to make, not a default to fall into.
 #
 # What this does: for a changed skill, runs the skill-on (and skill-off, for the lift
 # number) arm ONCE (k=1 — this is a screen, not a measurement; see harness.py's --epochs
@@ -14,7 +25,9 @@ name: QA PR Screen Check
 # comment built by agent-skills-evals/inspect/screen_report.py. That script routes
 # everything through analysis.sanitize.public_safe_run first — see that module's
 # docstring for why allowlisting, not scrubbing, is what makes this safe to post on a
-# public PR at all.
+# public PR at all — and suppresses the lift line entirely when the two arms are not
+# comparable (arm_balance) or either arm is inconclusive, rather than publishing a number
+# that is mostly an environment difference.
 #
 # This is Tier 2/3 from DESIGN.md's tiering (behavioral + judge, ADVISORY, never blocks).
 # Tier 1 (schema validation, skill lint, plugin-copy drift, asset-exists, answer-echo) is
@@ -38,13 +51,47 @@ on:
         required: false
         type: string
 
+# One screen per PR (or per dispatched skill). Two pushes in quick succession would
+# otherwise race on the same marker comment and can double-post instead of updating.
+concurrency:
+  group: qa-pr-screen-${{ github.event.pull_request.number || github.event.inputs.skill }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
 
+env:
+  # Kept in lockstep with harness.py's and screen_report.py's default, and passed
+  # explicitly to both. screen_report reads the LATEST qa_runs doc for --skill/--model, so
+  # a drift between the two defaults doesn't produce a wrong number — it produces "no
+  # skill-on qa_runs doc found" and a failure nobody can read.
+  PANEL_MODEL: anthropic/claude-sonnet-4-6
+  ALL_SKILLS: >-
+    ["mongodb-atlas-stream-processing","mongodb-connection","mongodb-mcp-setup",
+    "mongodb-natural-language-querying","mongodb-query-optimizer",
+    "mongodb-schema-design","mongodb-search-and-ai"]
+
 jobs:
+  # A fork PR cannot reach the model API, so say so once instead of failing a contributor's
+  # PR on an advisory check. See blocker 3 in the header.
+  fork-notice:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain why no screen ran
+        run: |
+          {
+            echo "### QA screen check skipped"
+            echo
+            echo "This PR is from a fork, and fork workflow runs have no access to the"
+            echo "model-API credentials this check needs. The check is **advisory** and"
+            echo "never blocks a merge — a maintainer can run it on demand from the"
+            echo "\"QA PR Screen Check\" workflow_dispatch."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   detect:
-    if: github.event_name != 'workflow_dispatch'
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
     outputs:
       skills: ${{ steps.list.outputs.skills }}
@@ -55,26 +102,43 @@ jobs:
 
       - name: Determine which skill(s) changed in this PR
         id: list
+        env:
+          ALL_SKILLS: ${{ env.ALL_SKILLS }}
         run: |
           set -euo pipefail
-          SKILLS=$(git diff --name-only \
+          # `|| true` on the grep: no match must yield an empty list, but under `pipefail` a
+          # non-matching grep exits 1 and fails the whole job instead.
+          CANDIDATES=$(git diff --name-only \
               "${{ github.event.pull_request.base.sha }}" \
               "${{ github.event.pull_request.head.sha }}" \
-            | grep -oE '^(skills|testing)/[^/]+' \
+            | { grep -oE '^(skills|testing)/[^/]+' || true; } \
             | sed -E 's#^(skills|testing)/##' \
             | sort -u \
             | jq -R . | jq -sc .)
+          # Intersect against the known skills: testing/ also holds non-skill directories
+          # (skills-boundaries/) and loose files, so a path-derived name is a CANDIDATE, not
+          # a skill. Passing one through becomes a matrix entry that fails deep inside the
+          # harness on a skill that does not exist.
+          SKILLS=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" \
+            '$c - ($c - $all)')
           echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
           echo "Will screen: $SKILLS"
 
   screen:
     needs: [detect]
-    if: always() && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.skills != '[]')
+    # On workflow_dispatch `detect` is skipped, so this cannot require its success — but it
+    # must not run after a FAILED detect either, because the matrix expression below would
+    # then evaluate fromJSON('') on an empty output. Plain `always()` does exactly that.
+    if: |
+      !cancelled() &&
+      (github.event_name == 'workflow_dispatch' ||
+       (needs.detect.result == 'success' && needs.detect.outputs.skills != '[]'))
     strategy:
       fail-fast: false
       matrix:
         skill: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.skill)) || fromJSON(needs.detect.outputs.skills) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     services:
       mongo:
         image: mongo:7
@@ -86,6 +150,9 @@ jobs:
     env:
       MONGODB_URI: mongodb://localhost:27017
       MONGODB_DB: qa_pr_screen
+      # A CONCURRENCY cap, not a case count — see qa-mutation-battery.yml's MAX_SAMPLES
+      # note on why 4 is too many agent+mongo container pairs for a 2-vCPU runner.
+      MAX_SAMPLES: "2"
       # TODO(pending Application Security review) — see qa-mutation-battery.yml.
       GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
       GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
@@ -122,13 +189,15 @@ jobs:
           set -euo pipefail
           uv sync
           uv run python harness.py --skill "${{ matrix.skill }}" --no-skill \
-            --epochs 1 --max-samples 4
+            --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
           uv run python harness.py --skill "${{ matrix.skill }}" \
-            --epochs 1 --max-samples 4
+            --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
 
       - name: Build the sanitized PR comment
         working-directory: agent-skills-evals/inspect
-        run: uv run python screen_report.py --skill "${{ matrix.skill }}" > comment.md
+        run: |
+          uv run python screen_report.py --skill "${{ matrix.skill }}" \
+            --model "$PANEL_MODEL" > comment.md
 
       - name: Show the comment in the job summary
         run: cat "agent-skills-evals/inspect/comment.md" >> "$GITHUB_STEP_SUMMARY"
@@ -140,13 +209,18 @@ jobs:
           PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event.inputs.pr_number }}
         run: |
           set -euo pipefail
+          # screen_report.py emits this marker as the comment's first line
+          # (screen_report.marker(), asserted in test_screen_report.py), which is what lets
+          # successive pushes update one comment instead of stacking new ones.
           MARKER="<!-- qa-screen-check:${{ matrix.skill }} -->"
           EXISTING=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | head -1)
+          # -F body=@file, not -f body="$(cat ...)": the comment is multi-line markdown and
+          # passing it through a shell interpolation is a needless quoting hazard.
           if [ -n "$EXISTING" ]; then
             gh api "repos/${{ github.repository }}/issues/comments/$EXISTING" -X PATCH \
-              -f body="$(cat agent-skills-evals/inspect/comment.md)"
+              -F body=@agent-skills-evals/inspect/comment.md
           else
             gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" -X POST \
-              -f body="$(cat agent-skills-evals/inspect/comment.md)"
+              -F body=@agent-skills-evals/inspect/comment.md
           fi

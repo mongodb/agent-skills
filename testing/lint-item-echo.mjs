@@ -7,28 +7,70 @@
  * plausible under author-only authoring with no held-out curator (see DESIGN.md's
  * anti-overfitting phase).
  *
- * Method: 8-word-gram containment of each item's authored text (prompt + expected_output +
- * expectations — NOT `files`, which are legitimate provided input data, not description
- * text) against its own skill's SKILL.md + references. Containment, not Jaccard, because
- * the item is always much shorter than the skill body, so Jaccard would be swamped by that
- * length asymmetry regardless of overlap.
+ * Three checks, in increasing order of how much they can actually prove:
  *
- * Threshold is calibrated from the corpus itself rather than a guessed constant: every
- * item's containment against every OTHER skill's body forms a null distribution of
- * "coincidental" overlap (shared MongoDB vocabulary, common phrasing). An item's own-skill
- * containment is flagged only if it clears the 99th percentile of that null.
+ * 1. **Static containment** (all items). 8-word-gram containment of the item's authored
+ *    text against its own skill's body, compared against a cross-skill null. Containment,
+ *    not Jaccard, because the item is always much shorter than the skill body, so Jaccard
+ *    would be swamped by that length asymmetry regardless of overlap.
  *
- * Advisory today (prints, exits 0) until the threshold has been sanity-checked against a
- * few real PRs — see .github/workflows/validate-eval-cases.yml.
+ *    Reported per field, not pooled, because the two fields mean different things. High
+ *    overlap in `prompt` is leakage: the question is carrying its own answer. High overlap
+ *    in `expected_output`/`expectations` is often unavoidable and fine — if the correct
+ *    answer IS the rule, an item that states the rule is correctly authored. Pooling them
+ *    (the original version of this lint) mostly measured the second and called it the first.
+ *
+ * 2. **Verbatim span.** A shared run of ≥ maxVerbatimSpan tokens is a quotation whatever
+ *    the null says.
+ *
+ * 3. **Co-movement** (`--base <ref>`, the check that needs no held-out set). If a PR edits
+ *    a skill's guidance AND that edit raises an item's containment, that is teaching to the
+ *    test — detectable from the diff alone, no curator and no golden corpus required. This
+ *    is the highest-value check here and it is pure string processing; it mirrors
+ *    agent-skills-evals/inspect/analysis/echo.py::comovement.
+ *
+ * Thresholds come from testing/echo-thresholds.json, shared with that Python module rather
+ * than re-guessed here. Note what the null actually does on real data: it collapses to
+ * 0.000 (two skills almost never share an 8-gram), so the percentile rule alone would flag
+ * 2% overlap, and `minAbsoluteContainment` is the threshold that does the real work. This
+ * is NOT a "calibrated, no constants" design, and describing it as one would misrepresent
+ * where the sensitivity comes from.
+ *
+ * Advisory today (prints, exits 0) unless --strict is passed.
+ * TODO(2026-09-30, cory.bullinger): flip validate-eval-cases.yml to --strict once the
+ * thresholds have been checked against a few real PRs of item additions, or delete this
+ * TODO and record why advisory is the permanent answer. Do not let it sit unowned.
  */
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { globSync } from "glob";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const N = 8; // n-gram size
-const STRICT = process.argv.includes("--strict");
+const repoRoot = join(here, "..");
+
+function readJson(file) {
+  const text = readFileSync(file, "utf8");
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error(`✗ ${file}\n    not valid JSON: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+const T = readJson(join(here, "echo-thresholds.json"));
+const N = T.n;
+const PERCENTILE = T.percentile;
+const MIN_CONTAINMENT = T.minAbsoluteContainment;
+const MAX_SPAN = T.maxVerbatimSpan;
+const CO_MOVEMENT_MIN_DELTA = T.coMovementMinDelta;
+
+const args = process.argv.slice(2);
+const STRICT = args.includes("--strict");
+const baseIdx = args.indexOf("--base");
+const BASE_REF = baseIdx !== -1 ? args[baseIdx + 1] : null;
 
 const STOPWORDS = new Set(
   "a an the of to in on for and or is are was were be been being with as at by from this " +
@@ -78,105 +120,200 @@ function longestSharedSpan(tokens, corpusGrams) {
   return best === 0 ? 0 : best + N - 1; // consecutive overlapping n-grams -> word span length
 }
 
-function skillCorpusText(skillName) {
-  const dir = join(here, "..", "skills", skillName);
-  const parts = [];
-  const skillMd = join(dir, "SKILL.md");
-  try {
-    parts.push(readFileSync(skillMd, "utf8"));
-  } catch {
-    /* no SKILL.md is a lint failure elsewhere (validate-skills.yml), not ours to report */
-  }
+function percentile(sortedValues, pct) {
+  if (sortedValues.length === 0) return 0;
+  const idx = Math.min(sortedValues.length - 1, Math.floor((pct / 100) * sortedValues.length));
+  return sortedValues[idx];
+}
+
+/** Every markdown file that makes up a skill's guidance surface, as repo-relative paths. */
+function skillCorpusFiles(skillName) {
+  const dir = join(repoRoot, "skills", skillName);
+  const files = [];
+  files.push(join(dir, "SKILL.md"));
   const refsDir = join(dir, "references");
   try {
     for (const f of readdirSync(refsDir)) {
-      if (f.endsWith(".md")) parts.push(readFileSync(join(refsDir, f), "utf8"));
+      if (f.endsWith(".md")) files.push(join(refsDir, f));
     }
   } catch {
     /* no references/ dir is fine */
   }
+  return files;
+}
+
+function readCorpus(files) {
+  const parts = [];
+  for (const f of files) {
+    try {
+      parts.push(readFileSync(f, "utf8"));
+    } catch {
+      /* a missing SKILL.md is validate-skills.yml's failure to report, not ours */
+    }
+  }
   return parts.join("\n\n");
 }
 
-function itemText(ev) {
+/** The same files as they were at `ref`. Missing-at-base (a new file) reads as empty. */
+function readCorpusAtRef(files, ref) {
   const parts = [];
-  if (ev.prompt) parts.push(ev.prompt);
-  if (ev.workflow) for (const t of ev.workflow) parts.push(t.prompt);
-  if (ev.expected_output) parts.push(ev.expected_output);
-  if (ev.expectations) parts.push(ev.expectations.join("\n"));
+  for (const f of files) {
+    try {
+      parts.push(
+        execFileSync("git", ["show", `${ref}:${relative(repoRoot, f)}`], {
+          cwd: repoRoot,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }),
+      );
+    } catch {
+      /* not present at base -- a newly added reference file contributes nothing "before" */
+    }
+  }
   return parts.join("\n\n");
+}
+
+/**
+ * The item's authored text, split by role. `files` is excluded from both: it is provided
+ * input data, not authored description, and an asset that legitimately quotes the docs is
+ * not an item echoing its skill.
+ */
+function itemFields(ev) {
+  const prompt = [ev.prompt ?? "", ...(ev.workflow ?? []).map((t) => t.prompt ?? "")].join("\n\n");
+  const answer = [ev.expected_output ?? "", ...(ev.expectations ?? [])].join("\n\n");
+  return { prompt, answer };
 }
 
 const evalFiles = globSync(join(here, "*/evals/evals.json")).sort();
 const bySkill = evalFiles.map((file) => {
-  const doc = JSON.parse(readFileSync(file, "utf8"));
+  const doc = readJson(file);
   const skillName = doc.skill_name;
-  return { file, skillName, doc, corpusGrams: ngrams(tokenize(skillCorpusText(skillName)), N) };
+  const corpusFiles = skillCorpusFiles(skillName);
+  const corpusText = readCorpus(corpusFiles);
+  // An empty corpus silently makes every containment 0 and every item "clean" -- the lint
+  // would report a green result precisely when it is measuring nothing. The usual cause is
+  // `skill_name` not matching a directory under skills/, which is a config error worth
+  // failing on rather than passing quietly.
+  if (corpusText.trim() === "") {
+    console.error(
+      `✗ ${file}: skill_name '${skillName}' has no readable guidance text under ` +
+        `skills/${skillName}/ (SKILL.md + references/*.md). Nothing could be compared, so ` +
+        `a "no echoing items" result here would be meaningless.`,
+    );
+    process.exit(1);
+  }
+  return {
+    file,
+    skillName,
+    doc,
+    corpusFiles,
+    corpusGrams: ngrams(tokenize(corpusText), N),
+  };
 });
 
-// Build the cross-skill null distribution: every item's containment against every OTHER
-// skill's corpus.
+// Cross-skill null: every item field's containment against every OTHER skill's corpus.
 const nullSamples = [];
-const perItem = []; // {skillName, file, ev, ownContainment}
+const perItem = [];
 
 for (const { file, skillName, doc, corpusGrams: ownCorpus } of bySkill) {
   for (const ev of doc.evals ?? []) {
-    const tokens = tokenize(itemText(ev));
-    if (tokens.length < N) continue; // too short to judge
-    const itemGrams = ngrams(tokens, N);
-
-    perItem.push({
-      skillName,
-      file,
-      id: ev.id,
-      tokens,
-      itemGrams,
-      ownContainment: containment(itemGrams, ownCorpus),
-    });
-
-    for (const other of bySkill) {
-      if (other.skillName === skillName) continue;
-      nullSamples.push(containment(itemGrams, other.corpusGrams));
+    const fields = itemFields(ev);
+    const entry = { skillName, file, id: ev.id, fields: {} };
+    for (const [role, text] of Object.entries(fields)) {
+      const tokens = tokenize(text);
+      if (tokens.length < N) continue; // too short to judge
+      const itemGrams = ngrams(tokens, N);
+      entry.fields[role] = {
+        tokens,
+        itemGrams,
+        own: containment(itemGrams, ownCorpus),
+      };
+      for (const other of bySkill) {
+        if (other.skillName === skillName) continue;
+        nullSamples.push(containment(itemGrams, other.corpusGrams));
+      }
     }
+    if (Object.keys(entry.fields).length > 0) perItem.push(entry);
   }
 }
 
 nullSamples.sort((a, b) => a - b);
-const p99 =
-  nullSamples.length === 0
-    ? 0.15 // fallback if only one skill has cases at all
-    : nullSamples[Math.min(nullSamples.length - 1, Math.floor(0.99 * nullSamples.length))];
-const threshold = Math.max(p99, 0.15); // never flag on near-zero coincidental overlap alone
+const nullPct = percentile(nullSamples, PERCENTILE);
 
 console.log(
-  `Cross-skill null: ${nullSamples.length} samples, p99=${p99.toFixed(3)}, ` +
-    `threshold=${threshold.toFixed(3)}`,
+  `Cross-skill null: ${nullSamples.length} samples, p${PERCENTILE}=${nullPct.toFixed(3)}; ` +
+    `flagging needs containment > ${nullPct.toFixed(3)} AND >= ${MIN_CONTAINMENT} ` +
+    `(the null collapses on real data, so the floor is the operative threshold), ` +
+    `or a verbatim span >= ${MAX_SPAN} words.`,
 );
+
+// A prompt that quotes the guidance is leakage; an expected_output that does is often just
+// a correctly-stated answer. Same numbers, different verdict, so they are reported apart.
+const ROLE_NOTE = {
+  prompt: "LEAKAGE: the question carries its own answer",
+  answer: "expected answer restates the guidance (often legitimate — judge in review)",
+};
 
 let flagged = 0;
 for (const item of perItem) {
-  if (item.ownContainment <= threshold) continue;
-  flagged++;
   const own = bySkill.find((s) => s.skillName === item.skillName);
-  const span = longestSharedSpan(item.tokens, own.corpusGrams);
+  for (const [role, m] of Object.entries(item.fields)) {
+    const span = longestSharedSpan(m.tokens, own.corpusGrams);
+    const bySpan = span >= MAX_SPAN;
+    const byContainment = m.own >= MIN_CONTAINMENT && m.own > nullPct;
+    if (!bySpan && !byContainment) continue;
+    flagged++;
+    const why = bySpan
+      ? `verbatim span of ~${span} words shared with its own skill`
+      : `${(m.own * 100).toFixed(0)}% containment against ${item.skillName}`;
+    console.log(`⚠ ${item.file} case ${item.id} [${role}]: ${why} — ${ROLE_NOTE[role]}`);
+  }
+}
+
+// Co-movement: did THIS PR's guidance edit raise an item's overlap with the guidance?
+let coMoved = 0;
+if (BASE_REF) {
+  for (const { file, skillName, doc, corpusFiles } of bySkill) {
+    const beforeText = readCorpusAtRef(corpusFiles, BASE_REF);
+    const afterText = readCorpus(corpusFiles);
+    if (beforeText === afterText) continue; // guidance untouched in this PR
+    const beforeGrams = ngrams(tokenize(beforeText), N);
+    const afterGrams = ngrams(tokenize(afterText), N);
+    for (const ev of doc.evals ?? []) {
+      for (const [role, text] of Object.entries(itemFields(ev))) {
+        const tokens = tokenize(text);
+        if (tokens.length < N) continue;
+        const grams = ngrams(tokens, N);
+        const before = containment(grams, beforeGrams);
+        const after = containment(grams, afterGrams);
+        const delta = after - before;
+        if (delta < CO_MOVEMENT_MIN_DELTA) continue;
+        coMoved++;
+        console.log(
+          `⚠ CO-MOVEMENT ${file} case ${ev.id} [${role}]: this PR's edit to ${skillName}'s ` +
+            `guidance raised containment ${before.toFixed(2)} → ${after.toFixed(2)} ` +
+            `(+${delta.toFixed(2)}). Added guidance text that overlaps an eval item is ` +
+            `teaching to the test, whatever the absolute number is.`,
+        );
+      }
+    }
+  }
+} else {
   console.log(
-    `⚠ ${item.file} case ${item.id}: ${(item.ownContainment * 100).toFixed(0)}% containment ` +
-      `against ${item.skillName} (threshold ${(threshold * 100).toFixed(0)}%), ` +
-      `longest shared span ~${span} words`,
+    "Co-movement check skipped (no --base <ref>). It is the check that needs no held-out " +
+      "set, so pass the PR base SHA in CI.",
   );
 }
 
-if (flagged === 0) {
+if (flagged === 0 && coMoved === 0) {
   console.log("No echoing items found.");
 } else {
-  console.log(`\n${flagged} item(s) look like they echo their own skill's guidance text.`);
   console.log(
-    "Not necessarily wrong — some overlap is expected for MongoDB vocabulary — but worth a " +
-      "second look: does this item test whether the agent APPLIES the guidance, or just " +
-      "whether it can quote it?",
+    `\n${flagged} static finding(s), ${coMoved} co-movement finding(s). Not automatically ` +
+      "wrong — some overlap is expected for MongoDB vocabulary — but worth a second look: " +
+      "does the item test whether the agent APPLIES the guidance, or just whether it can " +
+      "quote it?",
   );
 }
 
-// Advisory until the threshold's been sanity-checked against a few real PRs of item
-// additions (see the workflow comment). Flip with --strict once that's done.
-process.exit(STRICT && flagged > 0 ? 1 : 0);
+process.exit(STRICT && flagged + coMoved > 0 ? 1 : 0);

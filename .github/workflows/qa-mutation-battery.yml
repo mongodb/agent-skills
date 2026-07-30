@@ -37,6 +37,23 @@ on:
         description: "Skill to run the battery for (blank = all 7)"
         required: false
         type: string
+      epochs:
+        description: >-
+          Repeats per sample. The default of 5 is not arbitrary: at k=2 a NULL control
+          (zero damage) produced a per-item S_i of 0.114 — above the 0.10 gate threshold,
+          putting the threshold inside the noise and making every "detection"
+          indistinguishable from an A/A difference. At k=5 the floor fell to 0.029. Below
+          5, mutation_report correctly suppresses the MDD and reports the battery as
+          unmeasurable, which costs a full set of model calls to learn nothing.
+        required: false
+        default: "5"
+        type: string
+
+# One battery per skill at a time. Two concurrent batteries interleave their runs in the
+# shared qa_runs metadata store and race on the baseline commit.
+concurrency:
+  group: qa-mutation-battery-${{ github.event.inputs.skill || 'all' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -61,31 +78,47 @@ jobs:
         id: list
         env:
           SKILL_INPUT: ${{ github.event.inputs.skill }}
+          ALL_SKILLS: ${{ env.ALL_SKILLS }}
         run: |
           set -euo pipefail
           if [ -n "$SKILL_INPUT" ]; then
-            SKILLS=$(jq -cn --arg s "$SKILL_INPUT" '[$s]')
+            CANDIDATES=$(jq -cn --arg s "$SKILL_INPUT" '[$s]')
           elif [ "${{ github.event_name }}" = "push" ]; then
-            # scope to the skill(s) actually touched by this push, not a full census
-            SKILLS=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
-              | grep -oE '^(skills|testing)/[^/]+' \
+            # Scope to the skill(s) actually touched by this push, not a full census.
+            # `|| true` on the grep: no match must yield an empty list, and under
+            # `pipefail` a non-matching grep exits 1 and fails the whole job instead.
+            CANDIDATES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+              | { grep -oE '^(skills|testing)/[^/]+' || true; } \
               | sed -E 's#^(skills|testing)/##' \
               | sort -u \
               | jq -R . | jq -sc .)
           else
-            SKILLS='${{ env.ALL_SKILLS }}'
+            CANDIDATES="$ALL_SKILLS"
           fi
+
+          # Intersect against the known skill list. `testing/` also holds non-skill
+          # directories (skills-boundaries/) and loose files, so a path-derived name is a
+          # CANDIDATE, not a skill — passing one through becomes a matrix entry that fails
+          # deep inside mutate_skill.py with "no SKILL.md under ...".
+          SKILLS=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" \
+            '$c - ($c - $all)')
+          DROPPED=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" '$c - $all')
           echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
           echo "Will run the battery for: $SKILLS"
+          [ "$DROPPED" = "[]" ] || echo "::notice::Ignored non-skill paths: $DROPPED"
 
   battery:
     needs: detect
     if: needs.detect.outputs.skills != '[]'
     strategy:
       fail-fast: false # one skill's battery failing must not cancel the others
+      max-parallel: 2 # bounded model-call spend and metadata-store contention
       matrix:
         skill: ${{ fromJSON(needs.detect.outputs.skills) }}
     runs-on: ubuntu-latest
+    # ~11 mutants plus a baseline, each at --epochs 5, is long but bounded. Without an
+    # explicit cap a wedged harness burns the 6h default before anyone notices.
+    timeout-minutes: 300
     services:
       # job-local metadata store for qa_runs / mutation_report.py — ephemeral, no secret,
       # unrelated to the functional-slice sandbox Mongo the harness seeds per sample.
@@ -99,6 +132,12 @@ jobs:
     env:
       MONGODB_URI: mongodb://localhost:27017
       MONGODB_DB: qa_mutation_battery
+      EPOCHS: ${{ github.event.inputs.epochs || '5' }}
+      # A CONCURRENCY cap, not a case count: each sample of a functional task spins its own
+      # agent + mongo container pair. 4 was sized for the k8s sandbox; on a 2-vCPU/7GB
+      # ubuntu-latest runner that is 8 containers, and samples OOM-killed into INVALID are
+      # samples the harness correctly refuses to score — a wasted run, not a cheap one.
+      MAX_SAMPLES: "2"
       # TODO(pending Application Security review): confirmed-safe custody for these two.
       # Until that review lands, this job only runs via manual workflow_dispatch, so a
       # missing secret here just fails the harness step loudly rather than firing
@@ -137,9 +176,9 @@ jobs:
           set -euo pipefail
           uv sync
 
-          echo "== BASELINE (unmutated skill, skill-on) =="
+          echo "== BASELINE (unmutated skill, skill-on) at k=$EPOCHS =="
           uv run python harness.py \
-            --skill "${{ matrix.skill }}" --epochs 1 --max-samples 4
+            --skill "${{ matrix.skill }}" --epochs "$EPOCHS" --max-samples "$MAX_SAMPLES"
 
           echo "== MUTATION BATTERY =="
           MUT_DIR=$(mktemp -d)
@@ -148,24 +187,79 @@ jobs:
             [ -d "$d" ] || continue
             echo "-- $(basename "$d") --"
             SKILL_BASE_DIR="$d" uv run python harness.py \
-              --skill "${{ matrix.skill }}" --epochs 1 --max-samples 4
+              --skill "${{ matrix.skill }}" --epochs "$EPOCHS" --max-samples "$MAX_SAMPLES"
           done
 
           echo "== REPORT =="
-          mkdir -p ../baselines
           uv run python mutation_report.py --skill "${{ matrix.skill }}" --json \
-            > "../baselines/${{ matrix.skill }}-mutation.json"
+            > "$RUNNER_TEMP/${{ matrix.skill }}-mutation.json"
 
-      - name: Commit updated baseline
-        working-directory: agent-skills-evals
+      # Reports are collected as artifacts and committed ONCE by `publish` below. Committing
+      # here would have every matrix job push to agent-skills-evals main concurrently: the
+      # first wins, the rest fail on non-fast-forward, and with fail-fast:false a census
+      # would quietly lose most of its results.
+      - name: Upload the sensitivity report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-baseline-${{ matrix.skill }}
+          path: ${{ runner.temp }}/${{ matrix.skill }}-mutation.json
+          if-no-files-found: error
+
+  publish:
+    needs: battery
+    if: always() && needs.battery.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate a token for the agent-skills-evals GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - uses: actions/checkout@v6
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+
+      # Whatever succeeded gets published: a skill whose battery failed simply has no
+      # artifact, so a partial census still lands its usable half.
+      - name: Download every skill's report
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-baseline-*
+          path: incoming
+          merge-multiple: true
+
+      - name: Commit updated baselines in one commit
         run: |
           set -euo pipefail
+          shopt -s nullglob
+          FILES=(incoming/*-mutation.json)
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No reports to publish (every battery failed)."
+            exit 0
+          fi
+          mkdir -p baselines
+          cp "${FILES[@]}" baselines/
+          rm -rf incoming
           git config user.name "agent-skills-evals-bot"
           git config user.email "noreply@mongodb.com"
-          git add "baselines/${{ matrix.skill }}-mutation.json"
+          git add baselines
           if git diff --cached --quiet; then
-            echo "No change to baselines/${{ matrix.skill }}-mutation.json"
-          else
-            git commit -m "chore: refresh mutation baseline for ${{ matrix.skill }}"
-            git push
+            echo "No change to any baseline."
+            exit 0
           fi
+          git commit -m "chore: refresh mutation baselines (${#FILES[@]} skill(s))"
+          # The expected loser-case is a concurrent human commit to main, not a conflict on
+          # these files, so rebase and retry rather than failing a several-hour census.
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin HEAD && git push; then
+              exit 0
+            fi
+            echo "push attempt $attempt failed; retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1

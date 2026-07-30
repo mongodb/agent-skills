@@ -3,6 +3,14 @@
   "$id": "https://github.com/mongodb/agent-skills/testing/evals.schema.json",
   "title": "Agent-skills QA eval cases (extended)",
   "description": "Schema for agent-skills/testing/<skill>/evals/evals.json. Extends the current judge-only shape (prompt/expected_output/expectations/files) with OPTIONAL functional-grading fields (seed, functional_check, trajectory_checks) so the QA harness can grade against a real MongoDB. All functional fields are optional and additive: existing knowledge-only cases validate unchanged. Fixtures referenced by `seed` live in the sibling `fixtures/` directory as deterministic <seed-name>.js scripts.",
+  "x-fixtureContract": {
+    "description": "The seed/fixture naming contract, declared here because it is shared across repos: agent-skills's validate-evals.mjs enforces it at authoring time and agent-skills-evals's solvers/seed_db.py resolves against it at run time. Both read these values rather than keeping their own copy, so the two cannot drift into a state where a case passes CI here and then fails to seed inside the harness.",
+    "fixtureDir": "fixtures",
+    "fixtureExtension": ".js",
+    "reservedSeeds": [
+      "clean_slate"
+    ]
+  },
   "type": "object",
   "required": [
     "skill_name",

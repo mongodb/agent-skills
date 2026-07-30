@@ -16,9 +16,35 @@ import { globSync } from "glob";
 import Ajv2020 from "ajv/dist/2020.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const schema = JSON.parse(readFileSync(join(here, "evals.schema.json"), "utf8"));
+
+/**
+ * Parse JSON with the filename in the message. The whole point of this script is that a
+ * broken case file produces a one-line error pointing at the problem in this PR; letting
+ * JSON.parse throw bare gives a stack trace with no filename -- exactly the failure mode
+ * it exists to prevent.
+ */
+function readJson(file) {
+  const text = readFileSync(file, "utf8");
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error(`\u2717 ${file}\n    not valid JSON: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+const schema = readJson(join(here, "evals.schema.json"));
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validate = ajv.compile(schema);
+
+// The seed/fixture naming contract comes from the schema (x-fixtureContract) rather than
+// being hardcoded here, because agent-skills-evals/solvers/seed_db.py resolves fixtures
+// against the same convention at run time. Two independent hardcoded copies is how a case
+// starts passing this check and then failing to seed inside the harness.
+const contract = schema["x-fixtureContract"] ?? {};
+const FIXTURE_DIR = contract.fixtureDir ?? "fixtures";
+const FIXTURE_EXT = contract.fixtureExtension ?? ".js";
+const RESERVED_SEEDS = new Set(contract.reservedSeeds ?? ["clean_slate"]);
 
 // A case's `files` entries and `seed` name point at real paths, but nothing in the schema
 // itself can check a path exists. Missing here means agent-skills-evals's case_source.py
@@ -32,8 +58,8 @@ function checkAssetsExist(evalsDir, doc) {
         problems.push(`case ${ev.id}: files entry not found: ${join(evalsDir, ref)}`);
       }
     }
-    if (ev.seed && ev.seed !== "clean_slate") {
-      const fixture = join(evalsDir, "fixtures", `${ev.seed}.js`);
+    if (ev.seed && !RESERVED_SEEDS.has(ev.seed)) {
+      const fixture = join(evalsDir, FIXTURE_DIR, `${ev.seed}${FIXTURE_EXT}`);
       if (!existsSync(fixture)) {
         problems.push(`case ${ev.id}: seed '${ev.seed}' has no fixture at ${fixture}`);
       }
@@ -46,7 +72,7 @@ const files = globSync(join(here, "*/evals/evals.json")).sort();
 let failed = false;
 
 for (const file of files) {
-  const doc = JSON.parse(readFileSync(file, "utf8"));
+  const doc = readJson(file);
   const schemaOk = validate(doc);
   const assetProblems = checkAssetsExist(dirname(file), doc);
 

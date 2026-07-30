@@ -4,7 +4,8 @@ name: Validate Eval Cases
 # checks referenced `files`/`seed` assets actually exist) so a malformed or broken-pathed eval
 # case fails where it's authored, not later in the QA harness. Also lints for items that echo
 # their own skill's guidance text (advisory: reports, does not block, until the containment
-# threshold has been checked against a few real PRs of item additions). Scoped to testing/**
+# thresholds have been checked against a few real PRs of item additions -- see the dated TODO
+# in that file). Scoped to testing/**
 # so it only runs when eval cases, skills, or the schema change.
 on:
   pull_request:
@@ -13,6 +14,7 @@ on:
       - "testing/evals.schema.json"
       - "testing/validate-evals.mjs"
       - "testing/lint-item-echo.mjs"
+      - "testing/echo-thresholds.json"
       - "testing/package.json"
       - "skills/**/SKILL.md"
       - "skills/**/references/**"
@@ -25,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Co-movement needs the base commit's SKILL.md to compare against.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -33,4 +38,8 @@ jobs:
       - name: Validate eval cases against schema, check referenced assets exist
         run: node testing/validate-evals.mjs
       - name: Lint for items that echo their own skill's guidance text (advisory)
-        run: node testing/lint-item-echo.mjs
+        # --base enables the co-movement check: an edit to SKILL.md that RAISES an eval
+        # item's overlap with SKILL.md is teaching to the test, and it is detectable from
+        # the diff alone -- no held-out corpus and no curator needed. Without --base only
+        # the weaker static checks run.
+        run: node testing/lint-item-echo.mjs --base "${{ github.event.pull_request.base.sha }}"
