@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 /**
  * Validate every testing/<skill>/evals/evals.json against testing/evals.schema.json.
- * Fails (exit 1) on the first schema violation, printing the skill + JSON path — so a
- * malformed eval case fails in CI where the builder authors it.
  *
- * Run: `npm --prefix testing install && node testing/validate-evals.mjs` (see
- * .github/workflows/validate-eval-cases.yml). CWD-independent: paths resolve relative to
- * this file, so it works whether invoked from the repo root or testing/.
+ * Reports EVERY violation across all files, then exits 1 — deliberately not first-failure,
+ * so an author fixes the whole set in one pass instead of rediscovering the next problem on
+ * each CI run. Each violation prints the file path plus the JSON path within it (ajv's
+ * instancePath), so a malformed eval case fails where it was authored.
+ *
+ * Run: `npm ci --prefix testing && node testing/validate-evals.mjs` — `ci`, not `install`,
+ * to match .github/workflows/validate-eval-cases.yml exactly; a local run that resolves
+ * different dependency versions than CI is a local run that can disagree with it.
+ * CWD-independent: paths resolve relative to this file, so it works from the repo root or
+ * from testing/.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

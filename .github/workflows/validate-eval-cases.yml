@@ -16,6 +16,10 @@ on:
       - "testing/lint-item-echo.mjs"
       - "testing/echo-thresholds.json"
       - "testing/package.json"
+      # The lockfile too: `npm ci` installs from it, so a lockfile-only change (a dependency
+      # bump, a regen) can change what this workflow actually runs. Without it here, an ajv
+      # upgrade that breaks validation would sail past the very check meant to catch it.
+      - "testing/package-lock.json"
       - "skills/**/SKILL.md"
       - "skills/**/references/**"
 
