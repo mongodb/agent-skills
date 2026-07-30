@@ -1,0 +1,149 @@
+name: QA PR Screen Check
+
+# DRAFT — checked in but deliberately not wired to fire automatically yet. Same two
+# blockers as qa-mutation-battery.yml (Grove-secret custody pending Application Security
+# review; agent-skills-evals GitHub App install-scope extension) — see that file's header
+# for detail. Nothing below should be treated as final until both land.
+#
+# What this does: for a changed skill, runs the skill-on (and skill-off, for the lift
+# number) arm ONCE (k=1 — this is a screen, not a measurement; see harness.py's --epochs
+# docstring on why more epochs wouldn't even help a per-PR decision), then posts a PR
+# comment built by agent-skills-evals/inspect/screen_report.py. That script routes
+# everything through analysis.sanitize.public_safe_run first — see that module's
+# docstring for why allowlisting, not scrubbing, is what makes this safe to post on a
+# public PR at all.
+#
+# This is Tier 2/3 from DESIGN.md's tiering (behavioral + judge, ADVISORY, never blocks).
+# Tier 1 (schema validation, skill lint, plugin-copy drift, asset-exists, answer-echo) is
+# already live and blocking today via validate-skills.yml / validate-eval-cases.yml /
+# sync-plugin-skills.yml — this workflow does not duplicate any of that.
+
+on:
+  # pull_request:
+  #   paths:
+  #     - "skills/*/SKILL.md"
+  #     - "skills/*/references/**"
+  #     - "testing/*/evals/**"
+  workflow_dispatch:
+    inputs:
+      skill:
+        description: "Skill to screen"
+        required: true
+        type: string
+      pr_number:
+        description: "PR number to comment on (leave blank to just print the comment body)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.list.outputs.skills }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine which skill(s) changed in this PR
+        id: list
+        run: |
+          set -euo pipefail
+          SKILLS=$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" \
+            | grep -oE '^(skills|testing)/[^/]+' \
+            | sed -E 's#^(skills|testing)/##' \
+            | sort -u \
+            | jq -R . | jq -sc .)
+          echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
+          echo "Will screen: $SKILLS"
+
+  screen:
+    needs: [detect]
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.skills != '[]')
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.skill)) || fromJSON(needs.detect.outputs.skills) }}
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: qa_pr_screen
+      # TODO(pending Application Security review) — see qa-mutation-battery.yml.
+      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
+      GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
+    steps:
+      - name: Checkout agent-skills at the PR head
+        uses: actions/checkout@v6
+        with:
+          path: agent-skills
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.pull_request.head.sha }}
+
+      - name: Generate a token for the agent-skills-evals GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - name: Checkout agent-skills-evals (private, sibling checkout)
+        uses: actions/checkout@v6
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+          path: agent-skills-evals
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Run skill-off then skill-on (k=1 — this is a screen, not a measurement)
+        working-directory: agent-skills-evals/inspect
+        run: |
+          set -euo pipefail
+          uv sync
+          uv run python harness.py --skill "${{ matrix.skill }}" --no-skill \
+            --epochs 1 --max-samples 4
+          uv run python harness.py --skill "${{ matrix.skill }}" \
+            --epochs 1 --max-samples 4
+
+      - name: Build the sanitized PR comment
+        working-directory: agent-skills-evals/inspect
+        run: uv run python screen_report.py --skill "${{ matrix.skill }}" > comment.md
+
+      - name: Show the comment in the job summary
+        run: cat "agent-skills-evals/inspect/comment.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post or update the PR comment
+        if: github.event_name == 'pull_request' || github.event.inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event.inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- qa-screen-check:${{ matrix.skill }} -->"
+          EXISTING=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/$EXISTING" -X PATCH \
+              -f body="$(cat agent-skills-evals/inspect/comment.md)"
+          else
+            gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" -X POST \
+              -f body="$(cat agent-skills-evals/inspect/comment.md)"
+          fi
