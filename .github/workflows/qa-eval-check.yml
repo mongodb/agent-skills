@@ -34,6 +34,12 @@ permissions:
 
 jobs:
   check:
+    # Fork PRs: the built-in GITHUB_TOKEN is read-only, so the statuses POST below is
+    # denied. Skipping avoids a cosmetic errored run (the POST 403 was previously
+    # swallowed, producing a green run with no qa-eval context). Fork PRs touching
+    # skills/ still need a QA eval; a maintainer must run it and push the report on
+    # their behalf -- see qa-eval-status.yml for the same guard and rationale.
+    if: ${{ github.event.pull_request.head.repo.fork == false }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -44,12 +50,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           # Find all skills touched anywhere in this PR (not just this push).
+          # `grep ... || true` so an empty match doesn't trip `set -e` -- the no-skills
+          # path below posts success ("not required") and exits 0.
           skills=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
             --paginate --jq '.[].filename' \
             | grep '^skills/' \
             | sed 's|skills/\([^/]*\)/.*|\1|' \
-            | sort -u)
+            | sort -u || true)
 
           if [ -z "$skills" ]; then
             gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
@@ -114,10 +123,14 @@ jobs:
               -f description="All skill evals passed" \
               -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           else
+            # GitHub caps status descriptions at 140 chars; truncate the per-skill
+            # failure summary so a run with many failing skills doesn't 422 the POST.
+            desc="QA eval failed:$summary"
+            desc="${desc:0:140}"
             gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
               -f state=failure \
               -f context=qa-eval \
-              -f description="QA eval failed:$summary" \
+              -f description="$desc" \
               -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           fi
 
