@@ -125,7 +125,7 @@
       "trajectory_checks": [
         {
           "id": "uses-mongodb-mcp",
-          "type": "called",
+          "type": "called_successfully",
           "match": {
             "any_mcp": true
           },

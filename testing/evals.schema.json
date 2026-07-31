@@ -333,7 +333,7 @@
       },
       "oneOf": [
         {
-          "title": "called / absent \u2014 a matching call must be present / absent",
+          "title": "called / called_successfully / absent \u2014 a matching call must be present (optionally succeeded) / absent",
           "required": [
             "type",
             "match"
@@ -349,6 +349,7 @@
             "type": {
               "enum": [
                 "called",
+                "called_successfully",
                 "absent"
               ]
             },
