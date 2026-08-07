@@ -317,7 +317,7 @@ Most vector search indexes only need the vector field:
 **Definition**: Filtering after vector similarity computation. 
 **Use Case**: Use post-filtering when you need to filter by criteria that are not known until query time, or when you need to combine vector search with other aggregation stages. No need to index fields.
 **Advantages**: More flexible, can combine with other aggregation stages, no need to index fields.
-**Disadvantages**: Slower than pre-filtering, computes similarity for all candidates first.
+**Performance**: Slower than pre-filtering, computes similarity for all candidates first.
 
 ---
 
