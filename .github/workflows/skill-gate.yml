@@ -10,19 +10,26 @@
 #            posts that status to the PR HEAD sha (see skill-gate-status.yml
 #            for the default seed that blocks un-scanned PRs).
 #
-# Security — privileged trigger + untrusted PR content (accepted risk; this is
-# why the two CodeQL "untrusted-checkout" alerts on the checkout step are
-# dismissed): `issue_comment` is privileged (it carries the Grove key), and the
-# judge stage must read the PR's content, so untrusted content necessarily meets
-# the key in one job — that co-location is unavoidable. We instead foreclose
-# untrusted-code *execution*:
-#   - skill-gate is installed (pinned, trusted) BEFORE the untrusted checkout;
-#   - the checkout is DATA-ONLY: sparse `skills/`, SHA-pinned, persist-credentials
-#     false (no token left in .git/config), and excludes root subdirs (.github, …);
-#   - the only step after the checkout runs the pinned `skill-gate` binary over
-#     markdown as DATA — nothing builds or executes the checked-out code;
-#   - the Grove key is fetched from AWS Secrets Manager (via OIDC — no GitHub
-#     secret) and only egresses to Grove; it never lives in repo settings.
+# Security — the privileged trigger and the untrusted PR content are split into
+# two jobs so they never share a runner. `issue_comment` is a privileged trigger,
+# so co-locating the checkout with the credentials is what CodeQL flags as
+# "untrusted checkout"; here neither job is both privileged and checked out:
+#
+#   collect (unprivileged) — no environment, no id-token, no secrets, no write
+#     scope. Does the DATA-ONLY checkout of the PR head (SHA-pinned, sparse
+#     `skills/`, persist-credentials false) and uploads the markdown plus the
+#     changed-bundle list as an artifact. Nothing it checks out is built or run.
+#
+#   scan (privileged) — holds `environment: skill-gate` and `id-token: write`,
+#     assumes the AWS role via OIDC and reads the Grove key from Secrets
+#     Manager. It NEVER calls actions/checkout on a PR ref: the only thing that
+#     crosses the boundary is the skills markdown, consumed as DATA by the
+#     pinned, trusted `skill-gate` binary (installed from a tag, not from the
+#     PR). The OIDC trust policy still matches, because the scan job is the one
+#     that declares `environment: skill-gate`.
+#
+# The Grove key is fetched at runtime from AWS Secrets Manager (via OIDC — no
+# GitHub secret) and only egresses to Grove; it never lives in repo settings.
 name: skill-gate
 
 on:
@@ -30,21 +37,15 @@ on:
     types: [created]
 
 # Built-in GITHUB_TOKEN only (ephemeral, repo-scoped) — no PAT, no stored token.
-# No write scope beyond commit statuses: findings surface via the job summary
-# and PR Checks annotations (neither needs a token), so we don't post a PR
-# comment and don't request pull-requests:write.
-permissions:
-  contents: read
-  pull-requests: read    # read PR head sha + changed files (no write scope)
-  statuses: write        # post the `skill-gate` commit status
-  id-token: write        # required for AWS OIDC role assumption (Secrets Manager)
+# Permissions are declared per job (least privilege); nothing is granted here.
+permissions: {}
 
 concurrency:
   group: skill-gate-${{ github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
-  scan:
+  collect:
     # Only on PR comments that invoke the command, from a repo owner or org
     # member (author_association). A fork PR from an org member still reports
     # MEMBER, so members self-trigger even on fork PRs; a true outside
@@ -56,11 +57,14 @@ jobs:
       startsWith(github.event.comment.body, '/skill-gate') &&
       contains(fromJSON('["OWNER","MEMBER"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
-    # Gated environment that holds the AWS role ARN + Grove base URL (and
-    # optional required reviewers). The Grove key itself is NOT stored here —
-    # it is fetched from AWS Secrets Manager at runtime via OIDC (see the AWS
-    # steps before the scan). See setup doc step 3.
-    environment: skill-gate
+    # No `environment:` and no `id-token: write` — this job cannot assume the
+    # AWS role or reach the Grove key, which is the point of the split.
+    permissions:
+      contents: read
+      pull-requests: read    # read PR head sha + changed files (no write scope)
+    outputs:
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      count: ${{ steps.changed.outputs.count }}
     steps:
       - name: Resolve PR head/base
         id: pr
@@ -73,17 +77,70 @@ jobs:
           head_sha=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}" --jq '.head.sha')
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
 
+      - name: Determine changed skill bundles
+        id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Written to RUNNER_TEMP so the data-only checkout's clean step (below)
+          # doesn't wipe it from the workspace; copied back in after checkout.
+          gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}/files" --paginate \
+            --jq '.[].filename' \
+            | grep '^skills/' | cut -d/ -f1-2 | sort -u > "$RUNNER_TEMP/changed_skills.txt" || true
+          count=$(grep -c . "$RUNNER_TEMP/changed_skills.txt" || true)
+          echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out changed skill content (data only)
+        # DATA-ONLY untrusted checkout, in the UNPRIVILEGED job: SHA-pinned, no
+        # persisted token, and a sparse `skills/` tree (excludes .github/,
+        # tools/, etc.). Nothing here is built or executed — it is uploaded as
+        # an artifact and read as markdown by the pinned binary in `scan`.
+        if: steps.changed.outputs.count != '0'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          persist-credentials: false
+          sparse-checkout: skills
+
+      - name: Stage scan input
+        if: steps.changed.outputs.count != '0'
+        run: cp "$RUNNER_TEMP/changed_skills.txt" "$GITHUB_WORKSPACE/changed_skills.txt"
+
+      - name: Upload skill content for scan
+        if: steps.changed.outputs.count != '0'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: skill-gate-input-${{ steps.pr.outputs.head_sha }}
+          path: |
+            skills
+            changed_skills.txt
+          retention-days: 1
+          if-no-files-found: error
+
+  scan:
+    needs: collect
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write        # post the `skill-gate` commit status
+      id-token: write        # required for AWS OIDC role assumption (Secrets Manager)
+    # Gated environment that holds the AWS role ARN + Grove base URL (and
+    # optional required reviewers). The Grove key itself is NOT stored here —
+    # it is fetched from AWS Secrets Manager at runtime via OIDC (see the AWS
+    # steps before the scan). See setup doc step 3. The OIDC trust policy
+    # (repo:mongodb/agent-skills:environment:skill-gate) matches on this line.
+    environment: skill-gate
+    steps:
       - name: Mark status in-progress
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api -X POST "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }}" \
+          gh api -X POST "repos/${{ github.repository }}/statuses/${{ needs.collect.outputs.head_sha }}" \
             -f state=pending -f context=skill-gate -f description="Scanning…" \
             -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-      # Toolchain is set up and skill-gate installed FIRST, while no untrusted
-      # content is on disk — the untrusted checkout happens last, just before the
-      # scan (see the Security note at the top of this file).
+      # Toolchain is set up and skill-gate installed from a trusted, pinned tag.
+      # No actions/checkout of a PR ref runs in this job at all.
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
@@ -94,28 +151,14 @@ jobs:
         # Mirrors the existing `go install …skill-validator@…` step.
         run: go install github.com/mongodb/skill-gate/cmd/skill-gate@v0.1.0
 
-      - name: Determine changed skill bundles
-        id: changed
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Written to RUNNER_TEMP so the data-only checkout's clean step (below)
-          # doesn't wipe it from the workspace.
-          gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}/files" --paginate \
-            --jq '.[].filename' \
-            | grep '^skills/' | cut -d/ -f1-2 | sort -u > "$RUNNER_TEMP/changed_skills.txt" || true
-          count=$(grep -c . "$RUNNER_TEMP/changed_skills.txt" || true)
-          echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
-
-      - name: Check out changed skill content (data only)
-        # DATA-ONLY untrusted checkout: SHA-pinned, no persisted token, and a
-        # sparse `skills/` tree (excludes .github/, tools/, etc.). Nothing here is
-        # built or executed — only read as markdown by the pinned binary below.
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Download skill content
+        # The artifact is markdown produced by our own `collect` job from a
+        # sparse `skills/` checkout — it is never built or executed here, only
+        # read by the pinned skill-gate binary.
+        if: needs.collect.outputs.count != '0'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          ref: ${{ steps.pr.outputs.head_sha }}
-          persist-credentials: false
-          sparse-checkout: skills
+          name: skill-gate-input-${{ needs.collect.outputs.head_sha }}
 
       - name: Configure AWS credentials (OIDC)
         # No static AWS keys in GitHub: the job exchanges GitHub's OIDC token
@@ -140,7 +183,7 @@ jobs:
 
       - name: Run skill-gate (complete scan — static + LLM judge)
         id: scan
-        if: steps.changed.outputs.count != '0'
+        if: needs.collect.outputs.count != '0'
         env:
           # ANTHROPIC_API_KEY is injected by the AWS Secrets Manager step above
           # (no GitHub secret). Base URL is non-sensitive and stays a var.
@@ -165,7 +208,7 @@ jobs:
             printf '%s\n' "$out"                                             # annotations -> run log / PR Checks
             printf '%s\n' "$out" | grep -v '^::' >> "$GITHUB_STEP_SUMMARY"   # report -> job summary
             [ "$rc" -gt "$worst" ] && worst=$rc
-          done < "$RUNNER_TEMP/changed_skills.txt"
+          done < "$GITHUB_WORKSPACE/changed_skills.txt"
           # Exit codes: 0 AUTO-PASS, 1 WARN, 2 ESCALATE. Fail closed on anything
           # unexpected (e.g. a judge tool-error returns non-0/1/2).
           echo "verdict_code=$worst" >> "$GITHUB_OUTPUT"
@@ -189,6 +232,6 @@ jobs:
           # Status only — no PR comment. The verdict's findings live in the job
           # summary + PR Checks annotations; target_url points reviewers there.
           # This keeps the token free of pull-requests:write.
-          gh api -X POST "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }}" \
+          gh api -X POST "repos/${{ github.repository }}/statuses/${{ needs.collect.outputs.head_sha }}" \
             -f state="$state" -f context=skill-gate -f description="$label" \
             -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
