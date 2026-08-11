@@ -83,7 +83,7 @@ Use when users need:
 
 If the search type is **Automated Embedding**, verify the cluster supports it before proceeding:
 - Supported on **all Atlas cluster tiers**: M0 (free), Flex, and M10+ dedicated
-- Not available for MongoDB Enterprise Edition (self-managed without Voyage AI API key configured)
+- For **self-managed deployments**, Automated Embedding requires MongoDB 8.2+ with `mongot` and a Voyage AI API key configured; otherwise use manual Vector Search.
 - **M10+ dedicated clusters only** require auto-scaling enabled with the correct max tier:
   - On **M10 or M20**: maximum instance size must be **M30 or higher**
   - On **M30 or higher**: maximum must be any tier higher than the current one
