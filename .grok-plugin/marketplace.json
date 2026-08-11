@@ -1,0 +1,24 @@
+{
+  "name": "mongodb-plugins",
+  "description": "Official MongoDB plugins for Grok",
+  "owner": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com"
+  },
+  "plugins": [
+    {
+      "name": "mongodb",
+      "source": {
+        "type": "local",
+        "path": "./plugins/mongodb"
+      }
+    },
+    {
+      "name": "mongodb-atlas",
+      "source": {
+        "type": "local",
+        "path": "./plugins/mongodb-atlas"
+      }
+    }
+  ]
+}

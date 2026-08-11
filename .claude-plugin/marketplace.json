@@ -1,15 +1,20 @@
 {
     "name": "mongodb-plugins",
+    "metadata": {
+        "description": "Official MongoDB plugins for Claude Code"
+    },
     "owner": {
         "name": "MongoDB",
-        "email": "agent-plugins@mongodb.com",
-        "url": "https://www.mongodb.com"
+        "email": "agent-plugins@mongodb.com"
     },
     "plugins": [
         {
             "name": "mongodb",
-            "source": "./",
-            "description": "Official Claude plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more."
+            "source": "./plugins/mongodb"
+        },
+        {
+            "name": "mongodb-atlas",
+            "source": "./plugins/mongodb-atlas"
         }
     ]
 }

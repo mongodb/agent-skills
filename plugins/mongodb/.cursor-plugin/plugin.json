@@ -1,0 +1,23 @@
+{
+  "name": "mongodb",
+  "version": "1.2.0",
+  "displayName": "MongoDB (Self-Managed MCP)",
+  "description": "Connect to any MongoDB deployment (Community, Enterprise Advanced, local dev container via Atlas CLI or Atlas clusters) through a self-managed MongoDB MCP Server using your connection string. Explore data, manage collections, optimize queries, and generate reliable code with MongoDB best practices.",
+  "author": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com",
+    "url": "https://www.mongodb.com"
+  },
+  "homepage": "https://www.mongodb.com/docs/mcp-server/get-started/",
+  "repository": "https://github.com/mongodb/agent-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mongodb",
+    "database",
+    "mcp",
+    "vector-search"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json",
+  "logo": "./assets/logo.png"
+}

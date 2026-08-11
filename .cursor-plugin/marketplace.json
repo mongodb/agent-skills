@@ -1,0 +1,20 @@
+{
+  "name": "mongodb-plugins",
+  "owner": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com"
+  },
+  "metadata": {
+    "description": "Official MongoDB plugins for Cursor"
+  },
+  "plugins": [
+    {
+      "name": "mongodb",
+      "source": "./plugins/mongodb"
+    },
+    {
+      "name": "mongodb-atlas",
+      "source": "./plugins/mongodb-atlas"
+    }
+  ]
+}
