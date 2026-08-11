@@ -21,7 +21,8 @@
 #     false (no token left in .git/config), and excludes root subdirs (.github, …);
 #   - the only step after the checkout runs the pinned `skill-gate` binary over
 #     markdown as DATA — nothing builds or executes the checked-out code;
-#   - the Grove key is scoped to the scan step's env and only egresses to Grove.
+#   - the Grove key is fetched from AWS Secrets Manager (via OIDC — no GitHub
+#     secret) and only egresses to Grove; it never lives in repo settings.
 name: skill-gate
 
 on:
@@ -36,6 +37,7 @@ permissions:
   contents: read
   pull-requests: read    # read PR head sha + changed files (no write scope)
   statuses: write        # post the `skill-gate` commit status
+  id-token: write        # required for AWS OIDC role assumption (Secrets Manager)
 
 concurrency:
   group: skill-gate-${{ github.event.issue.number }}
@@ -54,8 +56,10 @@ jobs:
       startsWith(github.event.comment.body, '/skill-gate') &&
       contains(fromJSON('["OWNER","MEMBER"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
-    # Gated environment that holds the Grove Service key (and optional required
-    # reviewers). See setup doc step 3.
+    # Gated environment that holds the AWS role ARN + Grove base URL (and
+    # optional required reviewers). The Grove key itself is NOT stored here —
+    # it is fetched from AWS Secrets Manager at runtime via OIDC (see the AWS
+    # steps before the scan). See setup doc step 3.
     environment: skill-gate
     steps:
       - name: Resolve PR head/base
@@ -113,17 +117,38 @@ jobs:
           persist-credentials: false
           sparse-checkout: skills
 
+      - name: Configure AWS credentials (OIDC)
+        # No static AWS keys in GitHub: the job exchanges GitHub's OIDC token
+        # for short-lived STS creds that may read one secret in the docs AWS
+        # account. The role trust is scoped to
+        # repo:mongodb/agent-skills:environment:skill-gate, so only this
+        # environment can assume it. Actions are SHA-pinned because this is a
+        # public repo and the job holds id-token: write.
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch Grove key from AWS Secrets Manager
+        # Retrieves the Grove API key into ANTHROPIC_API_KEY (masked in logs).
+        # The key never lives in GitHub — only the role ARN + base URL do.
+        uses: aws-actions/aws-secretsmanager-get-secrets@a9a7eb4e2f2871d30dc5b892576fde60a2ecc802 # v2.0.10
+        with:
+          secret-ids: |
+            ANTHROPIC_API_KEY, agent-skills/grove
+          parse-json-secrets: 'false'
+
       - name: Run skill-gate (complete scan — static + LLM judge)
         id: scan
         if: steps.changed.outputs.count != '0'
         env:
-          # Grove Service key + gateway, supplied by the gated environment.
-          ANTHROPIC_API_KEY: ${{ secrets.GROVE_API_KEY }}
+          # ANTHROPIC_API_KEY is injected by the AWS Secrets Manager step above
+          # (no GitHub secret). Base URL is non-sensitive and stays a var.
           ANTHROPIC_BASE_URL: ${{ vars.GROVE_BASE_URL }}
           ANTHROPIC_AUTH_HEADER: api-key
         run: |
           worst=0
-          while IFS= read -r dir; do
+          while IFS= -r dir; do
             [ -n "$dir" ] || continue
             # Skip skills deleted in this PR (dir no longer on disk).
             if [ ! -d "$dir" ]; then
