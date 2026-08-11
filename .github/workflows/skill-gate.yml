@@ -148,7 +148,7 @@ jobs:
           ANTHROPIC_AUTH_HEADER: api-key
         run: |
           worst=0
-          while IFS= -r dir; do
+          while IFS= read -r dir; do
             [ -n "$dir" ] || continue
             # Skip skills deleted in this PR (dir no longer on disk).
             if [ ! -d "$dir" ]; then
