@@ -72,7 +72,7 @@ Requires:
 
 ## Model Selection
 
-All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region, Google Cloud). Context window is **32,000 tokens** for all models. Text exceeding this is truncated at index time; queries exceeding it return a `context-limit-exceeded` error.
+All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region, Google Cloud). Context window is **32,000 tokens** for all models. Text exceeding this is truncated at index time; queries exceeding it return a `context-limit-exceeded` error. (Pricing and rate limits can change—confirm current values in Atlas or official MongoDB documentation.)
 
 | Model | Best For | Per 1K Tokens | Per 1M Tokens |
 |---|---|---|---|
