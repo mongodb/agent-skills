@@ -162,7 +162,7 @@ All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region
 ### Creating the Index via MCP
 
 ```javascript
-db.<collection>.createSearchIndex(
+db.collection.createSearchIndex(
   "<index-name>",
   "vectorSearch",
   {
