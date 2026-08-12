@@ -95,7 +95,7 @@ If the user is on M10+ without autoscaling, explain how to enable it in Atlas an
 
 If the search type is **Hybrid using `$rankFusion` or `$scoreFusion`**, verify the cluster version before proceeding:
 - `$rankFusion` requires MongoDB 8.0+
-- `$scoreFusion` requires MongoDB 8.3
+- `$scoreFusion` requires MongoDB 8.3+
 
 If the version requirement is not met, do not proceed — inform the user the feature is unavailable and suggest upgrading. Offer to help them build the individual lexical or vector search components separately in the meantime. Do not consult `references/hybrid-search.md`.
 
