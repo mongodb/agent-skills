@@ -63,7 +63,7 @@ Auto-scaling is required on M10+ so the cluster can scale up for the initial ind
 ### Self-Managed Deployments
 
 Requires:
-1. MongoDB 8.3+ Community Edition with `mongot`
+1. MongoDB 8.3+ with `mongot`
 2. A Voyage AI API key for indexing
 3. A Voyage AI API key for querying (recommended to use separate keys)
 4. Keys configured in `mongot` during deployment

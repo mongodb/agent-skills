@@ -89,7 +89,7 @@ If the search type is **Automated Embedding**, verify the cluster supports it be
   - On **M30 or higher**: maximum must be any tier higher than the current one
   - On **NVMe storage**: enable "Scale NVMe cluster tier when storage is running low"
 
-If the user is on M10+ without autoscaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. If the user is on MongoDB Enterprise Edition without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
+If the user is on M10+ without autoscaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
 
 ### 4. Version Check (Hybrid Search only)
 
@@ -99,7 +99,7 @@ If the search type is **Hybrid using `$rankFusion` or `$scoreFusion`**, verify t
 
 If the version requirement is not met, do not proceed — inform the user the feature is unavailable and suggest upgrading. Offer to help them build the individual lexical or vector search components separately in the meantime. Do not consult `references/hybrid-search.md`.
 
-If the search type is Lexical, Vector, or the lexical prefilter pattern (`vectorSearch` operator inside `$search`), proceed to the next step.
+If the search type is Lexical, Vector, Automated Embedding, or the lexical prefilter pattern (`vectorSearch` operator inside `$search`), proceed to the next step.
 
 ### 5. Consult Reference Files
 
