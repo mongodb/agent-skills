@@ -46,7 +46,7 @@ Hybrid search combines multiple search methods on the same collection and merges
 | Cross-collection hybrid search | `$unionWith` + `$vectorSearch` (not `$rankFusion`/`$scoreFusion`) |
 | Combine lexical + semantic search without writing embedding code | `$rankFusion` or `$scoreFusion` with an `autoEmbed`-type `$vectorSearch` pipeline (see automated-embedding.md) |
 
-**Version requirements**: `$rankFusion` requires MongoDB 8.0+. `$scoreFusion` requires MongoDB 8.2+. Only proceed with this guide if the use case is lexical prefilters, or if the cluster meets the version requirement for the fusion stage of interest. Otherwise do not proceed.
+**Version requirements**: `$rankFusion` requires MongoDB 8.0+. `$scoreFusion` requires MongoDB 8.3+. Only proceed with this guide if the use case is lexical prefilters, or if the cluster meets the version requirement for the fusion stage of interest. Otherwise do not proceed.
 
 ---
 
