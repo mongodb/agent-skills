@@ -367,7 +367,7 @@ Paid-tier limits increase automatically as usage grows over time — no action n
 **If rate limits are hit:**
 - Inserts/updates: queued and retried automatically with exponential backoff
 - Queries: return an error — application must handle and retry
-- Free cluster hitting the 3 RPM ceiling: add a payment method to upgrade to paid-tier limits (Atlas → Billing → Payment Method) — this alone unlocks up to 667x higher TPM
+- Free cluster hitting the 3 RPM ceiling: add a payment method to upgrade to paid-tier limits (Atlas → Billing → Payment Method) — this alone raises the ceiling from 3 to 2,000 RPM (~667x), with a correspondingly higher TPM allowance
 - Paid tier still hitting limits: contact MongoDB Support for a limit increase
 
 ---
