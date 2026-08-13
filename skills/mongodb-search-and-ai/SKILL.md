@@ -81,7 +81,7 @@ Use when users need:
 
 ### 3. Cluster Check (Automated Embedding only)
 
-If the search type is **Automated Embedding**, verify the cluster supports it before proceeding:
+If the search type is **Automated Embedding**, verify the cluster supports it before proceeding (tier and autoscaling prerequisites can change across Atlas releases — confirm current requirements in the Atlas UI or official docs before acting):
 - Supported on **all Atlas cluster tiers**: M0 (free), Flex, and M10+ dedicated
 - For **self-managed deployments**, Automated Embedding requires MongoDB 8.3+ with `mongot` and a Voyage AI API key configured; otherwise use manual Vector Search.
 - **M10+ dedicated clusters only** require auto-scaling enabled with the correct max tier:

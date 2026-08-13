@@ -50,7 +50,7 @@ Automated Embedding is available on all Atlas cluster tiers — M0 (free), Flex,
 
 Automated Embedding is supported on **all Atlas cluster tiers**: M0 (free), Flex, and M10+ dedicated.
 
-**M10+ dedicated clusters require auto-scaling to be enabled.** M0 and Flex clusters do not require auto-scaling.
+**M10+ dedicated clusters require auto-scaling to be enabled.** M0 and Flex clusters do not require auto-scaling. These tier and autoscaling prerequisites can change across Atlas releases — confirm the current requirements in the Atlas UI or official docs before acting.
 
 | Current Tier | Required Maximum Tier |
 |---|---|
