@@ -1,28 +1,20 @@
 name: QA Mutation Battery
 
-# DRAFT — checked in but deliberately not wired to fire automatically yet.
+# Deliberately manual (`workflow_dispatch` only) until the triggers below are uncommented.
 #
-# What this does: for a skill, materializes each mutant in its damage battery (see
-# agent-skills-evals/inspect/mutate_skill.py), runs the QA harness against baseline +
-# every mutant, and commits the resulting sensitivity report to
-# agent-skills-evals/baselines/<skill>-mutation.json. Advisory only — this job never
-# blocks a PR; it exists to keep the "what can this suite actually detect?" measurement
-# (see agent-skills-evals/DESIGN.md, Minimum Detectable Damage) fresh as skills change.
+# What this does: for a skill, materializes each mutant in its mutation config
+# (testing/<skill>/evals/mutation.yaml), runs the QA harness against baseline + every
+# mutant, and commits the resulting sensitivity report to
+# agent-skills-evals/baselines/<skill>-mutation.json. Advisory only — never blocks a PR.
+# It keeps the "what can this suite actually detect?" measurement fresh as skills change.
 #
-# Why `workflow_dispatch` only for now, with `push`/`schedule` commented out below:
-#   1. Grove key custody is RESOLVED — this job fetches the key from AWS Secrets Manager
-#      via OIDC at runtime (mirrors mongodb/agent-skills#51 / skill-gate, the pattern
-#      Application Security approved in ENTSEC-5465). The key is never a GitHub secret.
-#      Remaining prereq: the AWS IAM role + GitHub `qa-eval` environment must be
-#      provisioned (see the AWS steps + the setup runbook) before the push/schedule
-#      triggers can go live.
-#   2. Needs AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY set as Actions
-#      secrets on THIS repo. NOT an App-installation or permission change — the App
-#      already has Contents:Read/Write on agent-skills-evals (the only repo this token is
-#      ever scoped to below), which is all checkout + the baseline commit need. Nothing
-#      here requires the App to be installed on agent-skills itself.
-#
-# Once both land: uncomment the `push`/`schedule` triggers and remove this notice.
+# Before uncommenting `push`/`schedule`:
+#   1. The AWS IAM role + GitHub `qa-eval` environment must be provisioned (prereqs in
+#      qa-eval.yml's header). The Grove key is fetched from AWS Secrets Manager via OIDC
+#      at runtime — never a GitHub secret.
+#   2. AGENT_SKILLS_EVALS_APP_ID is a repo secret; the App PEM comes from AWS Secrets
+#      Manager at runtime. The App's existing Contents access on agent-skills-evals
+#      covers the checkout + baseline commit; no App changes are needed.
 
 on:
   # push:
@@ -41,12 +33,9 @@ on:
         type: string
       epochs:
         description: >-
-          Repeats per sample. The default of 5 is not arbitrary: at k=2 a NULL control
-          (zero damage) produced a per-item S_i of 0.114 — above the 0.10 gate threshold,
-          putting the threshold inside the noise and making every "detection"
-          indistinguishable from an A/A difference. At k=5 the floor fell to 0.029. Below
-          5, mutation_report correctly suppresses the MDD and reports the battery as
-          unmeasurable, which costs a full set of model calls to learn nothing.
+          Repeats per sample. Default 5: below that, run-to-run noise sits above the
+          battery's detection threshold and the report is suppressed as unmeasurable —
+          a lower-k run spends the model calls and learns nothing.
         required: false
         default: "5"
         type: string

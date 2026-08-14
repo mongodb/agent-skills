@@ -328,7 +328,7 @@
             "param",
             "called_successfully"
           ],
-          "description": "called = the call was ATTEMPTED (passes even if it errored); called_successfully = the call was attempted AND returned without error. Prefer called_successfully for any gating check: counting attempts is what false-passed the AXP MCP investigation, where every mcp__mongodb__* call returned 'No such tool available' yet attempt-counting looked healthy."
+          "description": "called = the call was ATTEMPTED (passes even if it errored); called_successfully = the call was attempted AND returned without error. Prefer called_successfully for any gating check: an attempted call can still have failed (e.g. the MCP server never registered and every call returned an error), and counting attempts alone reads that as healthy."
         }
       },
       "oneOf": [

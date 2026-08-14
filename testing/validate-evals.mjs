@@ -58,11 +58,9 @@ function contractFrom(schema) {
  * The schema pattern rejects a leading '/' and any '..' segment, but a pattern cannot reason
  * about what a path RESOLVES to. This is the authoritative containment check. It is what
  * blocks cross-skill answer-key handover — a case pointing at ../mongodb-other-skill/evals/
- * or ../../skills/<name>/SKILL.md would hand the agent its own answer key, pass the schema
- * regex (no leading '/', and '..' is a segment the pattern already forbids — but a regex
- * forbidding '..' and a resolve() that catches '..' are two different defenses, and only the
- * latter reasons about the resolved target), and be invisible to lint-item-echo.mjs (which
- * excludes `files` from overlap analysis because they are provided input data).
+ * or ../../skills/<name>/SKILL.md would hand the agent its own answer key and be invisible
+ * to lint-item-echo.mjs (which excludes `files` from overlap analysis because they are
+ * provided input data).
  *
  * resolve() rather than join() because join() disagrees with the harness on absolute paths:
  * join('/a', '/etc/x') nests to '/a/etc/x', while Python's Path('/a') / '/etc/x' honours the
@@ -101,8 +99,7 @@ export function checkAssetsExist(evalsDir, doc, contract) {
       } else {
         // And again after following symlinks. A symlink inside evals/ needs no '..' and no
         // leading '/', so it satisfies both the schema pattern and the resolve() check above
-        // while still pointing anywhere -- verified: a `leak.md -> ../../../skills/<name>/
-        // SKILL.md` symlink passed cleanly before this branch existed.
+        // while still pointing anywhere.
         const realEvalsDir = realpathSync(evalsDir);
         const realRel = relative(realEvalsDir, realpathSync(resolved));
         if (realRel.startsWith("..") || isAbsolute(realRel)) {

@@ -1,60 +1,47 @@
 name: QA PR Screen Check
 
-# DRAFT — checked in but deliberately not wired to fire automatically yet. Blockers that
-# must land before the `pull_request` trigger below is uncommented:
-#
-#   1. Grove key custody — RESOLVED. This job fetches the key from AWS Secrets Manager
-#      via OIDC at runtime (mirrors mongodb/agent-skills#51 / skill-gate, the pattern
-#      Application Security approved in ENTSEC-5465). The key is never a GitHub secret;
-#      only the role ARN (environment secret) + base URL (environment variable) live in
-#      GitHub. Remaining prereq: the AWS IAM role + GitHub `qa-eval` environment must be
-#      provisioned (see the AWS steps + the setup runbook).
-#   2. AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY as Actions secrets on
-#      THIS repo — a secrets-provisioning step, not an App-installation change; the App
-#      already has Contents:Read/Write on agent-skills-evals (the only repo this token is
-#      ever scoped to below), which is all checkout + the baseline commit need. Nothing
-#      here requires the App to be installed on agent-skills itself.
-#   3. FORK PRs — permanent for this GHA path. This repo is public and takes community
-#      contributions (README.community.md), and a `pull_request` run from a fork gets NO
-#      secrets (no `id-token:write`, no AWS role assumption). So the moment that trigger
-#      goes live, every external contributor's PR would get a screen job that can't reach
-#      the Grove key — an intimidating red X on a first-time contribution, for a check
-#      that is explicitly advisory. Handled below by scoping `screen` to same-repo PRs
-#      and telling forks once, in the job summary, that a maintainer can dispatch it. The
-#      alternative that DOES get secrets, `pull_request_target`, would run harness code and
-#      eval cases from an untrusted PR head with credentials in the environment; that needs
-#      a maintainer approval gate in front of it and is a deliberate decision to make, not
-#      a default to fall into.
-#
-# Credential-custody split (mirrors PR #51's collect/scan): the untrusted PR-head checkout
-# lives in the UNPRIVILEGED `collect` job (no environment, no id-token, no secrets); the
-# privileged `screen` job (environment: qa-eval, id-token: write) receives that content as
-# an artifact and never checks out a PR ref. So the OIDC token assumption + Grove key fetch
-# never share a runner with the untrusted checkout.
-#
-# HONEST CAVEAT: PR #51's split is clean because `scan` reads skill markdown as DATA with a
-# pinned binary. This workflow's `screen` EXECUTES the Inspect harness against untrusted
-# eval-case YAML with the Grove key in the harness env. The split protects the
-# credential-custody boundary (the OIDC/key fetch happen on a runner that never saw the
-# untrusted git ref), but the harness process still handles untrusted YAML with the key
-# present. Full isolation would need model-call-layer sandboxing — out of scope for workflow
-# YAML. This is a real improvement over a single co-located job, but not equivalent to
-# skill-gate's data-only consumption.
+# Advisory per-PR screen — checked in but deliberately not wired to fire automatically yet.
 #
 # What this does: for a changed skill, runs the skill-on (and skill-off, for the lift
-# number) arm ONCE (k=1 — this is a screen, not a measurement; see harness.py's --epochs
-# docstring on why more epochs wouldn't even help a per-PR decision), then posts a PR
-# comment built by agent-skills-evals/inspect/screen_report.py. That script routes
-# everything through analysis.sanitize.public_safe_run first — see that module's
-# docstring on why allowlisting, not scrubbing, is what makes this safe to post on a
-# public PR at all — and suppresses the lift line entirely when the two arms are not
-# comparable (arm_balance) or either arm is inconclusive, rather than publishing a number
-# that is mostly an environment difference.
+# number) arm ONCE (k=1 — this is a screen, not a measurement; more epochs would not help
+# a per-PR decision), then posts a PR comment built by the QA harness's screen_report.py
+# (10gen/agent-skills-evals). That script allowlists what may be posted — allowlisting,
+# not scrubbing, is what makes commenting safe on a public PR — and suppresses the lift
+# line when the two arms are not comparable or either is inconclusive, rather than
+# publishing a number that is mostly an environment difference.
 #
-# This is Tier 2/3 from DESIGN.md's tiering (behavioral + judge, ADVISORY, never blocks).
-# Tier 1 (schema validation, skill lint, plugin-copy drift, asset-exists, answer-echo) is
-# already live and blocking today via validate-skills.yml / validate-eval-cases.yml /
-# sync-plugin-skills.yml — this workflow does not duplicate any of that.
+# Advisory only: it comments, never blocks. The blocking gate is qa-eval.yml. This
+# workflow also does not duplicate the schema/lint checks in validate-eval-cases.yml.
+#
+# Before uncommenting the `pull_request` trigger below:
+#   1. The AWS IAM role + GitHub `qa-eval` environment must be provisioned (prereqs in
+#      qa-eval.yml's header). The Grove key is fetched from AWS Secrets Manager via OIDC
+#      at runtime — it is never a GitHub secret.
+#   2. AGENT_SKILLS_EVALS_APP_ID is a repo secret; the App PEM comes from AWS Secrets
+#      Manager at runtime. The App's existing Contents access on agent-skills-evals (the
+#      only repo this token is scoped to) covers the checkout; no App changes are needed.
+#   3. FORK PRs — permanent for this workflow. A `pull_request` run from a fork gets NO
+#      secrets (no id-token, no AWS role assumption), so every external contributor's PR
+#      would get a screen job that can't reach the model API — an intimidating red X on a
+#      first-time contribution, for a check that is explicitly advisory. Handled below by
+#      scoping `screen` to same-repo PRs and telling forks once, in the job summary, that
+#      a maintainer can dispatch it. (`pull_request_target` would get secrets but would
+#      run harness code and eval cases from an untrusted PR head with credentials in the
+#      environment — a deliberate decision, not a default to fall into.)
+#
+# Credential-custody split (the pattern Application Security approved for skill-gate,
+# ENTSEC-5465): the untrusted PR-head checkout lives in the UNPRIVILEGED `collect` job
+# (no environment, no id-token, no secrets); the privileged `screen` job
+# (environment: qa-eval, id-token: write) receives that content as an artifact and never
+# checks out a PR ref. So the OIDC token assumption + Grove key fetch never share a
+# runner with the untrusted checkout.
+#
+# CAVEAT: skill-gate's split is clean because it reads skill markdown as DATA with a
+# pinned binary. This workflow's `screen` EXECUTES the harness against untrusted
+# eval-case YAML with the Grove key in its env. The split protects the credential-custody
+# boundary (the OIDC/key fetch happen on a runner that never saw the untrusted git ref),
+# but the harness process still handles untrusted content with the key present. Full
+# isolation would need model-call-layer sandboxing — out of scope for workflow YAML.
 
 on:
   # pull_request:
@@ -92,7 +79,7 @@ env:
 
 jobs:
   # A fork PR cannot reach the model API, so say so once instead of failing a contributor's
-  # PR on an advisory check. See blocker 3 in the header.
+  # PR on an advisory check. See item 3 in the header.
   fork-notice:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
@@ -137,7 +124,7 @@ jobs:
           # DERIVED from the working tree, never a hardcoded list. Because `pull_request`
           # checks out the merge ref, a skill ADDED by this PR is already on disk here — so a
           # community PR contributing a brand-new skill gets screened, which a literal list of
-          # today's skills would silently exclude (the case that motivated this: mongodb/agent-skills#50).
+          # today's skills would silently exclude.
           ALL_SKILLS=$(
             for d in skills/*/; do
               [ -f "${d}SKILL.md" ] || continue

@@ -9,14 +9,12 @@
 #            workflow_dispatch with a pr_number is the smoke-test path.
 # Enforce:   the `main` ruleset requires the `qa-eval` check; qa-eval-status.yml seeds it.
 #
-# Supersedes the report-commit design (eval-report.json committed to testing/<skill>/,
-# verified by the since-deleted qa-eval-check.yml). The report now lives ON the check run
-# (output.summary) + as a workflow artifact, because:
-#   - the workflow evaluates a specific SHA and posts onto that same SHA, so the old
-#     headSha freshness check is inherent rather than verified after the fact;
-#   - check runs are created in the base repo's context, so FORK PRs are covered (a
-#     committed report could never be pushed to a fork branch);
-#   - no machine-generated commits in git history.
+# The verdict rides on the check run itself — report inline in output.summary, per-skill
+# JSON as artifacts, a short summary comment on the PR — with no committed report file:
+#   - freshness is inherent: the workflow posts onto the very SHA it evaluated;
+#   - fork PRs are covered: check runs are created in the base repo's context, so there
+#     is nothing to push to a fork branch;
+#   - git history stays free of machine-generated commits.
 #
 # Security — mirrors the collect/scan split from skill-gate.yml (PR #51, approved under
 # ENTSEC-5465): the untrusted PR-head checkout lives in the UNPRIVILEGED `collect` job
@@ -36,7 +34,7 @@
 # agent-skills-evals/inspect/analysis/sanitize.py (public_safe_run) first, the same
 # allowlisting screen_report.py uses.
 #
-# Prereqs (see the setup runbook + ENTSEC-5465):
+# Prereqs (security review: ENTSEC-5465):
 #   - repo variable QA_EVAL_ENABLED = 'true' (kill switch; also arms qa-eval-status.yml)
 #   - GitHub environment `qa-eval` with secret AWS_ROLE_ARN + variable GROVE_BASE_URL
 #   - AWS IAM role trusted for repo:mongodb/agent-skills:environment:qa-eval, allowed to

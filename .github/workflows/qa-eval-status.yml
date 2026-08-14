@@ -7,10 +7,10 @@
 # A `queued` check run renders neutral (not a red failure) so it isn't confused with a
 # broken build.
 #
-# This creates a CHECK RUN, not a commit status (the design moved to check runs so the
-# verdict can carry the report inline — see qa-eval.yml). Check runs are per-SHA by
-# construction, which makes the freshness problem disappear: a pass on an old commit
-# never satisfies a new head, because the new head simply has no completed check run.
+# The gate is a CHECK RUN; qa-eval.yml carries the eval report inline on it. Check runs
+# are per-SHA by construction, which makes the freshness problem disappear: a pass on an
+# old commit never satisfies a new head, because the new head simply has no completed
+# check run.
 #
 # NOTE: this creates the check run, but does not by itself make merging conditional on
 # it -- that requires "qa-eval" to be added under required checks in this repo's ruleset,

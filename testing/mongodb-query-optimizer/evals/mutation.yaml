@@ -26,10 +26,7 @@
 #      S_i = 0, which is indistinguishable from "the skill isn't load-bearing here" -- see
 #      mutation_report.py's docstring on the three explanations for S_i = 0.
 #
-# These two satisfy both, and are the two the battery has actually been run against:
-# query-optimizer's find-strings were caught 4x by the no-op raise while being authored, and
-# schema-design is the skill with measured lift (0.767 with the skill vs 0.100 without, k=5),
-# so at the time it was the only one where mutation could demonstrate anything at all.
+# These two satisfy both.
 #
 # What blocks the other five is not effort. Most of their rule-shaped text is PROCEDURAL
 # rather than technical -- "always consult the reference file", "always warn users about
@@ -39,8 +36,8 @@
 # detectable) then mongodb-search-and-ai (filter-vs-must, index-type choice) then
 # mongodb-atlas-stream-processing (6 references, but needs a careful read to find a technical
 # rule its cases turn on). mongodb-mcp-setup and mongodb-natural-language-querying may never
-# warrant one: no references/, generative or procedural guidance, and per the harness's
-# DESIGN.md tool-execution skills saturate, so S_i tends to 0 regardless of the mutation.
+# warrant one: no references/, generative or procedural guidance, and tool-execution skills
+# saturate, so S_i tends to 0 regardless of the mutation.
 inversions:
   - find: "**Equality → Sort → Range** order is most often preferred"
     replace: "**Range → Sort → Equality** order is most often preferred"

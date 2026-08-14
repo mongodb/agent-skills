@@ -3,9 +3,8 @@
  * Flag eval items that echo their own skill's guidance text rather than testing whether
  * an agent can produce it unaided. An item authored by copy-pasting from SKILL.md or a
  * references/*.md file is grading "can the agent quote the instructions back," not
- * "did the agent apply them" — the AXP/mongodb-skills work found this exact failure mode
- * plausible under author-only authoring with no held-out curator (see DESIGN.md's
- * anti-overfitting phase).
+ * "did the agent apply them" — an easy mistake when the skill's author also writes its
+ * tests, with no held-out curator to catch it.
  *
  * Three checks, in increasing order of how much they can actually prove:
  *
@@ -18,7 +17,7 @@
  *    overlap in `prompt` is leakage: the question is carrying its own answer. High overlap
  *    in `expected_output`/`expectations` is often unavoidable and fine — if the correct
  *    answer IS the rule, an item that states the rule is correctly authored. Pooling them
- *    (the original version of this lint) mostly measured the second and called it the first.
+ *    would mostly measure the second and call it the first.
  *
  * 2. **Verbatim span.** A shared run of ≥ maxVerbatimSpan tokens is a quotation whatever
  *    the null says.
@@ -29,17 +28,15 @@
  *    is the highest-value check here and it is pure string processing; it mirrors
  *    agent-skills-evals/inspect/analysis/echo.py::comovement.
  *
- * Thresholds come from testing/echo-thresholds.json, shared with that Python module rather
- * than re-guessed here. Note what the null actually does on real data: it collapses to
- * 0.000 (two skills almost never share an 8-gram), so the percentile rule alone would flag
- * 2% overlap, and `minAbsoluteContainment` is the threshold that does the real work. This
- * is NOT a "calibrated, no constants" design, and describing it as one would misrepresent
- * where the sensitivity comes from.
+ * Thresholds come from testing/echo-thresholds.json, shared with the Python analysis
+ * module so the two implementations cannot disagree about what counts as echoing; its
+ * notes explain why `minAbsoluteContainment`, not the percentile rule, does the real
+ * work on this corpus.
  *
  * Advisory today (prints, exits 0) unless --strict is passed.
- * TODO(2026-09-30, cory.bullinger): flip validate-eval-cases.yml to --strict once the
- * thresholds have been checked against a few real PRs of item additions, or delete this
- * TODO and record why advisory is the permanent answer. Do not let it sit unowned.
+ * TODO: flip validate-eval-cases.yml to --strict once the thresholds have been checked
+ * against a few real PRs of item additions, or record why advisory is the permanent
+ * answer.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
@@ -75,9 +72,9 @@ const BASE_REF = baseIdx !== -1 ? args[baseIdx + 1] : null;
 // In GitHub Actions, surface findings as PR annotations (file-attached ::warning) so they
 // appear in the Files Changed review view even while the lint is advisory (exit 0). A stdout
 // line in a green workflow log is invisible to a reviewer; an annotation is not. The lint
-// stays non-blocking — these are ::warning, not ::error — matching the advisory intent and
-// the dated TODO to flip to --strict. Locally (no GITHUB_ACTIONS), keep the human-readable
-// line so `node lint-item-echo.mjs` output is unchanged.
+// stays non-blocking — these are ::warning, not ::error — matching the advisory intent (see
+// the --strict TODO above). Locally (no GITHUB_ACTIONS), keep the human-readable line so
+// `node lint-item-echo.mjs` output is unchanged.
 const IN_CI = process.env.GITHUB_ACTIONS === "true";
 
 /**

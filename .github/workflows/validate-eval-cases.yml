@@ -3,10 +3,9 @@ name: Validate Eval Cases
 # Schema-validate testing/<skill>/evals/evals.json against testing/evals.schema.json (also
 # checks referenced `files`/`seed` assets actually exist) so a malformed or broken-pathed eval
 # case fails where it's authored, not later in the QA harness. Also lints for items that echo
-# their own skill's guidance text (advisory: reports, does not block, until the containment
-# thresholds have been checked against a few real PRs of item additions -- see the dated TODO
-# in that file). Scoped to testing/**
-# so it only runs when eval cases, skills, or the schema change.
+# their own skill's guidance text (advisory: reports, does not block — see the --strict TODO
+# in testing/lint-item-echo.mjs). Scoped to eval cases, skills, and the schema so it only
+# runs when one of those changes.
 on:
   pull_request:
     paths:

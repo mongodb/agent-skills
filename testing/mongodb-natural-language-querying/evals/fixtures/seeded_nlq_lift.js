@@ -1,12 +1,10 @@
 // Seed fixture: `seeded_nlq_lift` — sample.listingsAndReviews + sample.movies.
 //
-// Backs the NLQ cases imported from Dachary Carey's routing-eval spike
-// (grove-platform/research-scratch, agent-skill-routing-eval). Those were the prompts where a
-// blind order-swapped judge preferred the skill's answer over an unaided one in BOTH
-// independent passes — the "stable lift-positive" core, 11 of 37 declines.
+// Backs the NLQ lift cases: prompts where a blind judge preferred the skill's answer over
+// an unaided one.
 //
-// Why a purpose-built fixture rather than the real sample datasets the spike used: functional
-// grading re-executes the agent's pipeline and compares to a KNOWN result, so the data has to
+// Why a purpose-built fixture rather than the real sample datasets: functional grading
+// re-executes the agent's pipeline and compares to a KNOWN result, so the data has to
 // be small and every answer has to be unambiguous. The real sample_airbnb is ~100MB and its
 // answers depend on the dataset snapshot.
 //
