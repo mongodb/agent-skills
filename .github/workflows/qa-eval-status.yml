@@ -17,15 +17,9 @@
 # touching skills/ still need a QA eval; a maintainer must run it and push the report on
 # their behalf.
 #
-# SUPERSEDED IF THE EVERGREEN PATH LANDS -- and then this file should be DELETED, not kept.
-# If a mongodb/agent-skills Evergreen project runs the QA eval, Evergreen posts the status
-# itself under its own GitHub App. That works for fork PRs, which this cannot: a fork's
-# GITHUB_TOKEN is read-only, so the POST above is denied and no context is ever created.
-#
-# The trap is leaving both in place. Someone then adds the ACTIONS `qa-eval` context to the
-# ruleset's required checks, it never posts on a fork PR, and with bypass_actors empty every
-# external contribution wedges permanently -- while a green Evergreen check sits next to it.
-# Whatever posts the status must be the single thing named in the ruleset.
+# (An Evergreen path is not being pursued; this GHA workflow is the status seeder. The fork
+# limitation above is permanent for this GHA path -- do NOT add `qa-eval` to required checks
+# while forks can't satisfy it, or every external contribution wedges.)
 name: QA Eval Status
 
 on:

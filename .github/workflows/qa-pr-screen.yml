@@ -1,33 +1,52 @@
 name: QA PR Screen Check
 
-# DRAFT — checked in but deliberately not wired to fire automatically yet. Three blockers,
-# all of which must land before the `pull_request` trigger below is uncommented:
+# DRAFT — checked in but deliberately not wired to fire automatically yet. Blockers that
+# must land before the `pull_request` trigger below is uncommented:
 #
-#   1. The Grove-secret custody review (see qa-mutation-battery.yml's header).
+#   1. Grove key custody — RESOLVED. This job fetches the key from AWS Secrets Manager
+#      via OIDC at runtime (mirrors mongodb/agent-skills#51 / skill-gate, the pattern
+#      Application Security approved in ENTSEC-5465). The key is never a GitHub secret;
+#      only the role ARN (environment secret) + base URL (environment variable) live in
+#      GitHub. Remaining prereq: the AWS IAM role + GitHub `qa-eval` environment must be
+#      provisioned (see the AWS steps + the setup runbook).
 #   2. AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY as Actions secrets on
-#      THIS repo — a secrets-provisioning step, not an App-installation change; see that
-#      file's header for why the App does not need to be installed on agent-skills for this
-#      workflow's cross-repo checkout to work.
-#   3. FORK PRs -- and note this whole blocker DISSOLVES if the eval moves to Evergreen,
-#      which runs inside the network and gates outside-org patches natively. If that lands,
-#      this workflow is superseded and should be deleted rather than maintained alongside.
-#      Until then: this repo is public and takes community contributions
-#      (README.community.md), and a `pull_request` run from a fork gets NO secrets. So the
-#      moment that trigger goes live, every external contributor's PR would get a screen
-#      job with no GROVE_API_KEY, failing on the harness step — an intimidating red X on a
-#      first-time contribution, for a check that is explicitly advisory. Handled below by
-#      scoping `screen` to same-repo PRs and telling forks once, in the job summary, that a
-#      maintainer can dispatch it. The alternative that DOES get secrets,
-#      `pull_request_target`, would run harness code and eval cases from an untrusted PR
-#      head with credentials in the environment; that needs a maintainer approval gate in
-#      front of it and is a deliberate decision to make, not a default to fall into.
+#      THIS repo — a secrets-provisioning step, not an App-installation change; the App
+#      already has Contents:Read/Write on agent-skills-evals (the only repo this token is
+#      ever scoped to below), which is all checkout + the baseline commit need. Nothing
+#      here requires the App to be installed on agent-skills itself.
+#   3. FORK PRs — permanent for this GHA path. This repo is public and takes community
+#      contributions (README.community.md), and a `pull_request` run from a fork gets NO
+#      secrets (no `id-token:write`, no AWS role assumption). So the moment that trigger
+#      goes live, every external contributor's PR would get a screen job that can't reach
+#      the Grove key — an intimidating red X on a first-time contribution, for a check
+#      that is explicitly advisory. Handled below by scoping `screen` to same-repo PRs
+#      and telling forks once, in the job summary, that a maintainer can dispatch it. The
+#      alternative that DOES get secrets, `pull_request_target`, would run harness code and
+#      eval cases from an untrusted PR head with credentials in the environment; that needs
+#      a maintainer approval gate in front of it and is a deliberate decision to make, not
+#      a default to fall into.
+#
+# Credential-custody split (mirrors PR #51's collect/scan): the untrusted PR-head checkout
+# lives in the UNPRIVILEGED `collect` job (no environment, no id-token, no secrets); the
+# privileged `screen` job (environment: qa-eval, id-token: write) receives that content as
+# an artifact and never checks out a PR ref. So the OIDC token assumption + Grove key fetch
+# never share a runner with the untrusted checkout.
+#
+# HONEST CAVEAT: PR #51's split is clean because `scan` reads skill markdown as DATA with a
+# pinned binary. This workflow's `screen` EXECUTES the Inspect harness against untrusted
+# eval-case YAML with the Grove key in the harness env. The split protects the
+# credential-custody boundary (the OIDC/key fetch happen on a runner that never saw the
+# untrusted git ref), but the harness process still handles untrusted YAML with the key
+# present. Full isolation would need model-call-layer sandboxing — out of scope for workflow
+# YAML. This is a real improvement over a single co-located job, but not equivalent to
+# skill-gate's data-only consumption.
 #
 # What this does: for a changed skill, runs the skill-on (and skill-off, for the lift
 # number) arm ONCE (k=1 — this is a screen, not a measurement; see harness.py's --epochs
 # docstring on why more epochs wouldn't even help a per-PR decision), then posts a PR
 # comment built by agent-skills-evals/inspect/screen_report.py. That script routes
 # everything through analysis.sanitize.public_safe_run first — see that module's
-# docstring for why allowlisting, not scrubbing, is what makes this safe to post on a
+# docstring on why allowlisting, not scrubbing, is what makes this safe to post on a
 # public PR at all — and suppresses the lift line entirely when the two arms are not
 # comparable (arm_balance) or either arm is inconclusive, rather than publishing a number
 # that is mostly an environment difference.
@@ -89,15 +108,27 @@ jobs:
             echo "\"QA PR Screen Check\" workflow_dispatch."
           } >> "$GITHUB_STEP_SUMMARY"
 
-  detect:
+  # UNPRIVILEGED data-only checkout of the PR head. No `environment:`, no id-token, no
+  # secrets — so it cannot assume the AWS role or reach the Grove key (the point of the
+  # split). Stages the changed skills + their eval cases as an artifact for `screen`.
+  collect:
     if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       skills: ${{ steps.list.outputs.skills }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: Check out changed skill + eval content (data only)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            skills
+            testing
+          fetch-depth: 0 # need history to diff base..head for changed-skill detection
 
       - name: Determine which skill(s) changed in this PR
         id: list
@@ -135,20 +166,43 @@ jobs:
           # for a path that SHOULD have been a skill that is the wrong thing to be quiet about.
           [ "$DROPPED" = "[]" ] || echo "::notice::Ignored non-skill paths: $DROPPED"
 
+      - name: Upload staged content for the privileged screen job
+        if: steps.list.outputs.skills != '[]'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qa-screen-input-${{ github.event.pull_request.head.sha }}
+          path: |
+            skills
+            testing
+          retention-days: 1
+          if-no-files-found: error
+
+  # PRIVILEGED job. Holds environment: qa-eval + id-token: write, assumes the AWS role via
+  # OIDC, fetches the Grove key from Secrets Manager, and runs the harness. It NEVER checks
+  # out a PR ref: the untrusted content arrives as an artifact from `collect`.
   screen:
-    needs: [detect]
-    # On workflow_dispatch `detect` is skipped, so this cannot require its success — but it
-    # must not run after a FAILED detect either, because the matrix expression below would
-    # then evaluate fromJSON('') on an empty output. Plain `always()` does exactly that.
+    needs: [collect]
+    # On workflow_dispatch `collect` is skipped, so this cannot require its success — but
+    # it must not run after a FAILED collect either, because the matrix expression below
+    # would then evaluate fromJSON('') on an empty output. The explicit condition handles
+    # both paths.
     if: |
       !cancelled() &&
       (github.event_name == 'workflow_dispatch' ||
-       (needs.detect.result == 'success' && needs.detect.outputs.skills != '[]'))
+       (needs.collect.result == 'success' && needs.collect.outputs.skills != '[]'))
     strategy:
       fail-fast: false
       matrix:
-        skill: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.skill)) || fromJSON(needs.detect.outputs.skills) }}
+        skill: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.skill)) || fromJSON(needs.collect.outputs.skills) }}
     runs-on: ubuntu-latest
+    # Holds the AWS role ARN + Grove base URL (environment-scoped). The Grove key itself is
+    # fetched from AWS Secrets Manager via OIDC below — never a GitHub secret. The OIDC
+    # trust policy matches on repo:mongodb/agent-skills:environment:qa-eval.
+    environment: qa-eval
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write        # required for AWS OIDC role assumption (Secrets Manager)
     timeout-minutes: 60
     services:
       mongo:
@@ -164,36 +218,49 @@ jobs:
       # A CONCURRENCY cap, not a case count — see qa-mutation-battery.yml's MAX_SAMPLES
       # note on why 4 is too many agent+mongo container pairs for a 2-vCPU runner.
       MAX_SAMPLES: "2"
-      # TODO(pending Application Security review) — see qa-mutation-battery.yml.
-      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-      GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
+      # GROVE_API_KEY is injected at runtime by the AWS Secrets Manager step below
+      # (no GitHub secret). Base URL is non-sensitive and stays a var.
+      GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
     steps:
-      # Fail loud, not silent no-op. The triggers above are deliberately commented out
-      # pending the Application Security review (see header). If they are uncommented
-      # before GROVE_API_KEY / GROVE_BASE_URL are provisioned as Actions secrets on this
-      # repo, the harness step below would otherwise fail with an opaque 401 — or, worse,
-      # a future guard that skips on missing creds would let every screen quietly no-op
-      # while looking green. This step turns "secret absent" into a one-line ::error::
-      # naming exactly what is missing, before any checkout or model call is spent.
-      - name: Require model-API credentials
+      # Fail loud, not silent no-op. The Grove key is fetched from AWS Secrets Manager
+      # below (no GitHub secret), so this guard checks the GitHub-side prereqs that must
+      # exist for that fetch to work: the environment-scoped AWS_ROLE_ARN and the
+      # GROVE_BASE_URL var. If the pull_request trigger is uncommented before the `qa-eval`
+      # environment + AWS role are provisioned, this fails in one line instead of letting
+      # the harness no-op or fail with an opaque 401.
+      - name: Require model-API credentials (AWS OIDC prereqs)
         env:
-          GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-          GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
         run: |
           set -euo pipefail
           missing=()
-          [ -z "${GROVE_API_KEY:-}" ] && missing+=("GROVE_API_KEY")
-          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL")
+          [ -z "${AWS_ROLE_ARN:-}" ] && missing+=("AWS_ROLE_ARN (environment secret on qa-eval)")
+          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL (environment variable on qa-eval)")
           if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::${missing[*]} not set as Actions secrets on this repo. This workflow must not be enabled (uncomment its pull_request trigger) until the Application Security review lands and these secrets are provisioned. A missing secret should fail loudly here, not let the harness step no-op or fail with an opaque 401."
+            echo "::error::${missing[*]} not provisioned. This workflow must not be enabled (uncomment its pull_request trigger) until the GitHub 'qa-eval' environment exists with AWS_ROLE_ARN (secret) + GROVE_BASE_URL (var) and the AWS IAM role + Secrets Manager access are set up (see mongodb/agent-skills#51 / ENTSEC-5465). Fail loud here, not an opaque 401."
             exit 1
           fi
 
-      - name: Checkout agent-skills at the PR head
+      # PR path: the untrusted PR-head content was staged as an artifact by the
+      # unprivileged `collect` job — download it instead of checking out the PR ref here,
+      # so the OIDC token assumption + Grove key fetch never share a runner with the
+      # untrusted checkout. Lands at agent-skills/{skills,testing} so the harness resolves
+      # skill content the same way the dispatch-path checkout below does.
+      - name: Download staged PR content
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: qa-screen-input-${{ github.event.pull_request.head.sha }}
+          path: agent-skills
+
+      # Dispatch path: trusted (operator-chosen ref), so a direct checkout is fine.
+      - name: Checkout agent-skills (dispatch ref)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           path: agent-skills
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.pull_request.head.sha }}
+          ref: ${{ github.ref }}
 
       - name: Generate a token for the agent-skills-evals GitHub App
         id: app-token
@@ -214,6 +281,25 @@ jobs:
       - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
         with:
           python-version: "3.12"
+
+      # No static AWS keys in GitHub: exchange GitHub's OIDC token for short-lived STS
+      # creds that may read one secret in the docs AWS account. The role trust is scoped
+      # to repo:mongodb/agent-skills:environment:qa-eval, so only this environment can
+      # assume it. SHA-pinned because this is a public repo and the job holds id-token:write.
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Retrieves the Grove API key into GROVE_API_KEY (masked in logs), available to the
+      # harness step below. The key never lives in GitHub — only the role ARN + base URL do.
+      - name: Fetch Grove key from AWS Secrets Manager
+        uses: aws-actions/aws-secretsmanager-get-secrets@a9a7eb4e2f2871d30dc5b892576fde60a2ecc802 # v2.0.10
+        with:
+          secret-ids: |
+            GROVE_API_KEY, agent-skills/grove
+          parse-json-secrets: 'false'
 
       - name: Run skill-off then skill-on (k=1 — this is a screen, not a measurement)
         working-directory: agent-skills-evals/inspect

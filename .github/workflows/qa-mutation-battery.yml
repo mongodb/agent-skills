@@ -10,10 +10,12 @@ name: QA Mutation Battery
 # (see agent-skills-evals/DESIGN.md, Minimum Detectable Damage) fresh as skills change.
 #
 # Why `workflow_dispatch` only for now, with `push`/`schedule` commented out below:
-#   1. Needs real Grove model-call credentials in CI. Whether that's safe (static key as
-#      a GH Actions secret vs. some other custody model) is pending an Application
-#      Security review — see the #ask-ai-infra thread. Nothing below should be treated
-#      as the final shape of that until it lands.
+#   1. Grove key custody is RESOLVED — this job fetches the key from AWS Secrets Manager
+#      via OIDC at runtime (mirrors mongodb/agent-skills#51 / skill-gate, the pattern
+#      Application Security approved in ENTSEC-5465). The key is never a GitHub secret.
+#      Remaining prereq: the AWS IAM role + GitHub `qa-eval` environment must be
+#      provisioned (see the AWS steps + the setup runbook) before the push/schedule
+#      triggers can go live.
 #   2. Needs AGENT_SKILLS_EVALS_APP_ID / AGENT_SKILLS_EVALS_APP_PRIVATE_KEY set as Actions
 #      secrets on THIS repo. NOT an App-installation or permission change — the App
 #      already has Contents:Read/Write on agent-skills-evals (the only repo this token is
@@ -128,6 +130,13 @@ jobs:
       matrix:
         skill: ${{ fromJSON(needs.detect.outputs.skills) }}
     runs-on: ubuntu-latest
+    # Holds the AWS role ARN + Grove base URL (environment-scoped). The Grove key itself
+    # is NOT stored here — fetched from AWS Secrets Manager via OIDC in the steps below.
+    # The OIDC trust policy matches on repo:mongodb/agent-skills:environment:qa-eval.
+    environment: qa-eval
+    permissions:
+      contents: read
+      id-token: write        # required for AWS OIDC role assumption (Secrets Manager)
     # ~11 mutants plus a baseline, each at --epochs 5, is long but bounded. Without an
     # explicit cap a wedged harness burns the 6h default before anyone notices.
     timeout-minutes: 300
@@ -150,29 +159,27 @@ jobs:
       # ubuntu-latest runner that is 8 containers, and samples OOM-killed into INVALID are
       # samples the harness correctly refuses to score — a wasted run, not a cheap one.
       MAX_SAMPLES: "2"
-      # TODO(pending Application Security review): confirmed-safe custody for these two.
-      # Until that review lands, this job only runs via manual workflow_dispatch, so a
-      # missing secret here just fails the harness step loudly rather than firing
-      # unattended on every push.
-      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-      GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
+      # GROVE_API_KEY is injected at runtime by the AWS Secrets Manager step below
+      # (no GitHub secret). Base URL is non-sensitive and stays a var.
+      GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
     steps:
-      # Fail loud, not silent no-op — same rationale as qa-pr-screen.yml's credential
-      # gate. The push/schedule triggers above are commented out pending the Application
-      # Security review; if they are uncommented before these secrets exist, the harness
-      # would otherwise burn a multi-hour battery failing opaquely, or a future skip-on-
-      # missing-creds guard would let a census quietly no-op while looking green.
-      - name: Require model-API credentials
+      # Fail loud, not silent no-op. The Grove key itself is fetched from AWS Secrets
+      # Manager below (no GitHub secret), so this guard checks the GitHub-side prereqs
+      # that must exist for that fetch to work: the environment-scoped AWS_ROLE_ARN and
+      # the GROVE_BASE_URL var. If the push/schedule triggers are uncommented before the
+      # `qa-eval` environment + AWS role are provisioned, this fails in one line instead
+      # of burning a multi-hour battery on an opaque 401 or no-op'ing while looking green.
+      - name: Require model-API credentials (AWS OIDC prereqs)
         env:
-          GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-          GROVE_BASE_URL: ${{ secrets.GROVE_BASE_URL }}
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
         run: |
           set -euo pipefail
           missing=()
-          [ -z "${GROVE_API_KEY:-}" ] && missing+=("GROVE_API_KEY")
-          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL")
+          [ -z "${AWS_ROLE_ARN:-}" ] && missing+=("AWS_ROLE_ARN (environment secret on qa-eval)")
+          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL (environment variable on qa-eval)")
           if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::${missing[*]} not set as Actions secrets on this repo. This workflow must not be enabled (uncomment its push/schedule triggers) until the Application Security review lands and these secrets are provisioned. A missing secret should fail loudly here, not let a multi-hour battery no-op or fail with an opaque 401."
+            echo "::error::${missing[*]} not provisioned. This workflow must not be enabled (uncomment its push/schedule triggers) until the GitHub 'qa-eval' environment exists with AWS_ROLE_ARN (secret) + GROVE_BASE_URL (var) and the AWS IAM role + Secrets Manager access are set up (see mongodb/agent-skills#51 / ENTSEC-5465). Fail loud here, not a multi-hour opaque 401."
             exit 1
           fi
 
@@ -200,6 +207,25 @@ jobs:
       - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
         with:
           python-version: "3.12"
+
+      # No static AWS keys in GitHub: exchange GitHub's OIDC token for short-lived STS
+      # creds that may read one secret in the docs AWS account. The role trust is scoped
+      # to repo:mongodb/agent-skills:environment:qa-eval, so only this environment can
+      # assume it. SHA-pinned because this is a public repo and the job holds id-token:write.
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Retrieves the Grove API key into GROVE_API_KEY (masked in logs), available to the
+      # harness step below. The key never lives in GitHub — only the role ARN + base URL do.
+      - name: Fetch Grove key from AWS Secrets Manager
+        uses: aws-actions/aws-secretsmanager-get-secrets@a9a7eb4e2f2871d30dc5b892576fde60a2ecc802 # v2.0.10
+        with:
+          secret-ids: |
+            GROVE_API_KEY, agent-skills/grove
+          parse-json-secrets: 'false'
 
       - name: Run baseline + every mutant for ${{ matrix.skill }}
         working-directory: agent-skills-evals/inspect
