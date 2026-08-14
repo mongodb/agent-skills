@@ -262,26 +262,11 @@ jobs:
           path: agent-skills
           ref: ${{ github.ref }}
 
-      - name: Generate a token for the agent-skills-evals GitHub App
-        id: app-token
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
-        with:
-          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
-          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
-          owner: 10gen
-          repositories: agent-skills-evals
-
-      - name: Checkout agent-skills-evals (private, sibling checkout)
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          repository: 10gen/agent-skills-evals
-          token: ${{ steps.app-token.outputs.token }}
-          path: agent-skills-evals
-
-      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
-        with:
-          python-version: "3.12"
-
+      # Secrets BEFORE the App token: create-github-app-token consumes
+      # ${{ env.GITHUB_APP_PRIVATE_KEY }}, which only exists after the Secrets Manager
+      # step below exports it (aws-secretsmanager-get-secrets writes each secret to
+      # $GITHUB_ENV, visible to `${{ env.* }}` in LATER steps only).
+      #
       # No static AWS keys in GitHub: exchange GitHub's OIDC token for short-lived STS
       # creds that may read one secret in the docs AWS account. The role trust is scoped
       # to repo:mongodb/agent-skills:environment:qa-eval, so only this environment can
@@ -303,6 +288,26 @@ jobs:
             GROVE_API_KEY, agent-skills/grove
             GITHUB_APP_PRIVATE_KEY, agent-skills/gh-app-private-key
           parse-json-secrets: 'false'
+
+      - name: Generate a token for the agent-skills-evals GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - name: Checkout agent-skills-evals (private, sibling checkout)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+          path: agent-skills-evals
+
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+        with:
+          python-version: "3.12"
 
       - name: Run skill-off then skill-on (k=1 — this is a screen, not a measurement)
         working-directory: agent-skills-evals/inspect
