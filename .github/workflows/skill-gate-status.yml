@@ -37,8 +37,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          touched=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate \
-            --jq '.[].filename' | grep -c '^skills/' || true)
+          set -euo pipefail
+          # Fetch the file list on its own line so a `gh api` failure fails this
+          # seeder closed — instead of silently seeding `skill-gate=success`
+          # ("No skill changes") and allowing merge with no scan. The grep -c
+          # for bundle dirs is separate: no match is a legitimate "no skill
+          # changes" outcome (touched=0), not an error, so it stays non-fatal.
+          files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate \
+            --jq '.[].filename')
+          touched=$(printf '%s\n' "$files" | grep -cE '^skills/[^/]+/' || true)
           if [ "${touched:-0}" -eq 0 ]; then
             gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
               -f state=success -f context=skill-gate -f description="No skill changes — skill-gate not required"
