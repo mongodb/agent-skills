@@ -1,25 +1,31 @@
 # qa-eval required-check seeder.
 #
-# Manages the DEFAULT state of the `qa-eval` status check so a PR can't merge until a
-# fresh eval report has been committed for every changed skill:
-#   - PR doesn't touch skills/**  -> success ("not required")
-#   - PR touches skills/**        -> pending ("run run-qa-eval.ts and push report")
-# `pending` renders neutral (not a red failure) so it isn't confused with a broken build.
-# Every push re-seeds against the new HEAD sha, so a stale pass on an old commit never
-# satisfies the new head.
+# Manages the DEFAULT state of the `qa-eval` check run so a PR can't merge until a QA
+# eval has run on the current head:
+#   - PR doesn't touch skills/**  -> completed/success ("not required")
+#   - PR touches skills/**        -> queued ("run /qa-eval")
+# A `queued` check run renders neutral (not a red failure) so it isn't confused with a
+# broken build.
 #
-# NOTE: this posts a status context, but does not by itself make merging conditional on
-# it -- that requires "qa-eval" to be added under required status checks in this repo's
-# branch protection settings, a separate, repo-admin action.
+# This creates a CHECK RUN, not a commit status (the design moved to check runs so the
+# verdict can carry the report inline — see qa-eval.yml). Check runs are per-SHA by
+# construction, which makes the freshness problem disappear: a pass on an old commit
+# never satisfies a new head, because the new head simply has no completed check run.
 #
-# NOTE (forks): on fork PRs the built-in GITHUB_TOKEN is read-only, so the statuses POST
-# is denied. The job-level `if:` skips fork PRs to avoid a cosmetic errored run. Fork PRs
-# touching skills/ still need a QA eval; a maintainer must run it and push the report on
-# their behalf.
+# NOTE: this creates the check run, but does not by itself make merging conditional on
+# it -- that requires "qa-eval" to be added under required checks in this repo's ruleset,
+# a separate, repo-admin action.
 #
-# (An Evergreen path is not being pursued; this GHA workflow is the status seeder. The fork
-# limitation above is permanent for this GHA path -- do NOT add `qa-eval` to required checks
-# while forks can't satisfy it, or every external contribution wedges.)
+# NOTE (forks): on fork PRs the built-in GITHUB_TOKEN is read-only, so check-run creation
+# is denied. The job-level `if:` skips fork PRs; the check then stays uncreated -> shows
+# "Expected" -> blocked by absence IF the check is required. A maintainer comments
+# `/qa-eval` on the fork PR and qa-eval.yml (which runs in the base-repo context with a
+# read-write token) creates the check run itself. So forks are covered end-to-end without
+# this seeder.
+#
+# KILL SWITCH: the whole gate is inert until the repo variable QA_EVAL_ENABLED is set to
+# 'true'. Flip it only after 10gen/agent-skills-evals#18 (the harness) has merged and a
+# dispatch smoke test of qa-eval.yml has gone green.
 name: QA Eval Status
 
 on:
@@ -28,27 +34,39 @@ on:
 
 permissions:
   pull-requests: read
-  statuses: write
+  checks: write
 
 jobs:
   seed:
-    if: ${{ github.event.pull_request.head.repo.fork == false }}
+    if: ${{ github.event.pull_request.head.repo.fork == false && vars.QA_EVAL_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Seed required check
+      - name: Seed qa-eval check run
         env:
           GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          touched=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            --paginate --jq '.[].filename' | grep -c '^skills/' || true)
+          set -euo pipefail
+          # Fetch the file list on its own line so a `gh api` failure fails this seeder
+          # closed -- instead of silently seeding qa-eval=success ("no skill changes")
+          # and allowing merge with no eval. The grep for skill dirs is separate: no
+          # match is a legitimate "no skill changes" outcome (touched=0), not an error.
+          files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate --jq '.[].filename')
+          touched=$(printf '%s\n' "$files" | grep -cE '^skills/[^/]+/' || true)
           if [ "${touched:-0}" -eq 0 ]; then
-            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
-              -f state=success \
-              -f context=qa-eval \
-              -f description="No skill changes — qa-eval not required"
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=completed \
+              -f conclusion=success \
+              -f "output[title]=No skill changes" \
+              -f "output[summary]=This PR does not touch \`skills/**\`; the QA eval is not required."
           else
-            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
-              -f state=pending \
-              -f context=qa-eval \
-              -f description="Run scripts/run-qa-eval.ts and push the report to enable merge"
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=queued \
+              -f "output[title]=QA eval required before merge" \
+              -f "output[summary]=This PR changes skill content. A maintainer runs \`/qa-eval\` in a PR comment to produce the verdict (see .github/workflows/qa-eval.yml)."
           fi
