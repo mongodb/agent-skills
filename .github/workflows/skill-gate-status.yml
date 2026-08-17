@@ -15,7 +15,12 @@
 # check is then simply unseeded → stays "Expected" → merge blocked by absence,
 # and the ruleset enforces the check independently of this seeder. Fork PRs here
 # are expected to touch skills/** (new/updated skills), so they need a
-# /skill-gate scan regardless.
+# /skill-gate scan regardless. This repo expects a branch-based workflow —
+# see CONTRIBUTING.md ("Pull requests").
+#
+# NOTE (size ceiling): the changed-files API used below returns at most 3,000 files
+# per PR. A larger PR would under-detect touched skills and could seed "success"
+# without a scan — one more reason PR-size expectations live in CONTRIBUTING.md.
 name: skill-gate-status
 
 on:

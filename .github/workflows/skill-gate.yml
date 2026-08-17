@@ -40,9 +40,14 @@ on:
 # Permissions are declared per job (least privilege); nothing is granted here.
 permissions: {}
 
+# Serialize per PR, but do NOT cancel an in-flight run: the /skill-gate filter is a
+# job-level `if:`, so EVERY issue_comment creates a run in this group — with
+# cancel-in-progress, an unrelated comment would kill a scan mid-flight and leave the
+# required check pending. Serializing is safe: the verdict posts to the head SHA resolved
+# at trigger time, and skill-gate-status.yml re-seeds pending if the PR has moved on.
 concurrency:
   group: skill-gate-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   collect:
@@ -90,6 +95,9 @@ jobs:
           # count=0, which skips the scan and posts AUTO-PASS. The grep for
           # bundle dirs is separate: no match there is a legitimate "no skill
           # changes" outcome (count=0), not an error, so it stays non-fatal.
+          # Known ceiling: this endpoint returns at most 3,000 changed files per PR,
+          # so a larger PR would under-detect changed skills — PR-size expectations
+          # live in CONTRIBUTING.md ("Pull requests").
           gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}/files" --paginate \
             --jq '.[].filename' > "$RUNNER_TEMP/pr_files.txt"
           grep -E '^skills/[^/]+/' "$RUNNER_TEMP/pr_files.txt" | cut -d/ -f1-2 | sort -u > "$RUNNER_TEMP/changed_skills.txt" || true
