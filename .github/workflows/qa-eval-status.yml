@@ -51,6 +51,9 @@ jobs:
           # closed -- instead of silently seeding qa-eval=success ("no skill changes")
           # and allowing merge with no eval. The grep for skill dirs is separate: no
           # match is a legitimate "no skill changes" outcome (touched=0), not an error.
+          # Known ceiling: this endpoint returns at most 3,000 changed files per PR;
+          # beyond it a skill change could be missed and "success" seeded without an
+          # eval — PR-size expectations live in CONTRIBUTING.md ("Pull requests").
           files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
             --paginate --jq '.[].filename')
           touched=$(printf '%s\n' "$files" | grep -cE '^skills/[^/]+/' || true)
