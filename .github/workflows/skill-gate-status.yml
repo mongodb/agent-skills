@@ -31,6 +31,15 @@ permissions:
   pull-requests: read    # read changed files (skills/** detection)
   statuses: write        # post the default `skill-gate` status
 
+# Serialize per PR head. Unlike skill-gate.yml (issue_comment, where an
+# unrelated comment must NOT cancel an in-flight scan — hence its
+# cancel-in-progress: false), this workflow fires on pull_request events: one
+# run per push. Canceling a stale seeder run on a rapid double-push is safe and
+# desirable — the seeder is idempotent and the newer push's seed supersedes it.
+concurrency:
+  group: skill-gate-status-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
 jobs:
   seed:
     # Skip fork PRs: the read-only token can't post a status there, and the
