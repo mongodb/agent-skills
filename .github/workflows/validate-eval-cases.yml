@@ -14,6 +14,7 @@ on:
       - "testing/validate-evals.mjs"
       - "testing/validate-evals.test.mjs"
       - "testing/lint-item-echo.mjs"
+      - "testing/lint-item-echo.test.mjs"
       - "testing/echo-thresholds.json"
       - "testing/package.json"
       # The lockfile too: `npm ci` installs from it, so a lockfile-only change (a dependency
@@ -41,8 +42,13 @@ jobs:
         run: npm ci --prefix testing --no-audit --no-fund
       - name: Validate eval cases against schema, check referenced assets exist
         run: node testing/validate-evals.mjs
-      - name: Pin the files-containment rule (cross-skill answer-key handover guard)
-        run: node --test testing/validate-evals.test.mjs
+      - name: Pin the files-containment rule and the echo-lint's Python parity
+        # validate-evals.test.mjs pins the cross-skill answer-key handover guard;
+        # lint-item-echo.test.mjs pins the tokenizer/span behaviour that keeps this lint a
+        # true port of agent-skills-evals's analysis/echo.py (same fixtures and expected
+        # values as test_echo.py — the two repos' CIs can't import each other, so both pin
+        # the same numbers).
+        run: node --test testing/validate-evals.test.mjs testing/lint-item-echo.test.mjs
       - name: Lint for items that echo their own skill's guidance text (advisory)
         # --base enables the co-movement check: an edit to SKILL.md that RAISES an eval
         # item's overlap with SKILL.md is teaching to the test, and it is detectable from
