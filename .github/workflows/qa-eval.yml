@@ -10,11 +10,13 @@
 # Enforce:   the `main` ruleset requires the `qa-eval` check; qa-eval-status.yml seeds it.
 #
 # The verdict rides on the check run itself — report inline in output.summary, per-skill
-# JSON as artifacts, a short summary comment on the PR — with no committed report file:
+# JSON as artifacts — with no committed report file and no PR-comment duplicate:
 #   - freshness is inherent: the workflow posts onto the very SHA it evaluated;
 #   - fork PRs are covered: check runs are created in the base repo's context, so there
 #     is nothing to push to a fork branch;
-#   - git history stays free of machine-generated commits.
+#   - git history stays free of machine-generated commits;
+#   - and because nothing posts to the PR conversation, this job's token carries no write
+#     scope but checks: write (see the security note below).
 #
 # Security — `issue_comment` is a privileged trigger, and this single job both checks
 # out PR-provided content and holds the Grove API key + the agent-skills-evals App PEM.
@@ -24,10 +26,10 @@
 #   - The checkout is DATA-ONLY: SHA-pinned to the PR head, persist-credentials false,
 #     sparse skills/ + testing/ tree (excludes .github/, etc.). Nothing from the PR is
 #     built.
-#   - The GITHUB_TOKEN's write scopes are pull-requests: write + checks: write (posting
-#     the verdict comment + driving the check run) — no contents: write, so exfiltration
-#     can't tamper with the repo. The Grove key only egresses to Grove and is gated
-#     behind the qa-eval environment's required reviewers.
+#   - The GITHUB_TOKEN's only write scope is checks: write (driving the check run) — no
+#     contents: write and no pull-requests: write, so exfiltration can neither tamper
+#     with the repo nor post to the PR. The Grove key only egresses to Grove and is
+#     gated behind the qa-eval environment's required reviewers.
 # This alert re-fires on pushes that touch this checkout and should be dismissed in the
 # code-scanning Security tab with the justification above.
 #
@@ -39,10 +41,10 @@
 # credential-bearing runner, and persist-credentials: false + sparse checkout already
 # limit that surface. (The prior split was collapsed at review request; see PR #51.)
 #
-# PUBLIC-CONTENT RULE: this is a public repo — job logs, artifacts, check-run output, and
-# PR comments are all world-visible. The check-run summary and PR comment are built only
-# from fields we generate ourselves (skill names, verdicts, integer counts, URLs) — never
-# model output or transcript text. If that ever changes, the content must go through
+# PUBLIC-CONTENT RULE: this is a public repo — job logs, artifacts, and check-run output
+# are all world-visible. The check-run summary is built only from fields we generate
+# ourselves (skill names, verdicts, integer counts, URLs) — never model output or
+# transcript text. If that ever changes, the content must go through
 # agent-skills-evals/inspect/analysis/sanitize.py (public_safe_run) first, the same
 # allowlisting screen_report.py uses.
 #
@@ -110,7 +112,7 @@ jobs:
     environment: qa-eval
     permissions:
       contents: read
-      pull-requests: write   # post/update the summary comment on the PR
+      pull-requests: read    # resolve the PR head/base + list its changed files
       checks: write          # drive the `qa-eval` check run lifecycle
     timeout-minutes: 90
     env:
@@ -147,27 +149,30 @@ jobs:
           sparse-checkout: |
             skills
             testing
-          fetch-depth: 0 # need history to diff base..head for changed-skill detection
+
+      # The skill-resolution script is fetched from the DEFAULT branch, not read from the
+      # checkout above: the sparse tree deliberately excludes .github/ so that no
+      # PR-provided executable ever runs in this credential-bearing job. This is
+      # consistent with issue_comment workflows generally, whose YAML itself is read from
+      # the default branch.
+      - name: Fetch the skill-resolution script (default branch)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/contents/.github/scripts/qa-resolve-skills.sh" \
+            -H "Accept: application/vnd.github.raw" > "$RUNNER_TEMP/qa-resolve-skills.sh"
+          chmod +x "$RUNNER_TEMP/qa-resolve-skills.sh"
 
       - name: Determine which skill(s) to eval
         id: list
         env:
           SKILL_ARG: ${{ github.event_name == 'workflow_dispatch' && inputs.skill || '' }}
           COMMENT_BODY: ${{ github.event.comment.body }}
-          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Every skill on disk = dirs under skills/ with a SKILL.md. DERIVED, never a
-          # hardcoded list, so a brand-new skill in a community PR is in scope the
-          # moment it exists.
-          ALL_SKILLS=$(
-            for d in skills/*/; do
-              [ -f "${d}SKILL.md" ] || continue
-              basename "$d"
-            done | sort -u | jq -R . | jq -sc .
-          )
-
           # Optional explicit skill: `/qa-eval <skill>` or the dispatch input. First
           # token of the comment must be exactly `/qa-eval` (startsWith in the job `if`
           # also matches e.g. `/qa-evaluate`; the strict parse happens here).
@@ -184,52 +189,18 @@ jobs:
           fi
 
           if [ -n "$REQUESTED" ]; then
-            CANDIDATES=$(jq -cn --arg s "$REQUESTED" '[$s]')
+            "$RUNNER_TEMP/qa-resolve-skills.sh" --skill "$REQUESTED"
           else
-            # Skills changed anywhere in this PR (base..head), derived from the tree.
-            # `|| true` on the grep: no match is a legitimate empty list, but under
-            # pipefail a non-matching grep exits 1 and fails the job instead.
-            CANDIDATES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
-              | { grep -oE '^(skills|testing)/[^/]+' || true; } \
-              | sed -E 's#^(skills|testing)/##' \
-              | sort -u \
-              | jq -R . | jq -sc .)
-          fi
-
-          # Intersect against what is on disk: testing/ also holds non-skill paths, so a
-          # path-derived name is a CANDIDATE, not a skill. Passing one through fails deep
-          # inside the harness on a skill that does not exist.
-          SKILLS=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" \
-            '$c - ($c - $all)')
-          DROPPED=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" '$c - $all')
-          echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
-          echo "Will eval: $SKILLS"
-          [ "$DROPPED" = "[]" ] || echo "::notice::Ignored non-skill paths: $DROPPED"
-
-          # A typo'd explicit request must fail loudly — silently running nothing looks
-          # like a completed eval that found no work, which is the same shape as success.
-          if [ -n "$REQUESTED" ] && [ "$SKILLS" = "[]" ]; then
-            echo "::error::No skill named '$REQUESTED' under skills/. Available: $ALL_SKILLS"
-            exit 1
+            "$RUNNER_TEMP/qa-resolve-skills.sh" --pr "$PR_NUMBER"
           fi
 
       # Nothing below runs when there are no skills to eval (the seeder's check-run state
       # is left to stand). The `if: always()` finalize still runs only when there WAS work,
       # so a no-op /qa-eval never posts a spurious verdict.
-      - name: Require model-API credentials
-        if: steps.list.outputs.skills != '[]'
-        env:
-          GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-          GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
-        run: |
-          set -euo pipefail
-          missing=()
-          [ -z "${GROVE_API_KEY:-}" ] && missing+=("GROVE_API_KEY (environment secret on qa-eval)")
-          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL (repo variable)")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::${missing[*]} not provisioned. See the header of qa-eval.yml (ENTSEC-5465 setup). Fail loud here, not an opaque 401."
-            exit 1
-          fi
+      #
+      # There is no credential preflight here: missing model credentials fail loud in
+      # harness.py's own preflight (which names the missing vars), one definition for
+      # every caller, instead of a per-workflow shell guard.
 
       - name: Start the qa-eval check run (in_progress)
         if: steps.list.outputs.skills != '[]'
@@ -295,8 +266,6 @@ jobs:
           cd agent-skills-evals/inspect
           uv sync --quiet
 
-          echo "[" > "$RUNNER_TEMP/reports/index.json.tmp"
-          first=1
           for SKILL in $(echo "$SKILLS" | jq -r '.[]'); do
             echo "== QA eval: $SKILL (model $PANEL_MODEL, k=1) =="
 
@@ -326,7 +295,6 @@ jobs:
               *) verdict=inconclusive ;;
             esac
 
-            REPORT="$RUNNER_TEMP/reports/qa-eval-report-$SKILL.json"
             jq -cn \
               --arg skill "$SKILL" \
               --arg headSha "$HEAD_SHA" \
@@ -335,15 +303,9 @@ jobs:
               --arg verdict "$verdict" \
               --arg runAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
               '{skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
-                verdict: $verdict, runAt: $runAt}' > "$REPORT"
-
-            [ "$first" -eq 0 ] && echo "," >> "$RUNNER_TEMP/reports/index.json.tmp"
-            first=0
-            jq -cn --arg skill "$SKILL" --arg verdict "$verdict" \
-              '{skill: $skill, verdict: $verdict}' >> "$RUNNER_TEMP/reports/index.json.tmp"
+                verdict: $verdict, runAt: $runAt}' \
+              > "$RUNNER_TEMP/reports/qa-eval-report-$SKILL.json"
           done
-          echo "]" >> "$RUNNER_TEMP/reports/index.json.tmp"
-          mv "$RUNNER_TEMP/reports/index.json.tmp" "$RUNNER_TEMP/reports/index.json"
 
       - name: Upload eval reports
         if: always() && steps.list.outputs.skills != '[]'
@@ -353,18 +315,24 @@ jobs:
           path: ${{ runner.temp }}/reports
           if-no-files-found: warn
 
-      - name: Finalize check run + post PR summary
+      - name: Finalize the qa-eval check run
         if: always() && steps.list.outputs.skills != '[]'
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
 
-          if [ -f "$RUNNER_TEMP/reports/index.json" ]; then
-            FAILS=$(jq '[.[] | select(.verdict == "fail")] | length' "$RUNNER_TEMP/reports/index.json")
-            INCONCLUSIVE=$(jq '[.[] | select(.verdict == "inconclusive")] | length' "$RUNNER_TEMP/reports/index.json")
+          # The verdict table is derived from the per-skill report files the run step
+          # wrote — not assembled inline. No reports at all (the harness crashed before
+          # writing any, or the job was cancelled mid-run) is INCONCLUSIVE, not FAIL.
+          shopt -s nullglob
+          REPORTS=("$RUNNER_TEMP"/reports/qa-eval-report-*.json)
+          if [ ${#REPORTS[@]} -gt 0 ]; then
+            INDEX=$(jq -s '[.[] | {skill: .skillName, verdict}]' "${REPORTS[@]}")
+            FAILS=$(jq '[.[] | select(.verdict == "fail")] | length' <<<"$INDEX")
+            INCONCLUSIVE=$(jq '[.[] | select(.verdict == "inconclusive")] | length' <<<"$INDEX")
             if [ "$FAILS" -gt 0 ]; then
               CONCLUSION=failure
               TITLE="QA eval failed"
@@ -379,6 +347,7 @@ jobs:
               TITLE="QA eval passed"
             fi
           else
+            INDEX=""
             CONCLUSION=neutral
             TITLE="QA eval did not produce results"
           fi
@@ -388,8 +357,8 @@ jobs:
           {
             echo "| Skill | Verdict |"
             echo "|-------|---------|"
-            if [ -f "$RUNNER_TEMP/reports/index.json" ]; then
-              jq -r '.[] | "| \(.skill) | \(.verdict) |"' "$RUNNER_TEMP/reports/index.json"
+            if [ -n "$INDEX" ]; then
+              jq -r '.[] | "| \(.skill) | \(.verdict) |"' <<<"$INDEX"
             else
               echo "| (all) | no results — see run log |"
             fi
@@ -398,34 +367,32 @@ jobs:
             echo "\`qa-eval-report-*\` on [the run page]($RUN_URL)."
           } > "$RUNNER_TEMP/summary.md"
 
-          CHECK_RUN_HTML=$(gh api -X PATCH \
-            "repos/${{ github.repository }}/check-runs/${{ env.CHECK_RUN_ID }}" \
-            -f status=completed \
-            -f conclusion="$CONCLUSION" \
-            -f "output[title]=$TITLE" \
-            -F "output[summary]=@$RUNNER_TEMP/summary.md" \
-            --jq '.html_url')
-
-          # One marker comment per PR, updated in place on re-runs — successive /qa-eval
-          # comments must not stack new comments.
-          MARKER="<!-- qa-eval-gate -->"
-          {
-            echo "$MARKER"
-            echo "### QA eval: $TITLE"
-            echo ""
-            cat "$RUNNER_TEMP/summary.md"
-            echo ""
-            echo "Details: [$TITLE]($CHECK_RUN_HTML) (check run report)."
-          } > "$RUNNER_TEMP/comment.md"
-
-          EXISTING=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --paginate \
-            --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | head -1)
-          if [ -n "$EXISTING" ]; then
-            gh api "repos/${{ github.repository }}/issues/comments/$EXISTING" -X PATCH \
-              -F body=@"$RUNNER_TEMP/comment.md" > /dev/null
+          # CHECK_RUN_ID is normally in the env from the start step. If the job was
+          # cancelled/timed out before that step wrote GITHUB_ENV (or the workflow was
+          # edited between runs), fall back to the same name lookup the start step does —
+          # or create the run outright. A wedged run must never leave the required check
+          # stuck in_progress, where it would block merge indefinitely.
+          CHECK_RUN_ID="${CHECK_RUN_ID:-}"
+          if [ -z "$CHECK_RUN_ID" ]; then
+            CHECK_RUN_ID=$(gh api \
+              "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=qa-eval&filter=latest" \
+              --jq '.check_runs[0].id // empty')
+          fi
+          if [ -n "$CHECK_RUN_ID" ]; then
+            gh api -X PATCH \
+              "repos/${{ github.repository }}/check-runs/$CHECK_RUN_ID" \
+              -f status=completed \
+              -f conclusion="$CONCLUSION" \
+              -f "output[title]=$TITLE" \
+              -F "output[summary]=@$RUNNER_TEMP/summary.md" > /dev/null
           else
-            gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" -X POST \
-              -F body=@"$RUNNER_TEMP/comment.md" > /dev/null
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=completed \
+              -f conclusion="$CONCLUSION" \
+              -f "output[title]=$TITLE" \
+              -F "output[summary]=@$RUNNER_TEMP/summary.md" > /dev/null
           fi
 
           # The workflow's own exit code reflects the verdict so the run page and any

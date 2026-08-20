@@ -9,9 +9,13 @@
  * Three checks, in increasing order of how much they can actually prove:
  *
  * 1. **Static containment** (all items). 8-word-gram containment of the item's authored
- *    text against its own skill's body, compared against a cross-skill null. Containment,
- *    not Jaccard, because the item is always much shorter than the skill body, so Jaccard
- *    would be swamped by that length asymmetry regardless of overlap.
+ *    text against its own skill's body, flagged at or above an absolute floor
+ *    (minAbsoluteContainment). Containment, not Jaccard, because the item is always much
+ *    shorter than the skill body, so Jaccard would be swamped by that length asymmetry
+ *    regardless of overlap. An earlier version also gated on a cross-skill null
+ *    percentile; measured on this corpus the null collapses to 0.000 (two skills
+ *    essentially never share an 8-gram), so that leg could never change an outcome and
+ *    was removed — the floor is the threshold.
  *
  *    Reported per field, not pooled, because the two fields mean different things. High
  *    overlap in `prompt` is leakage: the question is carrying its own answer. High overlap
@@ -20,7 +24,7 @@
  *    would mostly measure the second and call it the first.
  *
  * 2. **Verbatim span.** A shared run of ≥ maxVerbatimSpan tokens is a quotation whatever
- *    the null says.
+ *    the containment score says.
  *
  * 3. **Co-movement** (`--base <ref>`, the check that needs no held-out set). If a PR edits
  *    a skill's guidance AND that edit raises an item's containment, that is teaching to the
@@ -29,9 +33,7 @@
  *    agent-skills-evals/inspect/analysis/echo.py::comovement.
  *
  * Thresholds come from testing/echo-thresholds.json, shared with the Python analysis
- * module so the two implementations cannot disagree about what counts as echoing; its
- * notes explain why `minAbsoluteContainment`, not the percentile rule, does the real
- * work on this corpus.
+ * module so the two implementations cannot disagree about what counts as echoing.
  *
  * Advisory today (prints, exits 0) unless --strict is passed.
  * TODO: flip validate-eval-cases.yml to --strict once the thresholds have been checked
@@ -59,7 +61,6 @@ function readJson(file) {
 
 const T = readJson(join(here, "echo-thresholds.json"));
 const N = T.n;
-const PERCENTILE = T.percentile;
 const MIN_CONTAINMENT = T.minAbsoluteContainment;
 const MAX_SPAN = T.maxVerbatimSpan;
 const CO_MOVEMENT_MIN_DELTA = T.coMovementMinDelta;
@@ -140,12 +141,6 @@ function longestSharedSpan(tokens, corpusGrams) {
     }
   }
   return best === 0 ? 0 : best + N - 1; // consecutive overlapping n-grams -> word span length
-}
-
-function percentile(sortedValues, pct) {
-  if (sortedValues.length === 0) return 0;
-  const idx = Math.min(sortedValues.length - 1, Math.floor((pct / 100) * sortedValues.length));
-  return sortedValues[idx];
 }
 
 /** Every markdown file that makes up a skill's guidance surface, as repo-relative paths. */
@@ -245,8 +240,6 @@ const bySkill = evalFiles.map((file) => {
   };
 });
 
-// Cross-skill null: every item field's containment against every OTHER skill's corpus.
-const nullSamples = [];
 const perItem = [];
 
 for (const { file, skillName, doc, corpusGrams: ownCorpus } of bySkill) {
@@ -262,22 +255,13 @@ for (const { file, skillName, doc, corpusGrams: ownCorpus } of bySkill) {
         itemGrams,
         own: containment(itemGrams, ownCorpus),
       };
-      for (const other of bySkill) {
-        if (other.skillName === skillName) continue;
-        nullSamples.push(containment(itemGrams, other.corpusGrams));
-      }
     }
     if (Object.keys(entry.fields).length > 0) perItem.push(entry);
   }
 }
 
-nullSamples.sort((a, b) => a - b);
-const nullPct = percentile(nullSamples, PERCENTILE);
-
 console.log(
-  `Cross-skill null: ${nullSamples.length} samples, p${PERCENTILE}=${nullPct.toFixed(3)}; ` +
-    `flagging needs containment > ${nullPct.toFixed(3)} AND >= ${MIN_CONTAINMENT} ` +
-    `(the null collapses on real data, so the floor is the operative threshold), ` +
+  `Flagging needs containment >= ${MIN_CONTAINMENT} against the item's own skill, ` +
     `or a verbatim span >= ${MAX_SPAN} words.`,
 );
 
@@ -294,7 +278,7 @@ for (const item of perItem) {
   for (const [role, m] of Object.entries(item.fields)) {
     const span = longestSharedSpan(m.tokens, own.corpusGrams);
     const bySpan = span >= MAX_SPAN;
-    const byContainment = m.own >= MIN_CONTAINMENT && m.own > nullPct;
+    const byContainment = m.own >= MIN_CONTAINMENT;
     if (!bySpan && !byContainment) continue;
     flagged++;
     const why = bySpan

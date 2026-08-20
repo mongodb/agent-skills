@@ -1,52 +1,45 @@
 name: QA PR Screen Check
 
-# Advisory per-PR screen — checked in but deliberately not wired to fire automatically yet.
+# Advisory per-PR screen, run on demand — workflow_dispatch only.
 #
-# What this does: for a changed skill, runs the skill-on (and skill-off, for the lift
-# number) arm ONCE (k=1 — this is a screen, not a measurement; more epochs would not help
-# a per-PR decision), then posts a PR comment built by the QA harness's screen_report.py
-# (10gen/agent-skills-evals). That script allowlists what may be posted — allowlisting,
-# not scrubbing, is what makes commenting safe on a public PR — and suppresses the lift
-# line when the two arms are not comparable or either is inconclusive, rather than
-# publishing a number that is mostly an environment difference.
+# What this does: for one skill, runs the skill-off then skill-on arm ONCE (k=1 — this is
+# a screen, not a measurement; more epochs would not help a per-PR decision), then posts a
+# PR comment built by the QA harness's screen_report.py (10gen/agent-skills-evals). That
+# script allowlists what may be posted — allowlisting, not scrubbing, is what makes
+# commenting safe on a public PR — and suppresses the lift line when the two arms are not
+# comparable or either is inconclusive, rather than publishing a number that is mostly an
+# environment difference.
 #
 # Advisory only: it comments, never blocks. The blocking gate is qa-eval.yml. This
 # workflow also does not duplicate the schema/lint checks in validate-eval-cases.yml.
 #
-# Before uncommenting the `pull_request` trigger below:
-#   1. The GitHub `qa-eval` environment must be provisioned (prereqs in qa-eval.yml's
-#      header). The Grove key is a `qa-eval` environment secret.
-#   2. AGENT_SKILLS_EVALS_APP_ID + AGENT_SKILLS_EVALS_APP_PRIVATE_KEY are repo secrets.
-#      The App's existing Contents access on agent-skills-evals (the only repo this token
-#      is scoped to) covers the checkout; no App changes are needed.
-#   3. FORK PRs — permanent for this workflow. A `pull_request` run from a fork gets NO
-#      access to the `qa-eval` environment secrets, so every external contributor's PR
-#      would get a screen job that can't reach the model API — an intimidating red X on a
-#      first-time contribution, for a check that is explicitly advisory. Handled below by
-#      scoping `screen` to same-repo PRs and telling forks once, in the job summary, that
-#      a maintainer can dispatch it. (`pull_request_target` would get secrets but would
-#      run harness code and eval cases from an untrusted PR head with credentials in the
-#      environment — a deliberate decision, not a default to fall into.)
+# Why there is no `pull_request` trigger:
+#   - FORK PRs get no access to the `qa-eval` environment secrets, so every external
+#     contributor's PR would get a screen job that can't reach the model API — an
+#     intimidating red X on a first-time contribution, for a check that is explicitly
+#     advisory.
+#   - Same-repo `pull_request` would need the untrusted PR-head checkout and the Grove
+#     key in the same workflow. skill-gate (#51, ENTSEC-5465) handles that with a
+#     collect/run job split (unprivileged checkout job, privileged runner that receives
+#     the content as an artifact). That split previously lived in this file and was
+#     REMOVED with the trigger: it only means anything when a pull_request trigger
+#     exists, and until then it was untestable dead weight. If a pull_request trigger is
+#     ever enabled, restore the split from git history FIRST — and note the limit the
+#     old header documented: the split keeps the key off the runner that saw the
+#     untrusted ref, but the harness still executes untrusted eval-case YAML with the
+#     key in its env. Full isolation would need model-call-layer sandboxing.
 #
-# Credential-custody split (the pattern Application Security approved for skill-gate,
-# ENTSEC-5465): the untrusted PR-head checkout lives in the UNPRIVILEGED `collect` job
-# (no environment, no secrets); the privileged `screen` job (environment: qa-eval)
-# receives that content as an artifact and never checks out a PR ref. So the Grove key
-# never shares a runner with the untrusted checkout.
+# The dispatch ref is operator-chosen and treated as trusted, so this single job checks
+# out and runs directly — no split.
 #
-# CAVEAT: skill-gate's split is clean because it reads skill markdown as DATA with a
-# pinned binary. This workflow's `screen` EXECUTES the harness against untrusted
-# eval-case YAML with the Grove key in its env. The split protects the credential-custody
-# boundary (the key lives on a runner that never saw the untrusted git ref), but the
-# harness process still handles untrusted content with the key present. Full isolation
-# would need model-call-layer sandboxing — out of scope for workflow YAML.
+# Prereqs (see qa-eval.yml's header, ENTSEC-5465):
+#   - GitHub environment `qa-eval` with secret GROVE_API_KEY
+#   - repo variable GROVE_BASE_URL (non-sensitive)
+#   - repo secrets AGENT_SKILLS_EVALS_APP_ID + AGENT_SKILLS_EVALS_APP_PRIVATE_KEY
+#   - 10gen/agent-skills-evals#18 merged (provides harness.py + screen_report.py).
+#     Missing model credentials fail loud there (harness.py preflight), not here.
 
 on:
-  # pull_request:
-  #   paths:
-  #     - "skills/*/SKILL.md"
-  #     - "skills/*/references/**"
-  #     - "testing/*/evals/**"
   workflow_dispatch:
     inputs:
       skill:
@@ -58,10 +51,10 @@ on:
         required: false
         type: string
 
-# One screen per PR (or per dispatched skill). Two pushes in quick succession would
-# otherwise race on the same marker comment and can double-post instead of updating.
+# One screen per skill. Two dispatches in quick succession would otherwise race on the
+# same marker comment and can double-post instead of updating.
 concurrency:
-  group: qa-pr-screen-${{ github.event.pull_request.number || github.event.inputs.skill }}
+  group: qa-pr-screen-${{ github.event.inputs.skill }}
   cancel-in-progress: true
 
 permissions:
@@ -76,116 +69,11 @@ env:
   PANEL_MODEL: anthropic/claude-sonnet-4-6
 
 jobs:
-  # A fork PR cannot reach the model API, so say so once instead of failing a contributor's
-  # PR on an advisory check. See item 3 in the header.
-  fork-notice:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-    runs-on: ubuntu-latest
-    steps:
-      - name: Explain why no screen ran
-        run: |
-          {
-            echo "### QA screen check skipped"
-            echo
-            echo "This PR is from a fork, and fork workflow runs have no access to the"
-            echo "model-API credentials this check needs. The check is **advisory** and"
-            echo "never blocks a merge — a maintainer can run it on demand from the"
-            echo "\"QA PR Screen Check\" workflow_dispatch."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # UNPRIVILEGED data-only checkout of the PR head. No `environment:`, no secrets —
-  # so it cannot reach the qa-eval environment secrets (the point of the split). Stages
-  # the changed skills + their eval cases as an artifact for `screen`.
-  collect:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      skills: ${{ steps.list.outputs.skills }}
-    steps:
-      - name: Check out changed skill + eval content (data only)
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
-          sparse-checkout: |
-            skills
-            testing
-          fetch-depth: 0 # need history to diff base..head for changed-skill detection
-
-      - name: Determine which skill(s) changed in this PR
-        id: list
-        run: |
-          set -euo pipefail
-          # DERIVED from the working tree, never a hardcoded list. Because `pull_request`
-          # checks out the merge ref, a skill ADDED by this PR is already on disk here — so a
-          # community PR contributing a brand-new skill gets screened, which a literal list of
-          # today's skills would silently exclude.
-          ALL_SKILLS=$(
-            for d in skills/*/; do
-              [ -f "${d}SKILL.md" ] || continue
-              basename "$d"
-            done | sort -u | jq -R . | jq -sc .
-          )
-          # `|| true` on the grep: no match must yield an empty list, but under `pipefail` a
-          # non-matching grep exits 1 and fails the whole job instead.
-          CANDIDATES=$(git diff --name-only \
-              "${{ github.event.pull_request.base.sha }}" \
-              "${{ github.event.pull_request.head.sha }}" \
-            | { grep -oE '^(skills|testing)/[^/]+' || true; } \
-            | sed -E 's#^(skills|testing)/##' \
-            | sort -u \
-            | jq -R . | jq -sc .)
-          # Intersect against what is on disk: testing/ also holds non-skill directories
-          # (skills-boundaries/) and loose files, so a path-derived name is a CANDIDATE, not
-          # a skill. Passing one through becomes a matrix entry that fails deep inside the
-          # harness on a skill that does not exist.
-          SKILLS=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" \
-            '$c - ($c - $all)')
-          DROPPED=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" '$c - $all')
-          echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
-          echo "Will screen: $SKILLS"
-          # Say what was dropped. A silent skip and "nothing to screen" look identical, and
-          # for a path that SHOULD have been a skill that is the wrong thing to be quiet about.
-          [ "$DROPPED" = "[]" ] || echo "::notice::Ignored non-skill paths: $DROPPED"
-
-      - name: Upload staged content for the privileged screen job
-        if: steps.list.outputs.skills != '[]'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: qa-screen-input-${{ github.event.pull_request.head.sha }}
-          path: |
-            skills
-            testing
-          retention-days: 1
-          if-no-files-found: error
-
-  # PRIVILEGED job. Holds environment: qa-eval (which gates GROVE_API_KEY behind
-  # required reviewers) and runs the harness. It NEVER checks out a PR ref: the
-  # untrusted content arrives as an artifact from `collect`.
   screen:
-    needs: [collect]
-    # On workflow_dispatch `collect` is skipped, so this cannot require its success — but
-    # it must not run after a FAILED collect either, because the matrix expression below
-    # would then evaluate fromJSON('') on an empty output. The explicit condition handles
-    # both paths.
-    if: |
-      !cancelled() &&
-      (github.event_name == 'workflow_dispatch' ||
-       (needs.collect.result == 'success' && needs.collect.outputs.skills != '[]'))
-    strategy:
-      fail-fast: false
-      matrix:
-        skill: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.skill)) || fromJSON(needs.collect.outputs.skills) }}
     runs-on: ubuntu-latest
     # Holds GROVE_API_KEY as an environment secret (gated behind required reviewers).
     # Base URL is a non-sensitive repo var.
     environment: qa-eval
-    permissions:
-      contents: read
-      pull-requests: write
     timeout-minutes: 60
     services:
       mongo:
@@ -201,48 +89,27 @@ jobs:
       # A CONCURRENCY cap, not a case count — see qa-mutation-battery.yml's MAX_SAMPLES
       # note on why 4 is too many agent+mongo container pairs for a 2-vCPU runner.
       MAX_SAMPLES: "2"
-      # Grove key from the qa-eval environment secret. Base URL is non-sensitive and
-      # stays a repo var.
       GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
       GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
     steps:
-      # Fail loud, not silent no-op. The Grove key is a `qa-eval` environment secret, so
-      # this guard checks it + the GROVE_BASE_URL var are provisioned. If the pull_request
-      # trigger is uncommented before the `qa-eval` environment exists, this fails in one
-      # line instead of letting the harness no-op or fail with an opaque 401.
-      - name: Require model-API credentials
-        env:
-          GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-          GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
-        run: |
-          set -euo pipefail
-          missing=()
-          [ -z "${GROVE_API_KEY:-}" ] && missing+=("GROVE_API_KEY (environment secret on qa-eval)")
-          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL (repo variable)")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::${missing[*]} not provisioned. This workflow must not be enabled (uncomment its pull_request trigger) until the GitHub 'qa-eval' environment exists with GROVE_API_KEY (secret) + GROVE_BASE_URL (repo var) (see mongodb/agent-skills#51 / ENTSEC-5465). Fail loud here, not an opaque 401."
-            exit 1
-          fi
-
-      # PR path: the untrusted PR-head content was staged as an artifact by the
-      # unprivileged `collect` job — download it instead of checking out the PR ref here,
-      # so the Grove key never shares a runner with the untrusted checkout. Lands at
-      # agent-skills/{skills,testing} so the harness resolves skill content the same way
-      # the dispatch-path checkout below does.
-      - name: Download staged PR content
-        if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: qa-screen-input-${{ github.event.pull_request.head.sha }}
-          path: agent-skills
-
-      # Dispatch path: trusted (operator-chosen ref), so a direct checkout is fine.
       - name: Checkout agent-skills (dispatch ref)
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           path: agent-skills
           ref: ${{ github.ref }}
+
+      # A typo'd skill name must fail loudly here, not deep inside the harness on a skill
+      # that does not exist.
+      - name: Validate the requested skill exists
+        env:
+          SKILL: ${{ github.event.inputs.skill }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "agent-skills/skills/$SKILL/SKILL.md" ]; then
+            echo "::error::No skill named '$SKILL' under skills/ (on ${{ github.ref }})."
+            ls agent-skills/skills/
+            exit 1
+          fi
 
       - name: Generate a token for the agent-skills-evals GitHub App
         id: app-token
@@ -269,31 +136,31 @@ jobs:
         run: |
           set -euo pipefail
           uv sync
-          uv run python harness.py --skill "${{ matrix.skill }}" --no-skill \
+          uv run python harness.py --skill "${{ github.event.inputs.skill }}" --no-skill \
             --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
-          uv run python harness.py --skill "${{ matrix.skill }}" \
+          uv run python harness.py --skill "${{ github.event.inputs.skill }}" \
             --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
 
       - name: Build the sanitized PR comment
         working-directory: agent-skills-evals/inspect
         run: |
-          uv run python screen_report.py --skill "${{ matrix.skill }}" \
+          uv run python screen_report.py --skill "${{ github.event.inputs.skill }}" \
             --model "$PANEL_MODEL" > comment.md
 
       - name: Show the comment in the job summary
         run: cat "agent-skills-evals/inspect/comment.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post or update the PR comment
-        if: github.event_name == 'pull_request' || github.event.inputs.pr_number != ''
+        if: github.event.inputs.pr_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event.inputs.pr_number }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
           set -euo pipefail
           # screen_report.py emits this marker as the comment's first line
           # (screen_report.marker(), asserted in test_screen_report.py), which is what lets
-          # successive pushes update one comment instead of stacking new ones.
-          MARKER="<!-- qa-screen-check:${{ matrix.skill }} -->"
+          # successive runs update one comment instead of stacking new ones.
+          MARKER="<!-- qa-screen-check:${{ github.event.inputs.skill }} -->"
           EXISTING=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | head -1)
           # -F body=@file, not -f body="$(cat ...)": the comment is multi-line markdown and

@@ -1,14 +1,12 @@
 {
   "_comment": "Answer-echo detection constants, declared once here because two implementations consume them: testing/lint-item-echo.mjs (this repo, runs on every PR, no model calls, no private checkout) and agent-skills-evals/inspect/analysis/echo.py (the offline analysis layer). The duplication of the ALGORITHM across a public JS port and a private Python module is deliberate -- the lint has to run on a public PR without cloning a private repo -- but duplicated CONSTANTS would mean the two disagree about what counts as echoing, and only one of them would be the one anybody reads.",
   "n": 8,
-  "percentile": 95.0,
   "minAbsoluteContainment": 0.1,
   "maxVerbatimSpan": 20,
   "coMovementMinDelta": 0.05,
   "_thresholdNotes": {
-    "percentile": "Percentile of the cross-skill null above which an item is flagged. Measured on the real corpus, the null COLLAPSES: at n=8 two different skills essentially never share an 8-gram, so this percentile is 0.000 and any nonzero overlap clears it. The null therefore describes the SHAPE of incidental overlap but supplies no scale, which is why minAbsoluteContainment exists and is load-bearing.",
-    "minAbsoluteContainment": "The effect-size floor that does the actual work given the collapsed null. Do not read the percentile rule as 'calibrated, no constants needed' -- this constant is the threshold in practice.",
-    "maxVerbatimSpan": "A shared run this long is a quotation regardless of what the null says.",
+    "minAbsoluteContainment": "The containment floor at which an item is flagged as echoing its own skill. This constant IS the threshold: an earlier version also required exceeding a percentile of a cross-skill null, but measured on the real corpus the null collapses to 0.000 (two skills essentially never share an 8-gram), so the percentile leg could never change an outcome and was removed from both implementations.",
+    "maxVerbatimSpan": "A shared run this long is a quotation regardless of the containment score.",
     "coMovementMinDelta": "Containment rise, within one PR, that counts as teaching to the test."
   }
 }

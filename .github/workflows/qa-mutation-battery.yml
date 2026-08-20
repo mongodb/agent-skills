@@ -55,8 +55,6 @@ jobs:
       skills: ${{ steps.list.outputs.skills }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          fetch-depth: 0 # need history to diff against the pre-push SHA
 
       - name: Determine which skill(s) to run
         id: list
@@ -64,49 +62,10 @@ jobs:
           SKILL_INPUT: ${{ github.event.inputs.skill }}
         run: |
           set -euo pipefail
-          # The skill list is DERIVED from the working tree, never hardcoded. A literal list
-          # silently excludes any skill added since it was written -- including community
-          # contributions, which are exactly the ones nobody remembers to add. Derived, a new
-          # skill is in scope the moment its SKILL.md exists.
-          ALL_SKILLS=$(
-            for d in skills/*/; do
-              [ -f "${d}SKILL.md" ] || continue
-              basename "$d"
-            done | sort -u | jq -R . | jq -sc .
-          )
-          echo "Skills on disk: $ALL_SKILLS"
-
           if [ -n "$SKILL_INPUT" ]; then
-            CANDIDATES=$(jq -cn --arg s "$SKILL_INPUT" '[$s]')
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            # Scope to the skill(s) actually touched by this push, not a full census.
-            # `|| true` on the grep: no match must yield an empty list, and under
-            # `pipefail` a non-matching grep exits 1 and fails the whole job instead.
-            CANDIDATES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
-              | { grep -oE '^(skills|testing)/[^/]+' || true; } \
-              | sed -E 's#^(skills|testing)/##' \
-              | sort -u \
-              | jq -R . | jq -sc .)
+            .github/scripts/qa-resolve-skills.sh --skill "$SKILL_INPUT"
           else
-            CANDIDATES="$ALL_SKILLS"
-          fi
-
-          # Intersect against what is actually on disk. `testing/` also holds non-skill
-          # directories (skills-boundaries/) and loose files, so a path-derived name is a
-          # CANDIDATE, not a skill — passing one through becomes a matrix entry that fails
-          # deep inside mutate_skill.py with "no SKILL.md under ...".
-          SKILLS=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" \
-            '$c - ($c - $all)')
-          DROPPED=$(jq -cn --argjson c "$CANDIDATES" --argjson all "$ALL_SKILLS" '$c - $all')
-          echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
-          echo "Will run the battery for: $SKILLS"
-          [ "$DROPPED" = "[]" ] || echo "::notice::Ignored non-skill paths: $DROPPED"
-
-          # A typo'd dispatch input must fail loudly. Silently running nothing looks like a
-          # completed census that found no work, which is the same shape as success.
-          if [ -n "$SKILL_INPUT" ] && [ "$SKILLS" = "[]" ]; then
-            echo "::error::No skill named '$SKILL_INPUT' under skills/. Available: $ALL_SKILLS"
-            exit 1
+            .github/scripts/qa-resolve-skills.sh --all
           fi
 
   battery:
@@ -150,25 +109,10 @@ jobs:
       GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
       GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
     steps:
-      # Fail loud, not silent no-op. The Grove key is a `qa-eval` environment secret, so
-      # this guard checks it + the GROVE_BASE_URL var are provisioned. If the push/schedule
-      # triggers are uncommented before the `qa-eval` environment exists, this fails in one
-      # line instead of burning a multi-hour battery on an opaque 401 or no-op'ing while
-      # looking green.
-      - name: Require model-API credentials
-        env:
-          GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-          GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
-        run: |
-          set -euo pipefail
-          missing=()
-          [ -z "${GROVE_API_KEY:-}" ] && missing+=("GROVE_API_KEY (environment secret on qa-eval)")
-          [ -z "${GROVE_BASE_URL:-}" ] && missing+=("GROVE_BASE_URL (repo variable)")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::${missing[*]} not provisioned. This workflow must not be enabled (uncomment its push/schedule triggers) until the GitHub 'qa-eval' environment exists with GROVE_API_KEY (secret) + GROVE_BASE_URL (repo var) (see mongodb/agent-skills#51 / ENTSEC-5465). Fail loud here, not a multi-hour opaque 401."
-            exit 1
-          fi
-
+      # Missing model credentials fail loud in harness.py's preflight (which names the
+      # missing vars) — not here. This job must not be enabled (uncomment the push/schedule
+      # triggers) until the GitHub 'qa-eval' environment exists with GROVE_API_KEY
+      # (secret) + GROVE_BASE_URL (repo var) (see mongodb/agent-skills#51 / ENTSEC-5465).
       - name: Checkout agent-skills (this repo, public)
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
