@@ -103,10 +103,11 @@ jobs:
       - name: Validate the requested skill exists
         env:
           SKILL: ${{ github.event.inputs.skill }}
+          REF: ${{ github.ref }}
         run: |
           set -euo pipefail
           if [ ! -f "agent-skills/skills/$SKILL/SKILL.md" ]; then
-            echo "::error::No skill named '$SKILL' under skills/ (on ${{ github.ref }})."
+            echo "::error::No skill named '$SKILL' under skills/ (on $REF)."
             ls agent-skills/skills/
             exit 1
           fi
@@ -133,18 +134,22 @@ jobs:
 
       - name: Run skill-off then skill-on (k=1 — this is a screen, not a measurement)
         working-directory: agent-skills-evals/inspect
+        env:
+          SKILL: ${{ github.event.inputs.skill }}
         run: |
           set -euo pipefail
           uv sync
-          uv run python harness.py --skill "${{ github.event.inputs.skill }}" --no-skill \
+          uv run python harness.py --skill "$SKILL" --no-skill \
             --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
-          uv run python harness.py --skill "${{ github.event.inputs.skill }}" \
+          uv run python harness.py --skill "$SKILL" \
             --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
 
       - name: Build the sanitized PR comment
         working-directory: agent-skills-evals/inspect
+        env:
+          SKILL: ${{ github.event.inputs.skill }}
         run: |
-          uv run python screen_report.py --skill "${{ github.event.inputs.skill }}" \
+          uv run python screen_report.py --skill "$SKILL" \
             --model "$PANEL_MODEL" > comment.md
 
       - name: Show the comment in the job summary
@@ -155,12 +160,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          SKILL: ${{ github.event.inputs.skill }}
         run: |
           set -euo pipefail
           # screen_report.py emits this marker as the comment's first line
           # (screen_report.marker(), asserted in test_screen_report.py), which is what lets
           # successive runs update one comment instead of stacking new ones.
-          MARKER="<!-- qa-screen-check:${{ github.event.inputs.skill }} -->"
+          MARKER="<!-- qa-screen-check:$SKILL -->"
           EXISTING=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | head -1)
           # -F body=@file, not -f body="$(cat ...)": the comment is multi-line markdown and
