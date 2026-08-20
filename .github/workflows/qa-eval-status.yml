@@ -36,6 +36,15 @@ permissions:
   pull-requests: read
   checks: write
 
+# One seeder run per PR head SHA. cancel-in-progress: true is safe here because the
+# trigger is `pull_request` (not issue_comment): only a new push to the same PR head
+# supersedes, so an unrelated event never kills an in-flight seed. A stale seed for an
+# old SHA is harmless — qa-eval.yml posts onto the SHA it actually evaluated, and a
+# superseding push re-seeds the new head.
+concurrency:
+  group: qa-eval-status-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
 jobs:
   seed:
     if: ${{ github.event.pull_request.head.repo.fork == false && vars.QA_EVAL_ENABLED == 'true' }}
