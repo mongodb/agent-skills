@@ -16,16 +16,28 @@
 #     is nothing to push to a fork branch;
 #   - git history stays free of machine-generated commits.
 #
-# Security — mirrors the collect/scan split from skill-gate.yml (PR #51, approved under
-# ENTSEC-5465): the untrusted PR-head checkout lives in the UNPRIVILEGED `collect` job
-# (no environment, no secrets); the privileged `eval` job (environment: qa-eval)
-# receives that content as an artifact and never checks out a PR ref. The Grove key and
-# the agent-skills-evals App PEM are GHA secrets; they never share a runner with the
-# untrusted checkout.
+# Security — `issue_comment` is a privileged trigger, and this single job both checks
+# out PR-provided content and holds the Grove API key + the agent-skills-evals App PEM.
+# CodeQL flags that combination as "untrusted checkout in a privileged context." We
+# accept the alert on these grounds (mirrors skill-gate.yml PR #51, approved under
+# ENTSEC-5465):
+#   - The checkout is DATA-ONLY: SHA-pinned to the PR head, persist-credentials false,
+#     sparse skills/ + testing/ tree (excludes .github/, etc.). Nothing from the PR is
+#     built.
+#   - The GITHUB_TOKEN's write scopes are pull-requests: write + checks: write (posting
+#     the verdict comment + driving the check run) — no contents: write, so exfiltration
+#     can't tamper with the repo. The Grove key only egresses to Grove and is gated
+#     behind the qa-eval environment's required reviewers.
+# This alert re-fires on pushes that touch this checkout and should be dismissed in the
+# code-scanning Security tab with the justification above.
 #
-# HONEST CAVEAT (same as qa-pr-screen.yml): the split protects credential custody, but
-# the harness EXECUTES untrusted eval-case YAML with the Grove key in its env. The
-# OWNER/MEMBER-only trigger is the actual control for that; do not widen it.
+# HONEST CAVEAT: unlike skill-gate (which reads markdown as DATA with a pinned binary),
+# this job EXECUTES the Inspect-AI harness against untrusted eval-case YAML with the
+# Grove key in its env. The OWNER/MEMBER-only trigger is the actual control for that;
+# do not widen it. A two-job split would not change this — the harness still runs
+# untrusted content with the key present; the split only keeps the git checkout off the
+# credential-bearing runner, and persist-credentials: false + sparse checkout already
+# limit that surface. (The prior split was collapsed at review request; see PR #51.)
 #
 # PUBLIC-CONTENT RULE: this is a public repo — job logs, artifacts, check-run output, and
 # PR comments are all world-visible. The check-run summary and PR comment are built only
@@ -83,10 +95,7 @@ env:
   MAX_SAMPLES: "2"
 
 jobs:
-  # UNPRIVILEGED data-only checkout of the PR head. No `environment:`, no secrets —
-  # it cannot reach the qa-eval environment secrets (the point of the split). Stages
-  # the changed skills + their eval cases as an artifact for `eval`.
-  collect:
+  eval:
     if: >-
       vars.QA_EVAL_ENABLED == 'true' &&
       (
@@ -98,14 +107,17 @@ jobs:
         )
       )
     runs-on: ubuntu-latest
+    environment: qa-eval
     permissions:
       contents: read
-      pull-requests: read
-    outputs:
-      head_sha: ${{ steps.pr.outputs.head_sha }}
-      base_sha: ${{ steps.pr.outputs.base_sha }}
-      pr_number: ${{ steps.pr.outputs.pr_number }}
-      skills: ${{ steps.list.outputs.skills }}
+      pull-requests: write   # post/update the summary comment on the PR
+      checks: write          # drive the `qa-eval` check run lifecycle
+    timeout-minutes: 90
+    env:
+      # Grove key from the qa-eval environment secret. Base URL is non-sensitive and
+      # stays a repo var.
+      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
+      GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
     steps:
       - name: Resolve PR head/base
         id: pr
@@ -124,9 +136,10 @@ jobs:
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Check out skill + eval content (data only)
-        # DATA-ONLY untrusted checkout, in the UNPRIVILEGED job: SHA-pinned, no persisted
-        # token, sparse skills/ + testing/ tree. Nothing here is built or executed — it
-        # is uploaded as an artifact and consumed by the harness in `eval`.
+        # DATA-ONLY untrusted checkout: SHA-pinned to the PR head, no persisted token,
+        # sparse skills/ + testing/ tree (excludes .github/, etc.). Nothing here is
+        # built — it is read by the harness below. See the header comment for why the
+        # CodeQL "untrusted checkout" alert is accepted for this checkout.
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ steps.pr.outputs.head_sha }}
@@ -200,39 +213,11 @@ jobs:
             exit 1
           fi
 
-      - name: Upload eval input
-        if: steps.list.outputs.skills != '[]'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: qa-eval-input-${{ steps.pr.outputs.head_sha }}
-          path: |
-            skills
-            testing
-          retention-days: 1
-          if-no-files-found: error
-
-  # PRIVILEGED job. Holds environment: qa-eval (which gates GROVE_API_KEY behind
-  # required reviewers) and runs the harness. It NEVER checks out a PR ref: the
-  # untrusted content arrives as an artifact from `collect`.
-  eval:
-    needs: collect
-    if: needs.collect.outputs.skills != '[]'
-    runs-on: ubuntu-latest
-    environment: qa-eval
-    permissions:
-      contents: read
-      pull-requests: write   # post/update the summary comment on the PR
-      checks: write          # drive the `qa-eval` check run lifecycle
-    timeout-minutes: 90
-    env:
-      # Grove key from the qa-eval environment secret. Base URL is non-sensitive and
-      # stays a repo var.
-      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
-      GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
-    steps:
-      # Fail loud, not silent no-op: verify the credentials are provisioned before
-      # spending anything. See header prereqs.
+      # Nothing below runs when there are no skills to eval (the seeder's check-run state
+      # is left to stand). The `if: always()` finalize still runs only when there WAS work,
+      # so a no-op /qa-eval never posts a spurious verdict.
       - name: Require model-API credentials
+        if: steps.list.outputs.skills != '[]'
         env:
           GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
           GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
@@ -247,9 +232,10 @@ jobs:
           fi
 
       - name: Start the qa-eval check run (in_progress)
+        if: steps.list.outputs.skills != '[]'
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ needs.collect.outputs.head_sha }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
         run: |
           set -euo pipefail
           # The seeder normally created this check run (state queued). It may be absent —
@@ -269,13 +255,8 @@ jobs:
             > /dev/null
           echo "CHECK_RUN_ID=$CHECK_RUN_ID" >> "$GITHUB_ENV"
 
-      - name: Download staged PR content
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: qa-eval-input-${{ needs.collect.outputs.head_sha }}
-          path: agent-skills
-
       - name: Generate a token for the agent-skills-evals GitHub App
+        if: steps.list.outputs.skills != '[]'
         id: app-token
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
@@ -285,6 +266,7 @@ jobs:
           repositories: agent-skills-evals
 
       - name: Checkout agent-skills-evals (private, sibling checkout)
+        if: steps.list.outputs.skills != '[]'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           repository: 10gen/agent-skills-evals
@@ -293,17 +275,20 @@ jobs:
           ref: ${{ vars.QA_EVALS_REF || 'main' }}
 
       - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+        if: steps.list.outputs.skills != '[]'
         with:
           python-version: "3.12"
 
       - name: Run harness + gate per skill
+        id: scan
+        if: steps.list.outputs.skills != '[]'
         env:
-          SKILLS: ${{ needs.collect.outputs.skills }}
-          HEAD_SHA: ${{ needs.collect.outputs.head_sha }}
-          BASE_SHA: ${{ needs.collect.outputs.base_sha }}
-          SKILL_BASE_DIR: ${{ github.workspace }}/agent-skills/skills
-          QA_TESTING_DIR: ${{ github.workspace }}/agent-skills/testing
-          SEED_BASE_DIR: ${{ github.workspace }}/agent-skills/testing
+          SKILLS: ${{ steps.list.outputs.skills }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+          SKILL_BASE_DIR: ${{ github.workspace }}/skills
+          QA_TESTING_DIR: ${{ github.workspace }}/testing
+          SEED_BASE_DIR: ${{ github.workspace }}/testing
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/reports"
@@ -313,11 +298,11 @@ jobs:
           echo "[" > "$RUNNER_TEMP/reports/index.json.tmp"
           first=1
           for SKILL in $(echo "$SKILLS" | jq -r '.[]'); do
-            echo "== QA eval: $SKILL (model $PANEL_MODEL, k=1) =="
+            echo "== QA eval: $SKILL (model $PANEL_MODEL, eval_kind=qa) =="
 
             set +e
             uv run python harness.py --skill "$SKILL" --model "$PANEL_MODEL" \
-              --epochs 1 --max-samples "$MAX_SAMPLES"
+              --eval-kind qa --max-samples "$MAX_SAMPLES"
             HARNESS_RC=$?
             set -e
 
@@ -361,18 +346,18 @@ jobs:
           mv "$RUNNER_TEMP/reports/index.json.tmp" "$RUNNER_TEMP/reports/index.json"
 
       - name: Upload eval reports
-        if: always()
+        if: always() && steps.list.outputs.skills != '[]'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: qa-eval-report-${{ needs.collect.outputs.head_sha }}
+          name: qa-eval-report-${{ steps.pr.outputs.head_sha }}
           path: ${{ runner.temp }}/reports
           if-no-files-found: warn
 
       - name: Finalize check run + post PR summary
-        if: always()
+        if: always() && steps.list.outputs.skills != '[]'
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ needs.collect.outputs.pr_number }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
