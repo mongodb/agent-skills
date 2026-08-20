@@ -13,8 +13,9 @@
 # Security — `issue_comment` is a privileged trigger, and this single job both
 # checks out PR-provided content and holds the Grove API key (a `skill-gate`
 # environment secret). CodeQL flags that combination as "untrusted checkout in
-# a privileged context" (actions/untrusted-checkout/critical). We accept the
-# alert here on these grounds:
+# a privileged context" (actions/untrusted-checkout/high, plus the TOCTOU
+# variant actions/untrusted-checkout-toctou/high). We accept the alerts here
+# on these grounds:
 #   - The checkout is DATA-ONLY: SHA-pinned to the PR head, persist-credentials
 #     false, sparse `skills/` tree (excludes .github/, tools/, etc.). Nothing
 #     from the PR is built or executed.
@@ -25,10 +26,10 @@
 #     verdict) — no `contents: write`, so exfiltration can't tamper with the
 #     repo. The Grove key only egresses to Grove and is gated behind the
 #     environment's required reviewers.
-# The CodeQL alert will re-fire and should be dismissed in the code-scanning
-# Security tab with the justification above. (The prior two-job split existed
-# solely to avoid this alert; it was collapsed at review request because the
-# blast radius is now minimal.)
+# These alerts re-fire on pushes that touch this checkout and should be
+# dismissed in the code-scanning Security tab with the justification above.
+# (The prior two-job split existed solely to avoid them; it was collapsed at
+# review request because the blast radius is now minimal.)
 name: skill-gate
 
 on:
