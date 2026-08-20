@@ -298,11 +298,11 @@ jobs:
           echo "[" > "$RUNNER_TEMP/reports/index.json.tmp"
           first=1
           for SKILL in $(echo "$SKILLS" | jq -r '.[]'); do
-            echo "== QA eval: $SKILL (model $PANEL_MODEL, eval_kind=qa) =="
+            echo "== QA eval: $SKILL (model $PANEL_MODEL, k=1) =="
 
             set +e
             uv run python harness.py --skill "$SKILL" --model "$PANEL_MODEL" \
-              --eval-kind qa --max-samples "$MAX_SAMPLES"
+              --epochs 1 --max-samples "$MAX_SAMPLES"
             HARNESS_RC=$?
             set -e
 
