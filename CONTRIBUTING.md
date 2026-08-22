@@ -60,6 +60,19 @@ Commit the regenerated copies. CI (the `Plugin Skills Sync` workflow) fails if
 they drift. The repo-root `gemini-extension.json` remains the community Gemini
 extension; the Atlas plugin is not published on Gemini yet.
 
+## Pull requests
+
+**Use a branch-based workflow, not forks.** CI gates on skill content (the
+`skill-gate` security scan) run on demand via a maintainer comment (`/skill-gate`)
+so model/API spend stays deliberate. On a fork PR the automatic status seeding can't
+run (fork tokens are read-only) and the scan needs the repo's protected environment —
+so a fork PR merges only after a maintainer triggers the gate for it. Pushing a branch
+directly avoids all of that.
+
+**Keep PRs well under 3,000 changed files.** The gates discover changed skills via
+GitHub's pull-request files API, which caps out there; beyond it, skill changes could
+be missed. A PR anywhere near that size should be split for reviewability anyway.
+
 ## Releasing
 
 Releases are driven by GitHub Actions. Release operators should use the
