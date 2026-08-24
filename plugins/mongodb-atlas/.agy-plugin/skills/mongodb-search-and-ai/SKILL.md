@@ -39,6 +39,7 @@ If the user's request is vague:
 Common questions to ask:
 - What are users searching for? (products, movies, documents, etc.)
 - What fields contain the searchable content?
+- Are they searching by free text, or by similarity to an existing item (e.g. "given movie A, find similar movies")?
 - Do they need exact matching, fuzzy matching, or semantic similarity?
 - Do they need filters (price ranges, categories, dates)?
 - Do they need autocomplete/typeahead functionality?

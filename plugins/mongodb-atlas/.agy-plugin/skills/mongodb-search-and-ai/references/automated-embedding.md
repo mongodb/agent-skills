@@ -15,6 +15,7 @@ Automated Embedding is available on all Atlas cluster tiers — M0 (free), Flex,
 - [Model Selection](#model-selection)
 - [Index Definition](#index-definition)
 - [Query Construction](#query-construction)
+- [Item-to-Item Similarity](#item-to-item-similarity)
 - [How It Works Internally](#how-it-works-internally)
 - [Billing and Free Tokens](#billing-and-free-tokens)
 - [Rate Limits](#rate-limits)
@@ -257,6 +258,36 @@ You can specify a different (but compatible) embedding model at query time:
   }
 }
 ```
+
+### Item-to-Item Similarity
+
+For "given item A, find similar items" requests (e.g. "more movies like The Firm"), remember that `query` accepts **only a plain text string** — there is no raw-vector read path to reuse an existing document's stored embedding for an `autoEmbed` index.
+
+Resolve the source item to its indexed text field first, then pass that text as the query:
+
+```javascript
+// 1. Fetch the source item's text (the same field indexed as autoEmbed)
+const source = db.collection.findOne(
+  { title: "The Firm" },
+  { plot: 1 }
+);
+
+// 2. Use that text as the query
+db.collection.aggregate([
+  {
+    $vectorSearch: {
+      index: "<index-name>",
+      path: "plot",
+      query: source.plot,           // the source item's text, not its title
+      filter: { _id: { $ne: source._id } },   // exclude the item itself
+      numCandidates: 100,
+      limit: 10
+    }
+  }
+])
+```
+
+Passing the item's name (e.g. `query: "The Firm"`) searches for text semantically near that string, not near the item's actual content — pass the content field instead.
 
 ### Query Parameters Reference
 
