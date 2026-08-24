@@ -2,7 +2,7 @@
 
 This guide covers hybrid search patterns in MongoDB Atlas: combining vector and lexical search using `$rankFusion` and `$scoreFusion`, and using lexical prefilters with the `vectorSearch` operator inside `$search`.
 
-**Scope**: This guide covers hybrid pipelines. For pure vector search indexes and `$vectorSearch` query construction, see vector-search.md. For lexical index definitions and query patterns, see lexical-search-indexing.md and lexical-search-querying.md. For automated embedding (`autoEmbed`) index and query syntax used inside a hybrid pipeline, see `automated-embedding.md`.
+**Scope**: This guide covers hybrid pipelines. For pure vector search indexes and `$vectorSearch` query construction, see `vector-search.md`. For lexical index definitions and query patterns, see `lexical-search-indexing.md` and `lexical-search-querying.md`. For automated embedding (`autoEmbed`) index and query syntax used inside a hybrid pipeline, see `automated-embedding.md`.
 
 ## Table of Contents
 

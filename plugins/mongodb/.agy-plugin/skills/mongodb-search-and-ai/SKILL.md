@@ -82,12 +82,12 @@ Use when users need:
 
 ### 3. Cluster Check (Automated Embedding only)
 
-If the search type is **Automated Embedding**, verify the cluster supports it before proceeding (tier and autoscaling prerequisites can change across Atlas releases — confirm current requirements in the Atlas UI or official docs before acting):
+If the search type is **Automated Embedding**, verify the cluster supports it before proceeding (tier and auto-scaling prerequisites can change across Atlas releases — confirm current requirements in the Atlas UI or official docs before acting):
 - Supported on **all Atlas cluster tiers**: M0 (free), Flex, and M10+ dedicated
 - For **self-managed deployments**, Automated Embedding requires MongoDB 8.3+ with `mongot` and a Voyage AI API key configured; otherwise use manual Vector Search.
-- For **M10+ dedicated clusters only**, enable storage autoscaling.
+- For **M10+ dedicated clusters only**, enable storage auto-scaling.
 
-If the user is on M10+ without autoscaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
+If the user is on M10+ without auto-scaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
 
 ### 4. Version Check (Hybrid Search only)
 

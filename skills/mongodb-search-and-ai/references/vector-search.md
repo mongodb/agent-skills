@@ -203,7 +203,7 @@ Most vector search indexes only need the vector field:
 
 ### Important Notes for Pre-filtering
 
-**Definition**: Additional fields indexed to enable pre-filtering before vector similarity computation. This narrows the search scope and improves performance. 
+**Definition**: Additional fields indexed to enable pre-filtering before vector similarity computation. This narrows the search scope and improves performance.
 **Use Case**: You have multi-tenant data that needs isolation or you need to filter by specific criteria (e.g., category, date range, user ID), by exact values (category = "Action"), or by range (year >= 2020) BEFORE computing vector similarity.
 **Supported Field Types**: boolean, date, objectId, numeric (int32, int64, double), string, UUID, and arrays of these types.
 **Requirements**: You must add fields as type "filter" in your index definition to use them in the filter option. Fields not indexed cannot be used for pre-filtering.
