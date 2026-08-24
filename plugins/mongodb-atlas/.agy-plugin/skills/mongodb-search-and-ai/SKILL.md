@@ -85,10 +85,7 @@ Use when users need:
 If the search type is **Automated Embedding**, verify the cluster supports it before proceeding (tier and autoscaling prerequisites can change across Atlas releases — confirm current requirements in the Atlas UI or official docs before acting):
 - Supported on **all Atlas cluster tiers**: M0 (free), Flex, and M10+ dedicated
 - For **self-managed deployments**, Automated Embedding requires MongoDB 8.3+ with `mongot` and a Voyage AI API key configured; otherwise use manual Vector Search.
-- **M10+ dedicated clusters only** require auto-scaling enabled with the correct max tier:
-  - On **M10 or M20**: maximum instance size must be **M30 or higher**
-  - On **M30 or higher**: maximum must be any tier higher than the current one
-  - On **NVMe storage**: enable "Scale NVMe cluster tier when storage is running low"
+- For **M10+ dedicated clusters only**, enable storage autoscaling.
 
 If the user is on M10+ without autoscaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
 
