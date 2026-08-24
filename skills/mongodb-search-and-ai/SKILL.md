@@ -87,7 +87,7 @@ If the search type is **Automated Embedding**, verify the cluster supports it be
 - For **self-managed deployments**, Automated Embedding requires MongoDB 8.3+ with `mongot` and a Voyage AI API key configured; otherwise use manual Vector Search.
 - For **M10+ dedicated clusters only**, enable storage auto-scaling.
 
-If the user is on M10+ without auto-scaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
+If the user is on M10+ without storage auto-scaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
 
 ### 4. Version Check (Hybrid Search only)
 
