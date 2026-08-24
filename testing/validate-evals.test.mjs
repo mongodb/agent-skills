@@ -76,6 +76,20 @@ test("checkAssetsExist: a contained, existing file is accepted", () => {
   assert.deepEqual(checkAssetsExist(evalsDir, doc, CONTRACT), []);
 });
 
+test("checkAssetsExist: a files entry pointing at a directory is rejected", () => {
+  // existsSync() treats directories as existing, but `files` are asset files the harness
+  // inlines. A directory would validate here and fail downstream as EISDIR.
+  const root = mkdtempSync(join(tmpdir(), "evals-"));
+  const evalsDir = join(root, "evals");
+  mkdirSync(join(evalsDir, "assets"), { recursive: true });
+  const doc = { evals: [{ id: 1, files: ["assets"] }] };
+  const problems = checkAssetsExist(evalsDir, doc, CONTRACT);
+  assert.ok(
+    problems.some((p) => p.includes("directory, not a file")),
+    `expected a not-a-file finding, got: ${JSON.stringify(problems)}`,
+  );
+});
+
 test("checkAssetsExist: a missing contained file is reported as not-found (not as an escape)", () => {
   const root = mkdtempSync(join(tmpdir(), "evals-"));
   const evalsDir = join(root, "evals");
