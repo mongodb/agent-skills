@@ -1,0 +1,71 @@
+# skill-gate required-check seeder.
+#
+# Manages the DEFAULT state of the required `skill-gate` status check so a PR
+# can't merge until the real scan (skill-gate.yml) has run on the current head:
+#   - PR doesn't touch skills/**  -> success ("not required")
+#   - PR touches skills/**        -> pending ("run /skill-gate")
+# A `pending` required check still blocks merge, but renders neutral (not a red
+# failure) so it isn't off-putting and isn't confused with a real CI failure.
+# Every push (synchronize) re-seeds against the new head sha, so a stale pass on
+# an old commit never satisfies the new head.
+#
+# NOTE (forks): on fork PRs the built-in GITHUB_TOKEN is READ-ONLY, so the
+# statuses POST would be denied. The job-level `if:` below SKIPS fork PRs to
+# avoid a cosmetic errored run. This is NOT a hole: the `skill-gate` required
+# check is then simply unseeded → stays "Expected" → merge blocked by absence,
+# and the ruleset enforces the check independently of this seeder. Fork PRs here
+# are expected to touch skills/** (new/updated skills), so they need a
+# /skill-gate scan regardless. This repo expects a branch-based workflow —
+# see CONTRIBUTING.md ("Pull requests").
+#
+# NOTE (size ceiling): the changed-files API used below returns at most 3,000 files
+# per PR. A larger PR would under-detect touched skills and could seed "success"
+# without a scan — one more reason PR-size expectations live in CONTRIBUTING.md.
+name: skill-gate-status
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: read    # read changed files (skills/** detection)
+  statuses: write        # post the default `skill-gate` status
+
+# Serialize per PR head. Unlike skill-gate.yml (issue_comment, where an
+# unrelated comment must NOT cancel an in-flight scan — hence its
+# cancel-in-progress: false), this workflow fires on pull_request events: one
+# run per push. Canceling a stale seeder run on a rapid double-push is safe and
+# desirable — the seeder is idempotent and the newer push's seed supersedes it.
+concurrency:
+  group: skill-gate-status-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  seed:
+    # Skip fork PRs: the read-only token can't post a status there, and the
+    # required check stays unseeded → blocked by absence (see NOTE above).
+    if: github.event.pull_request.head.repo.fork == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Seed required check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Fetch the file list on its own line so a `gh api` failure fails this
+          # seeder closed — instead of silently seeding `skill-gate=success`
+          # ("No skill changes") and allowing merge with no scan. The grep -c
+          # for bundle dirs is separate: no match is a legitimate "no skill
+          # changes" outcome (touched=0), not an error, so it stays non-fatal.
+          files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate \
+            --jq '.[].filename')
+          touched=$(printf '%s\n' "$files" | grep -cE '^skills/[^/]+/' || true)
+          if [ "${touched:-0}" -eq 0 ]; then
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=success -f context=skill-gate -f description="No skill changes — skill-gate not required"
+          else
+            # pending (not failure): blocks merge but renders neutral, so it
+            # doesn't look like a broken build or drown out real CI failures.
+            gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+              -f state=pending -f context=skill-gate -f description="Run /skill-gate to scan (required before merge)"
+          fi

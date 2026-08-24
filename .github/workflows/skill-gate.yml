@@ -1,0 +1,207 @@
+# skill-gate — security gate for Agent Skill content.
+#
+# Runs the COMPLETE skill-gate scan (static patterns + LLM-as-judge) on the
+# skill bundles changed in a PR and reports a single verdict as the required
+# `skill-gate` commit status. Triggered manually by a maintainer comment so the
+# Grove (LLM) spend is tied to deliberate runs, not every push.
+#
+# Trigger:   comment `/skill-gate` on a PR (OWNER/MEMBER only).
+# Enforce:   the `main` ruleset requires the `skill-gate` status check; this job
+#            posts that status to the PR HEAD sha (see skill-gate-status.yml
+#            for the default seed that blocks un-scanned PRs).
+#
+# Security — `issue_comment` is a privileged trigger, and this single job both
+# checks out PR-provided content and holds the Grove API key (a `skill-gate`
+# environment secret). CodeQL flags that combination as "untrusted checkout in
+# a privileged context" (actions/untrusted-checkout/high, plus the TOCTOU
+# variant actions/untrusted-checkout-toctou/high). We accept the alerts here
+# on these grounds:
+#   - The checkout is DATA-ONLY: SHA-pinned to the PR head, persist-credentials
+#     false, sparse `skills/` tree (excludes .github/, tools/, etc.). Nothing
+#     from the PR is built or executed.
+#   - The only thing that runs against that content is the pinned, trusted
+#     `skill-gate` binary (installed from a tag, not from the PR), which reads
+#     the markdown as data.
+#   - The GITHUB_TOKEN's only write scope is `statuses: write` (posting the
+#     verdict) — no `contents: write`, so exfiltration can't tamper with the
+#     repo. The Grove key only egresses to Grove and is gated behind the
+#     environment's required reviewers.
+# These alerts re-fire on pushes that touch this checkout and should be
+# dismissed in the code-scanning Security tab with the justification above.
+# (The prior two-job split existed solely to avoid them; it was collapsed at
+# review request because the blast radius is now minimal.)
+name: skill-gate
+
+on:
+  issue_comment:
+    types: [created]
+
+# Built-in GITHUB_TOKEN only (ephemeral, repo-scoped) — no PAT, no stored token.
+# Permissions are declared per job (least privilege); nothing is granted here.
+permissions: {}
+
+# Serialize per PR, but do NOT cancel an in-flight run: the /skill-gate filter is a
+# job-level `if:`, so EVERY issue_comment creates a run in this group — with
+# cancel-in-progress, an unrelated comment would kill a scan mid-flight and leave the
+# required check pending. Serializing is safe: the verdict posts to the head SHA resolved
+# at trigger time, and skill-gate-status.yml re-seeds pending if the PR has moved on.
+concurrency:
+  group: skill-gate-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    # Only on PR comments that invoke the command, from a repo owner or org
+    # member (author_association). A fork PR from an org member still reports
+    # MEMBER, so members self-trigger even on fork PRs; a true outside
+    # contributor (CONTRIBUTOR/NONE) can't — a member runs it for them.
+    # COLLABORATOR is intentionally omitted: this repo has no outside
+    # collaborators and all contributors are org members.
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/skill-gate') &&
+      contains(fromJSON('["OWNER","MEMBER"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read    # read PR head sha + changed files (no write scope)
+      statuses: write        # post the `skill-gate` commit status
+    # Gated environment that holds the Grove API key (GROVE_API_KEY) as an
+    # environment secret behind optional required reviewers. Base URL is a
+    # non-sensitive repo var (GROVE_BASE_URL).
+    environment: skill-gate
+    steps:
+      - name: Resolve PR head
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # issue_comment runs in the default-branch context, so github.sha is
+          # main's tip — NOT the PR head. Resolve the real head sha to scan it
+          # and to attach the status where the ruleset will look for it.
+          head_sha=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}" --jq '.head.sha')
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Determine changed skill bundles
+        id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Written to RUNNER_TEMP so the data-only checkout's clean step (below)
+          # doesn't wipe it from the workspace; copied back in after checkout.
+          # Fetch the PR file list on its own line so a `gh api` failure (rate
+          # limit, 5xx) fails this step closed — instead of silently producing
+          # count=0, which skips the scan and posts AUTO-PASS. The grep for
+          # bundle dirs is separate: no match there is a legitimate "no skill
+          # changes" outcome (count=0), not an error, so it stays non-fatal.
+          # Known ceiling: this endpoint returns at most 3,000 changed files per PR,
+          # so a larger PR would under-detect changed skills — PR-size expectations
+          # live in CONTRIBUTING.md ("Pull requests").
+          gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}/files" --paginate \
+            --jq '.[].filename' > "$RUNNER_TEMP/pr_files.txt"
+          grep -E '^skills/[^/]+/' "$RUNNER_TEMP/pr_files.txt" | cut -d/ -f1-2 | sort -u > "$RUNNER_TEMP/changed_skills.txt" || true
+          count=$(grep -c . "$RUNNER_TEMP/changed_skills.txt" || true)
+          echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out changed skill content (data only)
+        # DATA-ONLY untrusted checkout: SHA-pinned to the PR head, no persisted
+        # token, sparse `skills/` tree (excludes .github/, tools/, etc.).
+        # Nothing here is built or executed — only read as markdown by the
+        # pinned skill-gate binary below. See the header comment for why the
+        # CodeQL "untrusted checkout" alert is accepted for this checkout.
+        if: steps.changed.outputs.count != '0'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          persist-credentials: false
+          sparse-checkout: skills
+
+      - name: Stage scan input
+        if: steps.changed.outputs.count != '0'
+        run: cp "$RUNNER_TEMP/changed_skills.txt" "$GITHUB_WORKSPACE/changed_skills.txt"
+
+      - name: Mark status in-progress
+        if: steps.changed.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }}" \
+            -f state=pending -f context=skill-gate -f description="Scanning…" \
+            -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Set up Go
+        if: steps.changed.outputs.count != '0'
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Install skill-gate (pinned)
+        # Mirrors the existing `go install …skill-validator@…` step.
+        if: steps.changed.outputs.count != '0'
+        run: go install github.com/mongodb/skill-gate/cmd/skill-gate@v0.1.0
+
+      - name: Run skill-gate (complete scan — static + LLM judge)
+        id: scan
+        if: steps.changed.outputs.count != '0'
+        env:
+          # Grove API key from the skill-gate environment secret. Base URL is
+          # non-sensitive and stays a repo var.
+          ANTHROPIC_API_KEY: ${{ secrets.GROVE_API_KEY }}
+          ANTHROPIC_BASE_URL: ${{ vars.GROVE_BASE_URL }}
+          ANTHROPIC_AUTH_HEADER: api-key
+        run: |
+          worst=0
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            # Skip skills deleted in this PR (dir no longer on disk).
+            if [ ! -d "$dir" ]; then
+              echo "Skipping deleted skill: $dir"
+              continue
+            fi
+            echo "## \`$dir\`" >> "$GITHUB_STEP_SUMMARY"
+            set +e
+            # --emit-annotations writes ::error/::warning to stdout (GitHub pins
+            # these to the diff in the PR Checks tab) alongside the markdown report.
+            out=$(skill-gate scan "./$dir/" -o markdown --emit-annotations 2>&1)
+            rc=$?
+            set -e
+            printf '%s\n' "$out"                                             # annotations -> run log / PR Checks
+            printf '%s\n' "$out" | grep -v '^::' >> "$GITHUB_STEP_SUMMARY" || true   # report -> job summary (non-fatal: empty / all-annotation output is legitimate)
+            [ "$rc" -gt "$worst" ] && worst=$rc
+          done < "$GITHUB_WORKSPACE/changed_skills.txt"
+          # Exit codes: 0 AUTO-PASS, 1 WARN, 2 ESCALATE. Fail closed on anything
+          # unexpected (e.g. a judge tool-error returns non-0/1/2).
+          echo "verdict_code=$worst" >> "$GITHUB_OUTPUT"
+
+      - name: Report verdict (commit status)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code="${{ steps.scan.outputs.verdict_code }}"
+          count="${{ steps.changed.outputs.count }}"
+          # Distinguish the two ways verdict_code can be empty:
+          #   count=0        -> no skill changes; scan intentionally skipped -> success
+          #   count!=0 + ""  -> scan step crashed before setting a verdict   -> fail closed
+          if [ "$count" = "0" ]; then
+            state=success; label="AUTO-PASS — no skill changes to scan"
+          else
+            case "$code" in
+              "0")   state=success; label="AUTO-PASS — no criteria triggered" ;;
+              "1")   state=success; label="WARN — advisory; author resolves, Docs confirms in review" ;;
+              "2")   state=failure; label="ESCALATE — Security review required before merge" ;;
+              *)     state=failure; label="skill-gate error (fail closed) — see run log" ;;
+            esac
+          fi
+          # POLICY LEVER: WARN maps to success here (per the tooling proposal:
+          # WARN = author resolution confirmed by Docs during review). Flip to
+          # `failure` if you want WARN to hard-block merge.
+          #
+          # Status only — no PR comment. The verdict's findings live in the job
+          # summary + PR Checks annotations; target_url points reviewers there.
+          # This keeps the token free of pull-requests:write.
+          gh api -X POST "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }}" \
+            -f state="$state" -f context=skill-gate -f description="$label" \
+            -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
