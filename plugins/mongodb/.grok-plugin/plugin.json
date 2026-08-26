@@ -1,6 +1,6 @@
 {
   "name": "mongodb",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Connect to any MongoDB deployment (Community, Enterprise Advanced, local dev container via Atlas CLI or Atlas clusters) through a self-managed MongoDB MCP Server using your connection string. Explore data, manage collections, optimize queries, and generate reliable code with MongoDB best practices.",
   "author": {
     "name": "MongoDB",
