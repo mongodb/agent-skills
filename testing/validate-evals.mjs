@@ -52,6 +52,28 @@ function contractFrom(schema) {
 }
 
 /**
+ * Case ids must be unique within a skill's file: the harness keys qa_runs metadata and the
+ * mutation/sensitivity analysis on the id, so a duplicate merges two unrelated cases into
+ * one identity (see agent-skills-evals's test_case_id_identity.py for the corruption shape).
+ * ajv cannot express this — uniqueItems compares WHOLE items, and two cases sharing an id
+ * differ in prompt — so the rule lives here with the other checks the schema cannot do.
+ *
+ * Exported so the rule is pinned by validate-evals.test.mjs, same as filesEntryEscapes.
+ */
+export function duplicateIds(doc) {
+  const problems = [];
+  const seen = new Set();
+  for (const ev of doc.evals ?? []) {
+    if (ev.id === undefined) continue; // missing id is the schema's finding, not this one's
+    if (seen.has(ev.id)) {
+      problems.push(`case id ${ev.id} is used twice in this file`);
+    }
+    seen.add(ev.id);
+  }
+  return problems;
+}
+
+/**
  * Does a `files` entry escape the case's own evals dir? Pure (no fs), so the eval-integrity
  * rule the schema regex alone cannot express is unit-testable.
  *
@@ -139,8 +161,9 @@ function main() {
     const doc = readJson(file);
     const schemaOk = validate(doc);
     const assetProblems = checkAssetsExist(dirname(file), doc, contract);
+    const idProblems = duplicateIds(doc);
 
-    if (schemaOk && assetProblems.length === 0) {
+    if (schemaOk && assetProblems.length === 0 && idProblems.length === 0) {
       console.log(`✓ ${file} (${doc.evals?.length ?? 0} cases)`);
     } else {
       failed = true;
@@ -149,6 +172,9 @@ function main() {
         console.error(`    ${e.instancePath || "(root)"}: ${e.message}`);
       }
       for (const p of assetProblems) {
+        console.error(`    ${p}`);
+      }
+      for (const p of idProblems) {
         console.error(`    ${p}`);
       }
     }

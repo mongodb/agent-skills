@@ -15,7 +15,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { filesEntryEscapes, checkAssetsExist } from "./validate-evals.mjs";
+import { filesEntryEscapes, checkAssetsExist, duplicateIds } from "./validate-evals.mjs";
 
 const EVALS_DIR = "/repo/testing/mongodb-query-optimizer/evals";
 const CONTRACT = {
@@ -98,4 +98,18 @@ test("checkAssetsExist: a missing contained file is reported as not-found (not a
   const problems = checkAssetsExist(evalsDir, doc, CONTRACT);
   assert.ok(problems.some((p) => p.includes("not found")));
   assert.ok(problems.every((p) => !p.includes("escapes")));
+});
+
+test("duplicateIds: a reused case id is reported", () => {
+  // The harness keys qa_runs metadata and mutation analysis on the id; a duplicate merges
+  // two unrelated cases into one identity. ajv cannot express this (uniqueItems compares
+  // whole items), so the check lives in validate-evals.mjs and is pinned here.
+  const doc = { evals: [{ id: 7, prompt: "a" }, { id: 8, prompt: "b" }, { id: 7, prompt: "c" }] };
+  assert.deepEqual(duplicateIds(doc), ["case id 7 is used twice in this file"]);
+});
+
+test("duplicateIds: unique ids and id-less cases are clean", () => {
+  // Missing ids are the schema's finding (id is required), not this check's.
+  assert.deepEqual(duplicateIds({ evals: [{ id: 1 }, { id: 2 }] }), []);
+  assert.deepEqual(duplicateIds({ evals: [{ prompt: "no id yet" }] }), []);
 });
