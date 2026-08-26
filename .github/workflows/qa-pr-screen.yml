@@ -30,7 +30,11 @@ name: QA PR Screen Check
 #     key in its env. Full isolation would need model-call-layer sandboxing.
 #
 # The dispatch ref is operator-chosen and treated as trusted, so this single job checks
-# out and runs directly — no split.
+# out and runs directly — no split. When pr_number is given the dispatch ref is IGNORED:
+# the PR's current head SHA is resolved and checked out instead, the evaluated SHA is
+# stamped into the comment, and the post step re-resolves the head and refuses to post
+# if it moved. A comment on a PR must report on that PR's code, never on an
+# operator-picked ref posted as though the PR had been screened.
 #
 # Prereqs (see qa-eval.yml's header, ENTSEC-5465):
 #   - GitHub environment `qa-eval` with secret GROVE_API_KEY
@@ -92,18 +96,32 @@ jobs:
       GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
       GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
     steps:
-      - name: Checkout agent-skills (dispatch ref)
+      # When posting to a PR, the evaluated code must BE that PR's head, so resolve it
+      # rather than trusting the dispatch ref. Without pr_number the dispatch ref stands
+      # (a print-only run that attributes nothing to any PR).
+      - name: Resolve the PR head SHA
+        id: pr-head
+        if: github.event.inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha')
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout agent-skills (PR head when posting, else the dispatch ref's SHA)
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           path: agent-skills
-          ref: ${{ github.ref }}
+          ref: ${{ steps.pr-head.outputs.sha || github.sha }}
 
       # A typo'd skill name must fail loudly here, not deep inside the harness on a skill
       # that does not exist.
       - name: Validate the requested skill exists
         env:
           SKILL: ${{ github.event.inputs.skill }}
-          REF: ${{ github.ref }}
+          REF: ${{ steps.pr-head.outputs.sha || github.sha }}
         run: |
           set -euo pipefail
           if [ ! -f "agent-skills/skills/$SKILL/SKILL.md" ]; then
@@ -152,6 +170,18 @@ jobs:
           uv run python screen_report.py --skill "$SKILL" \
             --model "$PANEL_MODEL" > comment.md
 
+      # The comment (and the job summary) must name the exact SHA that was screened, so a
+      # result is attributable to the code it measured. Appended at the END: the first line
+      # stays screen_report.py's marker, which the post step below matches on. SHA + skill
+      # name are self-generated fields, squarely inside the public-content rule.
+      - name: Stamp the evaluated SHA into the comment
+        working-directory: agent-skills-evals/inspect
+        env:
+          EVALUATED_SHA: ${{ steps.pr-head.outputs.sha || github.sha }}
+          SKILL: ${{ github.event.inputs.skill }}
+        run: |
+          printf '\n---\nEvaluated SHA: `%s` (skill `%s`)\n' "$EVALUATED_SHA" "$SKILL" >> comment.md
+
       - name: Show the comment in the job summary
         run: cat "agent-skills-evals/inspect/comment.md" >> "$GITHUB_STEP_SUMMARY"
 
@@ -161,8 +191,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
           SKILL: ${{ github.event.inputs.skill }}
+          EVALUATED_SHA: ${{ steps.pr-head.outputs.sha }}
         run: |
           set -euo pipefail
+          # Re-resolve the head before posting: if the PR moved since the eval started,
+          # this comment would attribute a result to code it did not measure.
+          CURRENT=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha')
+          if [ "$CURRENT" != "$EVALUATED_SHA" ]; then
+            echo "::error::PR head moved during the run ($EVALUATED_SHA -> $CURRENT). Not posting; re-run the screen."
+            exit 1
+          fi
           # screen_report.py emits this marker as the comment's first line
           # (screen_report.marker(), asserted in test_screen_report.py), which is what lets
           # successive runs update one comment instead of stacking new ones.
