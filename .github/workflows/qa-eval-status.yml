@@ -2,10 +2,17 @@
 #
 # Manages the DEFAULT state of the `qa-eval` check run so a PR can't merge until a QA
 # eval has run on the current head:
-#   - PR doesn't touch skills/**  -> completed/success ("not required")
-#   - PR touches skills/**        -> queued ("run /qa-eval")
+#   - PR changes no evaluatable skill content -> completed/success ("not required")
+#   - PR changes skills/<name>/** or testing/<name>/** for a real skill -> queued
+#     ("run /qa-eval")
 # A `queued` check run renders neutral (not a red failure) so it isn't confused with a
 # broken build.
+#
+# "Evaluatable skill content" is decided by .github/scripts/qa-resolve-skills.sh — the
+# SAME resolver qa-eval.yml runs — so this seeder and the gate cannot disagree about what
+# requires evaluation. An earlier grep here counted only skills/** while the resolver also
+# counts testing/<skill>/**: a tests/fixtures-only PR got an instant success and merged
+# without the suite it modified ever running.
 #
 # The gate is a CHECK RUN; qa-eval.yml carries the eval report inline on it. Check runs
 # are per-SHA by construction, which makes the freshness problem disappear: a pass on an
@@ -33,6 +40,7 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
+  contents: read       # sparse-checkout the PR head (skills/ + testing/) for the resolver
   pull-requests: read
   checks: write
 
@@ -50,35 +58,57 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.fork == false && vars.QA_EVAL_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check out the PR head (data only, skills/ + testing/)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            skills
+            testing
+
+      # From the DEFAULT branch, not the checkout above: a pull_request run reads its YAML
+      # from the merge ref, so a PR could otherwise edit the resolver to seed its own
+      # "success". Same fetch qa-eval.yml uses.
+      - name: Fetch the skill-resolution script (default branch)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/contents/.github/scripts/qa-resolve-skills.sh" \
+            -H "Accept: application/vnd.github.raw" > "$RUNNER_TEMP/qa-resolve-skills.sh"
+          chmod +x "$RUNNER_TEMP/qa-resolve-skills.sh"
+
+      # A resolver failure (its gh api call runs under set -e) fails this job with NO check
+      # run seeded: a required check then stays "Expected" and blocks merge. Fail-closed,
+      # never silently seeding success on an API error.
+      - name: Resolve skills changed in this PR
+        id: list
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          "$RUNNER_TEMP/qa-resolve-skills.sh" --pr "${{ github.event.pull_request.number }}"
+
       - name: Seed qa-eval check run
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SKILLS: ${{ steps.list.outputs.skills }}
         run: |
           set -euo pipefail
-          # Fetch the file list on its own line so a `gh api` failure fails this seeder
-          # closed -- instead of silently seeding qa-eval=success ("no skill changes")
-          # and allowing merge with no eval. The grep for skill dirs is separate: no
-          # match is a legitimate "no skill changes" outcome (touched=0), not an error.
-          # Known ceiling: this endpoint returns at most 3,000 changed files per PR;
-          # beyond it a skill change could be missed and "success" seeded without an
-          # eval — PR-size expectations live in CONTRIBUTING.md ("Pull requests").
-          files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            --paginate --jq '.[].filename')
-          touched=$(printf '%s\n' "$files" | grep -cE '^skills/[^/]+/' || true)
-          if [ "${touched:-0}" -eq 0 ]; then
+          if [ "$SKILLS" = "[]" ]; then
             gh api -X POST "repos/${{ github.repository }}/check-runs" \
               -f name=qa-eval \
               -f head_sha="$HEAD_SHA" \
               -f status=completed \
               -f conclusion=success \
               -f "output[title]=No skill changes" \
-              -f "output[summary]=This PR does not touch \`skills/**\`; the QA eval is not required."
+              -f "output[summary]=This PR changes no \`skills/<name>/\` or \`testing/<name>/\` content for any skill; the QA eval is not required."
           else
             gh api -X POST "repos/${{ github.repository }}/check-runs" \
               -f name=qa-eval \
               -f head_sha="$HEAD_SHA" \
               -f status=queued \
               -f "output[title]=QA eval required before merge" \
-              -f "output[summary]=This PR changes skill content. A maintainer runs \`/qa-eval\` in a PR comment to produce the verdict (see .github/workflows/qa-eval.yml)."
+              -f "output[summary]=This PR changes skill or eval content ($SKILLS). A maintainer runs \`/qa-eval\` in a PR comment to produce the verdict (see .github/workflows/qa-eval.yml)."
           fi
