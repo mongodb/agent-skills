@@ -39,10 +39,12 @@ on:
         default: "5"
         type: string
 
-# One battery per skill at a time. Two concurrent batteries interleave their runs in the
-# shared qa_runs metadata store and race on the baseline commit.
+# Serialize ALL batteries, not just per skill: keying the group on the skill input lets an
+# all-skills run and a targeted run hold different locks while both publish the same
+# baselines/<skill>-mutation.json. Batteries run for hours; a second dispatch queueing
+# behind the first costs nothing.
 concurrency:
-  group: qa-mutation-battery-${{ github.event.inputs.skill || 'all' }}
+  group: qa-mutation-battery
   cancel-in-progress: false
 
 permissions:
@@ -228,10 +230,18 @@ jobs:
           fi
           git commit -m "chore: refresh mutation baselines (${#FILES[@]} skill(s))"
           # The expected loser-case is a concurrent human commit to main, not a conflict on
-          # these files, so rebase and retry rather than failing a several-hour census.
+          # these files, so rebase and retry rather than failing a several-hour census. A
+          # CONFLICT is different: it means another run published the same baseline, git is
+          # left mid-rebase (where every further `git pull --rebase` fails on state, not
+          # content, so retrying can never recover), and a human should decide which
+          # measurement stands. Abort the rebase and fail loudly instead.
           for attempt in 1 2 3; do
             if git pull --rebase --autostash origin HEAD && git push; then
               exit 0
+            fi
+            if git rebase --abort 2>/dev/null; then
+              echo "::error::Rebase conflict publishing baselines — another run likely updated the same file. Re-run this battery to regenerate from current main."
+              exit 1
             fi
             echo "push attempt $attempt failed; retrying"
             sleep $((attempt * 5))
