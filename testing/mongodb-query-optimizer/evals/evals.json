@@ -132,6 +132,34 @@
           "critical": true
         }
       ]
+    },
+    {
+      "id": 37,
+      "prompt": "The MongoDB MCP server is connected to a database. Queries against the `sample`\ndatabase, `events` collection that filter by an exact `userId` (equality) are slow.\nDiagnose why and create the appropriate index so these equality lookups are efficient.\nUse the MongoDB MCP server tools directly to inspect the data and create the index —\ndo not delegate the work to a subagent, and do not ask for confirmation before creating\nthe index.",
+      "expectations": [
+        "Uses the MongoDB MCP server to inspect the collection and its indexes",
+        "Identifies that userId equality queries do a full collection scan (no supporting index)",
+        "Creates a single-field index on userId to serve the equality lookup"
+      ],
+      "seed": "seeded_events",
+      "functional_check": {
+        "type": "index",
+        "database": "sample",
+        "collection": "events",
+        "expected_key": {
+          "userId": 1
+        }
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called",
+          "match": {
+            "any_mcp": true
+          }
+        }
+      ]
     }
   ]
 }
