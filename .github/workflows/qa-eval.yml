@@ -8,6 +8,8 @@
 # Trigger:   comment `/qa-eval` (optionally `/qa-eval <skill>`) on a PR. OWNER/MEMBER only.
 #            workflow_dispatch with a pr_number is the smoke-test path.
 # Enforce:   the `main` ruleset requires the `qa-eval` check; qa-eval-status.yml seeds it.
+#            The check stands for FULL coverage: an explicit-skill run on a multi-skill
+#            PR concludes failure ("partial coverage") naming the skills still to eval.
 #
 # The verdict rides on the check run itself — report inline in output.summary, per-skill
 # JSON as artifacts — with no committed report file and no PR-comment duplicate:
@@ -321,6 +323,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -332,7 +335,36 @@ jobs:
           # ruleset's required check, so this concludes failure like any instrument fault.
           shopt -s nullglob
           REPORTS=("$RUNNER_TEMP"/reports/qa-eval-report-*.json)
-          if [ ${#REPORTS[@]} -gt 0 ]; then
+
+          # COVERAGE: an explicit `/qa-eval <skill>` (or dispatch input) evaluates a subset.
+          # The required check must stand for "every skill this PR changes was evaluated",
+          # so re-resolve the PR's changed skills and fail on under-coverage — otherwise a
+          # one-skill eval on a three-skill PR would green the gate. (Resolver writes to
+          # $GITHUB_OUTPUT; point it at a scratch file to reuse it mid-script. If the PR's
+          # file list changed mid-run, the new push re-seeds its own head, so a stale
+          # comparison here only ever makes the OLD head's check stricter.)
+          GITHUB_OUTPUT="$RUNNER_TEMP/coverage.out" \
+            "$RUNNER_TEMP/qa-resolve-skills.sh" --pr "$PR_NUMBER" > /dev/null 2>&1 \
+            && EXPECTED=$(sed -n 's/^skills=//p' "$RUNNER_TEMP/coverage.out" | jq -Sc 'sort') \
+            || EXPECTED=""
+          EVALUATED=$(jq -Scs '[.[].skillName] | unique' "${REPORTS[@]}" 2>/dev/null || echo '[]')
+          if [ -z "$EXPECTED" ]; then
+            # The coverage resolver itself failed (API outage). Still conclude — a wedged
+            # in_progress check blocks merge indefinitely — but as failure, not success.
+            INDEX=""
+            MISSING=""
+            CONCLUSION=failure
+            TITLE="QA eval could not verify coverage — re-run needed"
+          elif [ "$EVALUATED" != "$EXPECTED" ]; then
+            if [ ${#REPORTS[@]} -gt 0 ]; then
+              INDEX=$(jq -s '[.[] | {skill: .skillName, verdict}]' "${REPORTS[@]}")
+            else
+              INDEX=""
+            fi
+            MISSING=$(jq -cn --argjson e "$EXPECTED" --argjson g "$EVALUATED" '$e - $g | join(", ")')
+            CONCLUSION=failure
+            TITLE="QA eval incomplete — partial coverage"
+          elif [ ${#REPORTS[@]} -gt 0 ]; then
             INDEX=$(jq -s '[.[] | {skill: .skillName, verdict}]' "${REPORTS[@]}")
             FAILS=$(jq '[.[] | select(.verdict == "fail")] | length' <<<"$INDEX")
             INCONCLUSIVE=$(jq '[.[] | select(.verdict == "inconclusive")] | length' <<<"$INDEX")
@@ -366,6 +398,10 @@ jobs:
               jq -r '.[] | "| \(.skill) | \(.verdict) |"' <<<"$INDEX"
             else
               echo "| (all) | no results — see run log |"
+            fi
+            if [ -n "${MISSING:-}" ]; then
+              echo ""
+              echo "**Not evaluated:** $MISSING. Re-run \`/qa-eval\` with no skill argument to cover every changed skill."
             fi
             echo ""
             echo "Model: \`$PANEL_MODEL\`. Full per-skill JSON reports: artifact"
