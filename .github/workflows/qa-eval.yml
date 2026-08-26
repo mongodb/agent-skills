@@ -58,10 +58,11 @@
 #     environments reach it)
 #   - 10gen/agent-skills-evals#18 merged (provides harness.py + scripts/ci_gate.py)
 #
-# Rollout verification item: INCONCLUSIVE maps to check-run conclusion `neutral`. Confirm
-# against the live ruleset that `neutral` does NOT satisfy a required `qa-eval` check —
-# an inconclusive (instrument-fault) run must be re-run, not merged through. If neutral
-# turns out to satisfy the ruleset, gate on success explicitly in the finalize step.
+# INCONCLUSIVE (instrument fault: Grove 401, MCP registration failure, harness crash)
+# maps to check-run conclusion `failure`, NOT `neutral`: GitHub rulesets treat `neutral`
+# (like `skipped`) as SATISFYING a required check, so an inconclusive run would wave the
+# PR through unmeasured. The failure title ("re-run needed") is what distinguishes infra
+# from a real eval failure. Accepted cost: a Grove outage blocks the gate until fixed.
 name: QA Eval
 
 on:
@@ -326,7 +327,9 @@ jobs:
 
           # The verdict table is derived from the per-skill report files the run step
           # wrote — not assembled inline. No reports at all (the harness crashed before
-          # writing any, or the job was cancelled mid-run) is INCONCLUSIVE, not FAIL.
+          # writing any, or the job was cancelled mid-run) is INCONCLUSIVE, and an
+          # unmeasured PR must fail the gate, not pass it: `neutral` would satisfy a
+          # ruleset's required check, so this concludes failure like any instrument fault.
           shopt -s nullglob
           REPORTS=("$RUNNER_TEMP"/reports/qa-eval-report-*.json)
           if [ ${#REPORTS[@]} -gt 0 ]; then
@@ -338,9 +341,11 @@ jobs:
               TITLE="QA eval failed"
             elif [ "$INCONCLUSIVE" -gt 0 ]; then
               # INCONCLUSIVE = instrument fault (Grove 401, MCP registration failure,
-              # harness crash), not a verdict on the PR. `neutral` is deliberate: it must
-              # not count against the author, and the run should be re-triggered.
-              CONCLUSION=neutral
+              # harness crash), not a verdict on the PR. Conclusion is `failure`, not
+              # `neutral`: rulesets treat neutral as satisfying a required check, so an
+              # instrument fault would otherwise merge the PR through unmeasured. The
+              # title carries "re-run needed" so it isn't read as a verdict on the change.
+              CONCLUSION=failure
               TITLE="QA eval inconclusive — re-run needed"
             else
               CONCLUSION=success
@@ -348,7 +353,7 @@ jobs:
             fi
           else
             INDEX=""
-            CONCLUSION=neutral
+            CONCLUSION=failure
             TITLE="QA eval did not produce results"
           fi
 
