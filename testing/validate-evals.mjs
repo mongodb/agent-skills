@@ -92,7 +92,10 @@ export function duplicateIds(doc) {
 export function filesEntryEscapes(evalsDir, ref) {
   const resolved = resolve(evalsDir, ref);
   const rel = relative(evalsDir, resolved);
-  return isAbsolute(ref) || rel === "" || rel.startsWith("..") || isAbsolute(rel);
+  // rel === "" (e.g. files: ["."]) is NOT an escape: the ref resolves to the evals dir
+  // itself, which is contained. It is a directory, and checkAssetsExist's isFile() guard
+  // rejects it with the correct classification.
+  return isAbsolute(ref) || rel.startsWith("..") || isAbsolute(rel);
 }
 
 // A case's `files` entries and `seed` name point at real paths, but nothing in the schema
@@ -168,7 +171,7 @@ function main() {
     } else {
       failed = true;
       console.error(`✗ ${file}`);
-      for (const e of (validate.errors ?? []).slice(0, 10)) {
+      for (const e of validate.errors ?? []) {
         console.error(`    ${e.instancePath || "(root)"}: ${e.message}`);
       }
       for (const p of assetProblems) {

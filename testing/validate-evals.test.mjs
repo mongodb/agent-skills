@@ -50,6 +50,14 @@ test("filesEntryEscapes: absolute paths escape (resolve, not join, semantics)", 
   assert.equal(filesEntryEscapes(EVALS_DIR, "/etc/passwd"), true);
 });
 
+test("filesEntryEscapes: '.' is contained, not an escape (misclassification regression)", () => {
+  // Resolving "." yields the evals dir itself (rel === ""). That is contained; the entry is
+  // invalid because it is a DIRECTORY, and classifying it as an escape sends the author
+  // chasing a traversal that does not exist. checkAssetsExist's isFile() guard rejects it.
+  assert.equal(filesEntryEscapes(EVALS_DIR, "."), false);
+  assert.equal(filesEntryEscapes(EVALS_DIR, "sub/dir/."), false);
+});
+
 test("checkAssetsExist: a cross-skill files ref is rejected even when the target exists", () => {
   // The answer-key file under another skill DOES exist — existence is not the point,
   // containment is. This is the case the schema regex + an existence-only check would miss.

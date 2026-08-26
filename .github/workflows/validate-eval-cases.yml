@@ -37,7 +37,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "20"
+          # Match the repo's other Node workflows (24): a validator that runs a different
+          # major than everything else can disagree with local runs for version reasons.
+          node-version: "24"
       - name: Install validator deps
         run: npm ci --prefix testing --no-audit --no-fund
       - name: Validate eval cases against schema, check referenced assets exist
