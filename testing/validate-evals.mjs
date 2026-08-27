@@ -130,13 +130,26 @@ export function checkAssetsExist(evalsDir, doc, contract) {
       } else {
         // And again after following symlinks. A symlink inside evals/ needs no '..' and no
         // leading '/', so it satisfies both the schema pattern and the resolve() check above
-        // while still pointing anywhere.
-        const realEvalsDir = realpathSync(evalsDir);
-        const realRel = relative(realEvalsDir, realpathSync(resolved));
+        // while still pointing anywhere. realpathSync can throw — ELOOP from a symlink
+        // cycle, or a race where the path disappears between the stat above and this
+        // resolve. That is a per-case problem to report, not a reason to crash the whole
+        // validator and swallow every later finding.
+        let realEvalsDir;
+        let realResolved;
+        try {
+          realEvalsDir = realpathSync(evalsDir);
+          realResolved = realpathSync(resolved);
+        } catch (err) {
+          problems.push(
+            `case ${ev.id}: could not resolve the real path of ${resolved}: ${err.message}`,
+          );
+          continue;
+        }
+        const realRel = relative(realEvalsDir, realResolved);
         if (realRel.startsWith("..") || isAbsolute(realRel)) {
           problems.push(
             `case ${ev.id}: files entry resolves outside the evals dir via a symlink: ` +
-              `${ref} -> ${realpathSync(resolved)}`,
+              `${ref} -> ${realResolved}`,
           );
         }
       }

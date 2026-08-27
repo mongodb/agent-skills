@@ -11,7 +11,7 @@
 // Uses node's built-in test runner — no new dependency on the testing/ toolchain.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -142,4 +142,22 @@ test("checkAssetsExist: malformed evals or files shapes do not crash the validat
     checkAssetsExist(evalsDir, { evals: [{ id: 1, files: "not-an-array" }] }, CONTRACT),
     [],
   );
+});
+
+test("checkAssetsExist: a symlink loop is reported, never thrown", () => {
+  // The ELOOP case Copilot raised about realpathSync: a pathological symlink cycle must
+  // surface as a per-case problem, not crash the validator and swallow the remaining
+  // findings. Which branch observes the pathology is platform-dependent — node's
+  // existsSync reports a cycle here as missing, so it lands on the not-found finding; on
+  // setups where the earlier gates let it through, the realpath guard reports it. Either
+  // way the contract is: a problem list comes back, nothing throws.
+  const root = mkdtempSync(join(tmpdir(), "evals-"));
+  const evalsDir = join(root, "evals");
+  mkdirSync(evalsDir, { recursive: true });
+  symlinkSync(join(evalsDir, "beta"), join(evalsDir, "alpha"));
+  symlinkSync(join(evalsDir, "alpha"), join(evalsDir, "beta"));
+  const doc = { evals: [{ id: 1, files: ["alpha"] }] };
+  const problems = checkAssetsExist(evalsDir, doc, CONTRACT);
+  assert.ok(Array.isArray(problems));
+  assert.ok(problems.length > 0, "a cycle should be reported, not treated as clean");
 });
