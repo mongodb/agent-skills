@@ -292,7 +292,7 @@
         {
           "id": "uses-mongodb-mcp",
           "critical": true,
-          "type": "called",
+          "type": "called_successfully",
           "match": {
             "any_mcp": true
           }
@@ -336,7 +336,7 @@
         {
           "id": "uses-mongodb-mcp",
           "critical": true,
-          "type": "called",
+          "type": "called_successfully",
           "match": {
             "any_mcp": true
           }
@@ -376,7 +376,7 @@
         {
           "id": "uses-mongodb-mcp",
           "critical": true,
-          "type": "called",
+          "type": "called_successfully",
           "match": {
             "any_mcp": true
           }
@@ -416,7 +416,7 @@
         {
           "id": "uses-mongodb-mcp",
           "critical": true,
-          "type": "called",
+          "type": "called_successfully",
           "match": {
             "any_mcp": true
           }
