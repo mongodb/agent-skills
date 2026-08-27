@@ -63,7 +63,7 @@ function contractFrom(schema) {
 export function duplicateIds(doc) {
   const problems = [];
   const seen = new Set();
-  for (const ev of doc.evals ?? []) {
+  for (const ev of Array.isArray(doc.evals) ? doc.evals : []) {
     if (ev.id === undefined) continue; // missing id is the schema's finding, not this one's
     if (seen.has(ev.id)) {
       problems.push(`case id ${ev.id} is used twice in this file`);
@@ -109,8 +109,8 @@ export function filesEntryEscapes(evalsDir, ref) {
 export function checkAssetsExist(evalsDir, doc, contract) {
   const { FIXTURE_DIR, FIXTURE_EXT, RESERVED_SEEDS } = contract;
   const problems = [];
-  for (const ev of doc.evals ?? []) {
-    for (const ref of ev.files ?? []) {
+  for (const ev of Array.isArray(doc.evals) ? doc.evals : []) {
+    for (const ref of Array.isArray(ev.files) ? ev.files : []) {
       // Containment BEFORE existence. A path that escapes is rejected whether or not the
       // target happens to exist — the answer-key file under skills/<name>/ DOES exist.
       const resolved = resolve(evalsDir, ref);

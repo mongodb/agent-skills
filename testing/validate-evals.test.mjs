@@ -121,3 +121,25 @@ test("duplicateIds: unique ids and id-less cases are clean", () => {
   assert.deepEqual(duplicateIds({ evals: [{ id: 1 }, { id: 2 }] }), []);
   assert.deepEqual(duplicateIds({ evals: [{ prompt: "no id yet" }] }), []);
 });
+
+test("duplicateIds: a non-array evals value does not crash the validator", () => {
+  // The schema expects doc.evals to be an array; a malformed case that puts e.g. an object
+  // there used to throw a TypeError and stop the validator before it printed the schema
+  // errors — defeating the "report EVERY violation" behavior the header promises.
+  assert.deepEqual(duplicateIds({ evals: "not-an-array" }), []);
+  assert.deepEqual(duplicateIds({ evals: { id: 1 } }), []);
+});
+
+test("checkAssetsExist: malformed evals or files shapes do not crash the validator", () => {
+  // Same crash class as duplicateIds: files: 123 (or evals: {...}) used to throw a TypeError
+  // mid-scan instead of being reported as schema violations. The Array.isArray guards keep
+  // the validator from failing before it can print everything.
+  const root = mkdtempSync(join(tmpdir(), "evals-"));
+  const evalsDir = join(root, "evals");
+  mkdirSync(evalsDir, { recursive: true });
+  assert.deepEqual(checkAssetsExist(evalsDir, { evals: "not-an-array" }, CONTRACT), []);
+  assert.deepEqual(
+    checkAssetsExist(evalsDir, { evals: [{ id: 1, files: "not-an-array" }] }, CONTRACT),
+    [],
+  );
+});

@@ -107,7 +107,10 @@ jobs:
         github.event_name == 'workflow_dispatch' ||
         (
           github.event.issue.pull_request &&
-          startsWith(github.event.comment.body, '/qa-eval') &&
+          (
+            github.event.comment.body == '/qa-eval' ||
+            startsWith(github.event.comment.body, '/qa-eval ')
+          ) &&
           contains(fromJSON('["OWNER","MEMBER"]'), github.event.comment.author_association)
         )
       )
@@ -177,8 +180,9 @@ jobs:
         run: |
           set -euo pipefail
           # Optional explicit skill: `/qa-eval <skill>` or the dispatch input. First
-          # token of the comment must be exactly `/qa-eval` (startsWith in the job `if`
-          # also matches e.g. `/qa-evaluate`; the strict parse happens here).
+          # token of the comment must be exactly `/qa-eval`. The job `if` already requires
+          # an exact `/qa-eval` or `/qa-eval ` prefix, and this strict parse is the
+          # belt-and-braces inside the job for issue_comment runs.
           REQUESTED="$SKILL_ARG"
           if [ -z "$REQUESTED" ] && [ "${{ github.event_name }}" = "issue_comment" ]; then
             FIRST_LINE=$(printf '%s' "$COMMENT_BODY" | head -1)
@@ -347,7 +351,18 @@ jobs:
             "$RUNNER_TEMP/qa-resolve-skills.sh" --pr "$PR_NUMBER" > /dev/null 2>&1 \
             && EXPECTED=$(sed -n 's/^skills=//p' "$RUNNER_TEMP/coverage.out" | jq -Sc 'sort') \
             || EXPECTED=""
-          EVALUATED=$(jq -Scs '[.[].skillName] | unique' "${REPORTS[@]}" 2>/dev/null || echo '[]')
+          EVALUATED=$(
+            if [ ${#REPORTS[@]} -gt 0 ]; then
+              # Real report files: slurp and dedupe. The `|| echo '[]'` fallback keeps a
+              # jq failure from wedging the check run.
+              jq -Scs '[.[].skillName] | unique' "${REPORTS[@]}" 2>/dev/null || echo '[]'
+            else
+              # No report files at all: short-circuit instead of calling jq with an empty
+              # argument list — a bare `jq -s` reads stdin, whose behavior depends on the
+              # runner and can hang a terminal session.
+              echo '[]'
+            fi
+          )
           if [ -z "$EXPECTED" ]; then
             # The coverage resolver itself failed (API outage). Still conclude — a wedged
             # in_progress check blocks merge indefinitely — but as failure, not success.
