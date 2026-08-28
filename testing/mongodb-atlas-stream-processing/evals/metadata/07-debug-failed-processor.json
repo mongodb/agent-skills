@@ -1,7 +1,7 @@
 {
   "eval_id": 7,
   "eval_name": "debug-failed-processor",
-  "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
+  "prompt": "My processor 'payment-handler' in workspace 'prod-streams' is in FAILED state. What's wrong?",
   "test_prerequisites": {
     "workspace": "Use existing workspace with an existing processor (any state)",
     "processor_required": "Use any existing processor (doesn't need to be FAILED)",

@@ -76,7 +76,7 @@
     {
       "id": 7,
       "name": "debug-failed-processor",
-      "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
+      "prompt": "My processor 'payment-handler' in workspace 'prod-streams' is in FAILED state. What's wrong?",
       "expected_output": "Calls diagnose-processor first, then get-logs with logType='operational', analyzes error patterns, identifies root cause (e.g., connection issue, schema mismatch, OOM), provides specific fix steps",
       "trajectory_checks": [
         {
@@ -189,7 +189,7 @@
             "tool": "atlas-streams-discover",
             "where": {
               "action": "inspect-workspace",
-              "resourceName": "old-test-workspace"
+              "workspaceName": "old-test-workspace"
             }
           }
         },
@@ -239,14 +239,19 @@
       "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, format, compression) before building processor, references ASP_example repo if needed",
       "trajectory_checks": [
         {
-          "id": "searches-before-build",
+          "id": "searches-knowledge",
           "critical": true,
-          "type": "order",
-          "first": {
+          "type": "called_successfully",
+          "match": {
             "tool": "search-knowledge",
             "success": true
-          },
-          "then": {
+          }
+        },
+        {
+          "id": "builds-processor",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
             "tool": "atlas-streams-build",
             "success": true,
             "where": {

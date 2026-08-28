@@ -375,7 +375,8 @@ jobs:
                  (([keys_unsorted[]] - [
                    "caseId", "seed", "passed", "invalid", "invalidReasons", "score",
                    "composite", "compositeParts", "compositeWeights", "compositeZeroedBy",
-                   "functionalDb", "trajectory", "grade", "judgeSummary", "validity"
+                   "functionalDb", "trajectory", "trajectoryChecks", "grade", "judgeSummary",
+                   "validity"
                  ]) | length == 0)
                )' \
               "$REPORT_TMP" > /dev/null
