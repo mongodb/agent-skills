@@ -73,6 +73,20 @@ directly avoids all of that.
 GitHub's pull-request files API, which caps out there; beyond it, skill changes could
 be missed. A PR anywhere near that size should be split for reviewability anyway.
 
+### Manually approving a QA eval
+
+Deleted skills and skills without a GitHub runner profile leave the required `qa-eval`
+check in `action_required`. A maintainer may clear it only through the **QA Eval Manual
+Approval** workflow.
+
+Provide the PR number, its exact current head SHA, a review reason, and an HTTPS evidence
+link. The workflow rejects stale SHAs, unauthorized callers, and checks that are not
+currently `action_required`. Its successful check summary records the reviewer and evidence.
+Do not use an admin merge or an empty commit to bypass this review.
+
+Repository administrators must protect the `qa-eval-manual-review` environment with required
+reviewers before enabling this workflow.
+
 ## Releasing
 
 Releases are driven by GitHub Actions. Release operators should use the

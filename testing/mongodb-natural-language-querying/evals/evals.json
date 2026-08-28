@@ -252,6 +252,469 @@
       "prompt": "how do I write a find in java for properties of type \"Hotel\" and with ratings lte 70",
       "expected_output": "Find query in Java using MongoDB driver with Filters for property_type and ratings",
       "files": []
+    },
+    {
+      "id": 37,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`movies` collection, find the top 5 movies by `imdb` rating released after the year\n2000, highest rating first. Save ONLY the aggregation pipeline you used, as a JSON\narray, to /workspace/pipeline.json.",
+      "expectations": [
+        "Uses the MongoDB MCP server (not a guess) to inspect and query the data",
+        "Produces an aggregation that filters year > 2000, sorts by imdb desc, limits to 5"
+      ],
+      "seed": "seeded_movies",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "movies",
+        "compare_fields": [
+          "title"
+        ],
+        "ordered": true,
+        "expected": [
+          {
+            "title": "Delta"
+          },
+          {
+            "title": "Bravo"
+          },
+          {
+            "title": "Hotel"
+          },
+          {
+            "title": "Foxtrot"
+          },
+          {
+            "title": "Charlie"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "prompt": "The MongoDB MCP server is connected. In the `sample` database, for every author in the\n`authors` collection return their `name` and `bookCount` — the number of documents in the\n`books` collection whose `author` equals that author's name. Authors with NO books must\nstill appear, with bookCount 0. Sort by bookCount descending, then name ascending.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Uses the MongoDB MCP server to inspect the data and run the query",
+        "Joins authors to books (e.g. $lookup) so authors with zero books are preserved with count 0"
+      ],
+      "seed": "seeded_sample",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "authors",
+        "compare_fields": [
+          "name",
+          "bookCount"
+        ],
+        "ordered": true,
+        "expected": [
+          {
+            "name": "Ada",
+            "bookCount": 2
+          },
+          {
+            "name": "Ben",
+            "bookCount": 1
+          },
+          {
+            "name": "Cara",
+            "bookCount": 0
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "prompt": "The MongoDB MCP server is connected. In the `sample` database, `logins` collection, count\nlogins per user treating the username case-insensitively (so \"Alice\", \"alice\", and \"ALICE\"\nare the same user). Return the lowercased name as `user` and the number of logins as\n`count`, sorted by count descending then user ascending.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Uses the MongoDB MCP server to inspect the data and run the query",
+        "Normalizes case (e.g. $toLower) BEFORE grouping so Alice/alice/ALICE count as one user"
+      ],
+      "seed": "seeded_sample",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "logins",
+        "compare_fields": [
+          "user",
+          "count"
+        ],
+        "ordered": true,
+        "expected": [
+          {
+            "user": "alice",
+            "count": 3
+          },
+          {
+            "user": "bob",
+            "count": 2
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "prompt": "The MongoDB MCP server is connected. In the `sample` database, `orders` collection, for each\n`category` return the number of DISTINCT customers who placed at least one order in that\ncategory (NOT the number of orders), as `customers`. Return `category` and `customers`,\nsorted by customers descending then category ascending.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Uses the MongoDB MCP server to inspect the data and run the query",
+        "Counts distinct customers (e.g. $addToSet + $size), not order documents"
+      ],
+      "seed": "seeded_sample",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "orders",
+        "compare_fields": [
+          "category",
+          "customers"
+        ],
+        "ordered": true,
+        "expected": [
+          {
+            "category": "books",
+            "customers": 2
+          },
+          {
+            "category": "toys",
+            "customers": 1
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database, `movies`\ncollection: find all the movies released in 1983. Return only the `title` field.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Uses the MongoDB MCP server to inspect the collection before querying",
+        "Matches the release year exactly (1983), not a range that catches 1982 or 1984",
+        "Returns only the title field"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "movies",
+        "compare_fields": [
+          "title"
+        ],
+        "ordered": false,
+        "expected": [
+          {
+            "title": "Paper Lanterns"
+          },
+          {
+            "title": "Sunrise Over Kyoto"
+          },
+          {
+            "title": "The Long Signal"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`listingsAndReviews` collection: find all the listings within 10km of the centre of\nIstanbul (longitude 28.9784, latitude 41.0082). Return only the `_id` field.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Inspects the collection to find the geo field (`address.location`) rather than guessing",
+        "Uses a geospatial stage with a 10km bound, in metres, on a 2dsphere-indexed field",
+        "Excludes listings outside the radius"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "listingsAndReviews",
+        "compare_fields": [
+          "_id"
+        ],
+        "ordered": false,
+        "expected": [
+          {
+            "_id": "L1"
+          },
+          {
+            "_id": "L2"
+          },
+          {
+            "_id": "L3"
+          },
+          {
+            "_id": "L6"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`listingsAndReviews` collection: what is the bed count that occurs the most? Return it in a\nfield called `bedCount`, and return only that field.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Inspects the collection to find the bed-count field (`beds`)",
+        "Computes a mode (group and count, then take the most frequent), not an average or a max",
+        "Returns a single document with only `bedCount`"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "listingsAndReviews",
+        "ordered": true,
+        "expected": [
+          {
+            "bedCount": 2
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`listingsAndReviews` collection: what's the total number of reviews across all listings?\nReturn it in a field called `totalReviewsOverall`, and return only that field.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Inspects the collection to find the review-count field (`number_of_reviews`)",
+        "Sums that field across all documents rather than counting documents",
+        "Returns a single document with only `totalReviewsOverall`"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "listingsAndReviews",
+        "ordered": true,
+        "expected": [
+          {
+            "totalReviewsOverall": 123
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`listingsAndReviews` collection: which host id has the most reviews across all listings?\nReturn it in a field called `hostId`, and return only that field.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Inspects the collection to find the nested host field (`host.host_id`)",
+        "Groups by host and SUMS review counts across that host's listings, not per-listing max",
+        "Returns a single document with only `hostId`"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "listingsAndReviews",
+        "ordered": true,
+        "expected": [
+          {
+            "hostId": "H2"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`listingsAndReviews` collection: give me just the price and the first 3 amenities (in a\nfield called `amenities`) of the listing that has \"Step-free access\" in its amenities.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Inspects the collection to confirm `amenities` is an array of strings",
+        "Matches the listing containing \"Step-free access\"",
+        "Returns only `price` and the FIRST 3 amenities, in order, not the whole array"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "listingsAndReviews",
+        "ordered": true,
+        "expected": [
+          {
+            "price": 60,
+            "amenities": [
+              "Wifi",
+              "Washer",
+              "Kitchen"
+            ]
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`listingsAndReviews` collection: which listing has the most amenities? The resulting\ndocuments should only have the `_id`.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Inspects the collection to confirm `amenities` is an array",
+        "Ranks listings by the SIZE of the amenities array",
+        "Returns a single document containing only `_id`"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "listingsAndReviews",
+        "compare_fields": [
+          "_id"
+        ],
+        "ordered": true,
+        "expected": [
+          {
+            "_id": "L4"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "prompt": "The MongoDB MCP server is connected to a database. In the `sample` database,\n`listingsAndReviews` collection: what percentage of listings have a \"Washer\" in their\namenities? Only consider listings with more than 2 beds. Return it as a string named\n`washerPercentage` like \"75%\", rounded to the nearest whole number, and return only that\nfield.\nSave ONLY the aggregation pipeline you used, as a JSON array, to /workspace/pipeline.json.",
+      "expectations": [
+        "Restricts the denominator to listings with beds > 2 before computing the percentage",
+        "Computes the share with \"Washer\" in amenities, rounded to a whole number",
+        "Returns it as a STRING with a trailing percent sign, in `washerPercentage`"
+      ],
+      "seed": "seeded_nlq_lift",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "listingsAndReviews",
+        "ordered": true,
+        "expected": [
+          {
+            "washerPercentage": "50%"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true,
+            "success": true
+          }
+        }
+      ]
     }
   ]
 }

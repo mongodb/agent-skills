@@ -1,0 +1,218 @@
+name: QA PR Screen Check
+
+# Advisory per-PR screen, run on demand — workflow_dispatch only.
+#
+# What this does: for one skill, runs the skill-off then skill-on arm ONCE (k=1 — this is
+# a screen, not a measurement; more epochs would not help a per-PR decision), then posts a
+# PR comment built by the QA harness's screen_report.py (10gen/agent-skills-evals). That
+# script allowlists what may be posted — allowlisting, not scrubbing, is what makes
+# commenting safe on a public PR — and suppresses the lift line when the two arms are not
+# comparable or either is inconclusive, rather than publishing a number that is mostly an
+# environment difference.
+#
+# Advisory only: it comments, never blocks. The blocking gate is qa-eval.yml. This
+# workflow also does not duplicate the schema/lint checks in validate-eval-cases.yml.
+#
+# Why there is no `pull_request` trigger:
+#   - FORK PRs get no access to the `qa-eval` environment secrets, so every external
+#     contributor's PR would get a screen job that can't reach the model API — an
+#     intimidating red X on a first-time contribution, for a check that is explicitly
+#     advisory.
+#   - Same-repo `pull_request` would need the untrusted PR-head checkout and the Grove
+#     key in the same workflow. skill-gate (#51, ENTSEC-5465) handles that with a
+#     collect/run job split (unprivileged checkout job, privileged runner that receives
+#     the content as an artifact). That split previously lived in this file and was
+#     REMOVED with the trigger: it only means anything when a pull_request trigger
+#     exists, and until then it was untestable dead weight. If a pull_request trigger is
+#     ever enabled, restore the split from git history FIRST — and note the limit the
+#     old header documented: the split keeps the key off the runner that saw the
+#     untrusted ref, but the harness still executes untrusted eval-case YAML with the
+#     key in its env. Full isolation would need model-call-layer sandboxing.
+#
+# The dispatch ref is operator-chosen and treated as trusted, so this single job checks
+# out and runs directly — no split. When pr_number is given the dispatch ref is IGNORED:
+# the PR's current head SHA is resolved and checked out instead, the evaluated SHA is
+# stamped into the comment, and the post step re-resolves the head and refuses to post
+# if it moved. A comment on a PR must report on that PR's code, never on an
+# operator-picked ref posted as though the PR had been screened.
+#
+# Prereqs (see qa-eval.yml's header, ENTSEC-5465):
+#   - GitHub environment `qa-eval` with secret GROVE_API_KEY
+#   - repo variable GROVE_BASE_URL (non-sensitive)
+#   - repo secrets AGENT_SKILLS_EVALS_APP_ID + AGENT_SKILLS_EVALS_APP_PRIVATE_KEY
+#   - 10gen/agent-skills-evals#18 merged (provides harness.py + screen_report.py).
+#     Missing model credentials fail loud there (harness.py preflight), not here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      skill:
+        description: "Skill to screen"
+        required: true
+        type: string
+      pr_number:
+        description: "PR number to comment on (leave blank to just print the comment body)"
+        required: false
+        type: string
+
+# One screen per skill. Two dispatches in quick succession would otherwise race on the
+# same marker comment and can double-post instead of updating.
+concurrency:
+  group: qa-pr-screen-${{ github.event.inputs.skill }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # Kept in lockstep with harness.py's and screen_report.py's default, and passed
+  # explicitly to both. screen_report reads the LATEST qa_runs doc for --skill/--model, so
+  # a drift between the two defaults doesn't produce a wrong number — it produces "no
+  # skill-on qa_runs doc found" and a failure nobody can read.
+  PANEL_MODEL: anthropic/claude-sonnet-4-6
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    # Holds GROVE_API_KEY as an environment secret (gated behind required reviewers).
+    # Base URL is a non-sensitive repo var.
+    environment: qa-eval
+    timeout-minutes: 60
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: qa_pr_screen
+      # A CONCURRENCY cap, not a case count — see qa-mutation-battery.yml's MAX_SAMPLES
+      # note on why 4 is too many agent+mongo container pairs for a 2-vCPU runner.
+      MAX_SAMPLES: "2"
+      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
+      GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
+    steps:
+      # When posting to a PR, the evaluated code must BE that PR's head, so resolve it
+      # rather than trusting the dispatch ref. Without pr_number the dispatch ref stands
+      # (a print-only run that attributes nothing to any PR).
+      - name: Resolve the PR head SHA
+        id: pr-head
+        if: github.event.inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha')
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout agent-skills (PR head when posting, else the dispatch ref's SHA)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: agent-skills
+          ref: ${{ steps.pr-head.outputs.sha || github.sha }}
+
+      # A typo'd skill name must fail loudly here, not deep inside the harness on a skill
+      # that does not exist.
+      - name: Validate the requested skill exists
+        env:
+          SKILL: ${{ github.event.inputs.skill }}
+          REF: ${{ steps.pr-head.outputs.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "agent-skills/skills/$SKILL/SKILL.md" ]; then
+            echo "::error::No skill named '$SKILL' under skills/ (on $REF)."
+            ls agent-skills/skills/
+            exit 1
+          fi
+
+      - name: Generate a token for the agent-skills-evals GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - name: Checkout agent-skills-evals (private, sibling checkout)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+          path: agent-skills-evals
+
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+        with:
+          python-version: "3.12"
+
+      - name: Run skill-off then skill-on (k=1 — this is a screen, not a measurement)
+        working-directory: agent-skills-evals/inspect
+        env:
+          SKILL: ${{ github.event.inputs.skill }}
+        run: |
+          set -euo pipefail
+          uv sync
+          uv run python harness.py --skill "$SKILL" --no-skill \
+            --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
+          uv run python harness.py --skill "$SKILL" \
+            --model "$PANEL_MODEL" --epochs 1 --max-samples "$MAX_SAMPLES"
+
+      - name: Build the sanitized PR comment
+        working-directory: agent-skills-evals/inspect
+        env:
+          SKILL: ${{ github.event.inputs.skill }}
+        run: |
+          uv run python screen_report.py --skill "$SKILL" \
+            --model "$PANEL_MODEL" > comment.md
+
+      # The comment (and the job summary) must name the exact SHA that was screened, so a
+      # result is attributable to the code it measured. Appended at the END: the first line
+      # stays screen_report.py's marker, which the post step below matches on. SHA + skill
+      # name are self-generated fields, squarely inside the public-content rule.
+      - name: Stamp the evaluated SHA into the comment
+        working-directory: agent-skills-evals/inspect
+        env:
+          EVALUATED_SHA: ${{ steps.pr-head.outputs.sha || github.sha }}
+          SKILL: ${{ github.event.inputs.skill }}
+        run: |
+          printf '\n---\nEvaluated SHA: `%s` (skill `%s`)\n' "$EVALUATED_SHA" "$SKILL" >> comment.md
+
+      - name: Show the comment in the job summary
+        run: cat "agent-skills-evals/inspect/comment.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post or update the PR comment
+        if: github.event.inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          SKILL: ${{ github.event.inputs.skill }}
+          EVALUATED_SHA: ${{ steps.pr-head.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # Re-resolve the head before posting: if the PR moved since the eval started,
+          # this comment would attribute a result to code it did not measure.
+          CURRENT=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha')
+          if [ "$CURRENT" != "$EVALUATED_SHA" ]; then
+            echo "::error::PR head moved during the run ($EVALUATED_SHA -> $CURRENT). Not posting; re-run the screen."
+            exit 1
+          fi
+          # screen_report.py emits this marker as the comment's first line
+          # (screen_report.marker(), asserted in test_screen_report.py), which is what lets
+          # successive runs update one comment instead of stacking new ones.
+          MARKER="<!-- qa-screen-check:$SKILL -->"
+          EXISTING=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | head -1)
+          # -F body=@file, not -f body="$(cat ...)": the comment is multi-line markdown and
+          # passing it through a shell interpolation is a needless quoting hazard.
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/$EXISTING" -X PATCH \
+              -F body=@agent-skills-evals/inspect/comment.md
+          else
+            gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" -X POST \
+              -F body=@agent-skills-evals/inspect/comment.md
+          fi

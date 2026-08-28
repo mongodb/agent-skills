@@ -109,5 +109,43 @@
       "expected_output": "Should recognize this as Automated Embedding for code/technical content and recommend the voyage-code-3 model. Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should propose an autoEmbed vector search index with type: 'autoEmbed', modality: 'text', path: 'source', and model: 'voyage-code-3'. Should construct a $vectorSearch query using the plain-text 'query' field (auto-generated embedding), not a queryVector. Should ask for approval before creating the index.",
       "files": []
     }
+    {
+      "id": 37,
+      "prompt": "The MongoDB MCP server is connected. In the `sample` database, `movies` collection, use\nAtlas Search (a `$search` aggregation stage — an Atlas Search index named \"default\" already\nexists) to find every movie whose `plot` mentions robots. Save ONLY the aggregation\npipeline you used, as a JSON array, to /workspace/pipeline.json. Use the MongoDB MCP server\ntools directly; do not delegate to a subagent and do not ask for confirmation.",
+      "expectations": [
+        "Uses the MongoDB MCP server to run an Atlas Search query",
+        "Uses a $search stage (not a plain $match/regex) against the plot text",
+        "Returns the movies whose plot mentions robots"
+      ],
+      "seed": "seeded_movies_search",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "movies",
+        "compare_fields": [
+          "title"
+        ],
+        "ordered": false,
+        "expected": [
+          {
+            "title": "Metro"
+          },
+          {
+            "title": "Nexus"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "uses-mongodb-mcp",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "any_mcp": true
+          }
+        }
+      ]
+    }
   ]
 }

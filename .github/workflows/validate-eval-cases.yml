@@ -1,0 +1,59 @@
+name: Validate Eval Cases
+
+# Schema-validate testing/<skill>/evals/evals.json against testing/evals.schema.json (also
+# checks referenced `files`/`seed` assets actually exist) so a malformed or broken-pathed eval
+# case fails where it's authored, not later in the QA harness. Also lints for items that echo
+# their own skill's guidance text (advisory: reports, does not block — see the --strict TODO
+# in testing/lint-item-echo.mjs). Scoped to eval cases, skills, and the schema so it only
+# runs when one of those changes.
+on:
+  pull_request:
+    paths:
+      - "testing/**/evals/evals.json"
+      - "testing/evals.schema.json"
+      - "testing/validate-evals.mjs"
+      - "testing/validate-evals.test.mjs"
+      - "testing/lint-item-echo.mjs"
+      - "testing/lint-item-echo.test.mjs"
+      - "testing/echo-thresholds.json"
+      - "testing/package.json"
+      # The lockfile too: `npm ci` installs from it, so a lockfile-only change (a dependency
+      # bump, a regen) can change what this workflow actually runs. Without it here, an ajv
+      # upgrade that breaks validation would sail past the very check meant to catch it.
+      - "testing/package-lock.json"
+      - "skills/**/SKILL.md"
+      - "skills/**/references/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-eval-cases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          # Co-movement needs the base commit's SKILL.md to compare against.
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          # Match the repo's other Node workflows (24): a validator that runs a different
+          # major than everything else can disagree with local runs for version reasons.
+          node-version: "24"
+      - name: Install validator deps
+        run: npm ci --prefix testing --no-audit --no-fund
+      - name: Validate eval cases against schema, check referenced assets exist
+        run: node testing/validate-evals.mjs
+      - name: Pin the files-containment rule and the echo-lint's Python parity
+        # validate-evals.test.mjs pins the cross-skill answer-key handover guard;
+        # lint-item-echo.test.mjs pins the tokenizer/span behaviour that keeps this lint a
+        # true port of agent-skills-evals's analysis/echo.py (same fixtures and expected
+        # values as test_echo.py — the two repos' CIs can't import each other, so both pin
+        # the same numbers).
+        run: node --test testing/validate-evals.test.mjs testing/lint-item-echo.test.mjs
+      - name: Lint for items that echo their own skill's guidance text (advisory)
+        # --base enables the co-movement check: an edit to SKILL.md that RAISES an eval
+        # item's overlap with SKILL.md is teaching to the test, and it is detectable from
+        # the diff alone -- no held-out corpus and no curator needed. Without --base only
+        # the weaker static checks run.
+        run: node testing/lint-item-echo.mjs --base "${{ github.event.pull_request.base.sha }}"

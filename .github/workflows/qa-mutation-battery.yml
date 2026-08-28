@@ -1,0 +1,249 @@
+name: QA Mutation Battery
+
+# Deliberately manual (`workflow_dispatch` only) until the triggers below are uncommented.
+#
+# What this does: for a skill, materializes each mutant in its mutation config
+# (testing/<skill>/evals/mutation.yaml), runs the QA harness against baseline + every
+# mutant, and commits the resulting sensitivity report to
+# agent-skills-evals/baselines/<skill>-mutation.json. Advisory only — never blocks a PR.
+# It keeps the "what can this suite actually detect?" measurement fresh as skills change.
+#
+# Before uncommenting `push`/`schedule`:
+#   1. The GitHub `qa-eval` environment must be provisioned (prereqs in qa-eval.yml's
+#      header). The Grove key is a `qa-eval` environment secret.
+#   2. AGENT_SKILLS_EVALS_APP_ID + AGENT_SKILLS_EVALS_APP_PRIVATE_KEY are repo secrets.
+#      The App's existing Contents access on agent-skills-evals covers the checkout +
+#      baseline commit; no App changes are needed.
+
+on:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "skills/*/SKILL.md"
+  #     - "skills/*/references/**"
+  #     - "testing/*/evals/mutation.yaml"
+  # schedule:
+  #   - cron: "0 6 1 */3 *" # quarterly safety-net census, all skills
+  workflow_dispatch:
+    inputs:
+      skill:
+        description: "Skill to run the battery for (blank = every skill under skills/)"
+        required: false
+        type: string
+      epochs:
+        description: >-
+          Repeats per sample. Default 5: below that, run-to-run noise sits above the
+          battery's detection threshold and the report is suppressed as unmeasurable —
+          a lower-k run spends the model calls and learns nothing.
+        required: false
+        default: "5"
+        type: string
+
+# Serialize ALL batteries, not just per skill: keying the group on the skill input lets an
+# all-skills run and a targeted run hold different locks while both publish the same
+# baselines/<skill>-mutation.json. Batteries run for hours; a second dispatch queueing
+# behind the first costs nothing.
+concurrency:
+  group: qa-mutation-battery
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.list.outputs.skills }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Determine which skill(s) to run
+        id: list
+        env:
+          SKILL_INPUT: ${{ github.event.inputs.skill }}
+        run: |
+          set -euo pipefail
+          if [ -n "$SKILL_INPUT" ]; then
+            .github/scripts/qa-resolve-skills.sh --skill "$SKILL_INPUT"
+          else
+            .github/scripts/qa-resolve-skills.sh --all
+          fi
+
+  battery:
+    needs: detect
+    if: needs.detect.outputs.skills != '[]'
+    strategy:
+      fail-fast: false # one skill's battery failing must not cancel the others
+      max-parallel: 2 # bounded model-call spend and metadata-store contention
+      matrix:
+        skill: ${{ fromJSON(needs.detect.outputs.skills) }}
+    runs-on: ubuntu-latest
+    # Holds GROVE_API_KEY as an environment secret (gated behind required reviewers).
+    # Base URL is a non-sensitive repo var.
+    environment: qa-eval
+    permissions:
+      contents: read
+    # ~11 mutants plus a baseline, each at --epochs 5, is long but bounded. Without an
+    # explicit cap a wedged harness burns the 6h default before anyone notices.
+    timeout-minutes: 300
+    services:
+      # job-local metadata store for qa_runs / mutation_report.py — ephemeral, no secret,
+      # unrelated to the functional-slice sandbox Mongo the harness seeds per sample.
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: qa_mutation_battery
+      EPOCHS: ${{ github.event.inputs.epochs || '5' }}
+      # A CONCURRENCY cap, not a case count: each sample of a functional task spins its own
+      # agent + mongo container pair. 4 was sized for the k8s sandbox; on a 2-vCPU/7GB
+      # ubuntu-latest runner that is 8 containers, and samples OOM-killed into INVALID are
+      # samples the harness correctly refuses to score — a wasted run, not a cheap one.
+      MAX_SAMPLES: "2"
+      # Grove key from the qa-eval environment secret. Base URL is non-sensitive and
+      # stays a repo var.
+      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
+      GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
+    steps:
+      # Missing model credentials fail loud in harness.py's preflight (which names the
+      # missing vars) — not here. This job must not be enabled (uncomment the push/schedule
+      # triggers) until the GitHub 'qa-eval' environment exists with GROVE_API_KEY
+      # (secret) + GROVE_BASE_URL (repo var) (see mongodb/agent-skills#51 / ENTSEC-5465).
+      - name: Checkout agent-skills (this repo, public)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: agent-skills
+
+      - name: Generate a token for the agent-skills-evals GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - name: Checkout agent-skills-evals (private, sibling checkout)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+          path: agent-skills-evals
+
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+        with:
+          python-version: "3.12"
+
+      - name: Run baseline + every mutant for ${{ matrix.skill }}
+        working-directory: agent-skills-evals/inspect
+        run: |
+          set -euo pipefail
+          uv sync
+
+          echo "== BASELINE (unmutated skill, skill-on) at k=$EPOCHS =="
+          uv run python harness.py \
+            --skill "${{ matrix.skill }}" --epochs "$EPOCHS" --max-samples "$MAX_SAMPLES"
+
+          echo "== MUTATION BATTERY =="
+          MUT_DIR=$(mktemp -d)
+          uv run python mutate_skill.py --skill "${{ matrix.skill }}" --all --out "$MUT_DIR"
+          for d in "$MUT_DIR"/mut-*; do
+            [ -d "$d" ] || continue
+            echo "-- $(basename "$d") --"
+            SKILL_BASE_DIR="$d" uv run python harness.py \
+              --skill "${{ matrix.skill }}" --epochs "$EPOCHS" --max-samples "$MAX_SAMPLES"
+          done
+
+          echo "== REPORT =="
+          uv run python mutation_report.py --skill "${{ matrix.skill }}" --json \
+            > "$RUNNER_TEMP/${{ matrix.skill }}-mutation.json"
+
+      # Reports are collected as artifacts and committed ONCE by `publish` below. Committing
+      # here would have every matrix job push to agent-skills-evals main concurrently: the
+      # first wins, the rest fail on non-fast-forward, and with fail-fast:false a census
+      # would quietly lose most of its results.
+      - name: Upload the sensitivity report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutation-baseline-${{ matrix.skill }}
+          path: ${{ runner.temp }}/${{ matrix.skill }}-mutation.json
+          if-no-files-found: error
+
+  publish:
+    needs: battery
+    if: always() && needs.battery.result != 'skipped'
+    runs-on: ubuntu-latest
+    # Separate environment from the spend jobs: `publish` never calls Grove, so it must
+    # NOT be gated by qa-eval's required-reviewers (else every push/schedule auto-run
+    # stalls on approval). The App PEM is a repo-level secret, so no OIDC is needed here.
+    environment: qa-eval-publish
+    permissions:
+      contents: read
+    steps:
+      - name: Generate a token for the agent-skills-evals GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+
+      # Whatever succeeded gets published: a skill whose battery failed simply has no
+      # artifact, so a partial census still lands its usable half.
+      - name: Download every skill's report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: mutation-baseline-*
+          path: incoming
+          merge-multiple: true
+
+      - name: Commit updated baselines in one commit
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          FILES=(incoming/*-mutation.json)
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No reports to publish (every battery failed)."
+            exit 0
+          fi
+          mkdir -p baselines
+          cp "${FILES[@]}" baselines/
+          rm -rf incoming
+          git config user.name "agent-skills-evals-bot"
+          git config user.email "noreply@mongodb.com"
+          git add baselines
+          if git diff --cached --quiet; then
+            echo "No change to any baseline."
+            exit 0
+          fi
+          git commit -m "chore: refresh mutation baselines (${#FILES[@]} skill(s))"
+          # The expected loser-case is a concurrent human commit to main, not a conflict on
+          # these files, so rebase and retry rather than failing a several-hour census. A
+          # CONFLICT is different: it means another run published the same baseline, git is
+          # left mid-rebase (where every further `git pull --rebase` fails on state, not
+          # content, so retrying can never recover), and a human should decide which
+          # measurement stands. Abort the rebase and fail loudly instead.
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin HEAD && git push; then
+              exit 0
+            fi
+            if git rebase --abort 2>/dev/null; then
+              echo "::error::Rebase conflict publishing baselines — another run likely updated the same file. Re-run this battery to regenerate from current main."
+              exit 1
+            fi
+            echo "push attempt $attempt failed; retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1

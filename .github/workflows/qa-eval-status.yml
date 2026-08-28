@@ -1,0 +1,130 @@
+# qa-eval required-check seeder.
+#
+# Manages the DEFAULT state of the `qa-eval` check run so a PR can't merge until a QA
+# eval has run on the current head:
+#   - PR changes no evaluatable skill content -> completed/success ("not required")
+#   - PR changes skills/<name>/** or testing/<name>/** for a real skill -> queued
+#     ("run /qa-eval")
+#   - PR deletes or renames a skill (removed skills/<name>/** where the skill no longer
+#     exists at head) -> completed/action_required ("manual review"): a deleted skill
+#     cannot be auto-evaluated, so it must NOT collapse into the "no skill changes" success.
+# A `queued` check run renders neutral (not a red failure) so it isn't confused with a
+# broken build. `action_required` BLOCKS the required check until a maintainer resolves it.
+#
+# "Evaluatable skill content" is decided by .github/scripts/qa-resolve-skills.sh — the
+# SAME resolver qa-eval.yml runs — so this seeder and the gate cannot disagree about what
+# requires evaluation. An earlier grep here counted only skills/** while the resolver also
+# counts testing/<skill>/**: a tests/fixtures-only PR got an instant success and merged
+# without the suite it modified ever running.
+#
+# The gate is a CHECK RUN; qa-eval.yml carries the eval report inline on it. Check runs
+# are per-SHA by construction, which makes the freshness problem disappear: a pass on an
+# old commit never satisfies a new head, because the new head simply has no completed
+# check run.
+#
+# NOTE: this creates the check run, but does not by itself make merging conditional on
+# it -- that requires "qa-eval" to be added under required checks in this repo's ruleset,
+# a separate, repo-admin action.
+#
+# NOTE (forks): on fork PRs the built-in GITHUB_TOKEN is read-only, so check-run creation
+# is denied. The job-level `if:` skips fork PRs; the check then stays uncreated -> shows
+# "Expected" -> blocked by absence IF the check is required. A maintainer comments
+# `/qa-eval` on the fork PR and qa-eval.yml (which runs in the base-repo context with a
+# read-write token) creates the check run itself. So forks are covered end-to-end without
+# this seeder.
+#
+# KILL SWITCH: the whole gate is inert until the repo variable QA_EVAL_ENABLED is set to
+# 'true'. Flip it only after 10gen/agent-skills-evals#18 (the harness) has merged and a
+# dispatch smoke test of qa-eval.yml has gone green.
+name: QA Eval Status
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read       # sparse-checkout the PR head (skills/ + testing/) for the resolver
+  pull-requests: read
+  checks: write
+
+# One seeder run per PR head SHA. cancel-in-progress: true is safe here because the
+# trigger is `pull_request` (not issue_comment): only a new push to the same PR head
+# supersedes, so an unrelated event never kills an in-flight seed. A stale seed for an
+# old SHA is harmless — qa-eval.yml posts onto the SHA it actually evaluated, and a
+# superseding push re-seeds the new head.
+concurrency:
+  group: qa-eval-status-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  seed:
+    if: ${{ github.event.pull_request.head.repo.fork == false && vars.QA_EVAL_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the PR head (data only, skills/ + testing/)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            skills
+            testing
+
+      # From the DEFAULT branch, not the checkout above: a pull_request run reads its YAML
+      # from the merge ref, so a PR could otherwise edit the resolver to seed its own
+      # "success". Same fetch qa-eval.yml uses.
+      - name: Fetch the skill-resolution script (default branch)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/contents/.github/scripts/qa-resolve-skills.sh" \
+            -H "Accept: application/vnd.github.raw" > "$RUNNER_TEMP/qa-resolve-skills.sh"
+          chmod +x "$RUNNER_TEMP/qa-resolve-skills.sh"
+
+      # A resolver failure (its gh api call runs under set -e) fails this job with NO check
+      # run seeded: a required check then stays "Expected" and blocks merge. Fail-closed,
+      # never silently seeding success on an API error.
+      - name: Resolve skills changed in this PR
+        id: list
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          "$RUNNER_TEMP/qa-resolve-skills.sh" --pr "${{ github.event.pull_request.number }}"
+
+      - name: Seed qa-eval check run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SKILLS: ${{ steps.list.outputs.skills }}
+          DELETED: ${{ steps.list.outputs.deleted_skills }}
+        run: |
+          set -euo pipefail
+          DELETED="${DELETED:-[]}"
+          # Fail-closed first: a deleted/renamed skill can't be auto-evaluated, and seeding
+          # "no skill changes" success would let the removal bypass the required QA gate.
+          # action_required blocks merge until a maintainer manually reviews the removal.
+          if [ "$DELETED" != "[]" ]; then
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=completed \
+              -f conclusion=action_required \
+              -f "output[title]=Skill deletion/rename requires manual review" \
+              -f "output[summary]=This PR removes \`skills/<name>/\` for: $DELETED. Removed skills cannot be auto-evaluated, so the \`qa-eval\` gate is blocked pending a maintainer's manual review."
+          elif [ "$SKILLS" = "[]" ]; then
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=completed \
+              -f conclusion=success \
+              -f "output[title]=No skill changes" \
+              -f "output[summary]=This PR changes no \`skills/<name>/\` or \`testing/<name>/\` content for any skill; the QA eval is not required."
+          else
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=queued \
+              -f "output[title]=QA eval required before merge" \
+              -f "output[summary]=This PR changes skill or eval content ($SKILLS). A maintainer runs \`/qa-eval\` in a PR comment to produce the verdict (see .github/workflows/qa-eval.yml)."
+          fi

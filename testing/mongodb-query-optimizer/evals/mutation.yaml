@@ -1,0 +1,54 @@
+# Per-skill mutation battery config for mutate_skill.py's `invert_rule` operator and
+# `drop_reference`'s target choice. Lives here (config) rather than hardcoded in shared
+# harness Python, so adding/updating a skill's mutation battery is a data change, not a code
+# change -- authored the same way evals.yaml is.
+#
+# Every `find` string here must be VERIFIED against the live skill file: a guessed string
+# silently yields a no-op mutant. mutate_skill.py raises on a miss rather than pretending, so
+# a bad entry here fails loudly the first time the battery runs, not silently.
+#
+# Note the target files: the actual ESR rule lives in references/core-indexing-principles.md,
+# not SKILL.md, which only alludes to it. Inverting only SKILL.md would leave the real rule
+# intact and understate detectability.
+#
+# ── WHY ONLY TWO SKILLS HAVE ONE OF THESE ────────────────────────────────────────────────
+# Not arbitrary, and not "the other five are unmutated". Every skill gets the nine SKILL.md
+# operators with no config at all (truncate_body x3, remove_examples, shuffle_steps,
+# delete_one_sentence, perturb_number, null_mutation x2), and a skill with references/ gets two
+# more. What a mutation.yaml adds is `invert_rule`: the operator closest to a real guidance
+# regression, where the document stays well-formed while its advice becomes wrong.
+#
+# An invert_rule entry is only worth writing where two things hold:
+#   1. The inverted advice is PLAUSIBLE BUT WRONG, not incoherent. mutate_skill catches a
+#      find-string that misses (it raises); nothing catches an inversion that turns the doc to
+#      nonsense, which the agent then ignores for the wrong reason while S_i still looks fine.
+#   2. The skill's own eval CASES turn on that rule. Invert something no case depends on and
+#      S_i = 0, which is indistinguishable from "the skill isn't load-bearing here" -- see
+#      mutation_report.py's docstring on the three explanations for S_i = 0.
+#
+# These two satisfy both.
+#
+# What blocks the other five is not effort. Most of their rule-shaped text is PROCEDURAL
+# rather than technical -- "always consult the reference file", "always warn users about
+# billing" -- and inverting that changes process, not advice the graded output reveals.
+# Deliberately left to a follow-up PR, strongest first: mongodb-connection (its cases assert
+# the singleton-client pattern and maxPoolSize sizing directly, so inverting those is
+# detectable) then mongodb-search-and-ai (filter-vs-must, index-type choice) then
+# mongodb-atlas-stream-processing (6 references, but needs a careful read to find a technical
+# rule its cases turn on). mongodb-mcp-setup and mongodb-natural-language-querying may never
+# warrant one: no references/, generative or procedural guidance, and tool-execution skills
+# saturate, so S_i tends to 0 regardless of the mutation.
+inversions:
+  - find: "**Equality → Sort → Range** order is most often preferred"
+    replace: "**Range → Sort → Equality** order is most often preferred"
+    target_file: references/core-indexing-principles.md
+  - find: "following ESR (two equality fields, then sort)"
+    replace: "following SRE (sort field first, then equality fields)"
+    target_file: SKILL.md
+  - find: "Prefer creating an index that fully covers the query if possible"
+    replace: "Avoid compound indexes; prefer a single-field index on one filter field"
+    target_file: SKILL.md
+
+# The reference whose removal should hurt most. Without this, drop_reference takes the
+# alphabetically-first file, which may not be the fundamental the cases actually turn on.
+key_reference: core-indexing-principles.md
