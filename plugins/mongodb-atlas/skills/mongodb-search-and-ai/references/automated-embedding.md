@@ -127,7 +127,7 @@ The embedding field (`type: "autoEmbed"`) is required. To pre-filter queries, ad
 ### Creating the Index (mongosh)
 
 ```javascript
-db.collection.createSearchIndex(
+db.movies.createSearchIndex(
   "<index-name>",
   "vectorSearch",
   {
@@ -229,13 +229,13 @@ Resolve the source item to its indexed text field first, then pass that text as 
 
 ```javascript
 // 1. Fetch the source item's text (the same field indexed as autoEmbed)
-const source = db.collection.findOne(
+const source = db.movies.findOne(
   { title: "The Firm" },
-  { plot: 1 }
+  { projection: { plot: 1 } }
 );
 
 // 2. Use that text as the query
-db.collection.aggregate([
+db.movies.aggregate([
   {
     $vectorSearch: {
       index: "<index-name>",
@@ -248,6 +248,8 @@ db.collection.aggregate([
   }
 ])
 ```
+
+`_id` is always available as a filter field on an `autoEmbed` index — you don't need to declare it as a `filter` field to use it in the self-exclusion above.
 
 Passing the item's name (e.g. `query: "The Firm"`) searches for text semantically near that string, not near the item's actual content — pass the content field instead.
 
