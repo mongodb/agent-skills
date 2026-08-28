@@ -320,7 +320,7 @@ jobs:
               --arg baseSha "$BASE_SHA" \
               --arg model "$PANEL_MODEL" \
               --arg verdict "$verdict" \
-              --arg runAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --arg runAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
               '{skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
                 verdict: $verdict, runAt: $runAt}' \
               > "$RUNNER_TEMP/reports/qa-eval-report-$SKILL.json"
