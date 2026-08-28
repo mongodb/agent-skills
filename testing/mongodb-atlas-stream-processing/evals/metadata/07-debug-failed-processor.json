@@ -35,7 +35,7 @@
   "assertions": [
     {
       "name": "calls_diagnose_processor_first",
-      "description": "First tool call is atlas-streams-discover with action='diagnose-processor'",
+      "description": "After optional atlas-list-projects discovery, the first ASP tool call is atlas-streams-discover with action='diagnose-processor'",
       "critical": true,
       "reason": "Always diagnose first to get comprehensive health report"
     },
@@ -45,7 +45,7 @@
     },
     {
       "name": "calls_get_logs_second",
-      "description": "Second tool call is atlas-streams-discover with action='get-logs'",
+      "description": "The next ASP tool call after diagnose-processor is atlas-streams-discover with action='get-logs'",
       "critical": true
     },
     {

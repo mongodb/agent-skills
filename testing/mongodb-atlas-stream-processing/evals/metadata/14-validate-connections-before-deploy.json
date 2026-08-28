@@ -35,7 +35,7 @@
   "assertions": [
     {
       "name": "calls_list_connections_first",
-      "description": "First tool call is atlas-streams-discover with action='list-connections'",
+      "description": "After optional atlas-list-projects discovery, the first ASP tool call is atlas-streams-discover with action='list-connections'",
       "critical": true,
       "reason": "Must list connections before inspecting specific ones"
     },
