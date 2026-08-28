@@ -385,10 +385,11 @@
           }
         },
         {
-          "title": "param \u2014 the matched call's arguments satisfy `match.where`",
+          "title": "param \u2014 the matched call's arguments satisfy every `expect` equality",
           "required": [
             "type",
-            "match"
+            "match",
+            "expect"
           ],
           "additionalProperties": false,
           "properties": {
@@ -403,6 +404,10 @@
             },
             "match": {
               "$ref": "#/$defs/matcher"
+            },
+            "expect": {
+              "type": "object",
+              "description": "Dotted-path -> value equalities the matched call's arguments must satisfy. Separate from `match` so the call SELECTION (`match`) stays independent of the VALUES asserted (`expect`). Required: a param check that asserts nothing is a check that cannot fail."
             }
           }
         }

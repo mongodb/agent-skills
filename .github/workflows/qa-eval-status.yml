@@ -5,8 +5,11 @@
 #   - PR changes no evaluatable skill content -> completed/success ("not required")
 #   - PR changes skills/<name>/** or testing/<name>/** for a real skill -> queued
 #     ("run /qa-eval")
+#   - PR deletes or renames a skill (removed skills/<name>/** where the skill no longer
+#     exists at head) -> completed/action_required ("manual review"): a deleted skill
+#     cannot be auto-evaluated, so it must NOT collapse into the "no skill changes" success.
 # A `queued` check run renders neutral (not a red failure) so it isn't confused with a
-# broken build.
+# broken build. `action_required` BLOCKS the required check until a maintainer resolves it.
 #
 # "Evaluatable skill content" is decided by .github/scripts/qa-resolve-skills.sh — the
 # SAME resolver qa-eval.yml runs — so this seeder and the gate cannot disagree about what
@@ -94,9 +97,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           SKILLS: ${{ steps.list.outputs.skills }}
+          DELETED: ${{ steps.list.outputs.deleted_skills }}
         run: |
           set -euo pipefail
-          if [ "$SKILLS" = "[]" ]; then
+          DELETED="${DELETED:-[]}"
+          # Fail-closed first: a deleted/renamed skill can't be auto-evaluated, and seeding
+          # "no skill changes" success would let the removal bypass the required QA gate.
+          # action_required blocks merge until a maintainer manually reviews the removal.
+          if [ "$DELETED" != "[]" ]; then
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=completed \
+              -f conclusion=action_required \
+              -f "output[title]=Skill deletion/rename requires manual review" \
+              -f "output[summary]=This PR removes \`skills/<name>/\` for: $DELETED. Removed skills cannot be auto-evaluated, so the \`qa-eval\` gate is blocked pending a maintainer's manual review."
+          elif [ "$SKILLS" = "[]" ]; then
             gh api -X POST "repos/${{ github.repository }}/check-runs" \
               -f name=qa-eval \
               -f head_sha="$HEAD_SHA" \

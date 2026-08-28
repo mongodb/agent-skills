@@ -144,6 +144,34 @@ test("checkAssetsExist: malformed evals or files shapes do not crash the validat
   );
 });
 
+test("checkAssetsExist: a seed fixture symlink that escapes the fixtures dir is rejected", () => {
+  // `files` get realpath containment but seed fixtures previously got only an existence
+  // check — a git symlink `fixtures/leak.js -> /proc/self/environ` validated clean and the
+  // harness then copied runner-local data into the sandbox. Pin the containment rule that
+  // closes it: the resolved fixture must stay inside the resolved fixtures dir.
+  const root = mkdtempSync(join(tmpdir(), "evals-"));
+  const evalsDir = join(root, "evals");
+  mkdirSync(join(evalsDir, "fixtures"), { recursive: true });
+  writeFileSync(join(root, "victim.js"), "const secret = 'GROVE_API_KEY=leaked'\n");
+  // fixtures/ -> evals/ -> root/ : two levels up reaches the victim, outside the fixtures dir
+  symlinkSync("../../victim.js", join(evalsDir, "fixtures", "leak.js"));
+  const doc = { evals: [{ id: 1, seed: "leak" }] };
+  const problems = checkAssetsExist(evalsDir, doc, CONTRACT);
+  assert.ok(
+    problems.some((p) => p.includes("outside the fixtures dir via a symlink")),
+    `expected a symlink-escape finding, got: ${JSON.stringify(problems)}`,
+  );
+});
+
+test("checkAssetsExist: a contained non-symlink seed fixture is accepted", () => {
+  const root = mkdtempSync(join(tmpdir(), "evals-"));
+  const evalsDir = join(root, "evals");
+  mkdirSync(join(evalsDir, "fixtures"), { recursive: true });
+  writeFileSync(join(evalsDir, "fixtures", "seeded_movies.js"), "const s = 1;\n");
+  const doc = { evals: [{ id: 1, seed: "seeded_movies" }] };
+  assert.deepEqual(checkAssetsExist(evalsDir, doc, CONTRACT), []);
+});
+
 test("checkAssetsExist: a symlink loop is reported, never thrown", () => {
   // The ELOOP case Copilot raised about realpathSync: a pathological symlink cycle must
   // surface as a per-case problem, not crash the validator and swallow the remaining

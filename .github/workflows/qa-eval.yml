@@ -257,11 +257,25 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run harness + gate per skill
-        id: scan
+      - name: Resolve private runner capabilities
+        id: capabilities
         if: steps.list.outputs.skills != '[]'
         env:
-          SKILLS: ${{ steps.list.outputs.skills }}
+          REQUESTED_SKILLS: ${{ steps.list.outputs.skills }}
+        run: |
+          set -euo pipefail
+          cd agent-skills-evals/inspect
+          uv sync --quiet
+          RESULT=$(uv run python execution_profiles.py \
+            --platform github --skills "$REQUESTED_SKILLS")
+          echo "runnable=$(jq -c '.runnable' <<<"$RESULT")" >> "$GITHUB_OUTPUT"
+          echo "unsupported=$(jq -c '.unsupported' <<<"$RESULT")" >> "$GITHUB_OUTPUT"
+
+      - name: Run harness + gate per skill
+        id: scan
+        if: steps.capabilities.outputs.runnable != '[]'
+        env:
+          SKILLS: ${{ steps.capabilities.outputs.runnable }}
           HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
           BASE_SHA: ${{ steps.pr.outputs.base_sha }}
           SKILL_BASE_DIR: ${{ github.workspace }}/skills
@@ -271,14 +285,12 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/reports"
           cd agent-skills-evals/inspect
-          uv sync --quiet
-
           for SKILL in $(echo "$SKILLS" | jq -r '.[]'); do
             echo "== QA eval: $SKILL (model $PANEL_MODEL, k=1) =="
 
             set +e
             uv run python harness.py --skill "$SKILL" --model "$PANEL_MODEL" \
-              --epochs 1 --max-samples "$MAX_SAMPLES"
+              --platform github --epochs 1 --max-samples "$MAX_SAMPLES"
             HARNESS_RC=$?
             set -e
 
@@ -329,8 +341,15 @@ jobs:
           HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
           PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          UNSUPPORTED: ${{ steps.capabilities.outputs.unsupported }}
+          DELETED: ${{ steps.list.outputs.deleted_skills }}
         run: |
           set -euo pipefail
+
+          # Normalize the resolver's manual-review sets to a literal JSON list so a missing
+          # output is never read as a deletion/unsupported signal that would falsely block.
+          UNSUPPORTED="${UNSUPPORTED:-[]}"
+          DELETED="${DELETED:-[]}"
 
           # The verdict table is derived from the per-skill report files the run step
           # wrote — not assembled inline. No reports at all (the harness crashed before
@@ -363,6 +382,7 @@ jobs:
               echo '[]'
             fi
           )
+          COVERED=$(jq -cn --argjson e "$EVALUATED" --argjson u "$UNSUPPORTED" '$e + $u | unique | sort')
           if [ -z "$EXPECTED" ]; then
             # The coverage resolver itself failed (API outage). Still conclude — a wedged
             # in_progress check blocks merge indefinitely — but as failure, not success.
@@ -370,13 +390,13 @@ jobs:
             MISSING=""
             CONCLUSION=failure
             TITLE="QA eval could not verify coverage — re-run needed"
-          elif [ "$EVALUATED" != "$EXPECTED" ]; then
+          elif [ "$COVERED" != "$EXPECTED" ]; then
             if [ ${#REPORTS[@]} -gt 0 ]; then
               INDEX=$(jq -s '[.[] | {skill: .skillName, verdict}]' "${REPORTS[@]}")
             else
               INDEX=""
             fi
-            MISSING=$(jq -cn --argjson e "$EXPECTED" --argjson g "$EVALUATED" '$e - $g | join(", ")')
+            MISSING=$(jq -cn --argjson e "$EXPECTED" --argjson g "$COVERED" '$e - $g | join(", ")')
             CONCLUSION=failure
             TITLE="QA eval incomplete — partial coverage"
           elif [ ${#REPORTS[@]} -gt 0 ]; then
@@ -394,14 +414,37 @@ jobs:
               # title carries "re-run needed" so it isn't read as a verdict on the change.
               CONCLUSION=failure
               TITLE="QA eval inconclusive — re-run needed"
+            elif [ "$UNSUPPORTED" != "[]" ]; then
+              INDEX=""
+              CONCLUSION=action_required
+              TITLE="QA eval requires manual review"
             else
               CONCLUSION=success
               TITLE="QA eval passed"
             fi
+          elif [ "$UNSUPPORTED" != "[]" ]; then
+            INDEX=""
+            CONCLUSION=action_required
+            TITLE="QA eval requires manual review"
           else
             INDEX=""
             CONCLUSION=failure
             TITLE="QA eval did not produce results"
+          fi
+
+          # Fail-closed for skills the eval did not (and cannot) measure. Even with every
+          # runnable skill passing, the gate must not go green while an unsupported or
+          # deleted skill's change goes unevaluated and unlooked-at. action_required blocks
+          # merge (like failure), but carries the "manual review" title instead of being
+          # read as a verdict on the change.
+          if [ "$UNSUPPORTED" != "[]" ] || [ "$DELETED" != "[]" ]; then
+            if [ "$CONCLUSION" != "failure" ]; then
+              CONCLUSION=action_required
+              TITLE="QA eval passed — manual review required"
+            fi
+            MANUAL_NOTES=""
+            [ "$DELETED" = "[]" ] || MANUAL_NOTES="${MANUAL_NOTES:+$MANUAL_NOTES }These skills were deleted/renamed in this PR and must be reviewed manually: $DELETED."
+            [ "$UNSUPPORTED" = "[]" ] || MANUAL_NOTES="${MANUAL_NOTES:+$MANUAL_NOTES }The pinned private harness has no GitHub runner profile for: $UNSUPPORTED."
           fi
 
           # Summary is built ONLY from self-generated fields (skill names, verdicts,
@@ -417,6 +460,10 @@ jobs:
             if [ -n "${MISSING:-}" ]; then
               echo ""
               echo "**Not evaluated:** $MISSING. Re-run \`/qa-eval\` with no skill argument to cover every changed skill."
+            fi
+            if [ -n "${MANUAL_NOTES:-}" ]; then
+              echo ""
+              echo "**Manual review required:** $MANUAL_NOTES"
             fi
             echo ""
             echo "Model: \`$PANEL_MODEL\`. Full per-skill JSON reports: artifact"

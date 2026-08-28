@@ -155,9 +155,38 @@ export function checkAssetsExist(evalsDir, doc, contract) {
       }
     }
     if (ev.seed && !RESERVED_SEEDS.has(ev.seed)) {
-      const fixture = join(evalsDir, FIXTURE_DIR, `${ev.seed}${FIXTURE_EXT}`);
+      const fixtureDir = join(evalsDir, FIXTURE_DIR);
+      const fixture = join(fixtureDir, `${ev.seed}${FIXTURE_EXT}`);
       if (!existsSync(fixture)) {
         problems.push(`case ${ev.id}: seed '${ev.seed}' has no fixture at ${fixture}`);
+      } else if (!statSync(fixture).isFile()) {
+        problems.push(`case ${ev.id}: seed fixture is not a regular file: ${fixture}`);
+      } else {
+        // Same realpath containment that `files` gets: `files` are inlined into the prompt
+        // and seed fixtures are read and copied into the sandbox by the harness, so a
+        // symlink `fixtures/leak.js -> /proc/self/environ` would hand runner-local data to
+        // the privileged eval runner. The schema's `seed` regex only constrains the NAME —
+        // it cannot see what the file RESOLVES to. statSync above already follows a symlink,
+        // so this branch's own realpath comparison is the authoritative containment check.
+        let realFixtureDir;
+        let realFixture;
+        try {
+          realFixtureDir = realpathSync(fixtureDir);
+          realFixture = realpathSync(fixture);
+        } catch (err) {
+          problems.push(
+            `case ${ev.id}: could not resolve the real path of seed fixture ` +
+              `${fixture}: ${err.message}`,
+          );
+          continue;
+        }
+        const realRel = relative(realFixtureDir, realFixture);
+        if (realRel.startsWith("..") || isAbsolute(realRel)) {
+          problems.push(
+            `case ${ev.id}: seed fixture resolves outside the fixtures dir via a symlink: ` +
+              `${fixture} -> ${realFixture}`,
+          );
+        }
       }
     }
   }
