@@ -68,7 +68,7 @@ All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region
       "model": "<embedding-model>"
     },
     {
-      "type": "filter",    // Optional: add one or more filter fields (recommended for filter fields)
+      "type": "filter",    // Optional: index one or more fields as filters to enable pre-filtering / scoped search
       "path": "<field-to-filter-on>"
     }
   ]
@@ -249,7 +249,7 @@ db.movies.aggregate([
 ])
 ```
 
-`_id` is always available as a filter field on an `autoEmbed` index — you don't need to declare it as a `filter` field to use it in the self-exclusion above.
+Filter fields must generally be indexed as `type: "filter"` (see the index definition above). `_id` is the one exception — it is implicitly filterable on every `autoEmbed` index, so the self-exclusion `filter` above works without declaring `_id` as a filter field.
 
 Passing the item's name (e.g. `query: "The Firm"`) searches for text semantically near that string, not near the item's actual content — pass the content field instead.
 
@@ -262,7 +262,7 @@ Passing the item's name (e.g. `query: "The Firm"`) searches for text semanticall
 | `query` | Yes (with autoEmbed) | Plain text query string |
 | `numCandidates` | Yes (for ANN) | Candidates to evaluate; recommend 20x `limit` |
 | `limit` | Yes | Number of results to return |
-| `filter` | No | MQL pre-filter; field must be indexed as `filter` type |
+| `filter` | No | MQL pre-filter; field must be indexed as `filter` type (except `_id`, which is always filterable) |
 | `model` | No | Override query embedding model (must be compatible) |
 | `exact` | No | `true` for ENN (exact search), omit for ANN |
 
