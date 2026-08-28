@@ -1,8 +1,6 @@
 # Vector Search - Indexing and Querying
 
-This guide covers how to configure MongoDB Vector Search indexes and construct queries for semantic similarity search.
-
-**Scope**: This guide covers pure vector search indexes where the user **brings their own pre-generated embeddings**. For hybrid search (combining lexical and vector search), see `hybrid-search.md`. If the user wants MongoDB to generate and manage embeddings automatically (no embedding code), see `automated-embedding.md` instead.
+**Scope**: This guide covers configuring MongoDB Vector Search indexes and constructing queries for semantic similarity search where the user **brings their own pre-generated embeddings**. For hybrid search (combining lexical and vector search), see `hybrid-search.md`. If the user wants MongoDB to generate and manage embeddings automatically (no embedding code), see `automated-embedding.md` instead.
 
 ## Table of Contents
 

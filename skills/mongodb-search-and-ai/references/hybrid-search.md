@@ -1,8 +1,6 @@
 # Hybrid Search
 
-This guide covers hybrid search patterns in MongoDB Atlas: combining vector and lexical search using `$rankFusion` and `$scoreFusion`, and using lexical prefilters with the `vectorSearch` operator inside `$search`.
-
-**Scope**: This guide covers hybrid pipelines. For pure vector search indexes and `$vectorSearch` query construction, see `vector-search.md`. For lexical index definitions and query patterns, see `lexical-search-indexing.md` and `lexical-search-querying.md`. For automated embedding (`autoEmbed`) index and query syntax used inside a hybrid pipeline, see `automated-embedding.md`.
+**Scope**: This guide covers hybrid search patterns in MongoDB Atlas: combining vector and lexical search using `$rankFusion` and `$scoreFusion`, and using lexical prefilters with the `vectorSearch` operator inside `$search`. For pure vector search indexes and `$vectorSearch` query construction, see `vector-search.md`. For lexical index definitions and query patterns, see `lexical-search-indexing.md` and `lexical-search-querying.md`. For automated embedding (`autoEmbed`) index and query syntax used inside a hybrid pipeline, see `automated-embedding.md`.
 
 ## Table of Contents
 
@@ -46,7 +44,7 @@ Hybrid search combines multiple search methods on the same collection and merges
 | Cross-collection hybrid search | `$unionWith` + `$vectorSearch` (not `$rankFusion`/`$scoreFusion`) |
 | Combine lexical + semantic search without writing embedding code | `$rankFusion` or `$scoreFusion` with an `autoEmbed`-type `$vectorSearch` pipeline (see automated-embedding.md) |
 
-**Version requirements**: `$rankFusion` requires MongoDB 8.0+. `$scoreFusion` requires MongoDB 8.3+. Only proceed with this guide if the use case is lexical prefilters, or if the cluster meets the version requirement for the fusion stage of interest. Otherwise do not proceed.
+**Version requirements**: `$rankFusion` requires MongoDB 8.0+. `$scoreFusion` requires MongoDB 8.3+. Only proceed with this guide if the use case is lexical prefilters, or if the cluster meets the version requirement for the fusion stage of interest. Otherwise do not proceed — inform the user the feature is unavailable and suggest upgrading, and offer to help them build the individual lexical or vector search components separately in the meantime.
 
 ---
 

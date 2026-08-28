@@ -1,16 +1,9 @@
 # Automated Embedding
 
-This guide covers how to configure MongoDB Vector Search to automatically generate and manage vector embeddings — no embedding code, no model infrastructure, no vector pipelines required.
-
-Automated Embedding is available on all Atlas cluster tiers — M0 (free), Flex, and M10+ dedicated.
-
-**Scope**: This guide covers the `autoEmbed` index type and text-query `$vectorSearch` syntax. For manual vector search (bring your own embeddings), see `vector-search.md`. For combining with lexical search, see `hybrid-search.md`.
-
----
+**Scope**: This guide covers configuring MongoDB Vector Search to automatically generate and manage vector embeddings — no embedding code or model infrastructure required (queries still run through a `$vectorSearch` aggregation pipeline). It documents the `autoEmbed` index type and text-query `$vectorSearch` syntax. For manual vector search (bring your own embeddings), see `vector-search.md`. For combining with lexical search, see `hybrid-search.md`.
 
 ## Table of Contents
 
-- [When to Use Automated Embedding](#when-to-use-automated-embedding)
 - [Prerequisites](#prerequisites)
 - [Model Selection](#model-selection)
 - [Index Definition](#index-definition)
@@ -22,36 +15,15 @@ Automated Embedding is available on all Atlas cluster tiers — M0 (free), Flex,
 - [Management and Monitoring](#management-and-monitoring)
 - [Troubleshooting](#troubleshooting)
 
----
-
-## When to Use Automated Embedding
-
-**Use Automated Embedding when:**
-- The user wants semantic / vector search but doesn't want to write embedding code
-- The user has no existing vector pipeline or embedding infrastructure
-- The user is getting started quickly and wants a minimal-setup path
-- The user's data is text stored in Atlas and they want to search it by meaning
-
-**Use manual vector search (`vector-search.md`) when:**
-- The user already generates their own embeddings
-- The user needs a specific embedding model not offered by Voyage AI
-- The user needs image, audio, or multimodal embeddings (Automated Embedding is text-only)
-- The user is using self-managed MongoDB without Voyage AI API key access configured
-
-**Decision shortcut:**
-> "Do you have a vector embedding pipeline already, or do you want MongoDB to handle that for you?"
-- **Already have one** → `vector-search.md`
-- **Want MongoDB to handle it** → this guide
-
----
-
 ## Prerequisites
+
+Verify these prerequisites before creating an `autoEmbed` index or query. Tier and auto-scaling prerequisites can change across Atlas releases — confirm the current requirements in the official docs before acting.
 
 ### Atlas Clusters
 
 Automated Embedding is supported on **all Atlas cluster tiers**: M0 (free), Flex, and M10+ dedicated.
 
-**M10+ dedicated clusters require storage auto-scaling to be enabled.** These prerequisites can change across Atlas releases — confirm the current requirements in the Atlas UI or official docs before acting.
+**M10+ dedicated clusters require storage auto-scaling to be enabled.** If the user is on M10+ without storage auto-scaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation.
 
 ### Self-Managed Deployments
 
@@ -61,7 +33,7 @@ Requires:
 3. A Voyage AI API key for querying (recommended to use separate keys)
 4. Keys configured in `mongot` during deployment
 
----
+If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with manual Vector Search using `vector-search.md`.
 
 ## Model Selection
 
@@ -81,8 +53,6 @@ All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region
 - Codebase or technical docs search → `voyage-code-3`
 
 **Free tokens:** 200 million tokens per model, one-time, shared across the entire Atlas organization. Does not refresh. See [Billing and Free Tokens](#billing-and-free-tokens) below for how consumption and invoicing work.
-
----
 
 ## Index Definition
 
@@ -107,12 +77,14 @@ All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region
 
 ### Fields
 
+The embedding field (`type: "autoEmbed"`) is required. To pre-filter queries, add one or more optional `filter` fields (each with its own `type` and `path`):
+
 | Field | Required | Description |
 |---|---|---|
-| `type` | Yes | Must be `"autoEmbed"` |
-| `modality` | Yes | Must be `"text"` (only text is supported currently) |
-| `path` | Yes | The field in your documents containing the text to embed |
-| `model` | Yes | The Voyage AI embedding model to use |
+| `type` | Yes | `"autoEmbed"` for the embedding field, or `"filter"` for an optional filter field |
+| `modality` | Yes (autoEmbed) | Must be `"text"` (only text is supported currently) |
+| `path` | Yes | For an `autoEmbed` field, the document field containing the text to embed; for a `filter` field, the field to filter on |
+| `model` | Yes (autoEmbed) | The Voyage AI embedding model to use |
 
 ### Examples
 
@@ -172,8 +144,6 @@ db.collection.createSearchIndex(
 ```
 
 **Note:** After creation, MongoDB performs an initial sync — generating embeddings for all existing documents. This can take several hours for large collections. Monitor progress via Atlas → Search & Vector Search.
-
----
 
 ## Query Construction
 
@@ -296,8 +266,6 @@ Passing the item's name (e.g. `query: "The Firm"`) searches for text semanticall
 
 **Note:** Each query call counts against your Automated Embedding rate limits because it triggers an embedding API call.
 
----
-
 ## How It Works Internally
 
 ### Initial Sync
@@ -326,8 +294,6 @@ Each stored document has:
 }
 ```
 
----
-
 ## Billing and Free Tokens
 
 **Token consumption occurs during:**
@@ -342,8 +308,6 @@ Each stored document has:
 **View invoices:** Atlas → Billing → Invoices (broken down by model)
 
 **M0 clusters:** When free tokens run out, MongoDB automatically invoices for additional usage — index builds and queries do not stop. M0 users can add a payment method without upgrading their cluster: Atlas → Billing → Payment Method. Charges are for embedding model usage only.
-
----
 
 ## Rate Limits
 
@@ -393,8 +357,6 @@ Paid-tier limits increase automatically as usage grows over time — no action n
 - Free cluster hitting the 3 RPM ceiling: add a payment method to upgrade to paid-tier limits (Atlas → Billing → Payment Method) — this alone raises the ceiling from 3 to 2,000 RPM (~667x), with a correspondingly higher TPM allowance
 - Paid tier still hitting limits: contact MongoDB Support for a limit increase
 
----
-
 ## Management and Monitoring
 
 ### View Usage (Atlas)
@@ -442,8 +404,6 @@ forbid (
 Apply at: Atlas → Organization Settings → Resource Policies → Create policy
 
 **Note:** this policy blocks new `autoEmbed` indexes going forward. Existing `autoEmbed` indexes must be deleted manually to bring a project into compliance.
-
----
 
 ## Troubleshooting
 

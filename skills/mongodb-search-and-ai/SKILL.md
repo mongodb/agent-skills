@@ -45,7 +45,9 @@ Common questions to ask:
 - Do they need autocomplete/typeahead functionality?
 - Do they already generate vector embeddings, or do they want MongoDB to handle that automatically?
 
-### 2. Determine Search Type
+### 2. Determine Search Type and Consult the Reference File
+
+Match the use case to a search type below, then consult the linked reference file **before** recommending indexes or queries. Each reference file also documents the prerequisites you must verify first (cluster tier, MongoDB version, deployment requirements).
 
 **Atlas Search (Lexical/Full-Text):**
 Use when users need:
@@ -57,6 +59,8 @@ Use when users need:
 - Token-based search
 - Lexical search with views
 
+→ Consult both `references/lexical-search-indexing.md` (index) and `references/lexical-search-querying.md` (query).
+
 **Automated Embedding (Semantic search, no embedding code):**
 Use when users need:
 - Semantic / vector search without writing embedding code
@@ -64,6 +68,8 @@ Use when users need:
 - Quick setup: MongoDB auto-generates and manages embeddings using Voyage AI models
 - Text data already stored in Atlas that they want to search by meaning
 - RAG or AI agent memory with minimal setup
+
+→ Consult `references/automated-embedding.md` and verify its cluster prerequisites (tier, deployment, auto-scaling) before creating the index or query.
 
 **Vector Search (Semantic, bring your own embeddings):**
 Use when users need:
@@ -73,6 +79,8 @@ Use when users need:
 - Self-managed MongoDB without Voyage AI API key configured
 - Vector search with views
 
+→ Consult `references/vector-search.md`.
+
 **Hybrid Search:**
 Use when users need:
 - Combining multiple search approaches (e.g., vector + lexical, multiple text searches)
@@ -80,32 +88,9 @@ Use when users need:
 - Results that factor in multiple relevance criteria
 - Uses `$rankFusion` (rank-based) or `$scoreFusion` (score-based) to merge pipelines
 
-### 3. Cluster Check (Automated Embedding only)
+→ Consult `references/hybrid-search.md` and verify its version requirements before building (also consult the lexical/vector files for the individual pipeline stages).
 
-If the search type is **Automated Embedding**, verify the cluster supports it before proceeding (tier and auto-scaling prerequisites can change across Atlas releases — confirm current requirements in the official docs before acting):
-- Supported on **all Atlas cluster tiers**: M0 (free), Flex, and M10+ dedicated
-- For **self-managed deployments**, Automated Embedding requires MongoDB 8.3+ with `mongot` and a Voyage AI API key configured. If the user is on a self-managed deployment without Voyage AI configured, offer an alternative: "You can still do semantic search by generating embeddings yourself and storing them in your documents — this works on any deployment. Want to go that route instead?" If yes, proceed with Vector Search (manual) using `references/vector-search.md`.
-- For **M10+ dedicated clusters only**, enable storage auto-scaling. If the user is on M10+ without storage auto-scaling, explain how to enable it in Atlas and wait for confirmation before proceeding to index creation. 
-
-### 4. Version Check (Hybrid Search only)
-
-If the search type is **Hybrid using `$rankFusion` or `$scoreFusion`**, verify the cluster version before proceeding:
-- `$rankFusion` requires MongoDB 8.0+
-- `$scoreFusion` requires MongoDB 8.3+
-
-If the version requirement is not met, do not proceed — inform the user the feature is unavailable and suggest upgrading. Offer to help them build the individual lexical or vector search components separately in the meantime. Do not consult `references/hybrid-search.md`.
-
-If the search type is Lexical, Vector, Automated Embedding, or the lexical prefilter pattern (`vectorSearch` operator inside `$search`), proceed to the next step.
-
-### 5. Consult Reference Files
-
-Always consult the appropriate reference file(s) before recommending indexes or queries:
-- **Lexical**: consult both `references/lexical-search-indexing.md` (index) and `references/lexical-search-querying.md` (query)
-- **Automated Embedding**: if the search type is Automated Embedding, read `references/automated-embedding.md` before creating the index or building the query — it contains cluster tier requirements, model selection guidance, `autoEmbed` index and query syntax, and billing/rate-limit details.
-- **Vector (manual)**: consult `references/vector-search.md`
-- **Hybrid**: consult `references/hybrid-search.md` (and the lexical/vector files for the individual pipeline stages within it)
-
-### 6. Execution and Validation
+### 3. Execution and Validation
 
 **Creating indexes:**
 1. Explain the index configuration in plain language
