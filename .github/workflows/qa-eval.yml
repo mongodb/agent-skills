@@ -501,4 +501,4 @@ jobs:
           # The workflow's own exit code reflects the verdict so the run page and any
           # `gh run watch` caller read it correctly. (The check run is the merge gate;
           # this job's status is for operators.)
-          [ "$CONCLUSION" != "failure" ]
+          [ "$CONCLUSION" = "success" ]

@@ -13,7 +13,7 @@
  * CWD-independent: paths resolve relative to this file, so it works from the repo root or
  * from testing/.
  */
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { globSync } from "glob";
@@ -119,15 +119,25 @@ export function checkAssetsExist(evalsDir, doc, contract) {
           `case ${ev.id}: files entry escapes the evals dir: ${ref} -> ${resolved}. ` +
             `Assets must live under ${evalsDir}.`,
         );
-      } else if (!existsSync(resolved)) {
-        problems.push(`case ${ev.id}: files entry not found: ${resolved}`);
-      } else if (!statSync(resolved).isFile()) {
-        // existsSync() is true for directories too, but `files` are asset files the harness
-        // inlines into the prompt. A directory passes existence and fails deep inside a run
-        // as EISDIR instead of here, one line, in this PR. statSync follows symlinks, so a
-        // symlink to a directory is caught here as well.
-        problems.push(`case ${ev.id}: files entry is a directory, not a file: ${resolved}`);
       } else {
+        let assetStat;
+        try {
+          assetStat = statSync(resolved);
+        } catch (err) {
+          const detail =
+            err.code === "ENOENT"
+              ? `files entry not found: ${resolved}`
+              : `could not inspect files entry ${resolved}: ${err.message}`;
+          problems.push(`case ${ev.id}: ${detail}`);
+          continue;
+        }
+        if (!assetStat.isFile()) {
+          // `files` are asset files the harness inlines into the prompt. A directory fails
+          // deep inside a run as EISDIR instead of here, one line, in this PR. statSync
+          // follows symlinks, so a symlink to a directory is caught here as well.
+          problems.push(`case ${ev.id}: files entry is a directory, not a file: ${resolved}`);
+          continue;
+        }
         // And again after following symlinks. A symlink inside evals/ needs no '..' and no
         // leading '/', so it satisfies both the schema pattern and the resolve() check above
         // while still pointing anywhere. realpathSync can throw — ELOOP from a symlink
@@ -157,9 +167,18 @@ export function checkAssetsExist(evalsDir, doc, contract) {
     if (ev.seed && !RESERVED_SEEDS.has(ev.seed)) {
       const fixtureDir = join(evalsDir, FIXTURE_DIR);
       const fixture = join(fixtureDir, `${ev.seed}${FIXTURE_EXT}`);
-      if (!existsSync(fixture)) {
-        problems.push(`case ${ev.id}: seed '${ev.seed}' has no fixture at ${fixture}`);
-      } else if (!statSync(fixture).isFile()) {
+      let fixtureStat;
+      try {
+        fixtureStat = statSync(fixture);
+      } catch (err) {
+        const detail =
+          err.code === "ENOENT"
+            ? `has no fixture at ${fixture}`
+            : `fixture could not be inspected at ${fixture}: ${err.message}`;
+        problems.push(`case ${ev.id}: seed '${ev.seed}' ${detail}`);
+        continue;
+      }
+      if (!fixtureStat.isFile()) {
         problems.push(`case ${ev.id}: seed fixture is not a regular file: ${fixture}`);
       } else {
         // Same realpath containment that `files` gets: `files` are inlined into the prompt
