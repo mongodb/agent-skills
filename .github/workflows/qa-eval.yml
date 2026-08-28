@@ -1,0 +1,504 @@
+# qa-eval — capability gate for Agent Skills.
+#
+# Runs the Inspect-AI QA harness (10gen/agent-skills-evals, inspect/) against the skill
+# content changed in a PR and reports the verdict as the `qa-eval` check run (seeded by
+# qa-eval-status.yml). Triggered manually by a maintainer comment so the Grove (LLM)
+# spend is tied to deliberate runs, not every push.
+#
+# Trigger:   comment `/qa-eval` (optionally `/qa-eval <skill>`) on a PR. OWNER/MEMBER only.
+#            workflow_dispatch with a pr_number is the smoke-test path.
+# Enforce:   the `main` ruleset requires the `qa-eval` check; qa-eval-status.yml seeds it.
+#            The check stands for FULL coverage: an explicit-skill run on a multi-skill
+#            PR concludes failure ("partial coverage") naming the skills still to eval.
+#
+# The verdict rides on the check run itself — report inline in output.summary, per-skill
+# JSON as artifacts — with no committed report file and no PR-comment duplicate:
+#   - freshness is inherent: the workflow posts onto the very SHA it evaluated;
+#   - fork PRs are covered: check runs are created in the base repo's context, so there
+#     is nothing to push to a fork branch;
+#   - git history stays free of machine-generated commits;
+#   - and because nothing posts to the PR conversation, this job's token carries no write
+#     scope but checks: write (see the security note below).
+#
+# Security — `issue_comment` is a privileged trigger, and this single job both checks
+# out PR-provided content and holds the Grove API key + the agent-skills-evals App PEM.
+# CodeQL flags that combination as "untrusted checkout in a privileged context." We
+# accept the alert on these grounds (mirrors skill-gate.yml PR #51, approved under
+# ENTSEC-5465):
+#   - The checkout is DATA-ONLY: SHA-pinned to the PR head, persist-credentials false,
+#     sparse skills/ + testing/ tree (excludes .github/, etc.). Nothing from the PR is
+#     built.
+#   - The GITHUB_TOKEN's only write scope is checks: write (driving the check run) — no
+#     contents: write and no pull-requests: write, so exfiltration can neither tamper
+#     with the repo nor post to the PR. The Grove key only egresses to Grove and is
+#     gated behind the qa-eval environment's required reviewers.
+# This alert re-fires on pushes that touch this checkout and should be dismissed in the
+# code-scanning Security tab with the justification above.
+#
+# HONEST CAVEAT: unlike skill-gate (which reads markdown as DATA with a pinned binary),
+# this job EXECUTES the Inspect-AI harness against untrusted eval-case YAML with the
+# Grove key in its env. The OWNER/MEMBER-only trigger is the actual control for that;
+# do not widen it. A two-job split would not change this — the harness still runs
+# untrusted content with the key present; the split only keeps the git checkout off the
+# credential-bearing runner, and persist-credentials: false + sparse checkout already
+# limit that surface. (The prior split was collapsed at review request; see PR #51.)
+#
+# PUBLIC-CONTENT RULE: this is a public repo — job logs, artifacts, and check-run output
+# are all world-visible. The check-run summary is built only from fields we generate
+# ourselves (skill names, verdicts, integer counts, URLs) — never model output or
+# transcript text. If that ever changes, the content must go through
+# agent-skills-evals/inspect/analysis/sanitize.py (public_safe_run) first, the same
+# allowlisting screen_report.py uses.
+#
+# Prereqs (security review: ENTSEC-5465):
+#   - repo variable QA_EVAL_ENABLED = 'true' (kill switch; also arms qa-eval-status.yml)
+#   - GitHub environment `qa-eval` with secret GROVE_API_KEY (the Grove model-call key)
+#   - repo variable GROVE_BASE_URL (Grove base URL; non-sensitive)
+#   - repo secret AGENT_SKILLS_EVALS_APP_ID (App ID; non-sensitive)
+#   - repo secret AGENT_SKILLS_EVALS_APP_PRIVATE_KEY (App PEM; used to checkout
+#     10gen/agent-skills-evals — repo-level so both the qa-eval and qa-eval-publish
+#     environments reach it)
+#   - 10gen/agent-skills-evals#18 merged (provides harness.py + scripts/ci_gate.py)
+#
+# INCONCLUSIVE (instrument fault: Grove 401, MCP registration failure, harness crash)
+# maps to check-run conclusion `failure`, NOT `neutral`: GitHub rulesets treat `neutral`
+# (like `skipped`) as SATISFYING a required check, so an inconclusive run would wave the
+# PR through unmeasured. The failure title ("re-run needed") is what distinguishes infra
+# from a real eval failure. Accepted cost: a Grove outage blocks the gate until fixed.
+name: QA Eval
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to eval"
+        required: true
+        type: string
+      skill:
+        description: "Skill to eval (blank = all skills changed in the PR)"
+        required: false
+        type: string
+
+# Built-in GITHUB_TOKEN only (ephemeral, repo-scoped). Nothing granted at the top level;
+# permissions are declared per job (least privilege).
+permissions: {}
+
+# Serialize per PR, but do NOT cancel an in-flight run: a run costs real model spend and
+# up to ~an hour, and a cancelled job leaves the check run stuck in_progress. A second
+# /qa-eval comment simply queues behind the first.
+concurrency:
+  group: qa-eval-${{ github.event.issue.number || github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
+env:
+  # Kept in lockstep with qa-pr-screen.yml and harness.py's default.
+  PANEL_MODEL: anthropic/claude-sonnet-4-6
+  # A CONCURRENCY cap, not a case count: each sample of a functional task spins its own
+  # agent + mongo container pair. Matches qa-pr-screen.yml's sizing for 2-vCPU runners.
+  MAX_SAMPLES: "2"
+
+jobs:
+  eval:
+    if: >-
+      vars.QA_EVAL_ENABLED == 'true' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.issue.pull_request &&
+          (
+            github.event.comment.body == '/qa-eval' ||
+            startsWith(github.event.comment.body, '/qa-eval ')
+          ) &&
+          contains(fromJSON('["OWNER","MEMBER"]'), github.event.comment.author_association)
+        )
+      )
+    runs-on: ubuntu-latest
+    environment: qa-eval
+    permissions:
+      contents: read
+      pull-requests: read    # resolve the PR head/base + list its changed files
+      checks: write          # drive the `qa-eval` check run lifecycle
+    timeout-minutes: 90
+    env:
+      # Grove key from the qa-eval environment secret. Base URL is non-sensitive and
+      # stays a repo var.
+      GROVE_API_KEY: ${{ secrets.GROVE_API_KEY }}
+      GROVE_BASE_URL: ${{ vars.GROVE_BASE_URL }}
+    steps:
+      - name: Resolve PR head/base
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          # issue_comment runs in the default-branch context, so github.sha is main's
+          # tip — NOT the PR head. Resolve the real head sha to eval it and to attach
+          # the check run where the ruleset will look for it.
+          read -r head_sha base_sha <<<"$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+            --jq '.head.sha + " " + .base.sha')"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Check out skill + eval content (data only)
+        # DATA-ONLY untrusted checkout: SHA-pinned to the PR head, no persisted token,
+        # sparse skills/ + testing/ tree (excludes .github/, etc.). Nothing here is
+        # built — it is read by the harness below. See the header comment for why the
+        # CodeQL "untrusted checkout" alert is accepted for this checkout.
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            skills
+            testing
+
+      # The skill-resolution script is fetched from the DEFAULT branch, not read from the
+      # checkout above: the sparse tree deliberately excludes .github/ so that no
+      # PR-provided executable ever runs in this credential-bearing job. This is
+      # consistent with issue_comment workflows generally, whose YAML itself is read from
+      # the default branch.
+      - name: Fetch the skill-resolution script (default branch)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/contents/.github/scripts/qa-resolve-skills.sh" \
+            -H "Accept: application/vnd.github.raw" > "$RUNNER_TEMP/qa-resolve-skills.sh"
+          chmod +x "$RUNNER_TEMP/qa-resolve-skills.sh"
+
+      - name: Determine which skill(s) to eval
+        id: list
+        env:
+          SKILL_ARG: ${{ github.event_name == 'workflow_dispatch' && inputs.skill || '' }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Optional explicit skill: `/qa-eval <skill>` or the dispatch input. First
+          # token of the comment must be exactly `/qa-eval`. The job `if` already requires
+          # an exact `/qa-eval` or `/qa-eval ` prefix, and this strict parse is the
+          # belt-and-braces inside the job for issue_comment runs.
+          REQUESTED="$SKILL_ARG"
+          if [ -z "$REQUESTED" ] && [ "${{ github.event_name }}" = "issue_comment" ]; then
+            FIRST_LINE=$(printf '%s' "$COMMENT_BODY" | head -1)
+            CMD=$(printf '%s' "$FIRST_LINE" | awk '{print $1}')
+            if [ "$CMD" != "/qa-eval" ]; then
+              echo "::notice::Comment does not start with the exact /qa-eval command; skipping."
+              echo "skills=[]" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            REQUESTED=$(printf '%s' "$FIRST_LINE" | awk '{print $2}')
+          fi
+
+          if [ -n "$REQUESTED" ]; then
+            "$RUNNER_TEMP/qa-resolve-skills.sh" --skill "$REQUESTED"
+          else
+            "$RUNNER_TEMP/qa-resolve-skills.sh" --pr "$PR_NUMBER"
+          fi
+
+      # Nothing below runs when there are no skills to eval (the seeder's check-run state
+      # is left to stand). The `if: always()` finalize still runs only when there WAS work,
+      # so a no-op /qa-eval never posts a spurious verdict.
+      #
+      # There is no credential preflight here: missing model credentials fail loud in
+      # harness.py's own preflight (which names the missing vars), one definition for
+      # every caller, instead of a per-workflow shell guard.
+
+      - name: Start the qa-eval check run (in_progress)
+        if: steps.list.outputs.skills != '[]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          # The seeder normally created this check run (state queued). It may be absent —
+          # e.g. a fork PR, where the seeder skips but a member-triggered /qa-eval still
+          # runs here in the base-repo context (which is exactly how forks get covered).
+          CHECK_RUN_ID=$(gh api \
+            "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=qa-eval&filter=latest" \
+            --jq '.check_runs[0].id // empty')
+          if [ -z "$CHECK_RUN_ID" ]; then
+            CHECK_RUN_ID=$(gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval -f head_sha="$HEAD_SHA" -f status=queued --jq '.id')
+          fi
+          gh api -X PATCH "repos/${{ github.repository }}/check-runs/$CHECK_RUN_ID" \
+            -f status=in_progress \
+            -f "output[title]=QA eval running" \
+            -f "output[summary]=Evaluating changed skills against the QA harness…" \
+            > /dev/null
+          echo "CHECK_RUN_ID=$CHECK_RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Generate a token for the agent-skills-evals GitHub App
+        if: steps.list.outputs.skills != '[]'
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.AGENT_SKILLS_EVALS_APP_ID }}
+          private-key: ${{ secrets.AGENT_SKILLS_EVALS_APP_PRIVATE_KEY }}
+          owner: 10gen
+          repositories: agent-skills-evals
+
+      - name: Checkout agent-skills-evals (private, sibling checkout)
+        if: steps.list.outputs.skills != '[]'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: 10gen/agent-skills-evals
+          token: ${{ steps.app-token.outputs.token }}
+          path: agent-skills-evals
+          ref: ${{ vars.QA_EVALS_REF || 'main' }}
+
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+        if: steps.list.outputs.skills != '[]'
+        with:
+          python-version: "3.12"
+
+      - name: Resolve private runner capabilities
+        id: capabilities
+        if: steps.list.outputs.skills != '[]'
+        env:
+          REQUESTED_SKILLS: ${{ steps.list.outputs.skills }}
+        run: |
+          set -euo pipefail
+          cd agent-skills-evals/inspect
+          uv sync --quiet
+          RESULT=$(uv run python execution_profiles.py \
+            --platform github --skills "$REQUESTED_SKILLS")
+          echo "runnable=$(jq -c '.runnable' <<<"$RESULT")" >> "$GITHUB_OUTPUT"
+          echo "unsupported=$(jq -c '.unsupported' <<<"$RESULT")" >> "$GITHUB_OUTPUT"
+
+      - name: Run harness + gate per skill
+        id: scan
+        if: steps.capabilities.outputs.runnable != '[]'
+        env:
+          SKILLS: ${{ steps.capabilities.outputs.runnable }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+          SKILL_BASE_DIR: ${{ github.workspace }}/skills
+          QA_TESTING_DIR: ${{ github.workspace }}/testing
+          SEED_BASE_DIR: ${{ github.workspace }}/testing
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/reports"
+          cd agent-skills-evals/inspect
+          for SKILL in $(echo "$SKILLS" | jq -r '.[]'); do
+            echo "== QA eval: $SKILL (model $PANEL_MODEL, k=1) =="
+
+            set +e
+            uv run python harness.py --skill "$SKILL" --model "$PANEL_MODEL" \
+              --platform github --epochs 1 --max-samples "$MAX_SAMPLES"
+            HARNESS_RC=$?
+            set -e
+
+            # Only gate a log when the harness itself completed: a crashed harness may
+            # leave no log (or a partial one), and "no measurement" is INCONCLUSIVE, not
+            # FAIL. ci_gate reads the NEWEST log in logs/, which — running sequentially —
+            # is this skill's run.
+            if [ "$HARNESS_RC" -eq 0 ]; then
+              set +e
+              uv run python ../scripts/ci_gate.py logs --mode strict
+              GATE_RC=$?
+              set -e
+            else
+              GATE_RC=2
+              echo "harness exited $HARNESS_RC for $SKILL — treating as INCONCLUSIVE"
+            fi
+
+            case "$GATE_RC" in
+              0) verdict=pass ;;
+              1) verdict=fail ;;
+              *) verdict=inconclusive ;;
+            esac
+
+            jq -cn \
+              --arg skill "$SKILL" \
+              --arg headSha "$HEAD_SHA" \
+              --arg baseSha "$BASE_SHA" \
+              --arg model "$PANEL_MODEL" \
+              --arg verdict "$verdict" \
+              --arg runAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              '{skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
+                verdict: $verdict, runAt: $runAt}' \
+              > "$RUNNER_TEMP/reports/qa-eval-report-$SKILL.json"
+          done
+
+      - name: Upload eval reports
+        if: always() && steps.list.outputs.skills != '[]'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qa-eval-report-${{ steps.pr.outputs.head_sha }}
+          path: ${{ runner.temp }}/reports
+          if-no-files-found: warn
+
+      - name: Finalize the qa-eval check run
+        if: always() && steps.list.outputs.skills != '[]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          UNSUPPORTED: ${{ steps.capabilities.outputs.unsupported }}
+          DELETED: ${{ steps.list.outputs.deleted_skills }}
+        run: |
+          set -euo pipefail
+
+          # Normalize the resolver's manual-review sets to a literal JSON list so a missing
+          # output is never read as a deletion/unsupported signal that would falsely block.
+          UNSUPPORTED="${UNSUPPORTED:-[]}"
+          DELETED="${DELETED:-[]}"
+
+          # The verdict table is derived from the per-skill report files the run step
+          # wrote — not assembled inline. No reports at all (the harness crashed before
+          # writing any, or the job was cancelled mid-run) is INCONCLUSIVE, and an
+          # unmeasured PR must fail the gate, not pass it: `neutral` would satisfy a
+          # ruleset's required check, so this concludes failure like any instrument fault.
+          shopt -s nullglob
+          REPORTS=("$RUNNER_TEMP"/reports/qa-eval-report-*.json)
+
+          # COVERAGE: an explicit `/qa-eval <skill>` (or dispatch input) evaluates a subset.
+          # The required check must stand for "every skill this PR changes was evaluated",
+          # so re-resolve the PR's changed skills and fail on under-coverage — otherwise a
+          # one-skill eval on a three-skill PR would green the gate. (Resolver writes to
+          # $GITHUB_OUTPUT; point it at a scratch file to reuse it mid-script. If the PR's
+          # file list changed mid-run, the new push re-seeds its own head, so a stale
+          # comparison here only ever makes the OLD head's check stricter.)
+          GITHUB_OUTPUT="$RUNNER_TEMP/coverage.out" \
+            "$RUNNER_TEMP/qa-resolve-skills.sh" --pr "$PR_NUMBER" > /dev/null 2>&1 \
+            && EXPECTED=$(sed -n 's/^skills=//p' "$RUNNER_TEMP/coverage.out" | jq -Sc 'sort') \
+            || EXPECTED=""
+          EVALUATED=$(
+            if [ ${#REPORTS[@]} -gt 0 ]; then
+              # Real report files: slurp and dedupe. The `|| echo '[]'` fallback keeps a
+              # jq failure from wedging the check run.
+              jq -Scs '[.[].skillName] | unique' "${REPORTS[@]}" 2>/dev/null || echo '[]'
+            else
+              # No report files at all: short-circuit instead of calling jq with an empty
+              # argument list — a bare `jq -s` reads stdin, whose behavior depends on the
+              # runner and can hang a terminal session.
+              echo '[]'
+            fi
+          )
+          COVERED=$(jq -cn --argjson e "$EVALUATED" --argjson u "$UNSUPPORTED" '$e + $u | unique | sort')
+          if [ -z "$EXPECTED" ]; then
+            # The coverage resolver itself failed (API outage). Still conclude — a wedged
+            # in_progress check blocks merge indefinitely — but as failure, not success.
+            INDEX=""
+            MISSING=""
+            CONCLUSION=failure
+            TITLE="QA eval could not verify coverage — re-run needed"
+          elif [ "$COVERED" != "$EXPECTED" ]; then
+            if [ ${#REPORTS[@]} -gt 0 ]; then
+              INDEX=$(jq -s '[.[] | {skill: .skillName, verdict}]' "${REPORTS[@]}")
+            else
+              INDEX=""
+            fi
+            MISSING=$(jq -cn --argjson e "$EXPECTED" --argjson g "$COVERED" '$e - $g | join(", ")')
+            CONCLUSION=failure
+            TITLE="QA eval incomplete — partial coverage"
+          elif [ ${#REPORTS[@]} -gt 0 ]; then
+            INDEX=$(jq -s '[.[] | {skill: .skillName, verdict}]' "${REPORTS[@]}")
+            FAILS=$(jq '[.[] | select(.verdict == "fail")] | length' <<<"$INDEX")
+            INCONCLUSIVE=$(jq '[.[] | select(.verdict == "inconclusive")] | length' <<<"$INDEX")
+            if [ "$FAILS" -gt 0 ]; then
+              CONCLUSION=failure
+              TITLE="QA eval failed"
+            elif [ "$INCONCLUSIVE" -gt 0 ]; then
+              # INCONCLUSIVE = instrument fault (Grove 401, MCP registration failure,
+              # harness crash), not a verdict on the PR. Conclusion is `failure`, not
+              # `neutral`: rulesets treat neutral as satisfying a required check, so an
+              # instrument fault would otherwise merge the PR through unmeasured. The
+              # title carries "re-run needed" so it isn't read as a verdict on the change.
+              CONCLUSION=failure
+              TITLE="QA eval inconclusive — re-run needed"
+            elif [ "$UNSUPPORTED" != "[]" ]; then
+              INDEX=""
+              CONCLUSION=action_required
+              TITLE="QA eval requires manual review"
+            else
+              CONCLUSION=success
+              TITLE="QA eval passed"
+            fi
+          elif [ "$UNSUPPORTED" != "[]" ]; then
+            INDEX=""
+            CONCLUSION=action_required
+            TITLE="QA eval requires manual review"
+          else
+            INDEX=""
+            CONCLUSION=failure
+            TITLE="QA eval did not produce results"
+          fi
+
+          # Fail-closed for skills the eval did not (and cannot) measure. Even with every
+          # runnable skill passing, the gate must not go green while an unsupported or
+          # deleted skill's change goes unevaluated and unlooked-at. action_required blocks
+          # merge (like failure), but carries the "manual review" title instead of being
+          # read as a verdict on the change.
+          if [ "$UNSUPPORTED" != "[]" ] || [ "$DELETED" != "[]" ]; then
+            if [ "$CONCLUSION" != "failure" ]; then
+              CONCLUSION=action_required
+              TITLE="QA eval passed — manual review required"
+            fi
+            MANUAL_NOTES=""
+            [ "$DELETED" = "[]" ] || MANUAL_NOTES="${MANUAL_NOTES:+$MANUAL_NOTES }These skills were deleted/renamed in this PR and must be reviewed manually: $DELETED."
+            [ "$UNSUPPORTED" = "[]" ] || MANUAL_NOTES="${MANUAL_NOTES:+$MANUAL_NOTES }The pinned private harness has no GitHub runner profile for: $UNSUPPORTED."
+          fi
+
+          # Summary is built ONLY from self-generated fields (skill names, verdicts,
+          # URLs) — no model output. See the PUBLIC-CONTENT RULE in the header.
+          {
+            echo "| Skill | Verdict |"
+            echo "|-------|---------|"
+            if [ -n "$INDEX" ]; then
+              jq -r '.[] | "| \(.skill) | \(.verdict) |"' <<<"$INDEX"
+            else
+              echo "| (all) | no results — see run log |"
+            fi
+            if [ -n "${MISSING:-}" ]; then
+              echo ""
+              echo "**Not evaluated:** $MISSING. Re-run \`/qa-eval\` with no skill argument to cover every changed skill."
+            fi
+            if [ -n "${MANUAL_NOTES:-}" ]; then
+              echo ""
+              echo "**Manual review required:** $MANUAL_NOTES"
+            fi
+            echo ""
+            echo "Model: \`$PANEL_MODEL\`. Full per-skill JSON reports: artifact"
+            echo "\`qa-eval-report-*\` on [the run page]($RUN_URL)."
+          } > "$RUNNER_TEMP/summary.md"
+
+          # CHECK_RUN_ID is normally in the env from the start step. If the job was
+          # cancelled/timed out before that step wrote GITHUB_ENV (or the workflow was
+          # edited between runs), fall back to the same name lookup the start step does —
+          # or create the run outright. A wedged run must never leave the required check
+          # stuck in_progress, where it would block merge indefinitely.
+          CHECK_RUN_ID="${CHECK_RUN_ID:-}"
+          if [ -z "$CHECK_RUN_ID" ]; then
+            CHECK_RUN_ID=$(gh api \
+              "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=qa-eval&filter=latest" \
+              --jq '.check_runs[0].id // empty')
+          fi
+          if [ -n "$CHECK_RUN_ID" ]; then
+            gh api -X PATCH \
+              "repos/${{ github.repository }}/check-runs/$CHECK_RUN_ID" \
+              -f status=completed \
+              -f conclusion="$CONCLUSION" \
+              -f "output[title]=$TITLE" \
+              -F "output[summary]=@$RUNNER_TEMP/summary.md" > /dev/null
+          else
+            gh api -X POST "repos/${{ github.repository }}/check-runs" \
+              -f name=qa-eval \
+              -f head_sha="$HEAD_SHA" \
+              -f status=completed \
+              -f conclusion="$CONCLUSION" \
+              -f "output[title]=$TITLE" \
+              -F "output[summary]=@$RUNNER_TEMP/summary.md" > /dev/null
+          fi
+
+          # The workflow's own exit code reflects the verdict so the run page and any
+          # `gh run watch` caller read it correctly. (The check run is the merge gate;
+          # this job's status is for operators.)
+          [ "$CONCLUSION" = "success" ]

@@ -1,0 +1,98 @@
+name: QA Eval Manual Approval
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+        type: string
+      head_sha:
+        description: Exact pull request head SHA
+        required: true
+        type: string
+      reason:
+        description: Reason for manual approval
+        required: true
+        type: string
+      evidence_url:
+        description: HTTPS link to review evidence
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    environment: qa-eval-manual-review
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
+    steps:
+      - name: Validate reviewer and exact PR head
+        id: validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          EXPECTED_SHA: ${{ inputs.head_sha }}
+          EVIDENCE_URL: ${{ inputs.evidence_url }}
+        run: |
+          set -euo pipefail
+          case "$EVIDENCE_URL" in
+            https://*) ;;
+            *) echo "::error::evidence_url must use HTTPS"; exit 1 ;;
+          esac
+          case "$PR_NUMBER" in
+            *[!0-9]*|'') echo "::error::pr_number must be numeric"; exit 1 ;;
+          esac
+          if ! [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::head_sha must be a full lowercase commit SHA"
+            exit 1
+          fi
+          PERMISSION=$(gh api "repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission" \
+            --jq '.permission')
+          case "$PERMISSION" in
+            admin|maintain|write) ;;
+            *) echo "::error::${{ github.actor }} is not authorized to approve QA"; exit 1 ;;
+          esac
+          ACTUAL_SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha')
+          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+            echo "::error::PR head is $ACTUAL_SHA, not $EXPECTED_SHA"
+            exit 1
+          fi
+          CHECK_RUN_ID=$(gh api \
+            "repos/${{ github.repository }}/commits/$EXPECTED_SHA/check-runs?check_name=qa-eval&filter=latest" \
+            --jq '.check_runs[0] | select(.status == "completed" and .conclusion == "action_required") | .id // empty')
+          if [ -z "$CHECK_RUN_ID" ]; then
+            echo "::error::No action_required qa-eval check exists on $EXPECTED_SHA"
+            exit 1
+          fi
+          echo "check_run_id=$CHECK_RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Record manual approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK_RUN_ID: ${{ steps.validate.outputs.check_run_id }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          REASON: ${{ inputs.reason }}
+          EVIDENCE_URL: ${{ inputs.evidence_url }}
+        run: |
+          set -euo pipefail
+          {
+            echo "Manual QA approval recorded."
+            echo ""
+            echo "- PR: #$PR_NUMBER"
+            echo "- Head SHA: \`$HEAD_SHA\`"
+            echo "- Reviewer: @${{ github.actor }}"
+            echo "- Reason: $REASON"
+            echo "- Evidence: $EVIDENCE_URL"
+            echo "- Workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > "$RUNNER_TEMP/summary.md"
+          gh api -X PATCH "repos/${{ github.repository }}/check-runs/$CHECK_RUN_ID" \
+            -f status=completed \
+            -f conclusion=success \
+            -f "output[title]=QA eval manually approved" \
+            -F "output[summary]=@$RUNNER_TEMP/summary.md" > /dev/null
