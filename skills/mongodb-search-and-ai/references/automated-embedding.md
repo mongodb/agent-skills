@@ -98,7 +98,7 @@ All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region
       "model": "<embedding-model>"
     },
     {
-      "type": "filter",    // Optional: add one or more filter fields
+      "type": "filter",    // Optional: add one or more filter fields (recommended for filter fields)
       "path": "<field-to-filter-on>"
     }
   ]
@@ -152,7 +152,7 @@ All models use Voyage AI, hosted and managed by MongoDB (multi-tenant, US region
 }
 ```
 
-### Creating the Index via MCP
+### Creating the Index (mongosh)
 
 ```javascript
 db.collection.createSearchIndex(
