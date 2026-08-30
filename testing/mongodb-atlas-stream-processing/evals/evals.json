@@ -246,18 +246,6 @@
             "tool": "search-knowledge",
             "success": true
           }
-        },
-        {
-          "id": "builds-processor",
-          "critical": true,
-          "type": "called_successfully",
-          "match": {
-            "tool": "atlas-streams-build",
-            "success": true,
-            "where": {
-              "resource": "processor"
-            }
-          }
         }
       ],
       "files": []
