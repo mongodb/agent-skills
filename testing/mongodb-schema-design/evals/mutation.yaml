@@ -1,6 +1,6 @@
 # Per-skill mutation battery config — see mongodb-query-optimizer/mutation.yaml for the full
 # rationale (config, not code; every `find` string verified against the live file), including
-# WHY ONLY TWO SKILLS HAVE ONE OF THESE and which are the strongest next candidates.
+# why only a small set of skills have one and which are the strongest next candidates.
 #
 # schema-design's core principle is "data accessed together is stored together", so
 # inverting the embed/reference decision inverts the whole skill rather than a detail.
