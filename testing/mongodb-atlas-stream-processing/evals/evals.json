@@ -77,27 +77,17 @@
       "id": 7,
       "name": "debug-failed-processor",
       "prompt": "My processor 'payment-handler' in workspace 'prod-streams' is in FAILED state. What's wrong?",
-      "expected_output": "Calls diagnose-processor first, then get-logs with logType='operational', analyzes error patterns, identifies root cause (e.g., connection issue, schema mismatch, OOM), provides specific fix steps",
+      "expected_output": "Calls diagnose-processor first, analyzes the returned health report, identifies a specific root cause, and provides ordered fix steps. If more detailed logs are needed, directs the user to the processor Logs tab in the Atlas UI.",
       "trajectory_checks": [
         {
-          "id": "diagnoses-before-logs",
+          "id": "diagnoses-processor",
           "critical": true,
-          "type": "order",
-          "first": {
+          "type": "called_successfully",
+          "match": {
             "tool": "atlas-streams-discover",
-            "success": true,
             "where": {
               "action": "diagnose-processor",
               "resourceName": "payment-handler"
-            }
-          },
-          "then": {
-            "tool": "atlas-streams-discover",
-            "success": true,
-            "where": {
-              "action": "get-logs",
-              "resourceName": "payment-handler",
-              "logType": "operational"
             }
           }
         }
@@ -151,7 +141,7 @@
       "id": 12,
       "name": "tier-sizing-complex-pipeline",
       "prompt": "I need to process Kafka data with a $lookup (parallelism 3), tumbling window, and $merge (parallelism 4). What tier should I use?",
-      "expected_output": "Calculates parallelism needs: (3-1) + (4-1) = 5 excess parallelism, recommends SP10 (max 8 parallelism), explains calculation",
+      "expected_output": "Calculates 5 excess parallelism, which requires SP10, and independently applies the documented complexity heuristic: Kafka (15) + $lookup (20) + tumbling window (30) = 65 points, which requires SP50. Recommends SP50 because sizing must use the higher of the parallelism-driven and complexity-driven tiers.",
       "files": []
     },
     {
@@ -275,7 +265,7 @@
       "id": 25,
       "name": "chained-processors",
       "prompt": "How do I chain two processors together?",
-      "expected_output": "Explains processor A writes to Atlas collection via $merge, processor B reads from that collection via change stream $source, provides example pipeline snippets for both",
+      "expected_output": "Explains the single-terminal-sink constraint and shows two processor pipelines using either Atlas or Kafka as the intermediate. Describes Kafka as lower latency and Atlas as easier to inspect, then provides matching sink and source stages for the selected option.",
       "files": []
     },
     {
