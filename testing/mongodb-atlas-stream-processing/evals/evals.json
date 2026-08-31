@@ -63,7 +63,7 @@
       "id": 5,
       "name": "create-simple-kafka-to-mongo",
       "prompt": "Create a processor that reads from Kafka topic 'orders' and writes to Atlas collection 'analytics.orders'",
-      "expected_output": "Validates connections first with list-connections and inspect-connection, then calls atlas-streams-build with resource='processor', pipeline with $source (Kafka connection + topic), $merge (Atlas connection + db/collection), includes DLQ configuration",
+      "expected_output": "Validates connections first. If deployment inputs are unambiguous, builds the processor with $source, $merge, and DLQ. Otherwise asks a focused clarification naming the missing workspace or connection while presenting the correct proposed pipeline.",
       "files": []
     },
     {
@@ -144,7 +144,7 @@
       "id": 11,
       "name": "create-changestream-to-kafka",
       "prompt": "Create a processor that monitors the 'users' collection for changes and emits them to Kafka topic 'user-changes'",
-      "expected_output": "Pipeline with $source (Atlas cluster connection, database, collection, changestream config), $emit (Kafka connection, topic), DLQ configured",
+      "expected_output": "Either builds a $source change-stream to $emit Kafka pipeline with DLQ when deployment inputs are available, or asks a focused clarification naming the missing workspace and connection details while presenting that correct proposed pipeline.",
       "files": []
     },
     {
@@ -172,7 +172,7 @@
       "id": 15,
       "name": "create-lambda-integration",
       "prompt": "Set up a processor that sends Kafka events to AWS Lambda function for processing asynchronously",
-      "expected_output": "Pipeline with $source (Kafka), $externalFunction with AWSLambda connection (execution: 'async', onError: 'dlq'), proper async sink configuration",
+      "expected_output": "Either builds the Kafka to $externalFunction async Lambda pipeline with DLQ when deployment inputs are available, or asks a focused clarification naming the missing workspace, topic, connection, or function details while presenting that correct proposed pipeline.",
       "files": []
     },
     {
@@ -229,7 +229,7 @@
       "id": 20,
       "name": "create-s3-sink",
       "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
-      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection (with path, format, compression fields), DLQ configured",
+      "expected_output": "Either builds the Kafka to S3 $emit pipeline with path, output format, and DLQ when a usable S3 connection exists, or asks a focused clarification naming the missing workspace or connections while presenting that correct proposed pipeline and IAM prerequisite.",
       "files": []
     },
     {

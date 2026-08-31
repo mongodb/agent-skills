@@ -66,39 +66,39 @@
     },
     {
       "name": "calls_atlas_streams_build",
-      "description": "Uses atlas-streams-build tool with resource='processor'"
+      "description": "Either uses atlas-streams-build with resource='processor' when the workspace and connections are unambiguous, or asks a focused clarification naming the missing workspace or connection while presenting the intended processor plan"
     },
     {
       "name": "pipeline_starts_with_source",
-      "description": "First pipeline stage is $source",
+      "description": "Created or proposed pipeline starts with $source",
       "critical": true
     },
     {
       "name": "source_has_kafka_connection",
-      "description": "$source.connectionName references Kafka connection"
+      "description": "Created or proposed $source.connectionName references a Kafka connection"
     },
     {
       "name": "source_has_topic_field",
-      "description": "$source.topic='orders'",
+      "description": "Created or proposed $source.topic='orders'",
       "critical": true
     },
     {
       "name": "pipeline_ends_with_merge",
-      "description": "Last pipeline stage is $merge (not $emit for Atlas)",
+      "description": "Created or proposed pipeline ends with $merge (not $emit for Atlas)",
       "critical": true
     },
     {
       "name": "merge_has_connection",
-      "description": "$merge.into.connectionName references Atlas connection"
+      "description": "Created or proposed $merge.into.connectionName references an Atlas connection"
     },
     {
       "name": "merge_has_db_and_collection",
-      "description": "$merge.into.db='analytics' and $merge.into.coll='orders'",
+      "description": "Created or proposed $merge.into.db='analytics' and $merge.into.coll='orders'",
       "critical": true
     },
     {
       "name": "dlq_configured",
-      "description": "dlq parameter provided with connectionName, db, and coll fields",
+      "description": "Created or proposed processor includes a dlq with connectionName, db, and coll fields",
       "critical": true
     }
   ],
