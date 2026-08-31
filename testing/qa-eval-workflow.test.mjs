@@ -21,6 +21,12 @@ test("QA eval exports and validates per-sample diagnostics", () => {
   assert.match(workflow, /uv run python public_report\.py/);
   assert.match(workflow, /\(\.samples \| type == "array"\)/);
   assert.match(workflow, /\(\.validTotal \| type == "number"\)/);
+  assert.match(workflow, /if \[ "\$REPORT_VALID" = true \] && ! jq -e/);
+  assert.match(
+    workflow,
+    /sanitized report validation failed for \$SKILL - treating as INCONCLUSIVE/,
+  );
+  assert.match(workflow, /verdict=inconclusive/);
   assert.match(workflow, /mv "\$REPORT_TMP" "\$REPORT"/);
   assert.match(
     workflow,

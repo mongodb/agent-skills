@@ -347,7 +347,8 @@ jobs:
 
             REPORT_TMP="$REPORT.tmp"
             trap 'rm -f "$REPORT_TMP"' EXIT
-            jq -c \
+            REPORT_VALID=true
+            if ! jq -c \
               --arg skill "$SKILL" \
               --arg headSha "$HEAD_SHA" \
               --arg baseSha "$BASE_SHA" \
@@ -356,8 +357,10 @@ jobs:
               --arg runAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
               '. + {skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
                 verdict: $verdict, runAt: $runAt}' \
-              "$DETAIL_REPORT" > "$REPORT_TMP"
-            jq -e \
+              "$DETAIL_REPORT" > "$REPORT_TMP"; then
+              REPORT_VALID=false
+            fi
+            if [ "$REPORT_VALID" = true ] && ! jq -e \
               'type == "object" and
                (.skillName | type == "string" and length > 0) and
                (.verdict | IN("pass", "fail", "inconclusive")) and
@@ -379,7 +382,26 @@ jobs:
                    "validity"
                  ]) | length == 0)
                )' \
-              "$REPORT_TMP" > /dev/null
+              "$REPORT_TMP" > /dev/null; then
+              REPORT_VALID=false
+            fi
+
+            if [ "$REPORT_VALID" != true ]; then
+              echo "sanitized report validation failed for $SKILL - treating as INCONCLUSIVE"
+              verdict=inconclusive
+              jq -cn \
+                --arg skill "$SKILL" \
+                --arg headSha "$HEAD_SHA" \
+                --arg baseSha "$BASE_SHA" \
+                --arg model "$PANEL_MODEL" \
+                --arg runAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                '{skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
+                  status: "error", passed: 0, total: 0, invalidCount: 0, validTotal: 0,
+                  invalidRate: 0, inconclusive: true, samples: [],
+                  verdict: "inconclusive", runAt: $runAt}' \
+                > "$REPORT_TMP"
+            fi
+
             mv "$REPORT_TMP" "$REPORT"
             trap - EXIT
             rm -f "$DETAIL_REPORT"
