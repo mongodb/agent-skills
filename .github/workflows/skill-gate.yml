@@ -140,7 +140,7 @@ jobs:
       - name: Install skill-gate (pinned)
         # Mirrors the existing `go install …skill-validator@…` step.
         if: steps.changed.outputs.count != '0'
-        run: go install github.com/mongodb/skill-gate/cmd/skill-gate@v0.1.0
+        run: go install github.com/mongodb/skill-gate/cmd/skill-gate@v0.1.1
 
       - name: Run skill-gate (complete scan — static + LLM judge)
         id: scan
