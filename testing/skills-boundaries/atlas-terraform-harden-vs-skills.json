@@ -1,0 +1,165 @@
+{
+  "test_suite": "Atlas Terraform Harden Skills - Skill Invocation Tests",
+  "description": "Validates that atlas-terraform-aws-harden, atlas-terraform-azure-harden, and atlas-terraform-gcp-harden trigger on the right prompts and do not conflict with atlas-terraform-getting-started or other skills. Tests boundaries between harden skills and getting-started, natural-language-querying, schema-design, search-and-ai.",
+  "version": "1.0",
+  "skills_tested": [
+    "atlas-terraform-aws-harden",
+    "atlas-terraform-azure-harden",
+    "atlas-terraform-gcp-harden"
+  ],
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "clear_aws_harden",
+      "prompt": "I have an Atlas cluster running. How do I add AWS PrivateLink to it using Terraform?",
+      "expected_skill": "atlas-terraform-aws-harden",
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "User has existing cluster and wants AWS PrivateLink — harden skill, not getting-started",
+      "trigger_keywords": ["existing cluster", "AWS PrivateLink", "Terraform"]
+    },
+    {
+      "id": 2,
+      "category": "clear_aws_harden",
+      "prompt": "Add KMS encryption at rest to my Atlas cluster on AWS with Terraform",
+      "expected_skill": "atlas-terraform-aws-harden",
+      "should_not_trigger": null,
+      "reasoning": "KMS/CMEK is a harden-skill trigger on AWS",
+      "trigger_keywords": ["KMS", "encryption at rest", "Atlas", "AWS", "Terraform"]
+    },
+    {
+      "id": 3,
+      "category": "clear_aws_harden",
+      "prompt": "How do I set up backup export to S3 for my Atlas cluster via Terraform?",
+      "expected_skill": "atlas-terraform-aws-harden",
+      "should_not_trigger": null,
+      "reasoning": "S3 backup export is an explicit trigger for the AWS harden skill",
+      "trigger_keywords": ["backup export", "S3", "Atlas", "Terraform"]
+    },
+    {
+      "id": 4,
+      "category": "clear_aws_harden",
+      "prompt": "I want to harden my Atlas cluster with AWS security features using Terraform",
+      "expected_skill": "atlas-terraform-aws-harden",
+      "should_not_trigger": null,
+      "reasoning": "Explicit harden intent with AWS + Atlas + Terraform",
+      "trigger_keywords": ["harden", "Atlas", "AWS", "Terraform"]
+    },
+    {
+      "id": 5,
+      "category": "clear_azure_harden",
+      "prompt": "Add Azure Private Link to my existing Atlas cluster using Terraform",
+      "expected_skill": "atlas-terraform-azure-harden",
+      "should_not_trigger": "atlas-terraform-aws-harden",
+      "reasoning": "Azure Private Link request — triggers azure-harden, not aws-harden",
+      "trigger_keywords": ["Azure Private Link", "Atlas", "Terraform"]
+    },
+    {
+      "id": 6,
+      "category": "clear_azure_harden",
+      "prompt": "Enable Azure Key Vault CMEK encryption for my Atlas cluster via Terraform",
+      "expected_skill": "atlas-terraform-azure-harden",
+      "should_not_trigger": null,
+      "reasoning": "Azure Key Vault CMEK is an explicit trigger for the azure-harden skill",
+      "trigger_keywords": ["Azure Key Vault", "CMEK", "Atlas", "Terraform"]
+    },
+    {
+      "id": 7,
+      "category": "clear_azure_harden",
+      "prompt": "Set up Atlas backup export to Azure Blob Storage with Terraform",
+      "expected_skill": "atlas-terraform-azure-harden",
+      "should_not_trigger": null,
+      "reasoning": "Azure Blob backup export is an explicit trigger for the azure-harden skill",
+      "trigger_keywords": ["Azure Blob", "backup export", "Atlas", "Terraform"]
+    },
+    {
+      "id": 8,
+      "category": "clear_gcp_harden",
+      "prompt": "How do I add GCP Private Service Connect to my Atlas cluster using Terraform?",
+      "expected_skill": "atlas-terraform-gcp-harden",
+      "should_not_trigger": "atlas-terraform-aws-harden",
+      "reasoning": "GCP Private Service Connect is an explicit trigger for the gcp-harden skill",
+      "trigger_keywords": ["GCP", "Private Service Connect", "Atlas", "Terraform"]
+    },
+    {
+      "id": 9,
+      "category": "clear_gcp_harden",
+      "prompt": "Enable Cloud KMS encryption at rest for my Atlas cluster on GCP with Terraform",
+      "expected_skill": "atlas-terraform-gcp-harden",
+      "should_not_trigger": null,
+      "reasoning": "Cloud KMS on GCP is an explicit trigger for gcp-harden",
+      "trigger_keywords": ["Cloud KMS", "GCP", "Atlas", "Terraform"]
+    },
+    {
+      "id": 10,
+      "category": "clear_gcp_harden",
+      "prompt": "Add GCS backup export to my existing Atlas GCP cluster via Terraform",
+      "expected_skill": "atlas-terraform-gcp-harden",
+      "should_not_trigger": null,
+      "reasoning": "GCS backup export is an explicit trigger for gcp-harden",
+      "trigger_keywords": ["GCS", "backup export", "Atlas", "GCP", "Terraform"]
+    },
+    {
+      "id": 11,
+      "category": "no_trigger_getting_started",
+      "prompt": "I want to create a new MongoDB Atlas cluster on AWS using Terraform",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": "atlas-terraform-aws-harden",
+      "reasoning": "New cluster creation — getting-started skill, not harden",
+      "trigger_keywords": ["create", "new", "Atlas cluster", "AWS", "Terraform"]
+    },
+    {
+      "id": 12,
+      "category": "no_trigger_getting_started",
+      "prompt": "Help me get started with the MongoDB Atlas Terraform provider for Azure",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": "atlas-terraform-azure-harden",
+      "reasoning": "Getting started intent — not harden",
+      "trigger_keywords": ["get started", "Atlas", "Terraform", "Azure"]
+    },
+    {
+      "id": 13,
+      "category": "no_trigger_natural_language_querying",
+      "prompt": "Write a MongoDB query to find all orders in the last 7 days",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "atlas-terraform-aws-harden",
+      "reasoning": "Query generation — no Terraform intent",
+      "trigger_keywords": ["query", "find", "MongoDB", "orders"]
+    },
+    {
+      "id": 14,
+      "category": "no_trigger_schema_design",
+      "prompt": "Should I embed user sessions in the user document or use a separate sessions collection?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "atlas-terraform-aws-harden",
+      "reasoning": "Schema design question — no Terraform intent",
+      "trigger_keywords": ["embed", "collection", "schema"]
+    },
+    {
+      "id": 15,
+      "category": "no_trigger_search",
+      "prompt": "How do I create a full-text Atlas Search index using Terraform?",
+      "expected_skill": null,
+      "should_not_trigger": "atlas-terraform-aws-harden",
+      "reasoning": "Atlas Search index management is out of scope for all harden skills",
+      "trigger_keywords": ["Atlas Search", "index", "Terraform"]
+    },
+    {
+      "id": 16,
+      "category": "ambiguous_harden_intent",
+      "prompt": "How do I secure my Atlas cluster with Terraform?",
+      "expected_skill": "atlas-terraform-aws-harden",
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "Secure/harden intent with Atlas + Terraform — defaults to aws-harden (most common cloud), skill should ask for cloud provider",
+      "trigger_keywords": ["secure", "Atlas", "Terraform"]
+    },
+    {
+      "id": 17,
+      "category": "post-getting-started-continuation",
+      "prompt": "I just deployed my Atlas cluster with Terraform using the getting-started guide. Now I want to add PrivateLink and KMS encryption on AWS.",
+      "expected_skill": "atlas-terraform-aws-harden",
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "User completed getting-started and now wants hardening — triggers aws-harden",
+      "trigger_keywords": ["PrivateLink", "KMS", "AWS", "Atlas", "Terraform", "existing"]
+    }
+  ]
+}
