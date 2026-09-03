@@ -1,0 +1,25 @@
+# Target rules that ASP eval cases exercise directly. Each find string is copied from the
+# live skill tree so mutate_skill.py fails loudly if the guidance changes.
+inversions:
+  - find: >-
+      processor MUST be stopped first
+    replace: >-
+      processor can be modified while running and does not need to be stopped first
+    target_file: SKILL.md
+  - find: >-
+      Always take the higher of complexity-driven vs parallelism-driven tier recommendations.
+    replace: >-
+      Always take the lower of complexity-driven vs parallelism-driven tier recommendations.
+    target_file: references/sizing-and-parallelism.md
+  - find: >-
+      **`$emit` (S3)**: use `path` (NOT `prefix`)
+    replace: >-
+      **`$emit` (S3)**: use `prefix` (NOT `path`)
+    target_file: SKILL.md
+  - find: >-
+      A single pipeline can only have ONE terminal sink
+    replace: >-
+      A single pipeline can have multiple terminal sinks
+    target_file: SKILL.md
+
+key_reference: pipeline-patterns.md

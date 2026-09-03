@@ -6,6 +6,23 @@
       "name": "create-workspace-basic",
       "prompt": "Create a new Atlas Stream Processing workspace called 'dev-streams' in AWS us-east-1 with an SP10 tier",
       "expected_output": "Calls atlas-streams-build with resource='workspace', workspaceName='dev-streams', cloudProvider='AWS', region='VIRGINIA_USA', tier='SP10'",
+      "trajectory_checks": [
+        {
+          "id": "creates-workspace",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "tool": "atlas-streams-build",
+            "where": {
+              "resource": "workspace",
+              "workspaceName": "dev-streams",
+              "cloudProvider": "AWS",
+              "region": "VIRGINIA_USA",
+              "tier": "SP10"
+            }
+          }
+        }
+      ],
       "files": []
     },
     {
@@ -20,6 +37,19 @@
       "name": "list-workspaces",
       "prompt": "Show me all my stream processing workspaces",
       "expected_output": "Calls atlas-streams-discover with action='list-workspaces'",
+      "trajectory_checks": [
+        {
+          "id": "lists-workspaces",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "tool": "atlas-streams-discover",
+            "where": {
+              "action": "list-workspaces"
+            }
+          }
+        }
+      ],
       "files": []
     },
     {
@@ -33,7 +63,7 @@
       "id": 5,
       "name": "create-simple-kafka-to-mongo",
       "prompt": "Create a processor that reads from Kafka topic 'orders' and writes to Atlas collection 'analytics.orders'",
-      "expected_output": "Validates connections first with list-connections and inspect-connection, then calls atlas-streams-build with resource='processor', pipeline with $source (Kafka connection + topic), $merge (Atlas connection + db/collection), includes DLQ configuration",
+      "expected_output": "Validates connections first. If deployment inputs are unambiguous, builds the processor with $source, $merge, and DLQ. Otherwise asks a focused clarification naming the missing workspace or connection while presenting the correct proposed pipeline.",
       "files": []
     },
     {
@@ -46,8 +76,22 @@
     {
       "id": 7,
       "name": "debug-failed-processor",
-      "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
-      "expected_output": "Calls diagnose-processor first, then get-logs with logType='operational', analyzes error patterns, identifies root cause (e.g., connection issue, schema mismatch, OOM), provides specific fix steps",
+      "prompt": "My processor 'payment-handler' in workspace 'prod-streams' is in FAILED state. What's wrong?",
+      "expected_output": "Calls diagnose-processor first, analyzes the returned health report, identifies a specific root cause, and provides ordered fix steps. If more detailed logs are needed, directs the user to the processor Logs tab in the Atlas UI.",
+      "trajectory_checks": [
+        {
+          "id": "diagnoses-processor",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "tool": "atlas-streams-discover",
+            "where": {
+              "action": "diagnose-processor",
+              "resourceName": "payment-handler"
+            }
+          }
+        }
+      ],
       "files": []
     },
     {
@@ -62,6 +106,21 @@
       "name": "stop-processor",
       "prompt": "Stop the processor named 'test-processor' in workspace 'dev-streams'",
       "expected_output": "Calls atlas-streams-manage with action='stop-processor', workspaceName='dev-streams', resourceName='test-processor'",
+      "trajectory_checks": [
+        {
+          "id": "stops-processor",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "tool": "atlas-streams-manage",
+            "where": {
+              "action": "stop-processor",
+              "workspaceName": "dev-streams",
+              "resourceName": "test-processor"
+            }
+          }
+        }
+      ],
       "files": []
     },
     {
@@ -75,14 +134,14 @@
       "id": 11,
       "name": "create-changestream-to-kafka",
       "prompt": "Create a processor that monitors the 'users' collection for changes and emits them to Kafka topic 'user-changes'",
-      "expected_output": "Pipeline with $source (Atlas cluster connection, database, collection, changestream config), $emit (Kafka connection, topic), DLQ configured",
+      "expected_output": "Either builds a $source change-stream to $emit Kafka pipeline with DLQ when deployment inputs are available, or asks a focused clarification naming the missing workspace and connection details while presenting that correct proposed pipeline.",
       "files": []
     },
     {
       "id": 12,
       "name": "tier-sizing-complex-pipeline",
       "prompt": "I need to process Kafka data with a $lookup (parallelism 3), tumbling window, and $merge (parallelism 4). What tier should I use?",
-      "expected_output": "Calculates parallelism needs: (3-1) + (4-1) = 5 excess parallelism, recommends SP10 (max 8 parallelism), explains calculation",
+      "expected_output": "Calculates 5 excess parallelism, which requires SP10, and independently applies the documented complexity heuristic: Kafka (15) + $lookup (20) + tumbling window (30) = 65 points, which requires SP50. Recommends SP50 because sizing must use the higher of the parallelism-driven and complexity-driven tiers.",
       "files": []
     },
     {
@@ -103,7 +162,7 @@
       "id": 15,
       "name": "create-lambda-integration",
       "prompt": "Set up a processor that sends Kafka events to AWS Lambda function for processing asynchronously",
-      "expected_output": "Pipeline with $source (Kafka), $externalFunction with AWSLambda connection (execution: 'async', onError: 'dlq'), proper async sink configuration",
+      "expected_output": "Either builds the Kafka to $externalFunction async Lambda pipeline with DLQ when deployment inputs are available, or asks a focused clarification naming the missing workspace, topic, connection, or function details while presenting that correct proposed pipeline.",
       "files": []
     },
     {
@@ -111,6 +170,28 @@
       "name": "delete-workspace-safely",
       "prompt": "Delete workspace 'old-test-workspace'",
       "expected_output": "Calls inspect-workspace first to count connections and processors, presents summary to user (e.g., '2 connections, 3 processors will be deleted'), asks for confirmation before calling teardown",
+      "trajectory_checks": [
+        {
+          "id": "inspects-before-confirmation",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "tool": "atlas-streams-discover",
+            "where": {
+              "action": "inspect-workspace",
+              "workspaceName": "old-test-workspace"
+            }
+          }
+        },
+        {
+          "id": "does-not-delete-before-confirmation",
+          "critical": true,
+          "type": "absent",
+          "match": {
+            "tool": "atlas-streams-teardown"
+          }
+        }
+      ],
       "files": []
     },
     {
@@ -138,7 +219,7 @@
       "id": 20,
       "name": "create-s3-sink",
       "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
-      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection (with path, format, compression fields), DLQ configured",
+      "expected_output": "Either builds the Kafka to S3 $emit pipeline with path, output format, and DLQ when a usable S3 connection exists, or asks a focused clarification naming the missing workspace or connections while presenting that correct proposed pipeline and IAM prerequisite.",
       "files": []
     },
     {
@@ -146,6 +227,17 @@
       "name": "search-knowledge-before-processor",
       "prompt": "Create a processor that emits to S3",
       "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, format, compression) before building processor, references ASP_example repo if needed",
+      "trajectory_checks": [
+        {
+          "id": "searches-knowledge",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "tool": "search-knowledge",
+            "success": true
+          }
+        }
+      ],
       "files": []
     },
     {
@@ -173,7 +265,7 @@
       "id": 25,
       "name": "chained-processors",
       "prompt": "How do I chain two processors together?",
-      "expected_output": "Explains processor A writes to Atlas collection via $merge, processor B reads from that collection via change stream $source, provides example pipeline snippets for both",
+      "expected_output": "Explains the single-terminal-sink constraint and shows two processor pipelines using either Atlas or Kafka as the intermediate. Describes Kafka as lower latency and Atlas as easier to inspect, then provides matching sink and source stages for the selected option.",
       "files": []
     },
     {

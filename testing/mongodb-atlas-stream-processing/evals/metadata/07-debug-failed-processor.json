@@ -1,7 +1,7 @@
 {
   "eval_id": 7,
   "eval_name": "debug-failed-processor",
-  "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
+  "prompt": "My processor 'payment-handler' in workspace 'prod-streams' is in FAILED state. What's wrong?",
   "test_prerequisites": {
     "workspace": "Use existing workspace with an existing processor (any state)",
     "processor_required": "Use any existing processor (doesn't need to be FAILED)",
@@ -17,7 +17,7 @@
   "post_test_validation": [
     {
       "step": "verify_workflow_followed",
-      "expected": "Agent called diagnose-processor first, then get-logs second",
+      "expected": "Agent called diagnose-processor before forming a diagnosis",
       "critical": true
     },
     {
@@ -35,7 +35,7 @@
   "assertions": [
     {
       "name": "calls_diagnose_processor_first",
-      "description": "First tool call is atlas-streams-discover with action='diagnose-processor'",
+      "description": "After optional atlas-list-projects discovery, the first ASP tool call is atlas-streams-discover with action='diagnose-processor'",
       "critical": true,
       "reason": "Always diagnose first to get comprehensive health report"
     },
@@ -44,15 +44,9 @@
       "description": "diagnose-processor call includes workspaceName and resourceName='payment-handler'"
     },
     {
-      "name": "calls_get_logs_second",
-      "description": "Second tool call is atlas-streams-discover with action='get-logs'",
+      "name": "directs_to_atlas_ui_for_detailed_logs",
+      "description": "If more detailed logs are needed, directs the user to Atlas > Stream Processing > Workspace > Processor > Logs tab",
       "critical": true
-    },
-    {
-      "name": "get_logs_uses_operational_type",
-      "description": "get-logs call includes logType='operational'",
-      "critical": true,
-      "reason": "Operational logs contain runtime errors, Kafka failures, schema issues, OOM messages"
     },
     {
       "name": "identifies_specific_root_cause",
@@ -87,24 +81,18 @@
     },
     {
       "step": 2,
-      "action": "Call get-logs",
-      "tool": "atlas-streams-discover",
-      "parameters": {
-        "action": "get-logs",
-        "logType": "operational",
-        "workspaceName": "<workspace>",
-        "resourceName": "payment-handler"
-      }
-    },
-    {
-      "step": 3,
       "action": "Analyze patterns",
       "description": "Match symptoms to diagnostic patterns from output-diagnostics.md"
     },
     {
-      "step": 4,
+      "step": 3,
       "action": "Provide fix",
       "description": "Give specific, ordered steps to resolve the root cause"
+    },
+    {
+      "step": 4,
+      "action": "Direct to detailed logs if needed",
+      "description": "Point the user to the processor Logs tab in the Atlas UI when the diagnosis requires more detail"
     }
   ],
   "common_diagnostic_patterns": [

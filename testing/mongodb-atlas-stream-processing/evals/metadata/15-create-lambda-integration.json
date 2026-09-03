@@ -5,43 +5,43 @@
   "assertions": [
     {
       "name": "pipeline_starts_with_source",
-      "description": "First pipeline stage is $source"
+      "description": "Either creates the processor when deployment inputs are available, or asks a focused clarification naming missing workspace, topic, Kafka connection, Lambda connection, or function details while presenting the intended async pipeline"
     },
     {
       "name": "source_has_kafka_connection",
-      "description": "$source.connectionName references Kafka connection"
+      "description": "Created or proposed pipeline starts with $source referencing a Kafka connection"
     },
     {
       "name": "has_externalFunction_stage",
-      "description": "Pipeline includes $externalFunction stage",
+      "description": "Created or proposed pipeline includes an $externalFunction stage",
       "critical": true
     },
     {
       "name": "externalFunction_has_lambda_connection",
-      "description": "$externalFunction.connectionName references AWSLambda connection"
+      "description": "Created or proposed $externalFunction.connectionName references an AWSLambda connection"
     },
     {
       "name": "externalFunction_execution_async",
-      "description": "$externalFunction.execution='async' for sink usage",
+      "description": "Created or proposed $externalFunction.execution='async' for sink usage",
       "critical": true,
       "reason": "When $externalFunction is the final sink stage, execution MUST be 'async'. Only mid-pipeline $externalFunction can use 'sync'."
     },
     {
       "name": "externalFunction_has_function_name",
-      "description": "$externalFunction.functionName is specified"
+      "description": "Created or proposed $externalFunction.functionName is specified or explicitly requested from the user"
     },
     {
       "name": "externalFunction_has_as_field",
-      "description": "$externalFunction.as is specified (field name for Lambda response)"
+      "description": "Created or proposed $externalFunction.as is specified (field name for Lambda response)"
     },
     {
       "name": "externalFunction_has_on_error_dlq",
-      "description": "$externalFunction.onError='dlq'",
+      "description": "Created or proposed $externalFunction.onError='dlq'",
       "critical": true
     },
     {
       "name": "externalFunction_is_terminal_stage",
-      "description": "$externalFunction is the last pipeline stage (async sink)",
+      "description": "Created or proposed $externalFunction is the last pipeline stage (async sink)",
       "critical": true,
       "note": "For this test, Lambda is used as a sink. It can also be used mid-pipeline for enrichment with execution='sync' or 'async'"
     },
@@ -51,7 +51,7 @@
     },
     {
       "name": "dlq_configured",
-      "description": "Processor-level dlq parameter provided"
+      "description": "Created or proposed processor includes a processor-level dlq"
     }
   ],
   "expected_pipeline": [

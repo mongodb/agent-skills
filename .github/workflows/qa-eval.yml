@@ -283,26 +283,47 @@ jobs:
           SEED_BASE_DIR: ${{ github.workspace }}/testing
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/reports"
+          mkdir -p "$RUNNER_TEMP/reports" "$RUNNER_TEMP/inspect-logs"
           cd agent-skills-evals/inspect
           for SKILL in $(echo "$SKILLS" | jq -r '.[]'); do
             echo "== QA eval: $SKILL (model $PANEL_MODEL, k=1) =="
+            LOG_DIR="$RUNNER_TEMP/inspect-logs/$SKILL"
+            DETAIL_REPORT="$RUNNER_TEMP/reports/.qa-eval-detail-$SKILL.json"
+            REPORT="$RUNNER_TEMP/reports/qa-eval-report-$SKILL.json"
+            mkdir -p "$LOG_DIR"
 
             set +e
             uv run python harness.py --skill "$SKILL" --model "$PANEL_MODEL" \
-              --platform github --epochs 1 --max-samples "$MAX_SAMPLES"
+              --platform github --epochs 1 --max-samples "$MAX_SAMPLES" \
+              --log-dir "$LOG_DIR"
             HARNESS_RC=$?
             set -e
 
             # Only gate a log when the harness itself completed: a crashed harness may
             # leave no log (or a partial one), and "no measurement" is INCONCLUSIVE, not
-            # FAIL. ci_gate reads the NEWEST log in logs/, which — running sequentially —
-            # is this skill's run.
+            # FAIL. Each skill has a fresh log directory, and both the gate and report
+            # exporter receive the exact single .eval file from that directory.
             if [ "$HARNESS_RC" -eq 0 ]; then
-              set +e
-              uv run python ../scripts/ci_gate.py logs --mode strict
-              GATE_RC=$?
-              set -e
+              shopt -s nullglob
+              LOGS=("$LOG_DIR"/*.eval)
+              shopt -u nullglob
+              if [ "${#LOGS[@]}" -eq 1 ]; then
+                LOG_FILE="${LOGS[0]}"
+                set +e
+                uv run python ../scripts/ci_gate.py "$LOG_FILE" --mode strict
+                GATE_RC=$?
+                set -e
+
+                if ! uv run python public_report.py \
+                  --log "$LOG_FILE" --skill "$SKILL" --output "$DETAIL_REPORT"; then
+                  GATE_RC=2
+                  rm -f "$DETAIL_REPORT"
+                  echo "sanitized report export failed for $SKILL — treating as INCONCLUSIVE"
+                fi
+              else
+                GATE_RC=2
+                echo "expected exactly one .eval log for $SKILL, found ${#LOGS[@]}"
+              fi
             else
               GATE_RC=2
               echo "harness exited $HARNESS_RC for $SKILL — treating as INCONCLUSIVE"
@@ -314,16 +335,76 @@ jobs:
               *) verdict=inconclusive ;;
             esac
 
-            jq -cn \
+            if [ ! -f "$DETAIL_REPORT" ]; then
+              jq -cn \
+                --arg skill "$SKILL" \
+                --arg model "$PANEL_MODEL" \
+                '{skillName: $skill, model: $model, status: "error", passed: 0,
+                  total: 0, invalidCount: 0, validTotal: 0, invalidRate: 0,
+                  inconclusive: true, samples: []}' \
+                > "$DETAIL_REPORT"
+            fi
+
+            REPORT_TMP="$REPORT.tmp"
+            trap 'rm -f "$REPORT_TMP"' EXIT
+            REPORT_VALID=true
+            if ! jq -c \
               --arg skill "$SKILL" \
               --arg headSha "$HEAD_SHA" \
               --arg baseSha "$BASE_SHA" \
               --arg model "$PANEL_MODEL" \
               --arg verdict "$verdict" \
-              --arg runAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              '{skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
+              --arg runAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              '. + {skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
                 verdict: $verdict, runAt: $runAt}' \
-              > "$RUNNER_TEMP/reports/qa-eval-report-$SKILL.json"
+              "$DETAIL_REPORT" > "$REPORT_TMP"; then
+              REPORT_VALID=false
+            fi
+            if [ "$REPORT_VALID" = true ] && ! jq -e \
+              'type == "object" and
+               (.skillName | type == "string" and length > 0) and
+               (.verdict | IN("pass", "fail", "inconclusive")) and
+               (.samples | type == "array") and
+               (.total | type == "number") and
+               (.validTotal | type == "number") and
+               (([keys_unsorted[]] - [
+                 "skillName", "skillVersion", "skillEnabled", "model", "judgeModel",
+                 "status", "passed", "total", "invalidCount", "validTotal", "invalidRate",
+                 "inconclusive", "durationSeconds", "tokenUsage", "mutation", "samples",
+                 "headSha", "baseSha", "verdict", "runAt"
+               ]) | length == 0) and
+               all(.samples[];
+                 type == "object" and
+                 (([keys_unsorted[]] - [
+                   "caseId", "seed", "passed", "invalid", "invalidReasons", "score",
+                   "composite", "compositeParts", "compositeWeights", "compositeZeroedBy",
+                   "functionalDb", "trajectory", "trajectoryChecks", "grade", "judgeSummary",
+                   "validity"
+                 ]) | length == 0)
+               )' \
+              "$REPORT_TMP" > /dev/null; then
+              REPORT_VALID=false
+            fi
+
+            if [ "$REPORT_VALID" != true ]; then
+              echo "sanitized report validation failed for $SKILL - treating as INCONCLUSIVE"
+              verdict=inconclusive
+              jq -cn \
+                --arg skill "$SKILL" \
+                --arg headSha "$HEAD_SHA" \
+                --arg baseSha "$BASE_SHA" \
+                --arg model "$PANEL_MODEL" \
+                --arg runAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                '{skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
+                  status: "error", passed: 0, total: 0, invalidCount: 0, validTotal: 0,
+                  invalidRate: 0, inconclusive: true, samples: [],
+                  verdict: "inconclusive", runAt: $runAt}' \
+                > "$REPORT_TMP"
+            fi
+
+            mv "$REPORT_TMP" "$REPORT"
+            trap - EXIT
+            rm -f "$DETAIL_REPORT"
           done
 
       - name: Upload eval reports
@@ -331,7 +412,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: qa-eval-report-${{ steps.pr.outputs.head_sha }}
-          path: ${{ runner.temp }}/reports
+          path: ${{ runner.temp }}/reports/qa-eval-report-*.json
           if-no-files-found: warn
 
       - name: Finalize the qa-eval check run

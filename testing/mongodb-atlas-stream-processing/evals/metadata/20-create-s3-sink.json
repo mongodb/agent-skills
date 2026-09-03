@@ -50,39 +50,39 @@
   "assertions": [
     {
       "name": "pipeline_starts_with_source",
-      "description": "First pipeline stage is $source"
+      "description": "Either creates the processor when a usable S3 connection exists, or asks a focused clarification naming the missing workspace, Kafka connection, or S3 connection while presenting the intended pipeline"
     },
     {
       "name": "source_has_kafka_topic",
-      "description": "$source.topic='logs'"
+      "description": "Created or proposed $source.topic='logs'"
     },
     {
       "name": "pipeline_ends_with_emit",
-      "description": "Last pipeline stage is $emit (not $merge for S3)",
+      "description": "Created or proposed pipeline ends with $emit (not $merge for S3)",
       "critical": true
     },
     {
       "name": "emit_has_s3_connection",
-      "description": "$emit.connectionName references S3 connection"
+      "description": "Created or proposed $emit.connectionName references an S3 connection"
     },
     {
       "name": "emit_uses_path_not_prefix",
-      "description": "$emit has 'path' field (NOT 'prefix')",
+      "description": "Created or proposed $emit has a 'path' field (NOT 'prefix')",
       "critical": true,
       "reason": "Common mistake: S3 $emit uses 'path', not 'prefix'. Using wrong field name causes processor failure."
     },
     {
       "name": "emit_has_bucket",
-      "description": "$emit.bucket='company-logs'",
+      "description": "Created or proposed $emit.bucket='company-logs'",
       "critical": true
     },
     {
       "name": "emit_has_config",
-      "description": "$emit.config.outputFormat is specified"
+      "description": "Created or proposed $emit.config.outputFormat is specified"
     },
     {
       "name": "dlq_configured",
-      "description": "dlq parameter provided"
+      "description": "Created or proposed processor includes a dlq"
     },
     {
       "name": "mentions_aws_prerequisites",
