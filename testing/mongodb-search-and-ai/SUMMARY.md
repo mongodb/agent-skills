@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-07
 **Model:** Claude Opus 4.6 (`claude-opus-4-6`)
-**MCP config:** All 18 evals run **with** the MongoDB MCP server configured against the `sample_mflix` cluster (schema inspection, index checks, and `$search`/`$vectorSearch`/`autoEmbed` pipeline construction against real collections).
+**MCP config:** Evals 1–18 (the scored suite in `testing/mongodb-search-and-ai/evals/evals.json`) were run **with** the MongoDB MCP server configured against the `sample_mflix` cluster (schema inspection, index checks, and `$search`/`$vectorSearch`/`autoEmbed` pipeline construction against real collections).
 **Runs per configuration:** 1 (with_skill and without_skill baseline)
 
 ## Results
