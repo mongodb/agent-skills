@@ -1,0 +1,99 @@
+{
+  "skill_name": "atlas-terraform-getting-started",
+  "evals": [
+    {
+      "id": 1,
+      "name": "minimal-aws-new-project",
+      "prompt": "I want to create my first MongoDB Atlas cluster using Terraform. I don't have a project yet. I'll be deploying to AWS us-east-1 and I just need something minimal to get started. Name the cluster dev-cluster.",
+      "expected_output": "Generates 5 Terraform files (versions.tf, variables.tf, main.tf, outputs.tf, terraform.tfvars.example) for a minimal AWS deployment. Uses the official terraform-mongodbatlas-project and terraform-mongodbatlas-cluster modules. Cluster is M10 with no backup, sharded topology (shard_number = 0), provider_name = AWS, region = US_EAST_1.",
+      "expectations": [
+        "Starts with the module disclosure mentioning the official MongoDB Atlas Landing Zone Modules before generating any code",
+        "Resolves the mongodbatlas provider version at generation time (does not hardcode a specific patch version) and uses constraint ~> 2.0",
+        "Generates versions.tf with source = 'mongodb/mongodbatlas' and version constraint ~> 2.0",
+        "Generates main.tf that includes module 'project' using terraform-mongodbatlas-modules/terraform-mongodbatlas-project/mongodbatlas with version ~> 1.0 and a new project name",
+        "Generates main.tf that includes module 'cluster' using terraform-mongodbatlas-modules/terraform-mongodbatlas-cluster/mongodbatlas with version >= 0.1, < 1.0",
+        "Sets instance_size = 'M10' in the cluster module for a minimal config",
+        "Sets shard_number = 0 in the regions block (sharded topology)",
+        "Sets provider_name = 'AWS' in the cluster module",
+        "Sets cluster name to dev-cluster",
+        "Generates outputs.tf with connection_string = tolist(module.cluster.connection_strings)[0].standard_srv, project_id = module.project.id, cluster_id = module.cluster.cluster_id",
+        "Generates variables.tf with sensitive = true on atlas_client_id and atlas_client_secret",
+        "Generates terraform.tfvars.example with <replace-me> placeholders for all sensitive fields",
+        "Appends the Next Steps block with the .gitignore reminder (terraform.tfvars, .terraform/, *.tfstate, *.tfstate.backup) and terraform init / plan / apply commands"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "production-ready-azure-existing-project",
+      "prompt": "Help me set up a production MongoDB Atlas cluster on Azure with Terraform. I already have a project with ID 5f3a8b2c1d4e5f6a7b8c9d0e. Deploy to Azure West Europe. I want full production settings.",
+      "expected_output": "Generates 5 Terraform files for a production-ready Azure deployment using an existing project. main.tf uses a locals block (no module 'project'). Cluster is M60 with autoscaling enabled (compute_min = M60, compute_max = M200), backup_enabled = true, region = EUROPE_WEST, shard_number = 0.",
+      "expectations": [
+        "Discloses the official MongoDB Atlas Landing Zone Modules at the start",
+        "Uses var.project_id (or local.project_id) instead of module.project.id since an existing project is provided",
+        "Does NOT include a module 'project' block in main.tf",
+        "Sets backup_enabled = true in the cluster module",
+        "Includes an auto_scaling block with compute_min_instance_size = 'M60' and compute_enabled = true",
+        "Sets provider_name = 'AZURE' in the cluster module",
+        "Sets region = 'EUROPE_WEST' or equivalent Azure West Europe region",
+        "Sets shard_number = 0 in the regions block",
+        "Does NOT include instance_size attribute (autoscaling handles instance sizing for production)",
+        "Outputs project_id = var.project_id (not module.project.id) since an existing project is used",
+        "variables.tf omits variable 'project_id' instruction is respected — or includes project_id variable since an existing project ID is supplied",
+        "terraform.tfvars.example pre-populates project_id with 5f3a8b2c1d4e5f6a7b8c9d0e",
+        "Shows the Public Preview notice for the cluster module (v0 → v1 may require manual migration steps)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "gcp-minimal-new-project",
+      "prompt": "How do I deploy a free MongoDB Atlas cluster using Terraform on Google Cloud in the central US region?",
+      "expected_output": "Explains that the cluster module requires a minimum of M10 (free-tier M0/M2/M5 are not supported by the Landing Zone module) and offers to generate an M10 minimal config on GCP CENTRAL_US. If the user confirms M10, generates the 5 files with GCP configuration.",
+      "expectations": [
+        "Mentions the module disclosure before generating any code",
+        "Explains that M0/M2/M5 (free tier) are not supported by the cluster module — minimum is M10",
+        "Uses provider_name = 'GCP' in the cluster module",
+        "Sets region to CENTRAL_US or the equivalent GCP Atlas region format",
+        "Includes module 'project' block for a new project",
+        "Sets shard_number = 0 in the regions block",
+        "Sets instance_size = 'M10' for minimal config"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "version-resolution-not-hardcoded",
+      "prompt": "Generate a Terraform config for a new Atlas cluster on AWS us-east-1, minimal setup, new project named test-project.",
+      "expected_output": "Generates a complete configuration where the mongodbatlas provider version is resolved dynamically (either via mcp__plugin_terraform_terraform__get_latest_provider_version, WebSearch, or gh CLI) rather than being a hardcoded value. The HCL comment in versions.tf shows the resolved version number.",
+      "expectations": [
+        "Attempts to resolve the latest mongodbatlas provider version via one of: mcp__plugin_terraform_terraform__get_latest_provider_version, WebSearch, or gh API call",
+        "The version constraint in versions.tf is ~> 2.0 (not ~> 1.0 or a hardcoded patch version like = 2.3.0)",
+        "The comment in versions.tf references the resolved patch version number, not the placeholder string PROVIDER_VERSION",
+        "Project module version constraint is ~> 1.0",
+        "Cluster module version constraint is >= 0.1, < 1.0"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "out-of-scope-privatelink",
+      "prompt": "I have my Atlas cluster set up with Terraform. Now I want to add AWS PrivateLink to it using Terraform.",
+      "expected_output": "Recognizes this is out of scope for the getting-started skill (cloud-specific integrations like PrivateLink belong to atlas-terraform-cloud-integration) and directs the user to the appropriate resource.",
+      "expectations": [
+        "Does NOT generate any Terraform code for PrivateLink",
+        "Explains that PrivateLink configuration is out of scope for the getting-started skill",
+        "Mentions the upcoming atlas-terraform-cloud-integration skill or the terraform-mongodbatlas-atlas-aws module",
+        "Does not attempt to generate the full getting-started workflow for a user who already has a cluster"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "safety-credentials-handling",
+      "prompt": "Create a Terraform config for Atlas on AWS. My API credentials are: public key = abc123, private key = xyz789. Use existing project ID proj-555.",
+      "expected_output": "Generates the configuration with credentials declared as sensitive Terraform variables — the actual credential values are NOT embedded in any .tf file. The terraform.tfvars.example contains <replace-me> placeholders. The generated main.tf and variables.tf use variable references, not inline values.",
+      "expectations": [
+        "Does NOT hardcode the literal credential values (abc123, xyz789) in any generated .tf file",
+        "All credential variables (atlas_client_id, atlas_client_secret, or atlas_public_key, atlas_private_key) have sensitive = true",
+        "terraform.tfvars.example uses <replace-me> placeholders, not the literal credentials from the prompt",
+        "Includes the .gitignore reminder to prevent committing terraform.tfvars"
+      ]
+    }
+  ]
+}
