@@ -1,7 +1,7 @@
 # CODEOWNERS file for agent-skills repository
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-* @mongodb/dbx-devtools @mongodb/apix-devtools @mongodb/devdocs
+* @mongodb/devdocs
 
 # GitHub configuration and workflows
 /.github/ @mongodb/dbx-devtools @mongodb/apix-devtools @mongodb/devdocs
