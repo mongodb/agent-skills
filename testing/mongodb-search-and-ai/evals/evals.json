@@ -92,6 +92,24 @@
       "files": []
     },
     {
+      "id": 16,
+      "prompt": "I want semantic search over my articles collection but I don't have an embedding pipeline and don't want to build or manage one. Each article has a 'body' text field.",
+      "expected_output": "Should recognize this as an Automated Embedding use case (user has no embedding pipeline and wants MongoDB to generate/manage embeddings), not bring-your-own-embedding vector search. Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should propose an autoEmbed vector search index with type: 'autoEmbed', modality: 'text', path: 'body', and a model (defaulting to voyage-4). Should construct a $vectorSearch query using the plain-text 'query' field (NOT 'queryVector' and NOT a pre-computed vector) since MongoDB auto-generates the query embedding via Voyage AI. Should ask for approval before creating the index.",
+      "files": []
+    },
+    {
+      "id": 17,
+      "prompt": "I have a very large collection and cost is my main concern, but I still want MongoDB to generate the embeddings for me automatically. Which model should I use?",
+      "expected_output": "Should recommend Automated Embedding with the voyage-4-lite model for high-volume, cost-sensitive workloads (rather than voyage-4, voyage-4-large, or voyage-code-3). Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should show an autoEmbed index definition with type: 'autoEmbed', modality: 'text', path, and model: 'voyage-4-lite'. Should mention the per-model pricing tiers and the 200M one-time free tokens per model per organization (shared across the org, does not refresh). Should note that queries use the plain-text 'query' field. Should ask for approval before creating the index.",
+      "files": []
+    },
+    {
+      "id": 18,
+      "prompt": "I want semantic search over my code snippets collection where each document has a 'source' field, and I'd like MongoDB to handle the embeddings for me.",
+      "expected_output": "Should recognize this as Automated Embedding for code/technical content and recommend the voyage-code-3 model. Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should propose an autoEmbed vector search index with type: 'autoEmbed', modality: 'text', path: 'source', and model: 'voyage-code-3'. Should construct a $vectorSearch query using the plain-text 'query' field (auto-generated embedding), not a queryVector. Should ask for approval before creating the index.",
+      "files": []
+    },
+    {
       "id": 37,
       "prompt": "The MongoDB MCP server is connected. In the `sample` database, `movies` collection, use\nAtlas Search (a `$search` aggregation stage — an Atlas Search index named \"default\" already\nexists) to find every movie whose `plot` mentions robots. Save ONLY the aggregation\npipeline you used, as a JSON array, to /workspace/pipeline.json. Use the MongoDB MCP server\ntools directly; do not delegate to a subagent and do not ask for confirmation.",
       "expectations": [
