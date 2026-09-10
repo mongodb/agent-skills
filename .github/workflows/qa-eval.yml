@@ -285,7 +285,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/reports" "$RUNNER_TEMP/inspect-logs"
           cd agent-skills-evals/inspect
-          for SKILL in $(echo "$SKILLS" | jq -r '.[]'); do
+          mapfile -t SKILL_LIST < <(jq -r '.[]' <<<"$SKILLS")
+          for SKILL in "${SKILL_LIST[@]}"; do
             echo "== QA eval: $SKILL (model $PANEL_MODEL, k=1) =="
             LOG_DIR="$RUNNER_TEMP/inspect-logs/$SKILL"
             DETAIL_REPORT="$RUNNER_TEMP/reports/.qa-eval-detail-$SKILL.json"
@@ -355,34 +356,48 @@ jobs:
               --arg model "$PANEL_MODEL" \
               --arg verdict "$verdict" \
               --arg runAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              '. + {skillName: $skill, headSha: $headSha, baseSha: $baseSha, model: $model,
-                verdict: $verdict, runAt: $runAt}' \
+              '
+              def required_field($key; $type):
+                if (has($key) and .[$key] != null and (.[$key] | type) == $type)
+                then .[$key]
+                else error("invalid required field: \($key)")
+                end;
+              def optional_field($key; $type):
+                if (has($key) and .[$key] != null)
+                then if ((.[$key] | type) == $type)
+                     then .[$key]
+                     else error("invalid optional field: \($key)")
+                     end
+                else null
+                end;
+              def safe_sample:
+                if type != "object" then error("sample is not an object")
+                else {
+                  caseId: required_field("caseId"; "string"),
+                  passed: optional_field("passed"; "boolean"),
+                  invalid: optional_field("invalid"; "boolean"),
+                  score: optional_field("score"; "number")
+                }
+                end;
+              if type != "object" then error("report is not an object")
+              else {
+                skillName: $skill,
+                headSha: $headSha,
+                baseSha: $baseSha,
+                model: $model,
+                verdict: $verdict,
+                runAt: $runAt,
+                passed: optional_field("passed"; "number"),
+                total: required_field("total"; "number"),
+                invalidCount: optional_field("invalidCount"; "number"),
+                validTotal: required_field("validTotal"; "number"),
+                invalidRate: optional_field("invalidRate"; "number"),
+                inconclusive: optional_field("inconclusive"; "boolean"),
+                durationSeconds: optional_field("durationSeconds"; "number"),
+                samples: (required_field("samples"; "array") | map(safe_sample))
+              }
+              end' \
               "$DETAIL_REPORT" > "$REPORT_TMP"; then
-              REPORT_VALID=false
-            fi
-            if [ "$REPORT_VALID" = true ] && ! jq -e \
-              'type == "object" and
-               (.skillName | type == "string" and length > 0) and
-               (.verdict | IN("pass", "fail", "inconclusive")) and
-               (.samples | type == "array") and
-               (.total | type == "number") and
-               (.validTotal | type == "number") and
-               (([keys_unsorted[]] - [
-                 "skillName", "skillVersion", "skillEnabled", "model", "judgeModel",
-                 "status", "passed", "total", "invalidCount", "validTotal", "invalidRate",
-                 "inconclusive", "durationSeconds", "tokenUsage", "mutation", "samples",
-                 "headSha", "baseSha", "verdict", "runAt"
-               ]) | length == 0) and
-               all(.samples[];
-                 type == "object" and
-                 (([keys_unsorted[]] - [
-                   "caseId", "seed", "passed", "invalid", "invalidReasons", "score",
-                   "composite", "compositeParts", "compositeWeights", "compositeZeroedBy",
-                   "functionalDb", "trajectory", "trajectoryChecks", "grade", "judgeSummary",
-                   "validity"
-                 ]) | length == 0)
-               )' \
-              "$REPORT_TMP" > /dev/null; then
               REPORT_VALID=false
             fi
 

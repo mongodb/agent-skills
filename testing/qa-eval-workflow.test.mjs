@@ -19,9 +19,11 @@ test("QA eval isolates and gates the exact Inspect log", () => {
 
 test("QA eval exports and validates per-sample diagnostics", () => {
   assert.match(workflow, /uv run python public_report\.py/);
-  assert.match(workflow, /\(\.samples \| type == "array"\)/);
-  assert.match(workflow, /\(\.validTotal \| type == "number"\)/);
-  assert.match(workflow, /if \[ "\$REPORT_VALID" = true \] && ! jq -e/);
+  assert.match(workflow, /def required_field\(\$key; \$type\)/);
+  assert.match(workflow, /samples: \(required_field\("samples"; "array"\) \| map\(safe_sample\)\)/);
+  assert.match(workflow, /caseId: required_field\("caseId"; "string"\)/);
+  assert.match(workflow, /score: optional_field\("score"; "number"\)/);
+  assert.doesNotMatch(workflow, /status: optional_field|judgeSummary|trajectoryChecks|tokenUsage|mutation/);
   assert.match(
     workflow,
     /sanitized report validation failed for \$SKILL - treating as INCONCLUSIVE/,
@@ -36,4 +38,10 @@ test("QA eval exports and validates per-sample diagnostics", () => {
 
 test("jq arguments use separate name and value tokens", () => {
   assert.doesNotMatch(workflow, /--arg [A-Za-z0-9_]+=/);
+});
+
+test("QA eval iterates skill names without shell word splitting", () => {
+  assert.match(workflow, /mapfile -t SKILL_LIST < <\(jq -r '\.\[\]' <<<"\$SKILLS"\)/);
+  assert.match(workflow, /for SKILL in "\$\{SKILL_LIST\[@\]\}"; do/);
+  assert.doesNotMatch(workflow, /for SKILL in \$\(echo "\$SKILLS" \| jq/);
 });
