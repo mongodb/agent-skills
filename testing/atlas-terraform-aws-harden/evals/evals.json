@@ -1,0 +1,95 @@
+{
+  "skill_name": "atlas-terraform-aws-harden",
+  "evals": [
+    {
+      "id": 1,
+      "name": "byo-networking-create-kms-create-s3",
+      "prompt": "I have an Atlas cluster called prod-cluster in project 5f3a8b2c1d4e5f6a7b8c9d0e. I want to add AWS PrivateLink, KMS encryption, and S3 backup export using Terraform. I already have subnets subnet-aaa111 and subnet-bbb222 in us-east-1. Let the module create the KMS key and S3 bucket.",
+      "expected_output": "Generates 5 files. versions.tf has mongodbatlas ~> 2.0 and aws ~> 6.0. main.tf uses module atlas-aws with subnet_ids = var.subnet_ids (BYO networking). encryption block uses create_kms_key = { enabled = true }. backup_export uses create_s3_bucket = { enabled = true }. variables.tf has subnet_ids variable (list of strings), no kms_key_arn or s3_bucket_name.",
+      "expectations": [
+        "Shows module disclosure mentioning atlas-aws Landing Zone Module before any questions",
+        "Resolves mongodbatlas provider version dynamically (not hardcoded) with constraint ~> 2.0",
+        "versions.tf includes aws provider source = 'hashicorp/aws' version ~> 6.0",
+        "main.tf uses module source 'terraform-mongodbatlas-modules/atlas-aws/mongodbatlas' version ~> 0.3",
+        "privatelink_endpoints uses subnet_ids = var.subnet_ids (BYO path — no aws_vpc or aws_subnet resources)",
+        "cloud_provider_access = {} is present (creates IAM role automatically)",
+        "encryption block uses create_kms_key = { enabled = true } (no kms_key_arn)",
+        "backup_export block uses create_s3_bucket = { enabled = true } (no bucket_name)",
+        "variables.tf has subnet_ids as list(string) and does NOT include kms_key_arn or s3_bucket_name",
+        "outputs.tf includes privatelink_endpoint, encryption_at_rest_provider, cloud_provider_access_role_id, backup_export_bucket_id",
+        "No aws_vpc or aws_subnet resources in main.tf (BYO networking)",
+        "terraform.tfvars.example has subnet_ids pre-populated with ['subnet-aaa111', 'subnet-bbb222']",
+        "Post-generation block includes .gitignore reminder and terraform init / plan / apply commands",
+        "Runs terraform validate before presenting files to user"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "create-networking-create-kms-create-s3",
+      "prompt": "I need to add full AWS security hardening to my Atlas cluster 'dev-cluster' (project ID: abc123def456). I don't have any existing AWS networking — please create a new VPC with CIDR 10.1.0.0/16 across us-east-1a and us-east-1b. Also create a new KMS key and S3 bucket for me.",
+      "expected_output": "Generates 5 files. main.tf includes aws_vpc and aws_subnet resources. atlas-aws module uses subnet_ids = aws_subnet.atlas[*].id. encryption uses create_kms_key = { enabled = true }. backup_export uses create_s3_bucket = { enabled = true }. variables.tf has vpc_cidr and availability_zones instead of subnet_ids.",
+      "expectations": [
+        "main.tf contains resource 'aws_vpc' 'atlas' with cidr_block = var.vpc_cidr and enable_dns_hostnames = true",
+        "main.tf contains resource 'aws_subnet' 'atlas' with count = length(var.availability_zones)",
+        "cidrsubnet function used for subnet CIDR calculation",
+        "module atlas_aws privatelink_endpoints uses subnet_ids = aws_subnet.atlas[*].id",
+        "variables.tf has vpc_cidr (default 10.1.0.0/16) and availability_zones (default ['us-east-1a', 'us-east-1b'])",
+        "variables.tf does NOT have subnet_ids variable",
+        "outputs.tf includes vpc_id = aws_vpc.atlas.id and subnet_ids = aws_subnet.atlas[*].id in addition to module outputs",
+        "encryption uses create_kms_key = { enabled = true }",
+        "backup_export uses create_s3_bucket = { enabled = true }",
+        "Validates HCL before presenting files"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "byo-all-resources",
+      "prompt": "Add AWS hardening to my Atlas cluster 'analytics' in project 111aaa222bbb. I have existing subnets subnet-xyz789 in us-west-2. My existing KMS key ARN is arn:aws:kms:us-west-2:123456789:key/abc-def and my S3 bucket is called my-atlas-backups.",
+      "expected_output": "Generates 5 files using all BYO paths. main.tf module uses subnet_ids = var.subnet_ids, kms_key_arn = var.kms_key_arn, bucket_name = var.s3_bucket_name. No aws_vpc/subnet resources. No create_kms_key or create_s3_bucket blocks.",
+      "expectations": [
+        "main.tf uses subnet_ids = var.subnet_ids (no VPC/subnet resources)",
+        "encryption block uses kms_key_arn = var.kms_key_arn (no create_kms_key)",
+        "backup_export block uses bucket_name = var.s3_bucket_name (no create_s3_bucket)",
+        "variables.tf includes subnet_ids, kms_key_arn, and s3_bucket_name variables",
+        "terraform.tfvars.example pre-populates: subnet_ids with ['subnet-xyz789'], kms_key_arn with arn:aws:kms:us-west-2:123456789:key/abc-def, s3_bucket_name with my-atlas-backups",
+        "atlas_region and aws_region variables are present (atlas format US_WEST_2 and AWS format us-west-2)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "out-of-scope-new-cluster",
+      "prompt": "I want to create a new MongoDB Atlas cluster on AWS with PrivateLink enabled from the start.",
+      "expected_output": "Explains that creating a new cluster is handled by atlas-terraform-getting-started, not this skill. Directs user to atlas-terraform-getting-started first, then atlas-terraform-aws-harden for security hardening.",
+      "expectations": [
+        "Does NOT generate any Terraform code for cluster creation",
+        "Explains this skill is for hardening an existing cluster, not creating a new one",
+        "Mentions atlas-terraform-getting-started as the skill to use first",
+        "Suggests using atlas-terraform-aws-harden after the cluster is created"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "out-of-scope-azure",
+      "prompt": "I have an Atlas cluster on Azure. Help me add Azure Private Link and Key Vault encryption using Terraform.",
+      "expected_output": "Recognizes this is an Azure request and directs user to atlas-terraform-azure-harden.",
+      "expectations": [
+        "Does NOT generate AWS Terraform code",
+        "Explains this skill is for AWS hardening only",
+        "Mentions atlas-terraform-azure-harden as the correct skill for Azure"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "version-resolution",
+      "prompt": "Add AWS PrivateLink and KMS hardening to my Atlas cluster 'test' (project xyz789). I have subnet subnet-111aaa in us-east-1.",
+      "expected_output": "Resolves mongodbatlas provider version dynamically before generating code. The HCL comment in versions.tf shows the resolved version number.",
+      "expectations": [
+        "Attempts to resolve latest mongodbatlas provider version via mcp__plugin_terraform_terraform__get_latest_provider_version, WebSearch, or gh CLI",
+        "versions.tf constraint is ~> 2.0 (not a hardcoded patch version)",
+        "Comment in versions.tf shows the resolved version number",
+        "atlas-aws module version constraint is ~> 0.3",
+        "aws provider version constraint is ~> 6.0"
+      ]
+    }
+  ]
+}
