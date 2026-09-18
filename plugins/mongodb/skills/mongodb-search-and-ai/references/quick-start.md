@@ -280,7 +280,7 @@ Then show the query syntax:
 Use AskUserQuestion:
 > "Semantic search is great for open-ended queries. Keyword search is better when users type specific titles or names. Want to see them side by side — and then combine them into hybrid search?"
 
-- **Yes** → run Path B steps 3b–8b quickly (show keyword search results), then go to Path C
+- **Yes** → run Path B steps 3b–6b quickly (show keyword search results), then go to Path C
 - **No, I'm done** → skip to Wrap Up
 
 ## Path A2: Semantic Search (Bring Your Own Embeddings)
@@ -577,7 +577,15 @@ Use AskUserQuestion:
 
 ## Path C: Hybrid Search
 
-*Prerequisites: `quickstart_text` index (from Path B) + `quickstart_semantic` index (from Path A). If either is missing, create it silently before proceeding.*
+*Prerequisites: the `quickstart_text` index (from Path B) and the `quickstart_semantic` index (from Path A), both on `sample_mflix.movies`.*
+
+Run `collection-indexes` on `sample_mflix.movies` to confirm both exist. If either is missing, don't create it implicitly — return to the step that creates it (Step 3b for `quickstart_text`, Step 4a for `quickstart_semantic`) and get the same explicit confirmation that step prescribes.
+
+If the user arrived through Path A2, they have `quickstart_manual` on `sample_mflix.embedded_movies` — a different index on a different collection, which this pipeline can't use. Tell the user:
+
+> "Hybrid search needs both pipelines pointed at the same collection, so the semantic index has to be on `movies` alongside the keyword index. Yours is on `embedded_movies` from earlier. I can create an Automated Embedding index on `movies` instead — that generates embeddings for about 21,000 plots and counts against your tier's search index cap. Want me to?"
+
+If the user agrees, run Step 4a to create `quickstart_semantic`, then continue. Otherwise skip to Wrap Up.
 
 ### Step 8c — Run Hybrid Search
 
@@ -672,7 +680,7 @@ Congratulate the user. Use AskUserQuestion:
 > "Want a standalone Python script with everything you just ran — index creation, semantic search, keyword search, and hybrid search?"
 
 If yes, copy `scripts/quickstart_complete.py` from this skill directory into the user's working directory, then tell the user:
-> "Your script is at `<destination path>`. Change the `CONNECTION_STRING`, `DB_NAME`, and `COLLECTION_NAME` variables at the top to use your own data. That's the only edit needed."
+> "Your script is at `<destination path>`. It runs as-is against `sample_mflix.movies`. To point it at your own data, change the `CONNECTION_STRING`, `DB_NAME`, and `COLLECTION_NAME` variables at the top — and because the script hard-codes the sample schema (`plot`, `genres`, and `title`), also update the index definitions, the `$project` stages, and the query strings to match your own field names."
 
 ## Troubleshooting
 

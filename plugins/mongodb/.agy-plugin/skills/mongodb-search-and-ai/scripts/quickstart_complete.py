@@ -7,11 +7,19 @@
 
 # MongoDB Search Quickstart — Complete Script
 # ─────────────────────────────────────────────────────────────
-# Change these three values to use your own data:
+# Written for the Atlas `sample_mflix.movies` sample collection. The
+# schema is hard-coded throughout: the `plot`, `genres`, and `title`
+# fields, the index definitions, and the sample query text.
+#
+# To run against your own data, change the three values below AND
+# update the index definitions, `$project` stages, and query strings
+# to match your own field names.
 
 CONNECTION_STRING = "your-connection-string-here"
 DB_NAME = "sample_mflix"
 COLLECTION_NAME = "movies"
+
+INDEX_WAIT_TIMEOUT_SECONDS = 600
 
 # ─────────────────────────────────────────────────────────────
 
@@ -23,15 +31,44 @@ client = MongoClient(CONNECTION_STRING)
 db = client[DB_NAME]
 collection = db[COLLECTION_NAME]
 
-def wait_for_index(name, index_type="search"):
+def fail(message):
+    print(f"\n  ERROR: {message}")
+    client.close()
+    raise SystemExit(1)
+
+def wait_for_index(name):
     print(f"  Waiting for index '{name}' to be ready...", end="", flush=True)
+    deadline = time.monotonic() + INDEX_WAIT_TIMEOUT_SECONDS
     while True:
         indexes = list(collection.list_search_indexes(name))
-        if indexes and indexes[0].get("status") == "READY":
+        if not indexes:
+            fail(f"Index '{name}' does not exist.")
+        status = indexes[0].get("status")
+        if status == "READY":
             print(" ready.")
-            break
+            return
+        if status == "STALE":
+            print(" stale — queryable, but embedding sync is paused."
+                  " Free disk space on the cluster to resume it.")
+            return
+        if status == "FAILED":
+            fail(f"Index '{name}' failed to build. Check the tier index cap"
+                 " (3 on Free, 10 on Flex) and the index definition.")
+        if time.monotonic() > deadline:
+            fail(f"Index '{name}' is still '{status}' after"
+                 f" {INDEX_WAIT_TIMEOUT_SECONDS}s. Check its status in Atlas,"
+                 " then rerun.")
         print(".", end="", flush=True)
         time.sleep(5)
+
+def ensure_index(model, name):
+    try:
+        collection.create_search_index(model)
+    except Exception as e:
+        if "already exists" not in str(e):
+            fail(f"Could not create index '{name}': {e}")
+        print("  Index already exists.")
+    wait_for_index(name)
 
 def print_results(results, fields=["title", "plot"]):
     for i, doc in enumerate(results, 1):
@@ -49,33 +86,27 @@ def print_results(results, fields=["title", "plot"]):
 print("\n── SEMANTIC SEARCH (Auto Embedding) ──────────────────")
 print("Creating autoEmbed index on 'plot' field...")
 
-try:
-    collection.create_search_index(
-        SearchIndexModel(
-            definition={
-                "fields": [
-                    {
-                        "type": "autoEmbed",
-                        "modality": "text",
-                        "path": "plot",
-                        "model": "voyage-4"
-                    },
-                    {
-                        "type": "filter",
-                        "path": "genres"
-                    }
-                ]
-            },
-            name="quickstart_semantic",
-            type="vectorSearch"
-        )
-    )
-    wait_for_index("quickstart_semantic", "vectorSearch")
-except Exception as e:
-    if "already exists" in str(e):
-        print("  Index already exists, skipping creation.")
-    else:
-        print(f"  Note: {e}")
+ensure_index(
+    SearchIndexModel(
+        definition={
+            "fields": [
+                {
+                    "type": "autoEmbed",
+                    "modality": "text",
+                    "path": "plot",
+                    "model": "voyage-4"
+                },
+                {
+                    "type": "filter",
+                    "path": "genres"
+                }
+            ]
+        },
+        name="quickstart_semantic",
+        type="vectorSearch"
+    ),
+    "quickstart_semantic"
+)
 
 # Run semantic query
 print("\nQuery: 'a story about growing up'")
@@ -130,31 +161,25 @@ print_results(results, fields=["title", "genres"])
 print("\n── KEYWORD SEARCH (Atlas Search) ─────────────────────")
 print("Creating text search index on 'title', 'plot', 'genres'...")
 
-try:
-    collection.create_search_index(
-        SearchIndexModel(
-            definition={
-                "mappings": {
-                    "dynamic": False,
-                    "fields": {
-                        "title": [
-                            { "type": "string" },
-                            { "type": "autocomplete", "tokenization": "edgeGram" }
-                        ],
-                        "plot": { "type": "string" },
-                        "genres": { "type": "token" }
-                    }
+ensure_index(
+    SearchIndexModel(
+        definition={
+            "mappings": {
+                "dynamic": False,
+                "fields": {
+                    "title": [
+                        { "type": "string" },
+                        { "type": "autocomplete", "tokenization": "edgeGram" }
+                    ],
+                    "plot": { "type": "string" },
+                    "genres": { "type": "token" }
                 }
-            },
-            name="quickstart_text"
-        )
-    )
-    wait_for_index("quickstart_text")
-except Exception as e:
-    if "already exists" in str(e):
-        print("  Index already exists, skipping creation.")
-    else:
-        print(f"  Note: {e}")
+            }
+        },
+        name="quickstart_text"
+    ),
+    "quickstart_text"
+)
 
 # Run keyword query
 print("\nKeyword query: 'space adventure'")
@@ -272,7 +297,9 @@ except Exception as e:
     print(f"  Hybrid search requires MongoDB 8.0+. Error: {e}")
 
 print("\n── Done! ─────────────────────────────────────────────")
-print("To use your own data, update CONNECTION_STRING, DB_NAME,")
-print("and COLLECTION_NAME at the top of this file.")
+print("This script targets the sample_mflix.movies schema. To use your")
+print("own data, update CONNECTION_STRING, DB_NAME, and COLLECTION_NAME")
+print("at the top, then adjust the index definitions, $project stages,")
+print("and query strings to match your own field names.")
 
 client.close()
