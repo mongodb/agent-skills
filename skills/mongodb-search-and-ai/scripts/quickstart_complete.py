@@ -48,9 +48,8 @@ def wait_for_index(name):
             print(" ready.")
             return
         if status == "STALE":
-            print(" stale — queryable, but embedding sync is paused."
-                  " Free disk space on the cluster to resume it.")
-            return
+            fail(f"Index '{name}' is stale because embedding sync is paused. "
+                 "Free disk space, wait for READY, then rerun.")
         if status == "FAILED":
             fail(f"Index '{name}' failed to build. Check the tier index cap"
                  " (3 on Free, 10 on Flex) and the index definition.")
