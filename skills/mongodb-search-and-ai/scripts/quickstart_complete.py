@@ -60,13 +60,40 @@ def wait_for_index(name):
         print(".", end="", flush=True)
         time.sleep(5)
 
-def ensure_index(model, name):
+def covers(expected, actual):
+    # True when `actual` contains everything `expected` asks for. Atlas adds
+    # its own defaults to a stored definition, so an exact match is too strict.
+    if isinstance(expected, dict):
+        return (isinstance(actual, dict)
+                and all(k in actual and covers(v, actual[k])
+                        for k, v in expected.items()))
+    if isinstance(expected, list):
+        return (isinstance(actual, list)
+                and all(any(covers(item, candidate) for candidate in actual)
+                        for item in expected))
+    return expected == actual
+
+def check_definition(name, expected):
+    indexes = list(collection.list_search_indexes(name))
+    if not indexes:
+        fail(f"Index '{name}' does not exist.")
+    actual = indexes[0].get("latestDefinition", {})
+    if not covers(expected, actual):
+        fail(f"An index named '{name}' already exists, but its definition does"
+             " not match the one this script needs, so the queries below would"
+             " fail. An index created by another route (for example the MCP"
+             " walkthrough) can omit fields this script queries. Drop"
+             f" '{name}' in Atlas and rerun, or edit this script to use a"
+             f" different index name.\n  Existing definition: {actual}")
+
+def ensure_index(model, name, definition):
     try:
         collection.create_search_index(model)
     except Exception as e:
         if "already exists" not in str(e):
             fail(f"Could not create index '{name}': {e}")
-        print("  Index already exists.")
+        print("  Index already exists — checking its definition.")
+        check_definition(name, definition)
     wait_for_index(name)
 
 def print_results(results, fields=["title", "plot"]):
@@ -85,26 +112,29 @@ def print_results(results, fields=["title", "plot"]):
 print("\n── SEMANTIC SEARCH (Auto Embedding) ──────────────────")
 print("Creating autoEmbed index on 'plot' field...")
 
+semantic_definition = {
+    "fields": [
+        {
+            "type": "autoEmbed",
+            "modality": "text",
+            "path": "plot",
+            "model": "voyage-4"
+        },
+        {
+            "type": "filter",
+            "path": "genres"
+        }
+    ]
+}
+
 ensure_index(
     SearchIndexModel(
-        definition={
-            "fields": [
-                {
-                    "type": "autoEmbed",
-                    "modality": "text",
-                    "path": "plot",
-                    "model": "voyage-4"
-                },
-                {
-                    "type": "filter",
-                    "path": "genres"
-                }
-            ]
-        },
+        definition=semantic_definition,
         name="quickstart_semantic",
         type="vectorSearch"
     ),
-    "quickstart_semantic"
+    "quickstart_semantic",
+    semantic_definition
 )
 
 # Run semantic query
@@ -160,24 +190,27 @@ print_results(results, fields=["title", "genres"])
 print("\n── KEYWORD SEARCH (Atlas Search) ─────────────────────")
 print("Creating text search index on 'title', 'plot', 'genres'...")
 
+text_definition = {
+    "mappings": {
+        "dynamic": False,
+        "fields": {
+            "title": [
+                { "type": "string" },
+                { "type": "autocomplete", "tokenization": "edgeGram" }
+            ],
+            "plot": { "type": "string" },
+            "genres": { "type": "token" }
+        }
+    }
+}
+
 ensure_index(
     SearchIndexModel(
-        definition={
-            "mappings": {
-                "dynamic": False,
-                "fields": {
-                    "title": [
-                        { "type": "string" },
-                        { "type": "autocomplete", "tokenization": "edgeGram" }
-                    ],
-                    "plot": { "type": "string" },
-                    "genres": { "type": "token" }
-                }
-            }
-        },
+        definition=text_definition,
         name="quickstart_text"
     ),
-    "quickstart_text"
+    "quickstart_text",
+    text_definition
 )
 
 # Run keyword query
@@ -293,7 +326,12 @@ try:
     ]))
     print_results(results)
 except Exception as e:
-    print(f"  Hybrid search requires MongoDB 8.0+. Error: {e}")
+    message = str(e)
+    if "Unrecognized pipeline stage name" in message or "$rankFusion" in message:
+        print("  $rankFusion requires MongoDB 8.0+. This cluster does not"
+              f" support it, so hybrid search was skipped. Error: {message}")
+    else:
+        fail(f"Hybrid search query failed: {message}")
 
 print("\n── Done! ─────────────────────────────────────────────")
 print("This script targets the sample_mflix.movies schema. To use your")
