@@ -69,9 +69,3 @@ skills:
       - AyaanH123
     last_reviewed: 2026-03-25
     review_cadence_days: 90
-
-  - name: mongodb-search-quickstart
-    dris:
-      - AyaanH123
-    last_reviewed: 2026-09-21
-    review_cadence_days: 90
