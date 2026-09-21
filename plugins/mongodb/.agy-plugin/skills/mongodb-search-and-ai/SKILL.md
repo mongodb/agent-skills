@@ -24,9 +24,9 @@ You are helping MongoDB users implement, optimize, and troubleshoot Atlas Search
 
 ### 0. Check for a Quickstart Request
 
-If the user is new to MongoDB search, wants a guided tour, or has no specific use case yet, follow `references/quick-start.md` instead of the workflow below. It is a prescribed step-by-step walkthrough that builds semantic, keyword, and hybrid search against the `sample_mflix` sample dataset.
+If the user is new to MongoDB search, wants a guided tour, or has no specific use case yet, hand off to the `mongodb-search-quickstart` skill instead of the workflow below. It runs a prescribed step-by-step walkthrough that builds semantic, keyword, and hybrid search against the `sample_mflix` sample dataset.
 
-That walkthrough requires an Atlas cloud cluster — it loads Atlas sample data from the Atlas UI and uses Automated Embedding. Its Step 0 confirms the deployment and routes everyone else, including Atlas Local, back here, so on any other deployment skip it and use the workflow below.
+That skill needs Atlas cloud or Atlas Local, since it depends on the sample dataset and Automated Embedding. Its Step 0 checks the deployment and routes generic self-managed users back here, so on one of those use the workflow below. If the skill is not available in the current plugin, also use the workflow below.
 
 Otherwise, continue with the Discovery Phase.
 
