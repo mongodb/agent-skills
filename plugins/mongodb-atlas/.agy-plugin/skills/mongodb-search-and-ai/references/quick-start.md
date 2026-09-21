@@ -642,7 +642,7 @@ db.movies.aggregate([
 Display results.
 
 **Explain:**
-> "MongoDB ran two searches in parallel — one by meaning, one by keywords — then merged them using an algorithm called **Reciprocal Rank Fusion**. Movies that ranked highly in **both** searches scored highest overall. The weights (70% semantic, 30% keyword) control how much each signal matters. You can tune these per query type."
+> "MongoDB ran two searches — one by meaning, one by keywords — then merged them using an algorithm called **Reciprocal Rank Fusion**. Movies that ranked highly in **both** searches scored highest overall. The weights (70% semantic, 30% keyword) control how much each signal matters. You can tune these per query type."
 
 Then show the query syntax:
 > "Hybrid search uses `$rankFusion` to run multiple pipelines and merge them:
@@ -662,7 +662,7 @@ Then show the query syntax:
 >   }
 > }
 > ```
-> Each pipeline runs independently — MongoDB merges the ranked results at the end. You can have more than two pipelines, and weight them however fits your use case."
+> Each pipeline runs independently, one after another rather than in parallel — MongoDB merges the ranked results at the end. You can have more than two pipelines, and weight them however fits your use case."
 
 ### Step 9c — Try Different Weights (Optional)
 
