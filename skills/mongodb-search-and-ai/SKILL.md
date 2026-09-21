@@ -26,6 +26,8 @@ You are helping MongoDB users implement, optimize, and troubleshoot Atlas Search
 
 If the user is new to MongoDB search, wants a guided tour, or has no specific use case yet, follow `references/quick-start.md` instead of the workflow below. It is a prescribed step-by-step walkthrough that builds semantic, keyword, and hybrid search against the `sample_mflix` sample dataset.
 
+That walkthrough is Atlas-only — it loads Atlas sample data and uses Automated Embedding. Its Step 0 confirms the deployment and routes self-managed users back here, so on a self-managed deployment skip it and use the workflow below.
+
 Otherwise, continue with the Discovery Phase.
 
 ### 1. Discovery Phase
