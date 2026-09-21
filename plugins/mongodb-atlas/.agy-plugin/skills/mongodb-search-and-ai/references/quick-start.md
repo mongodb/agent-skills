@@ -2,7 +2,7 @@
 
 **Scope**: This guide is a step-by-step walkthrough that demonstrates semantic search (using Automated Embedding), keyword search (using MongoDB Search), and hybrid search against the `sample_mflix` sample dataset in the user's cluster. Use it when the user wants a guided tour of MongoDB Search and Vector Search — it prescribes an exact interaction sequence, index names, and queries. For the underlying reference material behind each step, see `automated-embedding.md`, `vector-search.md`, `lexical-search-indexing.md`, `lexical-search-querying.md`, and `hybrid-search.md`.
 
-**Supported deployments: Atlas and Atlas Local.** Both provide the `sample_mflix` dataset and support Automated Embedding. On Atlas it works on every tier with no key management; on Atlas Local it requires the `mongodb/mongodb-atlas-local:preview` image and one Voyage AI key. A generic self-managed deployment needs MongoDB 8.3+ with `mongot` 1.70.1+ and its own Voyage AI keys, and has no one-command sample-data loader, so this walkthrough does not cover it. Step 0 identifies the deployment before Step 1, so an unsupported one is turned away up front rather than partway through.
+**This walkthrough is Atlas-only.** Every step assumes an Atlas deployment: the sample dataset is loaded from the Atlas UI, and Automated Embedding is available on every Atlas tier with no key management. A self-managed deployment needs MongoDB 8.3+ with `mongot` plus Voyage AI keys before `autoEmbed` works at all, and has no equivalent sample-data loader, so the prescribed sequence cannot complete there. Step 0 checks the deployment and routes self-managed users out of this walkthrough rather than partway through it.
 
 ## Table of Contents
 
@@ -40,42 +40,29 @@ Never ask the user to decide something they haven't seen yet.
 
   Do not continue until `list-databases` succeeds.
 
-**0.2 — Identify the deployment (silent, best-effort).** This walkthrough covers Atlas and Atlas Local. Establish which one before Step 1 spends the user's time.
+**0.2 — Confirm the deployment is Atlas (silent, best-effort).** This walkthrough is Atlas-only, so establish that before Step 1 spends the user's time.
 
-Work down this ladder and stop at the first match:
+- Attempt `atlas-inspect-cluster`. If it **succeeds**, the deployment is Atlas — proceed silently to Step 1.
+- If it fails, the result is ambiguous: the tool also fails when no Atlas Admin API key is configured, which is common and expected. Do not conclude self-managed from this alone. Run `run-command` with `{ hello: 1 }` and check the reported hosts — Atlas hosts end in `.mongodb.net`.
+- If the deployment is still ambiguous, ask with AskUserQuestion:
+  > "Quick check before we start: is this cluster running on MongoDB Atlas (cloud.mongodb.com or a local Atlas deployment), or is it a self-managed MongoDB you run yourself?"
 
-1. If `atlas-local-list-deployments` is available and reports a running deployment, the target is **Atlas Local**.
-2. If `atlas-inspect-cluster` succeeds, the target is **Atlas**. Failure proves nothing by itself — that tool needs an Atlas Admin API key, which nothing else here requires.
-3. Run `run-command` with `{ hello: 1 }`. Hosts ending in `.mongodb.net` mean **Atlas**.
-4. Still ambiguous — ask with AskUserQuestion:
-   > "Quick check before we start: is this Atlas (cloud.mongodb.com), Atlas Local running in Docker, or a self-managed MongoDB you run yourself?"
+**If the deployment is Atlas:** proceed silently to Step 1. Do not mention the check.
 
-**If Atlas or Atlas Local:** proceed silently to Step 1. Do not mention the check. Carry the result forward — Step 1 and Step 4a both branch on it.
-
-**If self-managed:** do not start the walkthrough. Tell the user:
-> "This guided tour needs Atlas or Atlas Local, because it uses the `sample_mflix` dataset and Automated Embedding. On a self-managed deployment that means MongoDB 8.3+ with `mongot` 1.70.1+ and your own Voyage AI keys, plus restoring the sample archive by hand. Two better options:
+**If the deployment is self-managed:** do not start the walkthrough. Tell the user:
+> "This guided walkthrough is built for Atlas — it loads Atlas's sample movie dataset and uses Automated Embedding, which needs MongoDB 8.3+ with `mongot` and your own Voyage AI keys on a self-managed deployment. Rather than have it break halfway, here are two better options:
 >
-> 1. **Start a local Atlas deployment** — one command, Docker only, no Atlas account needed: `atlas local setup --loadSampleData true`. Then we run this tour end to end.
-> 2. **Skip the tour and build search on your own data here.** Tell me what you want to search and I'll design the index and queries against your actual collections."
+> 1. **Spin up a free Atlas cluster** (M0, no card required) or a local Atlas deployment, load the sample dataset, and we'll run this tour end to end.
+> 2. **Skip the tour and build search on your own data here.** I have the full reference material — tell me what you want to search and I'll design the index and queries against your actual collections."
 
-Then use AskUserQuestion with those two options. If they pick 1, wait for the new connection and restart at Step 0. If they pick 2, leave this walkthrough for the main workflow in `SKILL.md`; without Voyage AI keys configured, semantic search there means manual embeddings (`vector-search.md`), not `autoEmbed`.
+Then use AskUserQuestion with those two options. If they pick 1, wait for the Atlas connection and restart at Step 0. If they pick 2, leave this walkthrough and use the main skill workflow in `SKILL.md`; on a self-managed deployment, semantic search means manual embeddings (`vector-search.md`), not `autoEmbed`.
 
 ## Step 1 — Load Sample Data
 
 Use `list-databases` to check if `sample_mflix` exists on the cluster.
 
-**If it does not exist:** load it the way that matches the deployment identified in Step 0.2.
-
-*On Atlas:*
+**If it does not exist:** tell the user:
 > "We'll use a sample movies dataset that Atlas provides. To load it: go to cloud.mongodb.com → your cluster → click the vertical ellipses → select **Load Sample Dataset**. Come back once it's loaded."
-
-*On Atlas Local:*
-> "Your local deployment can load the same dataset. On a fresh one, `atlas local setup --loadSampleData true` does it in one command. To load it into the deployment you already have:
-> ```sh
-> curl https://atlas-education.s3.amazonaws.com/sampledata.archive -o sampledata.archive
-> mongorestore --archive=sampledata.archive --port=<your deployment port>
-> ```
-> If you started the container directly, `MONGODB_LOAD_SAMPLE_DATA=true` loads it at startup instead. Tell me when it's done."
 
 Wait for confirmation, then re-run `list-databases` to verify `sample_mflix` now appears. If it does not appear yet, tell the user:
 > "It's not available yet. Give it another moment and let me know when it's loaded."
@@ -182,11 +169,6 @@ Before creating anything, explain the value and cost:
 >   ]
 > }
 > ```
-
-**On Atlas Local**, add before the question:
-> "Two differences on a local deployment: Automated Embedding needs the `mongodb/mongodb-atlas-local:preview` image, and it uses a single Voyage AI key that you supply — `MONGODB_ATLAS_LOCAL_VOYAGE_API_KEY` at setup, or `VOYAGE_API_KEY` on the container. A key you created in the Atlas UI bills through your Atlas organization, including the free allocation above; a key created directly at Voyage AI bills through Voyage instead."
-
-If creation then fails for a missing image or key, do not treat it as a tier problem — offer Path A2, which needs neither.
 
 Use AskUserQuestion:
 > "Want to create this index and try semantic search?"
@@ -722,18 +704,12 @@ If yes, copy `scripts/quickstart_complete.py` from this skill directory into the
 ## Troubleshooting
 
 **`sample_mflix` not found**
-- On Atlas, load it from the UI: cluster → three-dot menu → Load Sample Dataset
-- On Atlas Local, use `atlas local setup --loadSampleData true`, or `mongorestore` the sample archive. See Step 1.
+- Load it from Atlas UI: cluster → three-dot menu → Load Sample Dataset
+- If there is no Load Sample Dataset option, the deployment is not Atlas and this walkthrough does not apply. Return to Step 0.2.
 
 **Deployment turns out to be self-managed mid-walkthrough**
-- Stop rather than improvise a substitute. `autoEmbed` index creation fails without MongoDB 8.3+, `mongot` 1.70.1+, and Voyage AI keys, and there is no one-command sample-data loader.
-- Give the user the two options in Step 0.2: start a local Atlas deployment, or leave the walkthrough and build search on their own data through the main `SKILL.md` workflow with manual embeddings.
-
-**`autoEmbed` index creation fails on Atlas Local**
-- Check the image first. Automated Embedding needs `mongodb/mongodb-atlas-local:preview`; the default image does not bundle the required `mongot` build.
-- Then check the key. Atlas Local reads a single Voyage AI key from `MONGODB_ATLAS_LOCAL_VOYAGE_API_KEY` at setup, or `VOYAGE_API_KEY` on the container.
-- If neither is available to the user, offer Path A2 — manual vector search needs no key and works on Atlas Local.
-- Use `voyage-code-3` rather than `voyage-code-4` for code or technical content here; `voyage-code-4` requires an Atlas deployment.
+- Stop rather than improvise a substitute. `autoEmbed` index creation fails without MongoDB 8.3+, `mongot`, and Voyage AI keys, and there is no Atlas sample-data loader.
+- Give the user the two options in Step 0.2: move to Atlas (including a local Atlas deployment), or leave the walkthrough and build search on their own data through the main `SKILL.md` workflow with manual embeddings.
 
 **Index stuck in Building state**
 - Normal for large collections — check status with `collection-indexes`
