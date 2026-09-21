@@ -64,6 +64,10 @@ def covers(expected, actual):
     # True when `actual` contains everything `expected` asks for. Atlas adds
     # its own defaults to a stored definition, so an exact match is too strict.
     if isinstance(expected, dict):
+        # A field can be stored as a list of types (a multi-type field), which
+        # still satisfies a single expected type.
+        if isinstance(actual, list):
+            return any(covers(expected, candidate) for candidate in actual)
         return (isinstance(actual, dict)
                 and all(k in actual and covers(v, actual[k])
                         for k, v in expected.items()))
@@ -194,10 +198,7 @@ text_definition = {
     "mappings": {
         "dynamic": False,
         "fields": {
-            "title": [
-                { "type": "string" },
-                { "type": "autocomplete", "tokenization": "edgeGram" }
-            ],
+            "title": { "type": "string" },
             "plot": { "type": "string" },
             "genres": { "type": "token" }
         }
@@ -261,12 +262,34 @@ results = list(collection.aggregate([
 ]))
 print_results(results, fields=["title"])
 
+# Autocomplete needs 'title' typed as autocomplete, which quickstart_text does
+# not provide. Use a dedicated index, matching the walkthrough's MCP route.
+print("\nCreating autocomplete index on 'title'...")
+
+autocomplete_definition = {
+    "mappings": {
+        "dynamic": False,
+        "fields": {
+            "title": { "type": "autocomplete", "tokenization": "edgeGram" }
+        }
+    }
+}
+
+ensure_index(
+    SearchIndexModel(
+        definition=autocomplete_definition,
+        name="quickstart_autocomplete"
+    ),
+    "quickstart_autocomplete",
+    autocomplete_definition
+)
+
 # Run autocomplete
 print("\nAutocomplete query: 'inc'")
 results = list(collection.aggregate([
     {
         "$search": {
-            "index": "quickstart_text",
+            "index": "quickstart_autocomplete",
             "autocomplete": { "query": "inc", "path": "title" }
         }
     },
@@ -327,9 +350,9 @@ try:
     print_results(results)
 except Exception as e:
     message = str(e)
-    if "Unrecognized pipeline stage name" in message or "$rankFusion" in message:
+    if "Unrecognized pipeline stage name: '$rankFusion'" in message:
         print("  $rankFusion requires MongoDB 8.0+. This cluster does not"
-              f" support it, so hybrid search was skipped. Error: {message}")
+              " support it, so hybrid search was skipped.")
     else:
         fail(f"Hybrid search query failed: {message}")
 

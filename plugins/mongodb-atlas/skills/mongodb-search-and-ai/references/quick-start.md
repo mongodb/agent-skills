@@ -527,7 +527,7 @@ Autocomplete needs `title` indexed as an `autocomplete` type, which `quickstart_
 }
 ```
 
-Then query it with `index: "quickstart_autocomplete"` instead of `quickstart_text`. This is a perfectly good pattern in its own right — a small, purpose-built autocomplete index stays fast and can be tuned independently of your main relevance index. Just remember it counts against the tier index caps in Step 3a.3 ①.
+Then query it with `index: "quickstart_autocomplete"` instead of `quickstart_text`. This is a perfectly good pattern in its own right — a small, purpose-built autocomplete index stays fast and can be tuned independently of your main relevance index. Just remember it counts against the tier index caps in Step 3a.3 ①. The standalone script offered at Wrap Up uses this second-index route too, so it reuses whatever these steps created rather than requiring a different definition.
 
 Tell the user which route you took and why.
 
