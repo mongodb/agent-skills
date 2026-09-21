@@ -11,11 +11,13 @@
 # schema is hard-coded throughout: the `plot`, `genres`, and `title`
 # fields, the index definitions, and the sample query text.
 #
-# To run against your own data, change the three values below AND
+# The connection string comes from the environment: set MONGODB_URI, or
+# MDB_MCP_CONNECTION_STRING, which the MongoDB MCP server already uses.
+#
+# To run against your own data, change the two values below AND
 # update the index definitions, `$project` stages, and query strings
 # to match your own field names.
 
-CONNECTION_STRING = "your-connection-string-here"
 DB_NAME = "sample_mflix"
 COLLECTION_NAME = "movies"
 
@@ -23,9 +25,18 @@ INDEX_WAIT_TIMEOUT_SECONDS = 600
 
 # ─────────────────────────────────────────────────────────────
 
+import os
 import time
 from pymongo import MongoClient
 from pymongo.operations import SearchIndexModel
+
+CONNECTION_STRING = (os.environ.get("MONGODB_URI")
+                     or os.environ.get("MDB_MCP_CONNECTION_STRING"))
+
+if not CONNECTION_STRING:
+    raise SystemExit("\n  ERROR: no connection string. Set MONGODB_URI (or"
+                     " MDB_MCP_CONNECTION_STRING) to your cluster's SRV"
+                     " string, then rerun.")
 
 client = MongoClient(CONNECTION_STRING)
 db = client[DB_NAME]
