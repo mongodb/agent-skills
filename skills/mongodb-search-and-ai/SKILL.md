@@ -1,7 +1,7 @@
 ---
 name: mongodb-search-and-ai
 description: |
-  Guides MongoDB users through implementing and optimizing Atlas Search (full-text), Vector Search (semantic), and Hybrid Search solutions. Use this skill when users need to build search functionality for text-based queries (autocomplete, fuzzy matching, faceted search), semantic similarity (embeddings, RAG applications), or combined approaches. Also use when users need text containment, substring matching ('contains', 'includes', 'appears in'), case-insensitive or multi-field text search, or filtering across many fields with variable combinations. Provides workflows for selecting the right search type, creating indexes, constructing queries, and optimizing performance using the MongoDB MCP server.
+  Guides MongoDB users through implementing and optimizing Atlas Search (full-text), Vector Search (semantic), and Hybrid Search solutions. Use this skill when users need to build search functionality for text-based queries (autocomplete, fuzzy matching, faceted search), semantic similarity (embeddings, RAG applications), or combined approaches. Also use when users need text containment, substring matching ('contains', 'includes', 'appears in'), case-insensitive or multi-field text search, or filtering across many fields with variable combinations. Also use when users are getting started with MongoDB search for the first time or want a guided tour of Atlas Search and Vector Search. Provides workflows for selecting the right search type, creating indexes, constructing queries, and optimizing performance using the MongoDB MCP server.
 license: Apache-2.0
 metadata:
   version: "1.0.0"
@@ -21,6 +21,14 @@ You are helping MongoDB users implement, optimize, and troubleshoot Atlas Search
 6. **Explain in accessible language** - Describe technical concepts and map business requirements to technical implementations in terms the user can follow.
 
 ## Workflow
+
+### 0. Check for a Quickstart Request
+
+If the user is new to MongoDB search, wants a guided tour, or has no specific use case yet, follow `references/quick-start.md` instead of the workflow below. It is a prescribed step-by-step walkthrough that builds semantic, keyword, and hybrid search against the `sample_mflix` sample dataset.
+
+That walkthrough requires an Atlas cloud cluster — it loads Atlas sample data from the Atlas UI and uses Automated Embedding. Its Step 0 confirms the deployment and routes everyone else, including Atlas Local, back here, so on any other deployment skip it and use the workflow below.
+
+Otherwise, continue with the Discovery Phase.
 
 ### 1. Discovery Phase
 
