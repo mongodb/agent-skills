@@ -1,0 +1,145 @@
+{
+  "test_suite": "Atlas Terraform Getting Started vs Existing Skills - Skill Invocation Tests",
+  "description": "Validates that atlas-terraform-getting-started triggers on the right prompts and does not conflict with other skills. Tests boundaries between Terraform getting-started and: natural-language-querying, query-optimizer, schema-design, search-and-ai, stream-processing, and no-skill scenarios.",
+  "version": "1.0",
+  "skills_tested": [
+    "atlas-terraform-getting-started"
+  ],
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "clear_terraform_getting_started",
+      "prompt": "How do I create my first MongoDB Atlas cluster using Terraform?",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": null,
+      "reasoning": "Direct getting-started request with Atlas + Terraform + create intent",
+      "trigger_keywords": ["create", "Atlas cluster", "Terraform"]
+    },
+    {
+      "id": 2,
+      "category": "clear_terraform_getting_started",
+      "prompt": "I want to set up MongoDB Atlas with Terraform from scratch",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": null,
+      "reasoning": "Setup from scratch intent with Atlas + Terraform",
+      "trigger_keywords": ["set up", "Atlas", "Terraform", "from scratch"]
+    },
+    {
+      "id": 3,
+      "category": "clear_terraform_getting_started",
+      "prompt": "Help me get started with the mongodbatlas Terraform provider",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": null,
+      "reasoning": "Explicit provider + getting-started intent",
+      "trigger_keywords": ["get started", "mongodbatlas", "Terraform provider"]
+    },
+    {
+      "id": 4,
+      "category": "clear_terraform_getting_started",
+      "prompt": "What's the Terraform config to deploy an Atlas cluster on AWS?",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": null,
+      "reasoning": "Terraform config generation with deploy intent",
+      "trigger_keywords": ["Terraform config", "deploy", "Atlas cluster"]
+    },
+    {
+      "id": 5,
+      "category": "clear_terraform_getting_started",
+      "prompt": "terraform mongodbatlas provider setup for a new project",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": null,
+      "reasoning": "Provider keyword combined with setup intent — explicit trigger phrase from skill description",
+      "trigger_keywords": ["terraform mongodbatlas provider", "setup"]
+    },
+    {
+      "id": 6,
+      "category": "no_trigger_existing_config",
+      "prompt": "My existing Terraform Atlas config is slow to apply and I want to refactor it to use modules",
+      "expected_skill": null,
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "Refactoring an existing Atlas Terraform config is explicitly out of scope",
+      "trigger_keywords": ["refactor", "existing", "Terraform"]
+    },
+    {
+      "id": 7,
+      "category": "no_trigger_privatelink",
+      "prompt": "How do I add AWS PrivateLink to my Atlas cluster using Terraform?",
+      "expected_skill": null,
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "PrivateLink is a cloud-specific integration out of scope for the getting-started skill",
+      "trigger_keywords": ["PrivateLink", "Terraform"]
+    },
+    {
+      "id": 8,
+      "category": "no_trigger_general_terraform",
+      "prompt": "How do I write a Terraform module for an S3 bucket?",
+      "expected_skill": null,
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "General Terraform question unrelated to Atlas",
+      "trigger_keywords": ["Terraform", "S3 bucket"]
+    },
+    {
+      "id": 9,
+      "category": "no_trigger_atlas_search",
+      "prompt": "How do I create an Atlas Search index using Terraform?",
+      "expected_skill": null,
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "Atlas Search index management via Terraform is explicitly out of scope",
+      "trigger_keywords": ["Atlas Search", "Terraform", "index"]
+    },
+    {
+      "id": 10,
+      "category": "no_trigger_natural_language_querying",
+      "prompt": "Write a MongoDB query to find all users who signed up in the last 30 days",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "Query generation request — no Terraform intent",
+      "trigger_keywords": ["query", "find", "MongoDB"]
+    },
+    {
+      "id": 11,
+      "category": "no_trigger_schema_design",
+      "prompt": "Should I embed comments in my posts collection or use a separate collection?",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "Schema design question — no Terraform intent",
+      "trigger_keywords": ["embed", "collection", "schema"]
+    },
+    {
+      "id": 12,
+      "category": "no_trigger_stream_processing",
+      "prompt": "How do I process Kafka events with Atlas Stream Processing?",
+      "expected_skill": "atlas-stream-processing",
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "Stream processing question — no Terraform intent",
+      "trigger_keywords": ["Kafka", "Atlas Stream Processing"]
+    },
+    {
+      "id": 13,
+      "category": "no_trigger_cmek",
+      "prompt": "How do I enable customer-managed encryption keys (CMEK) for my Atlas cluster with Terraform?",
+      "expected_skill": null,
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "KMS/CMEK is a cloud-specific integration explicitly out of scope for the getting-started skill",
+      "trigger_keywords": ["CMEK", "customer-managed", "Terraform"]
+    },
+    {
+      "id": 14,
+      "category": "no_trigger_terraform_import",
+      "prompt": "How do I import my existing Atlas cluster into Terraform state?",
+      "expected_skill": null,
+      "should_not_trigger": "atlas-terraform-getting-started",
+      "reasoning": "Importing existing infrastructure is explicitly out of scope",
+      "trigger_keywords": ["import", "existing", "Terraform state"]
+    },
+    {
+      "id": 15,
+      "category": "ambiguous_boundary",
+      "prompt": "terraform atlas",
+      "expected_skill": "atlas-terraform-getting-started",
+      "should_not_trigger": null,
+      "reasoning": "Minimal prompt with both trigger keywords — should default to getting-started",
+      "trigger_keywords": ["terraform", "atlas"]
+    }
+  ]
+}
