@@ -48,7 +48,7 @@ Don't use when: variable durations—start conservative (10-20), monitor, adjust
 
 Query optimization can dramatically reduce required pool size.
 
-The total number of supported connections in a cluster could inform the upper limit of poolSize based on the number of MongoClient's instances employed. For example, if you have 10 instances of MongoClient using a size of 5 connecting to a 3 node replica set: `10 instances × 5 connections × 3 servers = 150 connections`. 
+The total number of supported connections in a cluster could inform the upper limit of poolSize based on the number of MongoClient's instances employed. For example, if you have 10 instances of MongoClient using a size of 5 connecting to a 3 node replica set: `10 instances × 5 connections × 3 servers = 150 connections` from the pool alone, plus the 2 monitoring connections per member noted above (`10 × 2 × 3 = 60`), for `210 connections` total against the server's limit.
 
 Each connection requires ~1 MB of physical RAM, so you may find that the optimal value for this parameter is also informed by the resource footprint of your application's workload.
 
