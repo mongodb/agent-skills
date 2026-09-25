@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "<positive example that inputs values manually>",
-      "expected_output": "Should",
+      "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": []
     },
     {
@@ -27,12 +27,20 @@
     {
       "id": 4,
       "prompt": "<negative example that prompts to calculate impact for a CSFLE collection>",
-      "expected_output": "Agent should not invoke the skill."
+      "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for CSFLE.",
+      "expectations": [
+         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt",
+         "The response uses the mongosh db.collection.totalSize() method or the database db.collStats() command."
+      ]
     },
     {
       "id": 5,
       "prompt": "<negative example that asks to calculate the collection size of an unencrypted collection>",
-      "expected_output": "Agent should not invoke the skill."
+      "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for estimating the size of unencrypted collections",
+      "expectations": [
+         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt",
+         "The response uses the mongosh db.collection.totalSize() method or the database db.collStats() command."
+      ]
     }
    ]
 }
