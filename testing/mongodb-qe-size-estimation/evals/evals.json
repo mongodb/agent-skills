@@ -6,7 +6,11 @@
       "name": "manual-inputs",
       "prompt": "<positive example that inputs values manually>",
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
-      "expectations": []
+      "expectations": [
+         "The agent generates a qe-sizing-calculations.md file that is identical to the one in expected/qe-sizing-calculations-1.md aside from whitespace.",
+         "Total storage impact should be X",
+         "Total memory impact should be Y"
+      ]
     },
     {
       "id": 2,
@@ -15,6 +19,7 @@
       "files": ["assets/sample-schema.json"],
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
+         "The agent generates a qe-sizing-calculations.md file that is identical to the one in expected/qe-sizing-calculations-2.md aside from whitespace.",
          "Total storage impact should be X",
          "Total memory impact should be Y"
       ]
@@ -25,7 +30,10 @@
       "prompt": "<positive example that inputs values via an invalid encryption schema, and SHOULD invoke the skill but should exercise its validation and failure states>",
       "files": ["assets/sample-schema-2.json"],
       "expected_output": "Agent should reject the provided schema as invalid and pause skill execution until the user provides valid inputs.",
-      "expectations": []
+      "expectations": [
+         "The agent rejects the inputs as invalid and identifies the validation failures",
+         "X is identified as a validation failure"
+      ]
     },
     {
       "id": 4,
