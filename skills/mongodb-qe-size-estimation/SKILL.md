@@ -82,7 +82,7 @@ Save the sum of numUnindexed and numIndexed to qe-sizing-calculations.md as:
 
 ## 5. Get Inputs Per Field
 
-Write this exact heading line to qe-sizing-calculations.md:
+Write a section heading to qe-sizing-calculations.md:
 
 == FIELD VALUES ===============================================================
 
@@ -164,7 +164,7 @@ For every entry in qe-sizing-calculations.md:
 
 These values are collection-level and calculated as totals across all entries. For fields with both prefix and suffix entries, they all count towards the total.
 
-At the end of the qe-sizing-calculations.md file, silently write the following lines, copying the heading exactly:
+At the end of the qe-sizing-calculations.md file, silently write the following lines:
 
 == COLLECTION-LEVEL TOTALS ====================================================
 **N:** <copy the N value from the top of the file down to this section, for easier reading>
