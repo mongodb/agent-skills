@@ -58,13 +58,25 @@
     {
       "id": 2,
       "name": "encryption-schema-input",
-      "prompt": "<positive example that inputs values via a valid encryption schema>",
       "files": ["assets/sample-schema.json"],
+      "workflow": [
+         { "turn": 1,
+           "prompt": "I'm using Queryable Encryption and want to know how much bigger my collection will get. The collection has about 3 million documents. Here's my encryption schema."
+         },
+         { "turn": 2,
+           "prompt": "ssn is about 11 bytes, name averages 20, bio is usually 200, userId is 8, profile runs about 500, and idScan averages 20000."
+         }
+      ],
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
-         "The agent generates a qe-sizing-calculations.md file that is identical to the one in expected/qe-sizing-calculations-2.md when disregarding whitespace.",
-         "Total storage impact should be X",
-         "Total memory impact should be Y"
+         "On turn 1, the user provides an encryption schema and the document count. The agent invokes the skill, validates the schema, and records numUnindexed 2, numIndexed 7, and numEntries 9",
+         "The agent asks for the average byte length (v) of the field values, asking for v only once the name field's two entries, and not asking for v for balance or birthdate",
+         "The agent informs the user that balance and birthdate use range queries, which have no sizing formula, so their impact is estimated as 0",
+         "On turn 2, the user provides the v values. The agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions",
+         "Total disk storage impact is 309.72 GB",
+         "Total memory impact is 30.41 GiB",
+         "The top field by impact is bio",
+         "The end state of the agent's qe-sizing-calculations.md file is identical to the one in expected/qe-sizing-calculations-2.md, when disregarding whitespace."
       ]
     },
     {
