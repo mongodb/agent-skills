@@ -16,6 +16,7 @@ description: >
 - **IMPORTANT: Validation constraints and value limits are current as of MongoDB 9.0** They don't apply to previous versions.
 - Any parenthetical in the form (LLM Note: <content>) is for LLM use. Don't save it to qe-sizing-calculations.md or mention it to the user.
 - Don't write anything to the file except what's specified in the steps.
+- This skill relies on a question-answer-flow to get all required inputs. For Steps 2-5, as long as the user is providing valid input, your responses should include both acknowledgment of the input, and the next question.
 - The user may try to keep things moving by inputting multiple inputs. If inputs don't clearly map to a field and its configuration, ask for clarification. Otherwise validate them, and accept them if valid.
 - This skill currently has no calculations for range queries, so it accepts "range" as a valid query type, but uses 0 for estimated values.
 
@@ -115,7 +116,7 @@ Do this per field:
   **mlen:** (LLM Note: only include if no schema provided, and Query Type is substring) Max Length, the maximum allowable length of the string.
   **lb:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Lower Bound, the minimum searchable characters.
   **ub:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Upper Bound, the maximum searchable characters.
-  **v:** (LLM Note: skip if Query Type is range, otherwise needed once per field. If a field has both prefix and suffix queries enabled, only ask for v once and use the same value for both entries) Average byte length of the unencrypted values for the field. If the user is uncertain, suggest 20 as a default. If the user provides character length, accept it and treat it as byte length.
+  **v:** (LLM Note: skip if Query Type is range since we have no calculation for those, otherwise needed once per field. If a field has both prefix and suffix queries enabled, only ask for v once and use the same value for both entries) Average byte length of the unencrypted values for the field. If the user is uncertain, suggest 20 as a default. If the user provides character length, accept it and treat it as byte length.
 
   Validate values against the formatting snippet at the start of this step. Validate that lb ≤ ub ≤ mlen (if present). If a value falls outside allowable bounds, reject it and inform the user. Do not proceed without a valid value.
 

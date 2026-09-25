@@ -88,6 +88,7 @@
       "expectations": [
          "The agent invokes the skill and validates the schema against the skill's validation rules",
          "The agent identifies the validation failures: the only valid multi-query configuration is prefix + suffix (violated by email, bio, labels), int fields only support equality or range query types(violated by age, count), string fields don't support range queries (violated by note), and object fields support only unindexed encryption (violated by meta)",
+         "The agent does NOT state that the fields 'ssn' and 'name' are invalid",
          "The agent rejects the schema and doesn't proceed. It doesn't run any calculations or request byte length data since the user didn't provide valid input."
       ]
     },
@@ -97,9 +98,7 @@
       "prompt": "We're encrypting several fields in our users collection with Client-Side Field Level Encryption and I want to plan capacity. How much extra storage will the encrypted fields add, and how much memory do we need?",
       "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for CSFLE.",
       "expectations": [
-         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt",
-         "The agent does not create a qe-sizing-calculations.md file or use the skill's storage formulas",
-         "The response uses the mongosh db.collection.totalSize() method or the database db.collStats() command."
+         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt"
       ]
     },
     {
@@ -108,9 +107,7 @@
       "prompt": "How can I estimate how much disk space my MongoDB collection will use as it grows?",
       "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for estimating the size of unencrypted collections",
       "expectations": [
-         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt",
-         "The agent does not create a qe-sizing-calculations.md file or use the skill's storage formulas",
-         "The response uses the mongosh db.collection.totalSize() method or the database db.collStats() command."
+         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt"
       ]
     }
    ]
