@@ -15,8 +15,10 @@ description: >
 - **CRITICAL: Never ask for or accept sample data.** QE is an encryption feature, meant to secure sensitive information. Do not request sample data, and if provided, reject it for security reasons. Inform the user that you can't accept sample documents, though you can take an encryption schema as an input to see which fields are encrypted, which allow queries, and what those query settings are.
 - **IMPORTANT: Validation constraints and value limits are current as of MongoDB 9.0** They don't apply to previous versions.
 - Any parenthetical in the form (LLM Note: <content>) is for LLM use. Don't save it to qe-sizing-calculations.md or mention it to the user.
+- Don't write any content to file except what's specified in the steps.
+- When a step requires writing to file, write each value as soon as it is received, not in batches.
 - When writing numerical values to file, round fractional/decimal values to 2 decimal places, and keep any trailing zeros.
-- The user may try to keep things moving by inputting multiple inputs
+- The user may try to keep things moving by inputting multiple inputs. If inputs don't clearly map to a field and its configuration, ask for clarification. Otherwise validate them, and accept them if valid.
 - This skill currently has no calculations for range queries, so it accepts "range" as a valid query type, but uses 0 for estimated values.
 
 
@@ -46,7 +48,7 @@ If the user's input violates any of the preceding rules, reject it. If a user do
 
 ## 1. Prepare the Working Directory
 
-Create a qe-sizing-calculations.md file in a temporary directory. If working in a repository, check gitignore to see if there are existing directories you should use. If no ignored scratch directory exists, use the OS temp directory ($TMPDIR, or /tmp if unset). If a qe-sizing-calculations.md file already exists at that location, inform the user and ask for confirmation to delete it and create a new one for the new set of calculations.
+Create an empty qe-sizing-calculations.md file in the OS temp directory ($TMPDIR, or /tmp if unset). If a qe-sizing-calculations.md file already exists at that location, inform the user and ask for confirmation to delete it and create a new one for the new set of calculations.
 
 ## 2. State Purpose and Request Input Preference
 

@@ -49,8 +49,8 @@
          "On turn 9, the user provides the values, so the agent asks about the third and final field",
          "On turn 10, the user provides all information. The agent increments numIndexed from 2 to 3 and numEntries from 3 to 4 when the prefix + suffix field is revealed, and adds two separate entries",
          "After getting all inputs, the agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions.",
-         "Total storage impact is X",
-         "Total memory impact is Y",
+         "Total disk storage impact is 137.34 GB",
+         "Total memory impact is 16.76 GiB",
          "The top field by impact is lastname",
          "The end state of the agent's qe-sizing-calculations.md file is identical to the one in expected/qe-sizing-calculations-1.md, when disregarding whitespace."
       ]
