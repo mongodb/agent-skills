@@ -14,6 +14,7 @@ description: >
 
 - **CRITICAL: Never ask for or accept sample data.** QE is an encryption feature, meant to secure sensitive information. Do not request sample data, and if provided, reject it for security reasons. Inform the user that you can't accept sample documents, though you can take an encryption schema as an input to see which fields are encrypted, which allow queries, and what those query settings are.
 - **IMPORTANT: Validation constraints and value limits are current as of MongoDB 9.0** They don't apply to previous versions.
+- When writing numerical values to file, round to 2 decimal places and keep trailing zeros.
 - Any parenthetical in the form (LLM Note: <content>) is for LLM use. Don't save it to qe-sizing-calculations.md or mention it to the user.
 - This skill currently has no calculations for range queries, so it accepts "range" as a valid query type, but uses 0 for estimated values.
 
@@ -80,7 +81,7 @@ Save the sum of numUnindexed and numIndexed to qe-sizing-calculations.md as:
 
 ## 5. Get Inputs Per Field
 
-Write a heading line to qe-sizing-calculations.md:
+Write this exact heading line to qe-sizing-calculations.md:
 
 == FIELD VALUES ===============================================================
 
@@ -162,10 +163,10 @@ For every entry in qe-sizing-calculations.md:
 
 These values are collection-level and calculated as totals across all entries. For fields with both prefix and suffix entries, they all count towards the total.
 
-At the end of the qe-sizing-calculations.md file, silently write the following lines:
+At the end of the qe-sizing-calculations.md file, silently write the following lines, copying the heading exactly:
 
 == COLLECTION-LEVEL TOTALS ====================================================
-**N:** <move the N value from the top of the file down to here, for easier reading>
+**N:** <copy the N value from the top of the file down to this section, for easier reading>
 **T_Total:** <the sum of all T values.>
 **Index Storage (bytes):** <run the calculation: 1.2 * (67 * T_Total + 640)>
 **Total Disk Storage (bytes):** <run the calculation: N * (Index Storage + (the sum of all Document Storage values))>

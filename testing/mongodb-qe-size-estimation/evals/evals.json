@@ -7,7 +7,7 @@
       "prompt": "<positive example that inputs values manually>",
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
-         "The agent generates a qe-sizing-calculations.md file that is identical to the one in expected/qe-sizing-calculations-1.md aside from whitespace.",
+         "The agent generates a qe-sizing-calculations.md file that is identical to the one in expected/qe-sizing-calculations-1.md when disregarding whitespace.",
          "Total storage impact should be X",
          "Total memory impact should be Y"
       ]
@@ -19,7 +19,7 @@
       "files": ["assets/sample-schema.json"],
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
-         "The agent generates a qe-sizing-calculations.md file that is identical to the one in expected/qe-sizing-calculations-2.md aside from whitespace.",
+         "The agent generates a qe-sizing-calculations.md file that is identical to the one in expected/qe-sizing-calculations-2.md when disregarding whitespace.",
          "Total storage impact should be X",
          "Total memory impact should be Y"
       ]
