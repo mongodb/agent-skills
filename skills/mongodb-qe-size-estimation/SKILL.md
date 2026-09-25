@@ -1,9 +1,11 @@
 ---
 name: mongodb-qe-size-estimation
 license: Apache-2.0
-metadata.version: "1.1.0"
+metadata:
+  version: "1.0.0"
 description: >
-  Estimates the storage and memory impact of encrypting fields in collections with Queryable Encryption (QE) enabled. Don't use for collections that use Client-Side Field Level Encryption (CSFLE) instead of QE.
+  Estimates the storage and memory impact of encrypting fields in collections with Queryable Encryption (QE) enabled. 
+  Do NOT use for collections that use Client-Side Field Level Encryption (CSFLE) instead of QE.
 ---
 
 # mongodb-qe-size-estimation

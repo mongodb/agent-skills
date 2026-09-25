@@ -1,0 +1,10 @@
+{
+  "skill_name": "mongodb-qe-size-estimation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Foo",
+      "expected_output": "Should",
+      "files": []
+    }]
+}
