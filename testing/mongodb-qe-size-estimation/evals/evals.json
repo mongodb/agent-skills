@@ -52,7 +52,7 @@
          "Total disk storage impact is 137.34 GB",
          "Total memory impact is 16.76 GiB",
          "The top field by impact is lastname",
-         "The end state of the agent's qe-sizing-calculations.md file is identical to the one in expected/qe-sizing-calculations-1.md, when disregarding whitespace."
+         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory i, match those in expected/qe-sizing-calculations-1.md. Intermediate formulas or formatting may diverge."
       ]
     },
     {
@@ -76,7 +76,7 @@
          "Total disk storage impact is 309.72 GB",
          "Total memory impact is 30.41 GiB",
          "The top field by impact is bio",
-         "The end state of the agent's qe-sizing-calculations.md file is identical to the one in expected/qe-sizing-calculations-2.md, when disregarding whitespace."
+         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory i, match those in expected/qe-sizing-calculations-2.md. Intermediate formulas or formatting may diverge."
       ]
     },
     {

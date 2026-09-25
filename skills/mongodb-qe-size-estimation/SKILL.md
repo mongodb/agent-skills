@@ -16,8 +16,6 @@ description: >
 - **IMPORTANT: Validation constraints and value limits are current as of MongoDB 9.0** They don't apply to previous versions.
 - Any parenthetical in the form (LLM Note: <content>) is for LLM use. Don't save it to qe-sizing-calculations.md or mention it to the user.
 - Don't write anything to the file except what's specified in the steps.
-- When calculating an expression and writing the result to file, write <expression, with values substituted> = <final result>. Don't write intermediate steps. For example: 1.2 * (255 * 107 + 110 + ceil((20 + 6) / 16) * 16) = 32912.4
-- When writing numerical values to file, if a value is fractional/decimal, round the value to 2 decimal places and drop trailing zeros.
 - The user may try to keep things moving by inputting multiple inputs. If inputs don't clearly map to a field and its configuration, ask for clarification. Otherwise validate them, and accept them if valid.
 - This skill currently has no calculations for range queries, so it accepts "range" as a valid query type, but uses 0 for estimated values.
 
