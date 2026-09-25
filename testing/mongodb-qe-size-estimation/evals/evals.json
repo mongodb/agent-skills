@@ -5,31 +5,34 @@
       "id": 1,
       "prompt": "<positive example that inputs values manually>",
       "expected_output": "Should",
-      "files": []
+      "expectations": []
     },
     {
       "id": 2,
       "prompt": "<positive example that inputs values via a valid encryption schema>",
-      "expected_output": "Should",
-      "files": ["assets/sample-schema.json"]
+      "files": ["assets/sample-schema.json"],
+      "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
+      "expectations": [
+         "Total storage impact should be X",
+         "Total memory impact should be Y"
+      ]
     },
     {
       "id": 3,
       "prompt": "<positive example that inputs values via an invalid encryption schema, and SHOULD invoke the skill but should exercise its validation and failure states>",
-      "expected_output": "Should",
-      "files": ["assets/sample-schema-2.json"]
+      "files": ["assets/sample-schema-2.json"],
+      "expected_output": "Agent should reject the provided schema as invalid and pause skill execution until the user provides valid inputs.",
+      "expectations": []
     },
     {
       "id": 4,
       "prompt": "<negative example that prompts to calculate impact for a CSFLE collection>",
-      "expected_output": "Should",
-      "files": []
+      "expected_output": "Agent should not invoke the skill."
     },
     {
       "id": 5,
       "prompt": "<negative example that asks to calculate the collection size of an unencrypted collection>",
-      "expected_output": "Should",
-      "files": []
+      "expected_output": "Agent should not invoke the skill."
     }
    ]
 }
