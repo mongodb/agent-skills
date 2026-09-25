@@ -3,8 +3,33 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Foo",
+      "prompt": "<positive example that inputs values manually>",
       "expected_output": "Should",
       "files": []
-    }]
+    },
+    {
+      "id": 2,
+      "prompt": "<positive example that inputs values via a valid encryption schema>",
+      "expected_output": "Should",
+      "files": ["assets/sample-schema.json"]
+    },
+    {
+      "id": 3,
+      "prompt": "<positive example that inputs values via an invalid encryption schema, and SHOULD invoke the skill but should exercise its validation and failure states>",
+      "expected_output": "Should",
+      "files": ["assets/sample-schema-2.json"]
+    },
+    {
+      "id": 4,
+      "prompt": "<negative example that prompts to calculate impact for a CSFLE collection>",
+      "expected_output": "Should",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "<negative example that asks to calculate the collection size of an unencrypted collection>",
+      "expected_output": "Should",
+      "files": []
+    }
+   ]
 }
