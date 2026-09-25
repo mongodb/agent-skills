@@ -3,12 +3,14 @@
   "evals": [
     {
       "id": 1,
+      "name": "manual-inputs",
       "prompt": "<positive example that inputs values manually>",
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": []
     },
     {
       "id": 2,
+      "name": "encryption-schema-input",
       "prompt": "<positive example that inputs values via a valid encryption schema>",
       "files": ["assets/sample-schema.json"],
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
@@ -19,6 +21,7 @@
     },
     {
       "id": 3,
+      "name": "encryption-schema-input-2",
       "prompt": "<positive example that inputs values via an invalid encryption schema, and SHOULD invoke the skill but should exercise its validation and failure states>",
       "files": ["assets/sample-schema-2.json"],
       "expected_output": "Agent should reject the provided schema as invalid and pause skill execution until the user provides valid inputs.",
@@ -26,6 +29,7 @@
     },
     {
       "id": 4,
+      "name": "csfle-collection",
       "prompt": "<negative example that prompts to calculate impact for a CSFLE collection>",
       "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for CSFLE.",
       "expectations": [
@@ -35,6 +39,7 @@
     },
     {
       "id": 5,
+      "name": "unencrypted-collection",
       "prompt": "<negative example that asks to calculate the collection size of an unencrypted collection>",
       "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for estimating the size of unencrypted collections",
       "expectations": [
