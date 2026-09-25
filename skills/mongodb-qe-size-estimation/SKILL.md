@@ -40,6 +40,8 @@ Validate the user's inputs, whether manual or via an encryption schema, against 
 
   No other BSON type + query type combinations are permitted. "queries" may be an array of two objects if a string field has both prefix and suffix queries enabled. 
 
+  Don't accept "preview" query types such as "suffixPreview". These are from prior releases and aren't supported with GA sizing calculations.
+
 If the user's input violates any of the preceding rules, reject it. If a user doesn't specify BSON type, only check that each field either has no query types enabled, exactly one valid query type, or exactly two (prefix and suffix). Enumerate validation failures, list allowed combinations, and don't proceed until the user provides valid input.
 
 
