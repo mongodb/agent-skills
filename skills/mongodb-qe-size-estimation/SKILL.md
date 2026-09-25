@@ -185,7 +185,7 @@ If the encryption schema or manual inputs included fields with range queries ena
 
 Present advice. Don't provide any advice the user has explicitly rejected, such as suggesting different query types if they insist a field needs to allow substring queries. Only raise problems, don't mention something if it passes all checks.
 
-- (LLM Note: Only run this check if the number of fields with substring queries enabled is greater than floor(50m/N). Defer to available mathematical parsing tools to ensure correct calculation) Tell the user to the number of substring queryable fields to no more than: floor(50 million/<documents in collection>). Tell them not to use substring queries on collections of more than 50 million documents.
+- (LLM Note: Only run this check if the number of fields with substring queries enabled is greater than floor(50m/N). Defer to available mathematical parsing tools to ensure correct calculation) Tell the user to limit the number of substring queryable fields to no more than: floor(50 million/<documents in collection>). Tell them not to use substring queries on collections of more than 50 million documents.
 - (LLM Note: Only run this check if one or more substring queryable fields are present) Check if substring-indexed fields might be suitable for prefix or suffix queries instead, and suggest that to the user. For example, queries against encrypted "name" fields can often use prefix instead of substring, though this admittedly presents drawbacks for cases like hyphenated surnames.
 - (LLM Note: Only make these suggestions if they apply to the user's inputs, and if the changes don't make the modified value go outside its allowed limits) Tell the user to consider raising lb, lowering ub, or lowering mlen values.
 
