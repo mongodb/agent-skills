@@ -72,6 +72,6 @@ skills:
 
   - name: mongodb-qe-size-estimation
     dris:
-      -  nvillahermosa-mdb
+      - nvillahermosa-mdb
     last_reviewed: 2026-09-25
     review_cadence_days: 90
