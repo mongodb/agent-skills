@@ -114,7 +114,7 @@ Do this per field:
   **mlen:** (LLM Note: only include if no schema provided, and Query Type is substring) Max Length, the maximum allowable length of the string.
   **lb:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Lower Bound, the minimum searchable characters.
   **ub:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Upper Bound, the maximum searchable characters.
-  **v:** (LLM Note: skip if Query Type is range, otherwise needed once per field. If a field has both prefix and suffix queries enabled, only ask for v once and use the same value for both entries) Average byte length of the unencrypted values for the field. If the user is uncertain, suggest 20 as a default.
+  **v:** (LLM Note: skip if Query Type is range, otherwise needed once per field. If a field has both prefix and suffix queries enabled, only ask for v once and use the same value for both entries) Average byte length of the unencrypted values for the field. If the user is uncertain, suggest 20 as a default. If the user provides character length, accept it and treat it as byte length.
 
   Validate values against the formatting snippet at the start of this step. Validate that lb ≤ ub ≤ mlen (if present). If a value falls outside allowable bounds, reject it and inform the user. Do not proceed without a valid value.
 
