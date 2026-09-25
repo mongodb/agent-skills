@@ -82,7 +82,7 @@
     {
       "id": 3,
       "name": "encryption-schema-input-2",
-      "prompt": "I'm using Queryable Encryption and want to know how much bigger my collection will get. The collection has about 3 million documents. Here's my encryption schema. How big will my collection be, and how much memory do I need?",
+      "prompt": "I'm using Queryable Encryption and want to know how much bigger my collection will get. The collection has about 3 million documents. Here's my encryption schema.",
       "files": ["assets/sample-schema-2.json"],
       "expected_output": "Agent rejects the provided schema as invalid and stops skill execution awaiting valid inputs.",
       "expectations": [
