@@ -60,11 +60,12 @@
     {
       "path": "labels",
       "bsonType": "string",
-      "queries": [
-        { "queryType": "prefix", "strMinQueryLength": 2, "strMaxQueryLength": 10 },
-        { "queryType": "suffix", "strMinQueryLength": 2, "strMaxQueryLength": 10 },
-        { "queryType": "substring", "strMaxLength": 50, "strMinQueryLength": 3, "strMaxQueryLength": 6 }
-      ]
+      "queries": { 
+        "queryType": "substringPreview",
+        "strMaxLength": 20,
+        "strMinQueryLength": 2,  
+        "strMaxQueryLength": 6
+      }
     }
   ]
 }

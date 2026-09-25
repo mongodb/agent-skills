@@ -6,7 +6,7 @@
       "name": "manual-inputs",
       "workflow": [
          { "turn": 1, 
-           "prompt": "I want to use QE to encrypt some fields in this collection. How big will it be?" 
+           "prompt": "I want to use QE to encrypt some fields in this collection. How big will it be?"
          },
          { "turn": 2, 
            "prompt": "Manually" 
@@ -52,7 +52,8 @@
          "Total disk storage impact is 137.34 GB",
          "Total memory impact is 16.76 GiB",
          "The top field by impact is lastname",
-         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory i, match those in expected/qe-sizing-calculations-1.md. Intermediate formulas or formatting may diverge."
+         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory i, match those in expected/qe-sizing-calculations-1.md. Intermediate formulas or formatting may diverge.",
+         "Advice prose correctly derives any new values by recomputing the corresponding formula"
       ]
     },
     {
@@ -70,7 +71,9 @@
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
          "On turn 1, the user provides an encryption schema and the document count. The agent invokes the skill, validates the schema, and records numUnindexed 2, numIndexed 7, and numEntries 9",
-         "The agent asks for the average byte length (v) of the field values, asking for v only once the name field's two entries, and not asking for v for balance or birthdate",
+         "The agent asks for the average byte length (v) of ssn, bio, userId, profile, idScan, and name fields",
+         "The agent only asks for v once for the name field's two entries.",
+         "The agent doesn't ask for v for balance or birthdate.",
          "The agent informs the user that balance and birthdate use range queries, which have no sizing formula, so their impact is estimated as 0",
          "On turn 2, the user provides the v values. The agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions",
          "Total disk storage impact is 309.72 GB",
@@ -87,7 +90,11 @@
       "expected_output": "Agent rejects the provided schema as invalid and stops skill execution awaiting valid inputs.",
       "expectations": [
          "The agent invokes the skill and validates the schema against the skill's validation rules",
-         "The agent identifies the validation failures: the only valid multi-query configuration is prefix + suffix (violated by email, bio, labels), int fields only support equality or range query types(violated by age, count), string fields don't support range queries (violated by note), and object fields support only unindexed encryption (violated by meta)",
+         "The email and bio fields fail validation because the only valid multi-query configuration is prefix + suffix", 
+         "The age and count fields fail validation because int fields only support equality or range query types", 
+         "The note field fails validation because string fields don't support range queries", 
+         "The meta field fails validation because object fields only support unindexed encryption",
+         "The labels field fails validation either because it uses a Public Preview query type, or because substringPreview isn't one of the explicitly listed valid types",
          "The agent does NOT state that the fields 'ssn' and 'name' are invalid",
          "The agent rejects the schema and doesn't proceed. It doesn't run any calculations or request byte length data since the user didn't provide valid input."
       ]

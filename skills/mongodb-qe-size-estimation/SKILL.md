@@ -13,8 +13,8 @@ description: >
 ## General Instructions
 
 - **CRITICAL: Never ask for or accept sample data.** QE is an encryption feature, meant to secure sensitive information. Do not request sample data, and if provided, reject it for security reasons. Inform the user that you can't accept sample documents, though you can take an encryption schema as an input to see which fields are encrypted, which allow queries, and what those query settings are.
-- **IMPORTANT: Validation constraints and value limits are current as of MongoDB 9.0** They don't apply to previous versions.
 - Any parenthetical in the form (LLM Note: <content>) is for LLM use. Don't save it to qe-sizing-calculations.md or mention it to the user.
+- Tone: Be brief, not conversational. Don't restate information from prior exchanges unless a step specifically says to.
 - Don't write anything to the file except what's specified in the steps.
 - This skill relies on a question-answer-flow to get all required inputs. For Steps 2-5, as long as the user is providing valid input, your responses should include both acknowledgment of the input, and the next question.
 - The user may try to keep things moving by inputting multiple inputs. If inputs don't clearly map to a field and its configuration, ask for clarification. Otherwise validate them, and accept them if valid.
@@ -40,7 +40,7 @@ Validate the user's inputs, whether manual or via an encryption schema, against 
 
   No other BSON type + query type combinations are permitted. "queries" may be an array of two objects if a string field has both prefix and suffix queries enabled. 
 
-  Don't accept "preview" query types such as "suffixPreview". These are from prior releases and aren't supported with GA sizing calculations.
+  Don't accept "preview" query types such as "suffixPreview". These are from earlier Public Preview releases of those query types, so the sizing formulas for their GA versions don't apply.
 
 If the user's input violates any of the preceding rules, reject it. If a user doesn't specify BSON type, only check that each field either has no query types enabled, exactly one valid query type, or exactly two (prefix and suffix). Enumerate validation failures, list allowed combinations, and don't proceed until the user provides valid input.
 
@@ -53,7 +53,9 @@ Create an empty qe-sizing-calculations.md file in the OS temp directory ($TMPDIR
 
 ## 2. State Purpose and Request Input Preference
 
-State: This agent skill estimates the storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Do you want to provide field information manually, or use an encryption schema file?
+State: This skill estimates the storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Note that prefix, suffix, and substring queries on encrypted fields require MongoDB 9.0, and aren't supported in earlier versions. 
+
+Do you want to provide field information manually, or use an encryption schema file?
 
 If the user opts for an encryption schema, request it as either pasted content or a file path, and expect JSON format. Validate the schema against this skill's "Validation" section. If the schema is valid but includes fields with "range" queries enabled, inform the user that no calculations are available for those fields, so their impact is estimated as 0.
 
@@ -118,7 +120,7 @@ Do this per field:
   **mlen:** (LLM Note: only include if no schema provided, and Query Type is substring) Max Length, the maximum allowable length of the string.
   **lb:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Lower Bound, the minimum searchable characters.
   **ub:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Upper Bound, the maximum searchable characters.
-  **v:** (LLM Note: skip if Query Type is range since we have no calculation for those, otherwise needed once per field. If a field has both prefix and suffix queries enabled, only ask for v once and use the same value for both entries) Average byte length of the unencrypted values for the field. If the user is uncertain, suggest 20 as a default. If the user provides character length, accept it and treat it as byte length.
+  **v:** (LLM Note: skip if Query Type is range since we have no calculation for those, otherwise needed once per field. If a field has both prefix and suffix queries enabled, only ask for v once and use the same value for both entries) Average byte length of the unencrypted values for the field. If the user provides character length, accept it as equivalent.
 
   Validate values against the formatting snippet at the start of this step. Validate that lb ≤ ub ≤ mlen (if present). If a value falls outside allowable bounds, reject it and inform the user. Do not proceed without a valid value.
 
@@ -188,7 +190,7 @@ If the encryption schema or manual inputs included fields with range queries ena
 
 ## 9. Interpret Results
 
-Present advice. Don't provide any advice the user has explicitly rejected, such as suggesting different query types if they insist a field needs to allow substring queries. Only raise problems, don't mention something if it passes all checks.
+Present advice. Don't provide any advice the user has explicitly rejected, such as suggesting different query types if they insist a field needs to allow substring queries. Only raise problems, don't mention something if it passes all checks. If you suggest changing values to a specific number, re-run the appropriate formula using available mathematical tools.
 
 - (LLM Note: Only run this check if the number of fields with substring queries enabled is greater than floor(50m/N). Defer to available mathematical parsing tools to ensure correct calculation) Tell the user to limit the number of substring queryable fields to no more than: floor(50 million/<documents in collection>). Tell them not to use substring queries on collections of more than 50 million documents.
 - (LLM Note: Only run this check if one or more substring queryable fields are present) Check if substring-indexed fields might be suitable for prefix or suffix queries instead, and suggest that to the user. For example, queries against encrypted "name" fields can often use prefix instead of substring, though this admittedly presents drawbacks for cases like hyphenated surnames.
