@@ -6,52 +6,48 @@
       "name": "manual-inputs",
       "workflow": [
          { "turn": 1, 
-           "prompt": "I want to encrypt some fields in this collection. How big will it be?" 
+           "prompt": "I want to use QE to encrypt some fields in this collection. How big will it be?" 
          },
          { "turn": 2, 
-           "prompt": "Yes" 
-         },
-         { "turn": 3, 
            "prompt": "Manually" 
          },
-         { "turn": 4, 
+         { "turn": 3, 
            "prompt": "3 million" 
          },
-         { "turn": 5, 
+         { "turn": 4, 
            "prompt": "1"
          },
-         { "turn": 6, 
+         { "turn": 5, 
            "prompt": "2"
          },
-         { "turn": 7, 
+         { "turn": 6, 
            "prompt": "SSN, not queryable"
          },
-         { "turn": 8, 
+         { "turn": 7, 
            "prompt": "11"
          },
-         { "turn": 9, 
+         { "turn": 8, 
            "prompt": "lastname, with substring queries. It's usually about 20 characters."
          },
-         { "turn": 10, 
+         { "turn": 9, 
            "prompt": "max length 30, lower bound 3, upper bound 6"
          },
-         { "turn": 11, 
+         { "turn": 10, 
            "prompt": "username, with prefix and suffix queries. Usually 10 characters. Lower bound 2, upper bound 4."
          }
       ],
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
-         "On turn 1, the agent asks if the user is using Queryable Encryption / QE",
-         "On turn 2, the user confirms and the agent invokes the skill, which asks if the user is inputting manually or from an encryption schema file",
-         "On turn 3, the user says manually, and the agent asks the user for the number of documents in the collection.",
-         "On turn 4, the user says 3 million, and the agent asks how many fields they're encrypting but not making queryable",
-         "On turn 5, the user says 1, and the agent asks how many fields they're encrypting and making queryable",
-         "On turn 6, the user says 2, and the agent asks about the first field",
-         "On turn 7, the user says SSN, no queries, and the agent asks for the average byte length of values",
-         "On turn 8, the user says 11, and the agent asks about the second field",
-         "On turn 9, the user says the field name, query type, and average length, so the agent asks for the remaining inputs mlen, lb, ub",
-         "On turn 10, the user provides the values, so the agent asks about the third and final field",
-         "On turn 11, the user provides all information, so the agent adds two separate entries",
+         "On turn 1, the agent invokes the skill, which asks if the user is inputting manually or from an encryption schema file",
+         "On turn 2, the user says manually, and the agent asks the user for the number of documents in the collection.",
+         "On turn 3, the user says 3 million, and the agent asks how many fields they're encrypting but not making queryable",
+         "On turn 4, the user says 1, and the agent asks how many fields they're encrypting and making queryable",
+         "On turn 5, the user says 2, and the agent asks about the first field",
+         "On turn 6, the user says SSN, no queries, and the agent asks for the average byte length of values",
+         "On turn 7, the user says 11, and the agent asks about the second field",
+         "On turn 8, the user says the field name, query type, and average length, so the agent asks for the remaining inputs mlen, lb, ub",
+         "On turn 9, the user provides the values, so the agent asks about the third and final field",
+         "On turn 10, the user provides all information. The agent increments numIndexed from 2 to 3 and numEntries from 3 to 4 when the prefix + suffix field is revealed, and adds two separate entries",
          "After getting all inputs, the agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions.",
          "Total storage impact is X",
          "Total memory impact is Y",

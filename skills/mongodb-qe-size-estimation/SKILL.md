@@ -14,8 +14,9 @@ description: >
 
 - **CRITICAL: Never ask for or accept sample data.** QE is an encryption feature, meant to secure sensitive information. Do not request sample data, and if provided, reject it for security reasons. Inform the user that you can't accept sample documents, though you can take an encryption schema as an input to see which fields are encrypted, which allow queries, and what those query settings are.
 - **IMPORTANT: Validation constraints and value limits are current as of MongoDB 9.0** They don't apply to previous versions.
-- When writing numerical values to file, round fractional/decimal values to 2 decimal places, and keep any trailing zeros.
 - Any parenthetical in the form (LLM Note: <content>) is for LLM use. Don't save it to qe-sizing-calculations.md or mention it to the user.
+- When writing numerical values to file, round fractional/decimal values to 2 decimal places, and keep any trailing zeros.
+- The user may try to keep things moving by inputting multiple inputs
 - This skill currently has no calculations for range queries, so it accepts "range" as a valid query type, but uses 0 for estimated values.
 
 
