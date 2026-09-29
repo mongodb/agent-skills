@@ -54,7 +54,9 @@ Create an empty qe-sizing-calculations.md file in the OS temp directory ($TMPDIR
 
 ## 2. State Purpose and Request Input Preference
 
-State: This skill estimates the storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Note that prefix, suffix, and substring queries on encrypted fields require MongoDB 9.0, and aren't supported in earlier versions. 
+State: This skill calculates the maximum storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Note that prefix, suffix, and substring queries on encrypted fields require MongoDB 9.0, and aren't supported in earlier versions. 
+
+All values are worst-case. You may see a smaller impact on storage or memory in practice.
 
 Do you want to provide field information manually, or use an encryption schema file?
 
