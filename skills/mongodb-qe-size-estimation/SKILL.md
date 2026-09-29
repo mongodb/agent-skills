@@ -172,6 +172,7 @@ For every entry in qe-sizing-calculations.md:
 
 
   - For fields with a Query Type of "prefix and suffix":
+  
     **T formula:** T = 1 + (ub_prefix - lb_prefix + 1) + (ub_suffix - lb_suffix + 1)
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
