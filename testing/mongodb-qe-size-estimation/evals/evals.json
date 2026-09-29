@@ -38,12 +38,15 @@
       ],
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
-         "The agent increments numIndexed from 2 to 3 and numEntries from 3 to 4 when the prefix + suffix field is revealed, and adds two separate entries",
+         "For the username field, the agent sets lb_prefix and lb_suffix to 2, and ub_prefix and ub_suffix to 4.",
+         "The agent does not set lb_prefix or ub_prefix values for fields that only have prefix queries enabled.",
+         "The agent does not set lb_suffix or ub_suffix values for fields that only have suffix queries enabled.",
+         "The agent does not set plain lb or ub values for fields that have both prefix and suffix queries enabled",
          "After getting all inputs, the agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions.",
-         "Total disk storage impact is 137.34 GB",
-         "Total memory impact is 16.76 GiB",
+         "Total disk storage impact is 135.73 GB",
+         "Total memory impact is 16.61 GiB",
          "The top field by impact is lastname",
-         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory i, match those in expected/qe-sizing-calculations-1.md. Intermediate formulas or formatting may diverge.",
+         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/lb_prefix/ub_prefix/lb_suffix/ub_suffix/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory, match those in expected/qe-sizing-calculations-1.md. Intermediate formulas or formatting may diverge.",
          "Advice prose correctly derives any new values by recomputing the corresponding formula"
       ]
     },
@@ -61,16 +64,15 @@
       ],
       "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
       "expectations": [
-         "On turn 1, the user provides an encryption schema and the document count. The agent invokes the skill, validates the schema, and records numUnindexed 2, numIndexed 7, and numEntries 9",
+         "On turn 1, the user provides an encryption schema and the document count. The agent invokes the skill, validates the schema, and records numUnindexed 2, numIndexed 6, and numEntries 8",
          "The agent asks for the average byte length (v) of ssn, bio, userId, profile, idScan, and name fields",
-         "The agent only asks for v once for the name field's two entries.",
          "The agent doesn't ask for v for balance or birthdate.",
          "The agent informs the user that balance and birthdate use range queries, which have no sizing formula, so their impact is estimated as 0",
          "On turn 2, the user provides the v values. The agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions",
-         "Total disk storage impact is 309.72 GB",
-         "Total memory impact is 30.41 GiB",
+         "Total disk storage impact is 308.05 GB",
+         "Total memory impact is 30.27 GiB",
          "The top field by impact is bio",
-         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory i, match those in expected/qe-sizing-calculations-2.md. Intermediate formulas or formatting may diverge."
+         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/lb_prefix/ub_prefix/lb_suffix/ub_suffix/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory, match those in expected/qe-sizing-calculations-2.md. Intermediate formulas or formatting may diverge."
       ]
     },
     {
