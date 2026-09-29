@@ -1,0 +1,28 @@
+$ bash scripts/run-all-checks.sh --version 9.0.1 --dbpath /var/lib/mongo
+=== Platform & OS Check ===
+[INFO] os: Ubuntu 26.04 LTS
+[INFO] kernel: 7.0.14-14-generic
+[PASS] kernel-version: 7.0.14-14-generic is outside the documented kernel restrictions for 9.0.1
+
+=== Transparent Huge Pages ===
+[INFO] thp-version: scoring against MongoDB 9.0 expectations
+[FAIL] thp-enabled: /sys/kernel/mm/transparent_hugepage/enabled is always madvise [never], expected always
+[FAIL] thp-defrag: /sys/kernel/mm/transparent_hugepage/defrag is always defer defer+madvise madvise [never], expected defer+madvise
+[FAIL] thp-max-ptes-none: khugepaged/max_ptes_none is 511, expected 0
+[WARN] thp-overcommit: /proc/sys/vm/overcommit_memory is 0, expected 1
+[WARN] thp-persistent: no persistence mechanism detected; THP settings reset on reboot
+
+=== Kernel & System ===
+[PASS] vm.swappiness: 1 (recommended: 1)
+
+=== MongoDB Process & Config ===
+[PASS] mongod-running: mongod is running as user mongodb
+[PASS] mongod-version: 9.0.1
+[PASS] mongod-auth: security.authorization is enabled
+
+============================================================
+ SUMMARY
+============================================================
+ PASS:  5
+ WARN:  2
+ FAIL:  3

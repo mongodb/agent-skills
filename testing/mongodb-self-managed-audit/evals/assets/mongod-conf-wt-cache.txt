@@ -1,0 +1,33 @@
+$ cat /etc/mongod.conf
+storage:
+  dbPath: /var/lib/mongo
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: 48
+      cacheSizePct: 0.85
+systemLog:
+  destination: file
+  path: /var/log/mongodb/mongod.log
+  logAppend: true
+net:
+  port: 27017
+  bindIp: 0.0.0.0
+security:
+  authorization: enabled
+  javascriptEnabled: true
+
+$ free -g
+               total        used        free
+Mem:              62          41          19
+
+$ cat /sys/fs/cgroup/memory.max
+34359738368
+
+$ getenforce
+Enforcing
+
+$ mongod --version | head -1
+db version v8.3.4
+
+$ sudo systemctl is-active mongod
+inactive

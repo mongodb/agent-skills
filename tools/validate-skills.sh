@@ -9,6 +9,10 @@
 #   - Local script: accepts an optional path or validates all skills, uses default
 #                   terminal output
 #
+# Both scripts also run any scripts/test-*.sh a skill ships. A skill whose logic
+# is worth asserting (version matrices, parsers) can carry its own tests; they
+# must exit 0 to pass. Skills without such files are unaffected.
+#
 # Usage: validate-skills.sh [path/to/skill/]
 #   path  Optional path to a single skill directory to validate.
 #         When omitted, all directories under skills/ are validated.
@@ -55,3 +59,24 @@ fi
 [[ "$SKILL_PATH" != */ ]] && SKILL_PATH="$SKILL_PATH/"
 
 skill-validator check --strict "$SKILL_PATH"
+VALIDATOR_STATUS=$?
+
+# Run any self-tests the validated skills ship. These assert skill logic the
+# validator cannot see, such as the kernel compatibility matrix in
+# mongodb-self-managed-audit.
+TEST_STATUS=0
+while IFS= read -r test_file; do
+  echo ""
+  echo "Running $test_file"
+  if bash "$test_file"; then
+    echo "  passed"
+  else
+    echo "  FAILED: $test_file"
+    TEST_STATUS=1
+  fi
+done < <(find "$SKILL_PATH" -type f -name 'test-*.sh' | sort)
+
+if [ "$VALIDATOR_STATUS" -ne 0 ] || [ "$TEST_STATUS" -ne 0 ]; then
+  exit 1
+fi
+exit 0
