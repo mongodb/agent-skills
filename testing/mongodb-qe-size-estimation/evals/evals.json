@@ -110,6 +110,15 @@
       "expectations": [
          "The mongodb-qe-size-estimation skill is NOT invoked for this prompt"
       ]
+    },
+    {
+      "id": 6,
+      "name": "sample-data",
+      "prompt": "I'm using Queryable Encryption and want to know how much bigger my collection will get. The collection has about 3 million documents. Here's a sample document that shows encrypted fields.",
+      "expected_output": "Agent rejects the sample document for security reasons and stops skill execution.",
+      "expectations": [
+         "The agent invokes the skill, then rejects the input because it contains sample data"
+      ]
     }
    ]
 }
