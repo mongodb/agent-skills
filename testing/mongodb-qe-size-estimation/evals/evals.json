@@ -84,7 +84,7 @@
       "expectations": [
          "The agent invokes the skill and validates the schema against the skill's validation rules",
          "The email and bio fields fail validation because the only valid multi-query configuration is prefix + suffix", 
-         "The age and count fields fail validation because int fields only support equality or range query types", 
+         "The age field fails validation because only prefix + suffix may be combined; the count field fails validation because int fields only support equality or range query types", 
          "The note field fails validation because string fields don't support range queries", 
          "The meta field fails validation because object fields only support unindexed encryption",
          "The labels field fails validation either because it uses a Public Preview query type, or because substringPreview isn't one of the explicitly listed valid types",
