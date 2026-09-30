@@ -35,11 +35,13 @@ Validate the user's inputs, whether manual or via an encryption schema, against 
 
   An encrypted field may be "unindexed" meaning it has no query types enabled. Fields of BSON type object or array *only* support unindexed encryption, though other BSON types can also be unindexed. Otherwise, allowed query types based on a field's BSON type are:
 
-  - string fields: "equality", "prefix", "suffix", "substring", or both "prefix" and "suffix". This is the only case where one field is indexed for multiple query types.
-  - int/long/date fields: "equality", "range"
-  - decimal/double fields: "range"
+  - equality: any BSON type except object, array, decimal, double
+  - range: int, long, date, decimal, double
+  - prefix, suffix, substring: string only
 
-  No other BSON type + query type combinations are permitted. "queries" may be an array of two objects if a string field has both prefix and suffix queries enabled. 
+  A string field may have both "prefix" and "suffix" enabled, in which case "queries" may be an array of two objects. This is the only valid case where one field is indexed for multiple query types.
+
+  No other BSON type + query type combinations are permitted.
 
   Don't accept "preview" query types such as "suffixPreview". These are from earlier Public Preview releases of those query types, so the sizing formulas for their GA versions don't apply.
 
