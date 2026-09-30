@@ -24,8 +24,9 @@ description: >
 ### Definitions
 
 - **field** For the purposes of this skill, "field" refers to an encrypted field in a MongoDB document, in a QE-enabled collection.
-- **entry** For an unindexed field, the field name. For a field with one or more query types enabled, the combination of the field name and one of its enabled query types. This skill calculates sizing impact per entry, so a field with both prefix and suffix queries enabled has two entries.
+- **entry** For an unindexed field, the field name. For a field with one or more query types enabled, the combination of the field name and its enabled query types. A field with both prefix and suffix queries enabled has a single entry, with Query Type "prefix and suffix".
 - **unindexed** Describes the state of a field with no query types enabled, indicated by the absence of a "queries" key if using an encryption schema.
+- **indexed** Describes the state of a field enabled for queries, and is specific to the query type(s). A field with equality queries enabled is indexed for equality queries.
 
 
 ### Validation
@@ -34,7 +35,7 @@ Validate the user's inputs, whether manual or via an encryption schema, against 
 
   An encrypted field may be "unindexed" meaning it has no query types enabled. Fields of BSON type object or array *only* support unindexed encryption, though other BSON types can also be unindexed. Otherwise, allowed query types based on a field's BSON type are:
 
-  - string fields: "equality", "prefix", "suffix", "substring", or both "prefix" and "suffix". This is the only permitted case where one field has more than one query type.
+  - string fields: "equality", "prefix", "suffix", "substring", or both "prefix" and "suffix". This is the only case where one field is indexed for multiple query types.
   - int/long/date fields: "equality", "range"
   - decimal/double fields: "range"
 
@@ -53,7 +54,9 @@ Create an empty qe-sizing-calculations.md file in the OS temp directory ($TMPDIR
 
 ## 2. State Purpose and Request Input Preference
 
-State: This skill estimates the storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Note that prefix, suffix, and substring queries on encrypted fields require MongoDB 9.0, and aren't supported in earlier versions. 
+State: This skill calculates the maximum storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Note that prefix, suffix, and substring queries on encrypted fields require MongoDB 9.0, and aren't supported in earlier versions. 
+
+All values are worst-case. You may see a smaller impact on storage or memory in practice.
 
 Do you want to provide field information manually, or use an encryption schema file?
 
@@ -75,11 +78,11 @@ Save this value to qe-sizing-calculations.md as:
 **numUnindexed:** <number of unindexed encrypted fields>
 
 - If the user chose manual input, ask: How many encrypted fields have queries enabled?
-- If the user chose encryption schema, count the number of fields with queries enabled. If "queries" includes both "prefix" and "suffix", count it twice towards the total.
+- If the user chose encryption schema, count the number of fields with queries enabled.
 
 Save this value to qe-sizing-calculations.md as:
 
-**numIndexed:** <number of queries enabled>
+**numIndexed:** <number of encrypted fields indexed for queries>
 
 Save the sum of numUnindexed and numIndexed to qe-sizing-calculations.md as:
 
@@ -94,23 +97,28 @@ Write a section heading to qe-sizing-calculations.md:
 As you get information, write it to qe-sizing-calculations.md in the following format, omitting any lines that don't apply. For unindexed fields, this means omitting the Query Type.
 
 **<Field Name>** <the name provided by the user, or the dot notation "path" value if taken from the encryption schema>
-**Query Type:** <equality, range, prefix, suffix, or substring>
+**Query Type:** <equality, range, prefix, suffix, substring, or "prefix and suffix">
 **mlen:** <include if Query Type is substring. Integer from 2-50, inclusive>
-**lb:** <include if Query Type is prefix, suffix, or substring. Integer 1+ for prefix and suffix queries, or 2+ for substring queries>
-**ub:** <include if Query Type is prefix, suffix, or substring. Integer 1+ for prefix and suffix queries, or 2-6 for substring queries>
+**lb:** <include if Query Type is "prefix", "suffix", or "substring". Integer 1+ for prefix and suffix queries, or 2+ for substring queries>
+**ub:** <include if Query Type is "prefix", "suffix", or "substring". Integer 1+ for prefix and suffix queries, or 2-6 for substring queries>
+**lb_prefix:** <include if Query Type is "prefix and suffix". Integer 1+>
+**ub_prefix:** <include if Query Type is "prefix and suffix". Integer 1+>
+**lb_suffix:** <include if Query Type is "prefix and suffix". Integer 1+>
+**ub_suffix:** <include if Query Type is "prefix and suffix". Integer 1+>
 **v:** <omit if Query Type is range, otherwise include. integer, representing the average byte length of the unencrypted values for the field>
 
 - If the user provided an encryption schema, do this once:
   - Add one entry to qe-sizing-calculations.md for each unindexed field, omitting the "Query Type" line.
-  - Add one entry per query type enabled on each field. Map the keys in each "queries" object to field values as follows, omitting all keys that aren't listed:
+  - If a field has both prefix and suffix queries enabled, regardless of ordering, write its "Query Type" as "prefix and suffix".
+  - Add one entry per field with queries enabled. Map the keys in each "queries" object to field values as follows, omitting all keys that aren't listed:
     - strMaxLength (substring only) -> mlen
-    - strMinQueryLength -> lb
-    - strMaxQueryLength -> ub
+    - strMinQueryLength -> lb if the field only has a single query type. If the field has both prefix and suffix queries enabled, then the strMinQueryLength for prefix queries is lb_prefix, and the strMinQueryLength for suffix queries is lb_suffix.
+    - strMaxQueryLength -> ub if the field only has a single query type. If the field has both prefix and suffix queries enabled, then the strMaxQueryLength for prefix queries is ub_prefix, and the strMaxQueryLength for suffix queries is ub_suffix.
 
 - If the user didn't provide an encryption schema, do this per field:
   - Only validate BSON types against allowed query types if the user provides a field's BSON type. Otherwise, don't ask for or validate field BSON types.
-  - Ask for the field name and whether it's unindexed or has a query type enabled (LLM Note: If it has a query type, valid options are: "equality", "range", "prefix", "suffix", "substring", or both prefix and suffix. Reject other values or combinations. If the user specifies "range", warn them that no formula is available for calculating it)
-    - (LLM Note:If the user specifies both prefix and suffix for the same field, increment numIndexed and numEntries in qe-sizing-calculations.md, and create two entries with the same field name but different Query Types).
+  - Ask for the field name and whether it's unindexed or has queries enabled (LLM Note: If it has a query type, valid options are: "equality", "range", "prefix", "suffix", "substring", or "prefix and suffix". Reject other values or combinations. If the user specifies "range", warn them that no formula is available for calculating it)
+  - If a user only provides a single lower bound and upper bound value for a field with both prefix and suffix queries enabled, use the lower bound for both lb_prefix and lb_suffix, and the upper bound for both ub_prefix and ub_suffix.
   - Validate the inputs.
 
 Do this per field:
@@ -118,11 +126,17 @@ Do this per field:
   Check the list below, and ask the user for the values that aren't already populated. Write all values to the qe-sizing-calculations.md file.
 
   **mlen:** (LLM Note: only include if no schema provided, and Query Type is substring) Max Length, the maximum allowable length of the string.
-  **lb:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Lower Bound, the minimum searchable characters.
-  **ub:** (LLM Note: only include if no schema provided, and Query Type is prefix, suffix, or substring) Upper Bound, the maximum searchable characters.
-  **v:** (LLM Note: skip if Query Type is range since we have no calculation for those, otherwise needed once per field. If a field has both prefix and suffix queries enabled, only ask for v once and use the same value for both entries) Average byte length of the unencrypted values for the field. If the user provides character length, accept it as equivalent.
+  **lb:** (LLM Note: only include if no schema provided, and Query Type is "prefix", "suffix", or "substring") Lower Bound, the minimum searchable characters.
+  **ub:** (LLM Note: only include if no schema provided, and Query Type is "prefix", "suffix", or "substring") Upper Bound, the maximum searchable characters.
+  **lb_prefix:** (LLM Note: only include if no schema provided, and Query Type is "prefix and suffix") Lower Bound for prefix queries, the minimum searchable characters.
+  **ub_prefix:** (LLM Note: only include if no schema provided, and Query Type is "prefix and suffix") Upper Bound for prefix queries, the maximum searchable characters.
+  **lb_suffix:** (LLM Note: only include if no schema provided, and Query Type is "prefix and suffix") Lower Bound for suffix queries, the minimum searchable characters.
+  **ub_suffix:** (LLM Note: only include if no schema provided, and Query Type is "prefix and suffix") Upper Bound for suffix queries, the maximum searchable characters.
+  **v:** (LLM Note: skip if Query Type is range since we have no calculation for those, otherwise needed once per field). Average byte length of the unencrypted values for the field. If the user provides character length, accept it as equivalent.
 
-  Validate values against the formatting snippet at the start of this step. Validate that lb ≤ ub ≤ mlen (if present). If a value falls outside allowable bounds, reject it and inform the user. Do not proceed without a valid value.
+  Validate values against the formatting snippet at the start of this step. Validate that lb ≤ ub ≤ mlen (if present). Validate that lb_prefix ≤ ub_prefix and lb_suffix ≤ ub_suffix (if present). If a value falls outside allowable bounds, reject it and inform the user. Do not proceed without a valid value.
+  
+  If mlen < v, warn the user that the full field value isn't queryable, but accept it as valid. 
 
 Repeat until you have populated the full number of entries, numEntries, in qe-sizing-calculations.md.
 
@@ -139,24 +153,32 @@ For every entry in qe-sizing-calculations.md:
     **T:** 0
     **Document Storage (bytes):** <run the calculation: 71 + ceil((v+6)/16) * 16>
 
-  - For fields with a Query Type of equality:
+  - For fields with a Query Type of "equality":
 
     **T:** 1
     **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
 
-  - For fields with a Query Type of range, there is currently no formula, so record an entry with values of 0:
+  - For fields with a Query Type of "range", there is currently no formula, so record an entry with values of 0:
 
     **T:** 0
     **Document Storage (bytes):** 0
 
-  - For fields with a Query Type of prefix or suffix:
+  - For fields with a Query Type of "prefix" or "suffix":
 
     **T formula:** T = 1 + (ub - lb + 1)
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
     **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
 
-  - For fields with a Query Type of substring:
+
+  - For fields with a Query Type of "prefix and suffix":
+  
+    **T formula:** T = 1 + (ub_prefix - lb_prefix + 1) + (ub_suffix - lb_suffix + 1)
+    **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
+    **T:** <run the calculation in "T calculation" and write the result here>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+
+  - For fields with a Query Type of "substring":
 
     **T formula:** T = 1 + (ub - lb + 1) * (2 * mlen + 2 - ub - lb) / 2
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
@@ -167,7 +189,7 @@ For every entry in qe-sizing-calculations.md:
 
 ## 7. Calculate Index Storage, Total Disk Storage, and Memory
 
-These values are collection-level and calculated as totals across all entries. For fields with both prefix and suffix entries, they all count towards the total.
+These values are collection-level and calculated as totals across all entries.
 
 At the end of the qe-sizing-calculations.md file, silently write the following lines:
 
