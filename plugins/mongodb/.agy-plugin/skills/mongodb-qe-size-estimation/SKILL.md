@@ -18,7 +18,7 @@ description: >
 - Don't write anything to the file except what's specified in the steps.
 - This skill relies on a question-answer-flow to get all required inputs. For Steps 2-5, as long as the user is providing valid input, your responses should include both acknowledgment of the input, and the next question.
 - The user may try to keep things moving by inputting multiple inputs. If inputs don't clearly map to a field and its configuration, ask for clarification. Otherwise validate them, and accept them if valid.
-- This skill currently has no calculations for range queries, so it accepts "range" as a valid query type, but uses 0 for estimated values.
+- This skill currently has no formula for range queries, so while it accepts "range" query configuration for compatible BSON types, it uses 0 for estimated values.
 
 
 ### Definitions
@@ -158,7 +158,7 @@ For every entry in qe-sizing-calculations.md:
   - For fields with a Query Type of "equality":
 
     **T:** 1
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
   - For fields with a Query Type of "range", there is currently no formula, so record an entry with values of 0:
 
@@ -170,7 +170,7 @@ For every entry in qe-sizing-calculations.md:
     **T formula:** T = 1 + (ub - lb + 1)
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
 
   - For fields with a Query Type of "prefix and suffix":
@@ -178,14 +178,14 @@ For every entry in qe-sizing-calculations.md:
     **T formula:** T = 1 + (ub_prefix - lb_prefix + 1) + (ub_suffix - lb_suffix + 1)
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
   - For fields with a Query Type of "substring":
 
     **T formula:** T = 1 + (ub - lb + 1) * (2 * mlen + 2 - ub - lb) / 2
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
 2. Do a silent audit pass to verify the information you just added uses the correct T formula or static value, and the correct values for the T calculation, then proceed.
 
@@ -214,7 +214,7 @@ If the encryption schema or manual inputs included fields with range queries ena
 
 ## 9. Interpret Results
 
-Present advice. Don't provide any advice the user has explicitly rejected, such as suggesting different query types if they insist a field needs to allow substring queries. Only raise problems, don't mention something if it passes all checks. If you suggest changing values to a specific number, re-run the appropriate formula using available mathematical tools.
+Present advice. Don't provide any advice the user has explicitly rejected, such as suggesting different query types if they insist a field needs to allow substring queries. Only raise problems, don't mention something if it passes all checks. If you suggest changing values to a specific number, populate the Step 6 T formula template for that query type with the suggested values, calculate it with available mathematical tools, and quote only that result.
 
 - (LLM Note: Only run this check if the number of fields with substring queries enabled is greater than floor(50m/N). Defer to available mathematical parsing tools to ensure correct calculation) Tell the user to limit the number of substring queryable fields to no more than: floor(50 million/<documents in collection>). Tell them not to use substring queries on collections of more than 50 million documents.
 - (LLM Note: Only run this check if one or more substring queryable fields are present) Check if substring-indexed fields might be suitable for prefix or suffix queries instead, and suggest that to the user. For example, queries against encrypted "name" fields can often use prefix instead of substring, though this admittedly presents drawbacks for cases like hyphenated surnames.

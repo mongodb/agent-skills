@@ -27,13 +27,21 @@ Eval roster:
 | 5. unencrypted-collection (negative)   | 1/1 (100%)   | 1/1 (100%)    | No (by construction) |
 | 6. sample-data                         | 1/1 (100%)   | 0/1 (0%)      | Yes              |
 
-**Overall: with_skill 100% vs without_skill 41.8% (+58pp)**
+**Overall (macro-average of per-eval percentages): with_skill 100% vs
+without_skill 41.8% (+58pp). Aggregate assertion pass rate: with_skill 31/31
+(100%) vs without_skill 7/31 (22.6%).**
 
-| Metric     | with_skill | without_skill | Delta    |
-| ---------- | ---------- | ------------- | -------- |
-| Pass Rate  | 100%       | 41.8%         | +58pp    |
-| Avg Time   | 672.3s     | 72.0s         | +600.3s  |
-| Avg Tokens | 24,478     | 20,450        | +4,028   |
+| Metric               | with_skill | without_skill | Delta    |
+| -------------------- | ---------- | ------------- | -------- |
+| Pass Rate (macro-avg) | 100%       | 41.8%         | +58pp    |
+| Avg Time             | 672.3s     | 72.0s         | +600.3s  |
+| Avg Tokens            | 24,478     | 20,450        | +4,028   |
+
+Pass Rate is the unweighted mean of the six per-eval percentages: the two
+one-assertion negative evals (baseline 1/1 by construction) carry the same
+weight as the 11-assertion eval, which is why the macro-average (41.8%) sits
+well above the aggregate assertion rate (22.6%). with_skill is 100% by either
+measure.
 
 Avg Time is not comparable this iteration: two with_skill runs include
 ~30-minute waits for permission confirmations (see run history).
@@ -51,6 +59,9 @@ Avg Time is not comparable this iteration: two with_skill runs include
 | 7         | —          | —             | Prefix-only username field added to schema, bound-leakage assertions moved to eval 2 (prefix only), golden file regenerated; eval 2 re-run fresh (with_skill 10/11, without_skill 2/11); suite rerun aborted, no suite-level results |
 | 8         | —          | —             | All 12 runs completed (eval 6, sample-data, added) but grading aborted after eval-1 with_skill (8/8); superseded by a fresh iteration-9 rerun |
 | 9         | 100%       | 41.8%         | Full suite re-run as a unit (12 runs, one pass); no skill or eval changes; eval 6 graded for the first time — with_skill rejects the offered sample document, baseline asks the user to paste it |
+
+Overall percentages in this table are macro-averages of per-eval percentages
+(iteration 9's baseline aggregate: 7/31, 22.6%).
 
 Per-eval with_skill stayed at 100% on evals 2–5 across iterations 1–5; eval 1
 went 87% → 100% → 94% → 100% → 100% → 100% (iteration 6). Iteration 6: eval 2
