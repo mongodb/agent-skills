@@ -158,7 +158,7 @@ For every entry in qe-sizing-calculations.md:
   - For fields with a Query Type of "equality":
 
     **T:** 1
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
   - For fields with a Query Type of "range", there is currently no formula, so record an entry with values of 0:
 
@@ -170,7 +170,7 @@ For every entry in qe-sizing-calculations.md:
     **T formula:** T = 1 + (ub - lb + 1)
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
 
   - For fields with a Query Type of "prefix and suffix":
@@ -178,14 +178,14 @@ For every entry in qe-sizing-calculations.md:
     **T formula:** T = 1 + (ub_prefix - lb_prefix + 1) + (ub_suffix - lb_suffix + 1)
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
   - For fields with a Query Type of "substring":
 
     **T formula:** T = 1 + (ub - lb + 1) * (2 * mlen + 2 - ub - lb) / 2
     **T calculation:** <The T formula template with all placeholders populated by the field's values, but not calculated>
     **T:** <run the calculation in "T calculation" and write the result here>
-    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 110 + ceil((v + 6) / 16) * 16)>
+    **Document Storage (bytes):** <run the calculation: 1.2 * (255 * T + 122 + ceil((v + 6) / 16) * 16)>
 
 2. Do a silent audit pass to verify the information you just added uses the correct T formula or static value, and the correct values for the T calculation, then proceed.
 
