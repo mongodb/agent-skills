@@ -35,9 +35,9 @@ Validate the user's inputs, whether manual or via an encryption schema, against 
 
   An encrypted field may be "unindexed" meaning it has no query types enabled. Fields of BSON type object or array *only* support unindexed encryption, though other BSON types can also be unindexed. Otherwise, allowed query types based on a field's BSON type are:
 
-  - equality: any BSON type except object, array, decimal, double
-  - range: int, long, date, decimal, double
-  - prefix, suffix, substring: string only
+  - "equality": any BSON type except object, array, decimal, double
+  - "range": int, long, date, decimal, double
+  - "prefix", "suffix", "substring": string only
 
   A string field may have both "prefix" and "suffix" enabled, in which case "queries" may be an array of two objects. This is the only valid case where one field is indexed for multiple query types.
 
@@ -56,11 +56,11 @@ Create an empty qe-sizing-calculations.md file in the OS temp directory ($TMPDIR
 
 ## 2. State Purpose and Request Input Preference
 
-State: This skill calculates the maximum storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Note that prefix, suffix, and substring queries on encrypted fields require MongoDB 9.0, and aren't supported in earlier versions. 
+State: "This skill calculates the maximum storage impact of enabling Queryable Encryption on a collection. Values are saved to the <path to qe-sizing-calculations.md> file if you want to verify the calculations or see per-field numbers. Note that prefix, suffix, and substring queries on encrypted fields require MongoDB 9.0, and aren't supported in earlier versions. 
 
 All values are worst-case. You may see a smaller impact on storage or memory in practice.
 
-Do you want to provide field information manually, or use an encryption schema file?
+Do you want to provide field information manually, or use an encryption schema file?"
 
 If the user opts for an encryption schema, request it as either pasted content or a file path, and expect JSON format. Validate the schema against this skill's "Validation" section. If the schema is valid but includes fields with "range" queries enabled, inform the user that no calculations are available for those fields, so their impact is estimated as 0.
 
@@ -107,7 +107,7 @@ As you get information, write it to qe-sizing-calculations.md in the following f
 **ub_prefix:** <include if Query Type is "prefix and suffix". Integer 1+>
 **lb_suffix:** <include if Query Type is "prefix and suffix". Integer 1+>
 **ub_suffix:** <include if Query Type is "prefix and suffix". Integer 1+>
-**v:** <omit if Query Type is range, otherwise include. integer, representing the average byte length of the unencrypted values for the field>
+**v:** <omit if Query Type is range, otherwise include. Integer representing the average byte length of the unencrypted values for the field>
 
 - If the user provided an encryption schema, do this once:
   - Add one entry to qe-sizing-calculations.md for each unindexed field, omitting the "Query Type" line.
@@ -216,7 +216,7 @@ If the encryption schema or manual inputs included fields with range queries ena
 
 Present advice. Don't provide any advice the user has explicitly rejected, such as suggesting different query types if they insist a field needs to allow substring queries. Only raise problems, don't mention something if it passes all checks. If you suggest changing values to a specific number, populate the Step 6 T formula template for that query type with the suggested values, calculate it with available mathematical tools, and quote only that result.
 
-- (LLM Note: Only run this check if the number of fields with substring queries enabled is greater than floor(50m/N). Defer to available mathematical parsing tools to ensure correct calculation) Tell the user to limit the number of substring queryable fields to no more than: floor(50 million/<documents in collection>). Tell them not to use substring queries on collections of more than 50 million documents.
+- (LLM Note: Only run this check if the number of fields with substring queries enabled is greater than floor(50 million/N). Defer to available mathematical parsing tools to ensure correct calculation) Tell the user to limit the number of substring queryable fields to no more than: floor(50 million/<documents in collection>). Tell them not to use substring queries on collections of more than 50 million documents.
 - (LLM Note: Only run this check if one or more substring queryable fields are present) Check if substring-indexed fields might be suitable for prefix or suffix queries instead, and suggest that to the user. For example, queries against encrypted "name" fields can often use prefix instead of substring, though this admittedly presents drawbacks for cases like hyphenated surnames.
 - (LLM Note: Only make these suggestions if they apply to the user's inputs, and if the changes don't make the modified value go outside its allowed limits) Tell the user to consider raising lb, lowering ub, or lowering mlen values.
 

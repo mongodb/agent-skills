@@ -1,6 +1,6 @@
-# mongodb-qe-size-estimation — Eval Results (Iteration 9)
+# mongodb-qe-size-estimation — Eval Results (Iteration 10)
 
-**Date:** 2026-09-30
+**Date:** 2026-10-02
 **Model:** inherited session default (`glm-5p3[1m]`)
 **Runs per configuration:** 1 (with_skill and without_skill) per iteration
 **Grading:** LLM-graded assertions, including a golden-file match: the agent's
@@ -16,11 +16,11 @@ Eval roster:
 5. unencrypted-collection (negative trigger), 
 6. sample-data (user offers a sample document; must be rejected for security reasons).
 
-## Results (iteration 9)
+## Results (iteration 10)
 
 | Eval                                   | with_skill   | without_skill | Differentiates?  |
 | -------------------------------------- | ------------ | ------------- | ---------------- |
-| 1. manual-inputs                       | 8/8 (100%)   | 1/8 (13%)     | Yes              |
+| 1. manual-inputs                       | 8/8 (100%)   | 3/8 (38%)     | Yes              |
 | 2. encryption-schema-input             | 11/11 (100%) | 3/11 (27%)    | Yes              |
 | 3. encryption-schema-input-2           | 9/9 (100%)   | 1/9 (11%)     | Yes              |
 | 4. csfle-collection (negative)         | 1/1 (100%)   | 1/1 (100%)    | No (by construction) |
@@ -28,23 +28,23 @@ Eval roster:
 | 6. sample-data                         | 1/1 (100%)   | 0/1 (0%)      | Yes              |
 
 **Overall (macro-average of per-eval percentages): with_skill 100% vs
-without_skill 41.8% (+58pp). Aggregate assertion pass rate: with_skill 31/31
-(100%) vs without_skill 7/31 (22.6%).**
+without_skill 45.9% (+54pp). Aggregate assertion pass rate: with_skill 31/31
+(100%) vs without_skill 9/31 (29.0%).**
 
 | Metric               | with_skill | without_skill | Delta    |
 | -------------------- | ---------- | ------------- | -------- |
-| Pass Rate (macro-avg) | 100%       | 41.8%         | +58pp    |
-| Avg Time             | 672.3s     | 72.0s         | +600.3s  |
-| Avg Tokens            | 24,478     | 20,450        | +4,028   |
+| Pass Rate (macro-avg) | 100%       | 45.9%         | +54pp    |
+| Avg Time             | 67.1s      | 67.3s         | -0.2s    |
+| Avg Tokens            | 23,074     | 18,976        | +4,098   |
 
 Pass Rate is the unweighted mean of the six per-eval percentages: the two
 one-assertion negative evals (baseline 1/1 by construction) carry the same
-weight as the 11-assertion eval, which is why the macro-average (41.8%) sits
-well above the aggregate assertion rate (22.6%). with_skill is 100% by either
+weight as the 11-assertion eval, which is why the macro-average (45.9%) sits
+well above the aggregate assertion rate (29.0%). with_skill is 100% by either
 measure.
 
-Avg Time is not comparable this iteration: two with_skill runs include
-~30-minute waits for permission confirmations (see run history).
+Avg Time is comparable this iteration (no permission-confirmation waits, see
+run history): the two configurations are within 0.2s of each other.
 
 ## Iteration history
 
@@ -59,6 +59,7 @@ Avg Time is not comparable this iteration: two with_skill runs include
 | 7         | —          | —             | Prefix-only username field added to schema, bound-leakage assertions moved to eval 2 (prefix only), golden file regenerated; eval 2 re-run fresh (with_skill 10/11, without_skill 2/11); suite rerun aborted, no suite-level results |
 | 8         | —          | —             | All 12 runs completed (eval 6, sample-data, added) but grading aborted after eval-1 with_skill (8/8); superseded by a fresh iteration-9 rerun |
 | 9         | 100%       | 41.8%         | Full suite re-run as a unit (12 runs, one pass); no skill or eval changes; eval 6 graded for the first time — with_skill rejects the offered sample document, baseline asks the user to paste it |
+| 10        | 100%       | 45.9%         | Wording-only SKILL.md changes (quoted query-type names, "50m" → "50 million", quoted Step 2 template); full 12-run rerun, no eval changes; baseline eval 1 up 1/8 → 3/8 on weak passes (implicit helper-script evidence, vacuous no-record) |
 
 Overall percentages in this table are macro-averages of per-eval percentages
 (iteration 9's baseline aggregate: 7/31, 22.6%).
@@ -67,7 +68,7 @@ Per-eval with_skill stayed at 100% on evals 2–5 across iterations 1–5; eval 
 went 87% → 100% → 94% → 100% → 100% → 100% (iteration 6). Iteration 6: eval 2
 90% (advice-prose assertion added post-run), eval 3 89% (note, string+range —
 SKILL.md ambiguity, since fixed). Iteration 9: all six with_skill evals at
-100%. Baseline never passed a
+100%, and again at 100% in iteration 10. Baseline never passed a
 formula-dependent assertion in any run of any iteration.
 
 ## Key findings
@@ -92,9 +93,8 @@ formula-dependent assertion in any run of any iteration.
   rejects invalid schemas outright, including preview
   query types (`substringPreview`).
 - **Advice-prose math passed on evals 1 and 2:** every numeric claim in the
-  suggestions recomputed from the skill's formulas and matched (prefix
-  alternative T = 5 and 1,714.8 bytes/doc; substring field limit 16; lb 3→5
-  yields T = 92).
+  suggestions recomputed from the skill's formulas and matched (eval 1: prefix
+  alternative T = 5 and 1,714.8 bytes/doc; eval 2: ub 6→4 yields T = 96).
 - **The sample-data eval is the starkest split:** the with-skill run rejects
   the offered sample document for security reasons and offers the encryption
   schema alternative; the baseline asks the user to paste the document.
@@ -106,8 +106,9 @@ formula-dependent assertion in any run of any iteration.
   username field and is non-vacuous; "top field by impact" passes on ranking
   alone; and nothing covers the substring field-count limit or the `mlen < v`
   queryability warning.
-- **Cost of the skill:** +4.0k tokens mean (iteration 9); timing isn't
-  comparable this iteration (two runs waited on permission confirmations).
+- **Cost of the skill:** +4.1k tokens mean (iteration 10); timing is
+  comparable this iteration — means within 0.2s (67.1s with skill vs 67.3s
+  without).
 
 ## What's different about this skill and evals
 
