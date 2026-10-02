@@ -107,7 +107,7 @@ As you get information, write it to qe-sizing-calculations.md in the following f
 **ub_prefix:** <include if Query Type is "prefix and suffix". Integer 1+>
 **lb_suffix:** <include if Query Type is "prefix and suffix". Integer 1+>
 **ub_suffix:** <include if Query Type is "prefix and suffix". Integer 1+>
-**v:** <omit if Query Type is range, otherwise include. integer, representing the average byte length of the unencrypted values for the field>
+**v:** <omit if Query Type is range, otherwise include. Integer representing the average byte length of the unencrypted values for the field>
 
 - If the user provided an encryption schema, do this once:
   - Add one entry to qe-sizing-calculations.md for each unindexed field, omitting the "Query Type" line.
