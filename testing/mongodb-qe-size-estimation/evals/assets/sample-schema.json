@@ -1,0 +1,55 @@
+{
+  "fields": [
+    {
+      "path": "ssn",
+      "bsonType": "string",
+      "queries": { "queryType": "equality" }
+    },
+    {
+      "path": "name",
+      "bsonType": "string",
+      "queries": [
+        { "queryType": "prefix", "strMinQueryLength": 2, "strMaxQueryLength": 10 },
+        { "queryType": "suffix", "strMinQueryLength": 2, "strMaxQueryLength": 10 }
+      ]
+    },
+    {
+      "path": "username",
+      "bsonType": "string",
+      "queries": { "queryType": "prefix", "strMinQueryLength": 3, "strMaxQueryLength": 6 }
+    },
+    {
+      "path": "bio",
+      "bsonType": "string",
+      "queries": {
+        "queryType": "substring",
+        "strMaxLength": 50,
+        "strMinQueryLength": 3,
+        "strMaxQueryLength": 6
+      }
+    },
+    {
+      "path": "userId",
+      "bsonType": "int",
+      "queries": { "queryType": "equality" }
+    },
+    {
+      "path": "balance",
+      "bsonType": "long",
+      "queries": { "queryType": "range", "min": 0, "max": 1000000000 }
+    },
+    {
+      "path": "birthdate",
+      "bsonType": "date",
+      "queries": { "queryType": "range" }
+    },
+    {
+      "path": "profile",
+      "bsonType": "object"
+    },
+    {
+      "path": "idScan",
+      "bsonType": "binData"
+    }
+  ]
+}

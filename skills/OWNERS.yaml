@@ -69,3 +69,9 @@ skills:
       - AyaanH123
     last_reviewed: 2026-03-25
     review_cadence_days: 90
+
+  - name: mongodb-qe-size-estimation
+    dris:
+      - nvillahermosa-mdb
+    last_reviewed: 2026-09-25
+    review_cadence_days: 90
