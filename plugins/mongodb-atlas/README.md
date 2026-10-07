@@ -12,6 +12,7 @@ These skills come bundled with the plugin and activate automatically when releva
 
 - **`mongodb-connection`** — Reviews and tunes client connection configuration (pools, timeouts, patterns) across driver languages.
 - **`mongodb-natural-language-querying`** — Turns natural-language requests into read-only `find` queries and aggregation pipelines.
+- **`mongodb-qe-size-estimation`** — Estimates the storage and memory impact of encrypting fields in collections with Queryable Encryption (QE) enabled. Do NOT use for collections that use Client-Side Field Level Encryption (CSFLE) instead of QE.
 - **`mongodb-query-optimizer`** — Diagnoses slow queries and recommends indexes to fix them.
 - **`mongodb-schema-design`** — Applies MongoDB schema design patterns and steers you clear of common anti-patterns, whether modeling from scratch or migrating from SQL.
 - **`mongodb-search-and-ai`** — Helps build Atlas Search (full-text), Vector Search (semantic), and hybrid search implementations.
