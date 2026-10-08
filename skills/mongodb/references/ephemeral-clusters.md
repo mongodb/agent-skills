@@ -1,7 +1,7 @@
 # Ephemeral Atlas Clusters: How to provision and hand off
 
 **Important:** Ephemeral Clusters are in Public Preview. Treat the
-[Create an Ephemeral Cluster documentation](https://dochub.mongodb.org/core/create-ephemeral-cluster) as the source of truth for current behavior and limitations.
+[Create an Ephemeral Cluster documentation](https://www.mongodb.com/docs/atlas/tutorial/create-ephemeral-cluster.md?utm_source=agent-skills) as the source of truth for current behavior and limitations.
 
 ## API contract
 
@@ -72,15 +72,17 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
    Before writing, confirm that env file is git-ignored — check `.gitignore` (and that the file isn't already tracked); if it isn't ignored, add it, since you're writing a live credential to disk.
 
-   For the variable name, match what the project already uses: grep the codebase / existing env file for an existing MongoDB URI variable (e.g. `MONGODB_URI`, `MONGO_URL`, `DATABASE_URL`) and reuse it; if there's none, default to `MONGODB_URI`.
+   For the variable name, match what the project already uses: list the variable names in the existing env file (`cut -d= -f1 <env file>`) and grep the codebase for an existing MongoDB URI variable (e.g. `MONGODB_URI`, `MONGO_URL`, `DATABASE_URL`) and reuse it; if there's none, default to `MONGODB_URI`.
 
-   Read the file first and preserve existing values — do not overwrite.
+   Do not read the env file's values. If the variable name is already in the file, ask the user whether to replace that entry or use a different name before writing anything. Otherwise, append the new entry with `>>`, starting with a newline in case the file doesn't end with one; do not overwrite the file.
 
    Put the claim URL and `expiresAt` as comments directly above it so they survive after the chat ends. Also, give the user the claim URL in your reply.
 
 5. Connect using the user's existing driver, or the MongoDB MCP server if that's their setup.
 
 6. Confirm the connection works: `mongosh "$MONGODB_URI" --eval 'db.runCommand({ ping: 1 })'` (`{ ok: 1 }` means good), then start building.
+
+   If the ping fails, wait a few seconds and retry once. If it still fails, report the error without printing the connection string, give the user the claim URL, and stop rather than looping.
 
 ## Tell the user these things (do not skip)
 
