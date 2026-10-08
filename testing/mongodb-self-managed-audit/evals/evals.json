@@ -1,0 +1,188 @@
+{
+  "skill_name": "mongodb-self-managed-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "thp-inversion-80-never-is-fail",
+      "prompt": "We're about to sign off on a new self-managed MongoDB 8.0.4 Enterprise cluster on RHEL 9. Our platform team ran your check script on the primary and everything came back clean, see attached. They set transparent huge pages to never years ago as part of our standard MongoDB hardening image. Can you confirm we're good to go to production, or is anything actually wrong here?",
+      "files": [
+        "assets/host-output-thp-never.txt"
+      ],
+      "expected_output": "Identifies that the pasted run scored THP against pre-8.0 expectations. On 8.0 and later the documented value is enabled=always with defrag=defer+madvise, khugepaged/max_ptes_none=0 and vm.overcommit_memory=1, so enabled=never is a FAIL despite the [PASS] in the output. Gives a systemd-unit remediation and does not sign off. Phrases the finding as non-compliance with documented guidance rather than as a hard requirement.",
+      "expectations": [
+        "States that MongoDB 8.0 and later document THP ENABLED, inverting the pre-8.0 guidance to disable it",
+        "Names the target value for transparent_hugepage/enabled as literally 'always' (not 'madvise' and not merely 'not never')",
+        "Classifies thp-enabled=never on this 8.0.4 host as FAIL, explicitly contradicting the [PASS] in the pasted output",
+        "Names the companion 8.0+ values: defrag=defer+madvise, khugepaged/max_ptes_none=0, vm.overcommit_memory=1",
+        "Flags max_ptes_none=511 and vm.overcommit_memory=0 as also wrong for 8.0, not merely informational",
+        "Provides a persistence remediation that survives reboot and names a concrete mechanism, such as a systemd unit ordered before mongod, a tuned profile, or the host build image. A runtime echo alone does not satisfy this.",
+        "States that this host is outside the kernel restriction AND gives the reason: kernel 5.14.0-427 is below 6.19, the lower bound of the affected range. A verdict with no version-based reason, or one reached by dismissing the check rather than by reasoning about the range, does not satisfy this."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "thp-inversion-70-never-is-pass",
+      "prompt": "Auditing a self-managed MongoDB 7.0.14 replica set on RHEL 9 before it goes live. Attached is the output from the host checks on one of the data-bearing nodes. Is the transparent huge pages configuration correct for this deployment, and is there anything blocking?",
+      "files": [
+        "assets/host-output-70-thp-never.txt"
+      ],
+      "expected_output": "Confirms THP enabled=never and defrag=never are the documented values for 7.0 and a PASS. Does not apply the 8.0+ 'enable THP' guidance. Treats max_ptes_none and vm.overcommit_memory as not applicable on 7.0. Reports no blocking findings.",
+      "expectations": [
+        "Confirms THP enabled=never is the documented value for MongoDB 7.0 and a PASS",
+        "Does NOT recommend enabling THP or setting defrag=defer+madvise on this 7.0 deployment",
+        "Treats khugepaged/max_ptes_none and vm.overcommit_memory as not applicable to 7.0 rather than as findings",
+        "States that kernel 5.14.0-427 is outside the kernel restriction and that 7.0 is unaffected regardless, rather than staying silent on the kernel",
+        "Names 8.0 as the point where THP guidance inverts, showing the verdict is version-aware rather than a restatement of the older disable-THP convention"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "kernel-7014-not-a-remedy-on-8025",
+      "prompt": "Production is down. Rocky 9 box, MongoDB Enterprise 8.0.25, mongod won't stay up. We already hit the kernel 6.19 TCMalloc thing last quarter so the platform team upgraded this host to kernel 7.0.14, which the docs say resolves the incompatibility, but mongod still won't start. Attached is uname, the rpm version, systemctl and the tail of mongod.log. The platform team thinks the 7.0.14 upgrade didn't apply properly and wants to reimage the box tonight. What's actually happening and what do we do?",
+      "files": [
+        "assets/host-output-8025-kernel-7014.txt"
+      ],
+      "expected_output": "Explains that kernel 7.0.14 is not a remedy on MongoDB 8.0.25. Releases 8.0.21 through 8.0.29 and 8.3.0 through 8.3.8 exit during startup on any kernel 6.19 or later, including 7.0.14, because the startup guard was only narrowed in 8.0.30 and 8.3.9. The remedy is a MongoDB upgrade to 8.0.30 or later, not a kernel change or a reimage. Cites the log id 12257600 as the deliberate guard, not a failed upgrade.",
+      "expectations": [
+        "States that kernel 7.0.14 does NOT resolve the problem on MongoDB 8.0.25",
+        "Explains that releases 8.0.21 through 8.0.29 exit during startup on any kernel 6.19 or later, 7.0.14 included",
+        "Identifies the remedy as upgrading MongoDB to 8.0.30 or later (or 8.3.9+/9.0), not changing the kernel",
+        "Tells the team NOT to reimage the host AND gives the correct reason: the host and kernel are fine, and the block comes from the MongoDB release. An answer that says not to reimage while attributing the failure to a bad kernel package, an invalid kernel version, or a failed kernel upgrade does not satisfy this.",
+        "Reads the mongod.log entry as a deliberate startup guard AND states what triggers it: this MongoDB release rejects kernel 6.19 and later by design. An answer that calls it a guard but attributes the trigger to an unsupported or non-existent kernel version does not satisfy this.",
+        "Does NOT advise downgrading the kernel back below 6.19 as the primary remedy"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "wiredtiger-cache-both-set-and-selinux-js",
+      "prompt": "Inherited a self-managed MongoDB 8.3.4 box from a contractor and mongod is currently not running. Before I try to start it I want to know what's wrong with this config. Attached is mongod.conf plus free -g, the cgroup memory limit, getenforce and the version. The host has 62GB of RAM. Is the 48GB cache sane for this box, and is there anything else that will bite me?",
+      "files": [
+        "assets/mongod-conf-wt-cache.txt"
+      ],
+      "expected_output": "Flags that cacheSizeGB and cacheSizePct are both set, which is a FAIL: exactly one of the two is permitted. Flags that cacheSizePct 0.85 exceeds the 80 percent ceiling. Flags that the 48GB cache exceeds the 32GB cgroup memory limit, so the container limit governs, not host RAM. Flags security.javascriptEnabled true under SELinux Enforcing as a FAIL that segfaults mongod. Notes bind_ip 0.0.0.0. Keeps config findings valid even though mongod is stopped, and marks runtime values UNKNOWN.",
+      "expectations": [
+        "Flags that cacheSizeGB and cacheSizePct are both set as a FAIL, stating only one of the two may be configured",
+        "Flags cacheSizePct 0.85 as above the documented 80 percent ceiling",
+        "Flags security.javascriptEnabled true under SELinux Enforcing as a FAIL that causes mongod to segfault",
+        "Marks values that cannot be established from the pasted evidence as UNKNOWN with a reason, rather than PASS, while keeping the config-file findings valid despite mongod being stopped"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "90-inherits-80-expectations",
+      "prompt": "First MongoDB 9.0 deployment for us, 9.0.1 Enterprise on Ubuntu 26.04, kernel 7.0.14-14-generic. Check output attached. Two questions from my team: our runbook says disable transparent huge pages for MongoDB, so are these three THP failures real or is the script scoring against the wrong version? And are we exposed to the kernel 6.19 issue on this kernel?",
+      "files": [
+        "assets/host-output-90-thp-never.txt"
+      ],
+      "expected_output": "Confirms the THP failures are real: 9.0 inherits the 8.0-and-later expectations, so enabled=always and defrag=defer+madvise are documented and never is a FAIL. The runbook predates 8.0 and should be updated. On the kernel question, 9.0 carries the narrowed startup guard, so kernel 7.0.14 is outside the restriction and this host is not exposed. May note the Ubuntu 7.0.0-XX version-string caveat as adjacent.",
+      "expectations": [
+        "Confirms the three THP FAILs are real and that 9.0 follows the 8.0-and-later expectations (enabled=always, defrag=defer+madvise, max_ptes_none=0)",
+        "Tells the team their disable-THP runbook is outdated for 8.0 and later rather than validating it",
+        "States this host is NOT exposed to the kernel restriction, because 9.0 carries the narrowed guard and kernel 7.0.14 is outside the affected range",
+        "Also flags vm.overcommit_memory=0 and the missing THP persistence mechanism as items to fix alongside"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "container-node-scoping-unknown",
+      "_note": "Coverage case, restored from iteration 1. Both configurations scored 5/5 there, so it is not expected to discriminate. It is retained because it is the only test of the documented container and Kubernetes edge case; a non-discriminating assertion is a reason to discount it in the delta, not a reason to stop testing the behaviour.",
+      "prompt": "I ran the production check inside our MongoDB container on Kubernetes rather than on the worker node, because that's the only shell I have. Output attached. Our SRE lead wants to close out the eight warnings as remediation tickets this sprint. Before I file them, is that the right read of this output?",
+      "files": [
+        "assets/host-output-container.txt"
+      ],
+      "expected_output": "Pushes back on treating the unreadable reads as actionable tickets. The /sys and /proc values that returned 'not found' or 'unreadable' belong to UNKNOWN with the reason carried, not WARN. Explains that THP, swappiness and zone_reclaim_mode are node-level settings not settable from inside the container, so they must be re-checked on the worker node. Separates the genuinely actionable finding, bind_ip 0.0.0.0, from the unverifiable ones.",
+      "expectations": [
+        "Reclassifies the 'not found' and 'unreadable' /sys and /proc checks as UNKNOWN rather than WARN, because the run could not establish them",
+        "States that THP, vm.swappiness and vm.zone_reclaim_mode describe the worker node, not the pod, and must be verified on the node",
+        "Distinguishes which settings are settable from inside the container versus only on the node",
+        "Identifies bind_ip 0.0.0.0 as a genuinely actionable finding separate from the unverifiable ones",
+        "Advises against filing all eight warnings as remediation tickets as-is"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "broad-coverage-all-categories",
+      "_note": "Coverage case. Fixture is real, unedited output from a live Ubuntu 24.04 host (kernel 6.17, unprivileged run, mongod not installed), redacted only for hostname and NIC names. Exercises the categories no other eval touches: storage, network, NUMA, clock, ulimits, TCMalloc and security.",
+      "prompt": "Pre-install audit for a new self-managed MongoDB 8.0.25 Enterprise deployment on an Azure VM running Ubuntu 24.04. mongod is not installed yet. I ran the full check suite as my normal login, not as root. Full output attached. Give me the prioritised remediation list I should hand to the platform team, and tell me what this run could not establish.",
+      "files": [
+        "assets/host-output-full-ubuntu2404.txt"
+      ],
+      "expected_output": "Produces a prioritised list led by the two FAILs (vm.swappiness 60 and ulimit-processes 31436) and covering the WARN items across every category: ulimits (nofile 1024, nproc 31436, no limits.d file), network (tcp_keepalive_time 7200, syn_backlog 512, netdev_max_backlog 1000), kernel (dirty_ratio 20, dirty_background_ratio 10), THP (defrag madvise, max_ptes_none 511, overcommit_memory 0, no persistence), and storage (dbPath absent). States that mongod not being installed is expected for a pre-install audit and that the process, WiredTiger runtime and config findings are consequently unestablished. Confirms kernel 6.17 is below 6.19 so the deployment is clear of the kernel restriction, and that Ubuntu 24.04 is supported on 8.0.",
+      "expectations": [
+        "Leads with the two FAIL items, vm.swappiness 60 and ulimit-processes 31436, as the blocking pre-install work, ahead of the WARN items",
+        "Covers ulimits: processes 31436 is a blocking FAIL below the 32768 threshold, open files soft 1024 is below the 64000 recommendation, and no mongod limits file exists in /etc/security/limits.d/",
+        "Covers network tuning: tcp_keepalive_time 7200 against the recommended 120, plus at least one of tcp_max_syn_backlog 512 or netdev_max_backlog 1000",
+        "Covers kernel tuning: vm.dirty_ratio 20 and vm.dirty_background_ratio 10 are above the recommended values",
+        "Covers THP for 8.0: defrag=madvise, khugepaged/max_ptes_none=511 and vm.overcommit_memory=0 are all wrong for this version, and no persistence mechanism is configured",
+        "Covers storage: dbPath /var/lib/mongo does not exist, which is expected before install but must be created and owned by the mongod user",
+        "Reports the clock checks as satisfied rather than omitting them, since a time daemon is running and synchronised",
+        "Reports NUMA as not applicable on this host because it presents a single NUMA node, rather than recommending numactl interleaving anyway",
+        "States that kernel 6.17 is below 6.19 and therefore outside the documented kernel restriction for 8.0.25",
+        "Treats mongod not being installed as expected for a pre-install audit rather than as a failure, and does not report the absent mongod.conf as a blocking finding",
+        "Identifies what the run could not establish, including the runtime and WiredTiger values that need a live server, rather than reporting them as passing"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "amazonlinux-thp-madvise-selinux-permissive",
+      "_note": "Second broad-coverage case, on a different distro from eval 7. Fixture is real, redacted output from an Amazon Linux 2023 EC2 host: kernel 6.18.48 (one minor version below the 6.19 boundary), THP at madvise, SELinux Permissive, ulimits already correct, and 0.8 GB RAM so the WiredTiger 0.256 GB cache floor applies. Covers the middle THP state and the SELinux path that eval 7's Ubuntu host cannot reach.",
+      "prompt": "Sizing exercise before we commit to an instance type. This is an Amazon Linux 2023 EC2 box we're considering for a self-managed MongoDB 8.0.25 node, nothing installed yet. Full check output attached. Our platform standard sets transparent huge pages to madvise across the fleet and we run SELinux in Permissive because Enforcing broke an unrelated agent last year. Two questions: are those two fleet standards a problem for MongoDB here, and is this instance actually big enough?",
+      "files": [
+        "assets/host-output-full-amazonlinux2023.txt"
+      ],
+      "expected_output": "Says THP=madvise is a WARN rather than a PASS on 8.0.25, since 8.0 and later document enabled=always, and madvise is the middle state that is suboptimal on every version. Says SELinux Permissive is a WARN and not blocking, and notes the skill's related concern is that server-side JavaScript under Enforcing segfaults mongod, so moving to Enforcing needs javascriptEnabled checked first. On sizing, flags 0.8 GB RAM and 2 cores as the real problem: the WiredTiger cache falls back to the 0.256 GB floor because 50 percent of (RAM - 1GB) is negative, which is unusable for production. Confirms kernel 6.18.48 is below 6.19 and outside the restriction. Notes ulimits already pass on this host.",
+      "expectations": [
+        "States THP=madvise is a WARN on MongoDB 8.0.25, not a PASS, because 8.0 and later document enabled=always",
+        "Explains that madvise is the middle state and is suboptimal on every MongoDB version, rather than treating it as correct for one of them",
+        "Identifies SELinux Permissive as a non-blocking WARN rather than a FAIL",
+        "Raises that server-side JavaScript under SELinux Enforcing segfaults mongod, so javascriptEnabled must be checked before moving this host to Enforcing",
+        "Flags 0.8 GB total RAM as the dominant sizing problem, not the THP or SELinux settings",
+        "States that the WiredTiger cache falls back to the 0.256 GB floor on this host because 50 percent of (RAM minus 1GB) is at or below the floor",
+        "States that kernel 6.18.48 is below 6.19 and therefore outside the documented kernel restriction",
+        "Notes that the open files limit already meets the recommendation on this host at 65535, rather than repeating generic nofile advice",
+        "Notes that the processes limit is already unlimited on this host, rather than repeating generic nproc advice",
+        "Recommends a larger instance before production rather than declaring the host ready once THP and SELinux are addressed"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "60-out-of-scope-rescored-as-70",
+      "_note": "Tests the prerequisite stop rule for an unsupported version. The fixture shows the suite rejecting --version 6.0, then a re-run forced to --version 7.0 on a 6.0.19 binary. Everything except the version lines passes, which invites a 'sign off the rest' answer.",
+      "prompt": "Pre go-live check on a self-managed MongoDB Enterprise replica set on RHEL 8.10. The nodes run 6.0.19. Your script refused --version 6.0, so we re-ran it with --version 7.0 since that is the closest one it accepts. Output from the primary attached. Apart from the version lines everything is green, and we already have the upgrade booked for Q1. Can you sign off the rest of this audit as production-ready so we can go live next week and deal with the version later?",
+      "files": [
+        "assets/host-output-60-run-as-70.txt"
+      ],
+      "expected_output": "Declines to sign off. MongoDB 6.0 is outside the versions this audit has expected values for (7.0, 8.0, 8.3, 9.0), so forcing --version 7.0 scores a 6.0.19 binary against the wrong expectations and the green results are not evidence of readiness for this deployment. States that 6.0 is end of life (July 31, 2025) and that going live on it means running an unsupported release. Recommends upgrading before go-live rather than in Q1, notes that a 6.0 deployment upgrades one major release at a time with 7.0 as the next step, and points to the MongoDB lifecycle schedule or the MongoDB account team. Offers to run the full audit once the nodes are on a covered release, with --version matching the installed binary.",
+      "expectations": [
+        "Refuses to certify the host or the remaining checks as production-ready",
+        "Explains that the --version 7.0 re-run grades a 6.0.19 binary against another release's expected values, so its PASS results cannot stand in for an audit of this deployment",
+        "States that MongoDB 6.0 is past end of life, with July 31, 2025 as the date, and that going live on it means running an unsupported release",
+        "Advises completing the upgrade before go-live instead of deferring it to Q1",
+        "Describes the upgrade path as one major release at a time, moving to 7.0 first rather than jumping straight to 8.0 or later",
+        "Directs the team to the MongoDB lifecycle schedule or to their MongoDB account team for support status",
+        "Does not present a per-check PASS/WARN/FAIL scorecard for this host as the audit result",
+        "Offers to audit again after the upgrade, with the --version argument matching the installed mongod"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "70-host-built-from-80-golden-image",
+      "_note": "Inverse of eval 1 and complement to eval 2. A 7.0.21 node built from a golden image tuned for 8.0, audited with --version 8.0. The run is green apart from the version-mismatch WARN, but THP always and defrag defer+madvise are FAILs on 7.0, and the tuned profile reasserts them every boot.",
+      "prompt": "Our platform team builds every MongoDB host from one golden RHEL 9.4 image that follows the 8.0 production notes, including the THP settings. This new node joins a self-managed MongoDB 7.0.21 Enterprise replica set that will stay on 7.0 until next year. They ran the suite with --version 8.0 because that is what the image is certified against, and the only thing flagged is a version-mismatch warning they want to ignore. Output attached. Is this node ready to join the 7.0 replica set?",
+      "files": [
+        "assets/host-output-70-run-as-80-golden-image.txt"
+      ],
+      "expected_output": "Says the node is not ready. The run scored a 7.0.21 binary against 8.0 expectations, so the mismatch warning invalidates the green result rather than being ignorable. Re-scored for 7.0, THP enabled=always is a FAIL and defrag=defer+madvise is a FAIL, because 7.0 documents never for both. max_ptes_none=0 and vm.overcommit_memory=1 are not 7.0 checks, so they are not reported as passes that matter here. The tuned profile golden-mongodb-80 reasserts the wrong values on every boot, so the fix is a 7.0-specific tuned profile or image variant rather than a runtime echo. The TCMalloc and kernel 6.19 checks are 8.0-only; kernel 5.14 is fine and 7.0 is unaffected by the restriction anyway. Recommends re-running with --version 7.0 after the change.",
+      "expectations": [
+        "States the node is not ready to join the 7.0 replica set as configured",
+        "Treats the mongod-version-match warning as invalidating the whole run, not as a cosmetic warning to ignore",
+        "Classifies THP enabled=always on this 7.0.21 host as FAIL, contradicting the [PASS] in the output",
+        "Classifies defrag=defer+madvise as wrong for 7.0, where the documented value is never",
+        "Does not count khugepaged/max_ptes_none or vm.overcommit_memory as 7.0 passes, treating them as checks that apply from 8.0 on",
+        "Identifies the active tuned profile golden-mongodb-80 as the reason the wrong THP values come back after every reboot, and proposes a 7.0-specific tuned profile, image variant or systemd unit as the persistent fix",
+        "Notes the TCMalloc section and its kernel check are 8.0-only, and that 7.0 is not affected by the kernel 6.19 restriction",
+        "Recommends re-running the suite with --version 7.0 after the THP change before the node joins"
+      ]
+    }
+  ]
+}

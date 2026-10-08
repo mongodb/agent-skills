@@ -4,6 +4,7 @@
 # User-specific Claude settings
 .claude/settings.local.json
 .score_cache/
+.remember/
 
 # Node tooling dependencies
 node_modules/

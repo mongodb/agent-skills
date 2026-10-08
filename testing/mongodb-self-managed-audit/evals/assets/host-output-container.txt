@@ -1,0 +1,28 @@
+$ bash scripts/run-all-checks.sh --version 8.3
+=== Transparent Huge Pages (THP) Check ===
+[INFO] thp-version: scoring against MongoDB 8.3 expectations
+[WARN] thp-enabled: /sys/kernel/mm/transparent_hugepage/enabled not found (container, or a kernel without THP)
+[WARN] thp-defrag: /sys/kernel/mm/transparent_hugepage/defrag not found
+[WARN] thp-max-ptes-none: /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none not found
+[WARN] thp-overcommit: /proc/sys/vm/overcommit_memory is unreadable
+[WARN] thp-persistent: no persistence mechanism detected; THP settings reset on reboot
+
+=== Kernel & System ===
+[WARN] vm.swappiness: could not determine value
+[WARN] vm.zone_reclaim_mode: could not determine value
+
+=== Ulimits ===
+[PASS] ulimit-nofile: open files limit is 1048576
+[PASS] ulimit-nproc: processes limit is unlimited
+
+=== MongoDB Process & Config ===
+[PASS] mongod-running: mongod is running as user mongodb
+[PASS] mongod-version: 8.3.0
+[WARN] mongod-bindip: bind_ip is 0.0.0.0
+
+============================================================
+ SUMMARY
+============================================================
+ PASS:  4
+ WARN:  8
+ FAIL:  0

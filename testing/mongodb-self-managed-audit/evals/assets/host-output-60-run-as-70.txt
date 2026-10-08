@@ -1,0 +1,65 @@
+$ bash scripts/run-all-checks.sh --version 6.0 --dbpath /var/lib/mongo
+Usage: bash run-all-checks.sh --version 7.0 | 8.0 | 8.3 | 9.0 [--dbpath /var/lib/mongo]
+
+$ bash scripts/run-all-checks.sh --version 7.0 --dbpath /var/lib/mongo
+============================================================
+ Self-Managed Deployments Checks
+ Host:    db-node-01.internal.example
+ Date:    2026-09-30 14:05:41
+ Kernel:  4.18.0-553.16.1.el8_10.x86_64
+ Version: MongoDB 7.0
+============================================================
+
+--- Platform & OS ---
+=== Platform & OS Check ===
+[INFO] os: Red Hat Enterprise Linux 8.10
+[INFO] kernel: 4.18.0-553.16.1.el8_10.x86_64
+[INFO] architecture: x86_64
+[PASS] kernel-version: 4.18.0-553.16.1.el8_10.x86_64 is outside the documented kernel restrictions for 7.0
+[PASS] cpu-avx: AVX instruction set available
+[PASS] kernel-minimum: 4.18.0-553.16.1.el8_10.x86_64 meets the 2.6.36 minimum
+[PASS] cpu-cores: 8 cores available (minimum 2 real cores per mongod or mongos)
+[PASS] os-supported: Red Hat Enterprise Linux appears to be in the MongoDB supported OS list
+--- Kernel & System Parameters ---
+=== Kernel & System Parameters Check ===
+[PASS] vm.swappiness: 1 (recommended: 1)
+[PASS] vm.zone_reclaim_mode: 0 (correct for NUMA systems)
+[PASS] net.core.somaxconn: 4096
+[PASS] net.ipv4.tcp_keepalive_time: 120 seconds
+--- Transparent Huge Pages ---
+=== Transparent Huge Pages (THP) Check ===
+[INFO] thp-version: scoring against MongoDB 7.0 expectations
+[INFO] thp-enabled-raw: always madvise [never]
+[PASS] thp-enabled: THP is 'never', as MongoDB 7.0 and earlier require
+[PASS] thp-defrag: defrag is 'never', as MongoDB 7.0 and earlier require
+[INFO] thp-tuned: tuned active profile: mongodb-ea
+[INFO] thp-persistent: tuned profile 'mongodb-ea' is active and may set THP at boot; confirm it sets the value this version needs
+--- Ulimits ---
+=== Ulimits Check ===
+[PASS] ulimit-open-files: soft=64000 hard=64000 (recommended >= 64000)
+[PASS] ulimit-processes: soft=64000 hard=64000 (recommended >= 64000)
+--- MongoDB Process & Config ---
+=== MongoDB Process Check ===
+[PASS] mongod-running: mongod is running (PID 1874)
+[INFO] mongod-version: 6.0.19
+[FAIL] mongod-version-support: MongoDB 6.0 reached end of life July 31, 2025. Upgrade immediately.
+[WARN] mongod-version-match: installed mongod is 6.0.19 but the audit was run with --version 7.0
+       Fix: 6.0 is not covered by this checklist (7.0 8.0 8.3 9.0); results scored against 7.0 do not apply. Upgrade to a covered release, then re-run with the matching --version
+[PASS] mongod-user: mongod is running as non-root user (mongod)
+[PASS] mongod-auth: security.authorization is enabled
+============================================================
+ SUMMARY
+============================================================
+ PASS:  16
+ WARN:  1
+ FAIL:  1
+ UNKNOWN: 0
+FAILURES (must fix before production):
+  FAIL: mongod-version-support: MongoDB 6.0 reached end of life July 31, 2025. Upgrade immediately.
+WARNINGS (fix before high-load production use):
+  WARN: mongod-version-match: installed mongod is 6.0.19 but the audit was run with --version 7.0
+
+Found 1 failure(s). Resolve all FAILs before deploying to production.
+
+Reference: https://www.mongodb.com/docs/manual/administration/production-notes/
+============================================================
