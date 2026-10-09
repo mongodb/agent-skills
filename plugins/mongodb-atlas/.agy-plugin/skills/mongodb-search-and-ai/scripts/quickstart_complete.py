@@ -373,8 +373,9 @@ except Exception as e:
 
 print("\n── Done! ─────────────────────────────────────────────")
 print("This script targets the sample_mflix.movies schema. To use your")
-print("own data, update CONNECTION_STRING, DB_NAME, and COLLECTION_NAME")
-print("at the top, then adjust the index definitions, $project stages,")
-print("and query strings to match your own field names.")
+print("own data, set MONGODB_URI (or MDB_MCP_CONNECTION_STRING), then")
+print("change DB_NAME and COLLECTION_NAME at the top and adjust the")
+print("index definitions, $project stages, and query strings to match")
+print("your own field names.")
 
 client.close()
