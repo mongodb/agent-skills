@@ -9,7 +9,7 @@ tags: schema, patterns, bucket, grouping, pagination, arrays
 
 **Group a series of related items into bounded arrays within a single document.** The bucket pattern separates long series of data into distinct objects, reducing document count and aligning storage with how data is actually consumed. This is especially useful when an application accesses data in fixed-size groups (e.g. pages).
 
-> **For time-series data**, prefer [Time Series Collections](https://www.mongodb.com/docs/manual/core/timeseries-collections/), which apply bucketing automatically with built-in compression and indexing optimizations.
+> **For time-series data**, prefer [Time Series Collections](https://www.mongodb.com/docs/manual/core/timeseries-collections/?utm_source=agent-skills), which apply bucketing automatically with built-in compression and indexing optimizations.
 
 **Incorrect (one document per event):**
 
@@ -72,7 +72,7 @@ db.trades.find({ _id: /^123_/ }).sort({ _id: 1 }).skip(9).limit(1)
 
 **When NOT to use this pattern:**
 
-- **Time-series workloads**: Use [Time Series Collections](https://www.mongodb.com/docs/manual/core/timeseries-collections/) instead — they handle bucketing, compression, and indexing automatically.
+- **Time-series workloads**: Use [Time Series Collections](https://www.mongodb.com/docs/manual/core/timeseries-collections/?utm_source=agent-skills) instead — they handle bucketing, compression, and indexing automatically.
 - **Random single-item access**: If you frequently query individual items by their own ID, buckets add unnecessary indirection.
 - **Low volume**: If the total series per entity is small, the added complexity isn't worth it.
 - **Highly variable item sizes**: Bucketing works best when items are roughly uniform in size so bucket documents stay predictable.
@@ -99,4 +99,4 @@ db.trades.aggregate([
 ])
 ```
 
-Reference: [Group Data with the Bucket Pattern](https://www.mongodb.com/docs/manual/data-modeling/design-patterns/group-data/bucket-pattern/)
+Reference: [Group Data with the Bucket Pattern](https://www.mongodb.com/docs/manual/data-modeling/design-patterns/group-data/bucket-pattern/?utm_source=agent-skills)

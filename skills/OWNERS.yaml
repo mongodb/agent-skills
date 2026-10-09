@@ -27,6 +27,12 @@
 #     review_cadence_days: 90
 
 skills:
+  - name: mongodb
+    dris:
+      - dylan-good-e
+    last_reviewed: 2026-09-30
+    review_cadence_days: 90
+
   - name: mongodb-atlas-stream-processing
     dris:
       - laurazhukas

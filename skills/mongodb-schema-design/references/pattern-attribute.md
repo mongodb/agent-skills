@@ -74,4 +74,4 @@ db.items.find({
 }).explain("executionStats")
 ```
 
-Reference: [Attribute Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/group-data/attribute-pattern/)
+Reference: [Attribute Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/group-data/attribute-pattern/?utm_source=agent-skills)

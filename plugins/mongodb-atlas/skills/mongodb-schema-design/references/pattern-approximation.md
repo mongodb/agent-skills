@@ -77,4 +77,4 @@ db.articles.aggregate([
 // Verify staleness is within acceptable bounds for your use case
 ```
 
-Reference: [Use the Approximation Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/approximation-schema-pattern/)
+Reference: [Use the Approximation Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/approximation-schema-pattern/?utm_source=agent-skills)

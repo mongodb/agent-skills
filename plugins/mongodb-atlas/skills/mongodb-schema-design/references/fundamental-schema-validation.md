@@ -128,4 +128,4 @@ const validator = info?.options?.validator
 db.users.find({ $nor: [validator] })
 ```
 
-Reference: [Schema Validation](https://mongodb.com/docs/manual/core/schema-validation/)
+Reference: [Schema Validation](https://mongodb.com/docs/manual/core/schema-validation/?utm_source=agent-skills)
