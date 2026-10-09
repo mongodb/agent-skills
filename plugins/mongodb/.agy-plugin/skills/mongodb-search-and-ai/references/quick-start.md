@@ -6,19 +6,6 @@
 
 **This walkthrough requires an Atlas cloud cluster.** The sample dataset loads from the Atlas UI, and Automated Embedding works on every Atlas tier with no key management. Atlas Local and self-managed MongoDB are out of scope — Step 0.2 covers how they get detected and routed out.
 
-## Table of Contents
-
-- [Interaction Principle](#interaction-principle)
-- [Step 0 — Check Connection and Deployment](#step-0--check-connection-and-deployment)
-- [Step 1 — Load Sample Data](#step-1--load-sample-data)
-- [Step 2 — Choose Your Path](#step-2--choose-your-path)
-- [Path A: Semantic Search (Automated Embedding)](#path-a-semantic-search-automated-embedding)
-- [Path A2: Semantic Search (Bring Your Own Embeddings)](#path-a2-semantic-search-bring-your-own-embeddings)
-- [Path B: Keyword Search (Atlas Search)](#path-b-keyword-search-atlas-search)
-- [Path C: Hybrid Search](#path-c-hybrid-search)
-- [Wrap Up](#wrap-up)
-- [Troubleshooting](#troubleshooting)
-
 ## Interaction Principle
 
 **Act first. Explain second. Then ask.**
@@ -32,6 +19,13 @@ Never ask the user to decide something they haven't seen yet.
 
 **Never end a turn without the next step.** Every turn closes with an AskUserQuestion or a completed action, and a step's question goes in the same turn as its explanation. The only valid stopping points are the user choosing to stop, or Wrap Up.
 
+**"No" does not end the walkthrough, except at a bridge step.**
+
+- **Enrichment questions** (6a, 7a, 5b, 6b, 9c) offer an optional extra inside the current path. A decline advances to that path's bridge step: 8a for Path A, 6a2 for Path A2, 7b for Path B, Wrap Up for Path C.
+- **Bridge questions** offer the next search mode. A decline goes to Wrap Up, the only place an intermediate "No" ends the tour.
+
+Never re-offer a declined branch, and never substitute one the user didn't ask for.
+
 ## Step 0 — Check Connection and Deployment
 
 **0.1 — Verify the MongoDB MCP is connected** by calling `list-databases`.
@@ -42,13 +36,14 @@ Never ask the user to decide something they haven't seen yet.
 
   Do not continue until `list-databases` succeeds.
 
-**0.2 — Assume Atlas cloud and continue (silent).** Do **not** ask the user what kind of deployment they have. Same principle as Step 3a: never block a beginner on a question they can't answer, and let a real operation produce the answer instead.
+**0.2 — Determine the deployment without asking (silent).** Do **not** ask the user what kind of deployment they have.
 
-- **Default to Atlas cloud** and proceed silently to Step 1. It is the overwhelmingly common case, and it is the case this walkthrough is written for.
-- **Opportunistic confirmation only.** If `atlas-local-list-deployments` is available *and* reports a running deployment you are connected to, that is positive evidence of **Atlas Local** — route out using the message below. That tool ships only with the local MCP server, so on most setups it will not exist; its absence proves nothing. Likewise, `atlas-inspect-cluster` succeeding confirms Atlas cloud, but its failure proves nothing — it is unregistered whenever the server has only a connection string and no Atlas API service account.
-- **Do not attempt any other deployment probe.** The MongoDB MCP server exposes no tool that returns cluster hostnames or raw command output, so there is no other silent signal available.
+**Principle, used again in Step 3a: never block a beginner on a question they can't answer. Try the real operation and let its result tell you what the deployment supports.**
 
-**Where non-Atlas deployments actually get caught:** Step 1 cannot find or load `sample_mflix`, or Step 4a's `autoEmbed` index build fails. Both are real evidence. Use the routing message below at that point.
+- **Opportunistic confirmation only.** If `atlas-local-list-deployments` exists *and* reports a running deployment you are connected to, that is positive evidence of **Atlas Local**: route out with the message below. Neither tool's absence or failure proves anything, because `atlas-local-list-deployments` ships only with the local MCP server and `atlas-inspect-cluster` is unregistered whenever the server has a connection string but no Atlas API service account.
+- **Otherwise default to Atlas cloud** and proceed silently to Step 1. That is the overwhelmingly common case and the one this walkthrough is written for. Attempt no other probe: the MongoDB MCP server exposes no tool that returns cluster hostnames or raw command output.
+
+**Where non-Atlas deployments actually get caught:** Step 1 cannot find or load `sample_mflix`, or Step 4a's `autoEmbed` index build fails. Both are real evidence; use the routing message below at that point.
 
 **If there is real evidence of Atlas Local or self-managed MongoDB:** stop the walkthrough. Do not suggest starting a local deployment — they are already running MongoDB somewhere. Tell the user:
 > "This guided walkthrough is only available for a cluster with the sample movies dataset on Atlas. Two options:
@@ -56,7 +51,7 @@ Never ask the user to decide something they haven't seen yet.
 > 1. **Connect to a free Atlas cluster** (M0, no card required), load the sample dataset, and we'll run this tour end to end.
 > 2. **Skip the tour and build search on your own data here.** Tell me what you want to search and I'll design the index and queries against your actual collections."
 
-Use AskUserQuestion with those two options. If they pick 1, wait for the Atlas cloud connection and restart at Step 0. If they pick 2, leave this walkthrough and use the main skill workflow in `SKILL.md`; without Voyage AI keys configured, semantic search there means manual embeddings (`vector-search.md`), not `autoEmbed`.
+Use AskUserQuestion with those two options. If the user picks 1, wait for the Atlas cloud connection and restart at Step 0. If they pick 2, leave this walkthrough and use the main skill workflow in `SKILL.md`; without Voyage AI keys configured, semantic search there means manual embeddings (`vector-search.md`), not `autoEmbed`.
 
 ## Step 1 — Load Sample Data
 
@@ -78,7 +73,7 @@ Use `collection-schema` on `sample_mflix.movies`, show a condensed example docum
 
 ## Step 2 — Choose Your Path
 
-**Skip this step if the user already named a search type** when they asked ("I want to try vector search", "show me keyword search") — go straight to Path A, Path B, or, for hybrid, Path A followed by Path C. Do not re-ask a question they already answered. Skip only this question: Step 0's connection check and Step 1's `sample_mflix` check still have to pass before any path starts.
+**Skip this step if the user already named a search type** when they asked ("I want to try vector search", "show me keyword search") — go straight to Path A, Path B, or, for hybrid, the hybrid route below. Do not re-ask a question they already answered. Skip only this question: Step 0's connection check and Step 1's `sample_mflix` check still have to pass before any path starts.
 
 Otherwise use AskUserQuestion to ask:
 
@@ -86,19 +81,37 @@ Otherwise use AskUserQuestion to ask:
 
 - **Semantic Search** *(Recommended)* — Find results by meaning, even when words don't match. Best for discovery, recommendations, and natural language queries.
 - **Keyword Search** — Find results by exact words, with typo tolerance and autocomplete. Best for search boxes where users type specific terms.
+- **Hybrid Search** — Run both at once and merge the rankings. Best when queries mix exact terms with open-ended intent.
 - **I'm not sure** — routes to Semantic Search with an extra line of explanation.
+
+**If the user picks Hybrid, or asked for hybrid by name:** hybrid needs a semantic index *and* a keyword index on `sample_mflix.movies`, so create both before Path C, in this order, confirming each.
+
+1. Say so before creating anything:
+   > "Hybrid search runs keyword and semantic search together, so it needs both kinds of index on the movies collection. I'll build the semantic one first, then the keyword one, and I'll check with you before each. Then we'll run the hybrid query."
+2. **Semantic index.** Run Step 3a and Step 4a in full, Step 4a's AskUserQuestion confirmation included. Skip Steps 5a through 8a.
+3. **Keyword index.** Run Step 3b only. Skip Steps 4b through 7b.
+4. Go to Path C.
+
+If at Step 4a the user takes **Try with existing embeddings** instead, hybrid on `movies` is off the table, because Path A2 builds on `embedded_movies`. Run Path A2 from Step 3a2 and let Step 6a2's disclosure offer the second index.
 
 ## Path A: Semantic Search (Automated Embedding)
 
 ### Step 3a — Cluster Readiness
 
-**Principle: never block a beginner on a question they can't answer. Try the real operation and let its result tell you what the tier supports.** Do NOT ask the user "what tier are you on?" up front.
+Apply the Step 0.2 principle to cluster tier: try the real operation and let its result tell you what the tier supports. Do NOT ask the user "what tier are you on?" up front.
 
 **3a.1 — Try to auto-detect the tier (silent, best-effort).**
 
-Attempt `atlas-inspect-cluster` to read the cluster tier.
+Attempt `atlas-inspect-cluster`. It returns cluster metadata, of which two fields matter here:
 
-- **If it succeeds:** note the tier internally and apply the tier-specific guidance in 3a.3. Don't make the user do anything.
+- `instanceType`, one of `FREE`, `FLEX`, or `DEDICATED`
+- `instanceSize`, populated only when `instanceType` is `DEDICATED` (`M10`, `M20`, and so on)
+
+`instanceType` is what drives the index caps in 3a.3 ①.
+
+**Storage auto-scaling is not readable.** No MCP tool returns it. Never gate on it, and never claim to have checked it. On `DEDICATED`, treat it as unknown, continue to the build, and rely on the `Stale` signal in 3a.3 ② as the only evidence that disk ran out.
+
+- **If it succeeds:** note `instanceType` internally and apply the tier-specific guidance in 3a.3. Don't make the user do anything.
 - **If it fails** (401 Unauthorized / no Atlas Admin API key / any error): do NOT stop and do NOT interrogate the user. Ask and continue:
   > "I couldn't automatically read your cluster tier — that needs a separate Atlas management key, which isn't required for anything we're doing. No problem: I'll just build the index, and if your tier can't support it, the build itself will tell us and I'll walk you through the fix."
 
@@ -118,26 +131,37 @@ Attempt `atlas-inspect-cluster` to read the cluster tier.
   >
   > Want me to list your existing indexes so we can see what's using the budget?"
 
-  If they agree, run `collection-indexes` (or `$listSearchIndexes`) and show the current indexes so they can choose which ones to remove. Never delete anything without explicit confirmation. After freeing room or scaling, retry the build.
+  If they agree, run `collection-indexes` and show the current indexes so they can choose which ones to remove. Never delete anything without explicit confirmation. After freeing room or scaling, retry the build.
 
-**② Dedicated cluster without storage auto-scaling (auto-embed only).** Automated Embedding on dedicated (`M10+`) clusters **requires storage auto-scaling** — because the generated embeddings are stored on your own cluster and consume disk. This is a *disk* requirement, not a compute/tier one: do **not** tell users to raise their max cluster tier.
+**② Dedicated cluster without storage auto-scaling (auto-embed only).** Automated Embedding on dedicated (`M10+`) clusters **requires storage auto-scaling**. This is a *disk* requirement, not a compute/tier one: do **not** tell users to raise their max cluster tier.
 
-  Note the failure mode is **not** a failed build. If the cluster runs out of disk, MongoDB *pauses* embedding generation and the index transitions to **`Stale`** state; once disk is freed, generation resumes automatically. So watch for a `Stale` status from `collection-indexes`, not an error from `create-index`.
+  The failure mode is **not** a failed build. Out of disk, MongoDB *pauses* embedding generation and the index goes **`Stale`**, resuming on its own once disk is freed. A `Stale` status from `collection-indexes` is the only signal; `create-index` never errors.
 
-  If 3a.1 detected a dedicated tier with storage auto-scaling off, or the index goes `Stale`:
-  > "Automated Embedding on a dedicated cluster **requires storage auto-scaling**. That's because MongoDB stores the generated embeddings on your own cluster, so the index needs room to grow as it embeds your documents. If the cluster runs out of disk, embedding generation pauses and the index goes into a `Stale` state — it isn't lost, and it resumes automatically when there's space again.
+  **Polling procedure.** Once `create-index` returns, poll `collection-indexes` on `sample_mflix.movies` roughly every 30 seconds, reporting progress instead of going quiet:
+
+  1. `READY` → continue to the next step in the current path.
+  2. `Building` or `Pending` → keep polling. Expect 2 to 5 minutes for ~21,000 movies. Past 10 minutes with no change, say so and keep polling.
+  3. `Stale` → stop polling and show the message below. Never drop or re-create the index, because the embeddings generated so far are kept.
+
+  On `Stale`:
+  > "Automated Embedding on a dedicated cluster **requires storage auto-scaling**. MongoDB stores the generated embeddings on your own cluster, so the index needs room to grow as it embeds your documents. Your cluster ran out of disk, so embedding generation paused and the index went into a `Stale` state. Nothing is lost, and it resumes on its own once there's space again.
   >
-  > To enable it: Atlas UI → your cluster → **Edit Configuration** → **Storage** → turn on **storage auto-scaling**, then come back.
+  > To enable it: Atlas UI → your cluster → **Edit Configuration** → **Storage** → turn on **storage auto-scaling**, then tell me when it's on.
   >
-  > Prefer not to change cluster settings? We can switch to the manual-embeddings path (Path A2) instead — it uses pre-computed vectors already in the sample data, with no embedding generation and no token usage."
+  > Prefer not to change cluster settings? We can switch to the manual-embeddings path instead. It uses pre-computed vectors already in the sample data, with no embedding generation and no token usage."
 
-  Wait for the user to enable storage auto-scaling and retry, OR route to Path A2.
+  Then use AskUserQuestion with exactly these two options:
 
-  **Note on tiers:** this requirement is scoped to dedicated clusters — it does **not** mean autoEmbed requires `M10+`. Free and Flex clusters can use Automated Embedding (they are subject to the index caps in ① and to Free Tier rate limits). Never tell a Free/Flex user that Automated Embedding is unavailable for them.
+  - **I enabled storage auto-scaling** → resume polling the *same* index from step 1 above. Do not call `create-index` again, and do not repeat Step 4a's explanation or confirmation.
+  - **Switch to manual embeddings** → go to Path A2.
 
-**3a.4 — Cost is an FYI, not a gate.** Surface the token note when the build is underway or done — never as a decision the user must make first. (The detailed note lives in Step 4a's token allocation section.)
+  Do not poll while waiting for that answer, and do not wait for the status to clear by itself. Nothing changes until the user acts.
+
+  **Note on tiers:** this requirement is scoped to dedicated clusters and does **not** mean autoEmbed requires `M10+`. Free and Flex can use Automated Embedding, subject to ①'s caps and Free Tier rate limits. Never tell a Free/Flex user it is unavailable to them.
 
 ### Step 4a — Recommend AutoEmbed Index
+
+**Cost is an FYI, not a gate.** The token note below is part of explaining how Automated Embedding works. Never turn it into a separate decision the user has to settle first, and never ask them to approve spend before they have seen what the feature does.
 
 Before creating anything, explain the value and cost:
 
@@ -154,7 +178,7 @@ Before creating anything, explain the value and cost:
 >
 > **Two more things worth knowing before you commit:**
 > - **Where the embedding happens.** The embedding model runs on inference infrastructure that MongoDB operates — a multi-tenant service on Google Cloud in a **US region** — *regardless of which cloud provider or region your cluster is in*. Your text is sent there to be embedded. **Data transfer costs apply** on top of the token costs above. If you have data-residency requirements, this is the detail to check first.
-> - **Where the embeddings are stored.** They live on *your* cluster, in a dedicated internal database (one generated-embeddings collection per autoEmbed index). So they consume your disk — which is why dedicated clusters need storage auto-scaling.
+> - **Where the embeddings are stored.** They live on *your* cluster, in a dedicated internal database (one generated-embeddings collection per autoEmbed index). So they consume your disk, which is why dedicated clusters need storage auto-scaling.
 >
 > **The index we'd create looks like this:**
 > ```json
@@ -179,7 +203,7 @@ Name the index: `quickstart_semantic`
 **While the index builds, tell the user:**
 > "MongoDB is now generating embeddings for all ~21,000 movie plots. This runs in the background and typically takes a few minutes for a collection of this size. I'll check when it's ready."
 
-Wait for the index status to reach `READY` before running any queries. Check with `collection-indexes`.
+Wait for status `READY` with `collection-indexes` before running any queries, following the polling procedure in Step 3a.3 ②.
 
 ### Step 5a — First Semantic Query
 
@@ -213,7 +237,7 @@ db.movies.aggregate([
 Display results in a clean table: Title | Score | Plot (truncated to ~100 chars).
 
 **Explain to the user:**
-> "None of those movie titles or plots contain the words 'growing up' — but MongoDB found them anyway. That's semantic search: it matched the **meaning** of your query, not the words. The score shows how similar each result is to what you asked for — closer to 1.0 means more similar."
+> "None of those movie titles or plots contain the words 'growing up', but MongoDB found them anyway. That's semantic search: it matched the **meaning** of your query, not the words. The score shows how similar each result is to what you asked for: closer to 1.0 means more similar."
 
 Point out one detail of the query you just ran: `query` is a plain text string, not a vector. With auto embedding MongoDB converts it internally, so the application never generates query vectors.
 
@@ -232,7 +256,7 @@ After results: point out which movies surfaced and note whether any of the query
 ### Step 7a — Try Filtering
 
 Use AskUserQuestion:
-> "Want to narrow the results to a specific genre? Filters let you combine semantic similarity with exact criteria — like 'find me something emotionally similar to this query, but only in the Drama genre.'"
+> "Want to narrow the results to a specific genre? Filters let you combine semantic similarity with exact criteria like 'find me something emotionally similar to this query, but only in the Drama genre.'"
 
 - **Yes, show me filtered search** → proceed
 - **No, move on** → skip to Step 8a
@@ -263,21 +287,25 @@ db.movies.aggregate([
 ```
 
 **Explain:**
-> "MongoDB applied the genre filter **before** computing similarity — narrowing the candidate pool first, then finding the most semantically similar ones within it. This is faster than filtering after the fact."
+> "MongoDB applied the genre filter **before** computing similarity. This narrows the candidate pool first, then finds the most semantically similar ones within it. This is faster than filtering after the fact."
 
 Note that `filter` takes standard MongoDB query syntax and works on any field indexed as `type: filter`. Raising `numCandidates` (150 here versus 100 unfiltered) compensates for the narrowed pool.
 
 ### Step 8a — Bridge to Keyword / Hybrid
 
 Use AskUserQuestion:
-> "Semantic search is great for open-ended queries. Keyword search is better when users type specific titles or names. Want to see them side by side — and then combine them into hybrid search?"
+> "Semantic search is great for open-ended queries. Keyword search is better when users type specific titles or names. Want to see them side by side, then combine them into hybrid search?"
 
-- **Yes** → run Path B steps 3b–6b quickly (show keyword search results), then go to Path C
+- **Yes** → run the abbreviated Path B below, then go to Path C
 - **No, I'm done** → skip to Wrap Up
+
+**Abbreviated Path B, reached only from here.** Run Steps 3b, 4b, and 5b, then go straight to Path C. **Skip Step 6b** (autocomplete is a detour from the comparison the user just asked for; offer it in Wrap Up only if they raise it) and **skip Step 7b's question** (they answered it here).
 
 ## Path A2: Semantic Search (Bring Your Own Embeddings)
 
 *This path is for users who prefer not to use Automated Embedding. Uses the `sample_mflix.embedded_movies` collection, which already has pre-computed 1536-dimensional plot embeddings from OpenAI's text-embedding-ada-002 model.*
+
+**Path A2 replaces Path A. It is not a continuation of it.** Two entry points lead here: Step 4a's **Try with existing embeddings** option, before any autoEmbed index exists, and Step 3a.3 ②'s **Switch to manual embeddings** option, after one went `Stale`. Either way, Path A's remaining steps are skipped and `quickstart_semantic` does not exist on `sample_mflix.movies`. Returning to Path A later means running Step 4a in full, explanation and AskUserQuestion confirmation included, because it builds a different index on a different collection. There is no shortened return route.
 
 ### Step 3a2 — Explain Manual Vector Search
 
@@ -321,9 +349,9 @@ Wait for status `READY` with `collection-indexes`.
 
 Explain to the user:
 
-> "To query a manual vector search index, you need to pass a vector — an array of numbers representing the query terms. Normally your app generates this by sending the user's search text to an embedding model. Since we don't have an embedding API connected here, we take a movie we already know and find others with similar plots. This is exactly how recommendation systems work."
+> "To query a manual vector search index, you need to pass a vector, which is an array of numbers representing the query terms. Normally your app generates this by sending the user's search text to an embedding model. Because we don't have an embedding API connected here, we take a movie we already know and find others with similar plots. This is exactly how recommendation systems work."
 
-Use `find` to fetch the `plot_embedding` from a known movie (e.g. "Toy Story") from `sample_mflix.embedded_movies`, projection `{"plot_embedding": 1, "title": 1}`, limit 1.
+Use `find` on `sample_mflix.embedded_movies` to fetch the `plot_embedding` for **"Toy Story"**: filter `{"title": "Toy Story"}`, projection `{"plot_embedding": 1, "title": 1}`, limit 1. Use this movie rather than picking one, so the results below are reproducible. If it returns nothing, fall back to `{"title": "The Matrix"}`; if that also returns nothing, take the first document that has a `plot_embedding` field and tell the user which movie you used.
 
 Then run:
 
@@ -333,7 +361,7 @@ db.embedded_movies.aggregate([
     $vectorSearch: {
       index: "quickstart_manual",
       path: "plot_embedding",
-      queryVector: <embedding from the movie above>,
+      queryVector: <the plot_embedding array fetched for "Toy Story" above>,
       numCandidates: 100,
       limit: 5
     }
@@ -352,16 +380,16 @@ db.embedded_movies.aggregate([
 Display results in a table: Title | Score | Plot snippet. Exclude the source movie from the display.
 
 **Explain:**
-> "MongoDB compared the query vector against every stored embedding and returned the most similar ones. The top result is the source movie itself (score ~1.0) — skip that one. The rest are movies whose plots are mathematically closest in meaning. No keyword matching — pure similarity between vectors."
+> "MongoDB compared the query vector against every stored embedding and returned the most similar ones. The top result is the source movie itself (score ~1.0), so skip that one. The rest are movies whose plots are mathematically closest in meaning. No keyword matching. Instead, it's pure similarity between vectors."
 
 > **In your own app:** instead of using an existing document's embedding as the query, you'd call your embedding model with the user's search text and pass the result as `queryVector`. The query structure is identical.
 
 ### Step 6a2 — Bridge to Keyword / Hybrid
 
 Use AskUserQuestion:
-> "Do you want to also see keyword search and hybrid — where both approaches run together?"
+> "Do you want to also see keyword search and hybrid, where both approaches run together? One thing to flag first: keyword search runs on the `movies` collection, and hybrid needs a semantic index on that same collection. The one we just built is on `embedded_movies`, so hybrid would mean creating a second semantic index on `movies` with Automated Embedding. I'll ask before creating it."
 
-- **Yes** → proceed to Path B, then Path C
+- **Yes** → proceed to Path B, then Path C. Path C's Path A2 branch handles that second index, with its own confirmation.
 - **No, I'm done** → skip to Wrap Up
 
 ## Path B: Keyword Search (Atlas Search)
@@ -386,7 +414,9 @@ Use `create-index` to create an Atlas Search index on `sample_mflix.movies`:
 Name the index: `quickstart_text`
 
 **Explain while it builds:**
-> "A search index is a separate structure MongoDB builds alongside your data — like the index at the back of a book. It doesn't change your documents, it just makes specific fields fast to search. We're indexing the title, plot, and genres fields."
+> "A search index is a separate structure MongoDB builds alongside your data, like the index at the back of a book. It doesn't change your documents, it just makes specific fields fast to search. We're indexing title and plot as searchable text, plus genres as an exact-match field you can filter on."
+
+The queries in this path search `title` and `plot` only. `genres` is indexed as `token` so exact-match filtering is available, mirroring the `filter` field in Path A's vector index. Do not claim the queries below search `genres`.
 
 ### Step 4b — First Keyword Search
 
@@ -418,7 +448,7 @@ db.movies.aggregate([
 Display results in a table: Title | Score | Plot snippet.
 
 **Explain:**
-> "MongoDB Search found movies where 'space' and 'adventure' appear across the title or plot — and ranked them by how relevant they are. The score reflects relevance, not just whether the word appeared."
+> "MongoDB Search found movies where 'space' and 'adventure' appear across the title or plot, and ranked them by how relevant they are. The score reflects relevance, not just whether the word appeared."
 
 Contrast it with `$vectorSearch`: `$search` takes a `text` operator and matches words, `$vectorSearch` takes `query` and matches meaning. `path` accepts an array, so one `text` operator covers several fields at once.
 
@@ -449,7 +479,7 @@ db.movies.aggregate([
 ```
 
 **Explain:**
-> "Both typos were tolerated — MongoDB allowed up to 1 character difference between the query and indexed text. This is what makes a search box feel forgiving and human."
+> "Both typos were tolerated. MongoDB allowed up to 1 character difference between the query and indexed text. This is what makes a search box feel forgiving and human."
 
 `fuzzy: { maxEdits: 1 }` is the only addition to the previous query — one character of difference per word. `maxEdits: 2` is more forgiving but too loose in practice: short words start matching things they shouldn't.
 
@@ -458,9 +488,15 @@ db.movies.aggregate([
 Use AskUserQuestion:
 > "Want to see search-as-you-type? This powers the dropdown suggestions that appear while someone is still typing."
 
-Autocomplete needs `title` indexed as an `autocomplete` type, which `quickstart_text` does not have yet. There are two ways to get there, and **which one you use depends on your tooling**:
+Autocomplete needs `title` indexed as an `autocomplete` type, which `quickstart_text` does not have yet. Two routes get there. **Work through this in order, before telling the user anything:**
 
-**Preferred when you have mongosh / a driver / Atlas UI — edit the existing index.** MongoDB supports updating a search index in place with `db.collection.updateSearchIndex(<name>, {<definition>})`. The old definition keeps serving queries while the new one builds, then swaps over. Pass the **complete** new definition (it replaces, not merges), with `title` as a multi-type field:
+1. **Does an autocomplete index already exist?** Check the `collection-indexes` output. If `quickstart_autocomplete` is there with `title` typed as `autocomplete`, create nothing, tell the user you're reusing it, and go straight to the query. If that name is taken by a different definition, do **not** drop it: say the name is in use and create `quickstart_autocomplete_2` instead. That name then replaces `quickstart_autocomplete` in the Route 2 pipeline and in the Wrap Up script's `AUTOCOMPLETE_INDEX_NAME` constant.
+2. **Can you execute mongosh or driver code in this session?** If yes, Route 1. If the MongoDB MCP server is your only path to the cluster, Route 2. Atlas UI access does not qualify, because it means handing the step to the user to do by hand, and this walkthrough never does that when a tool can do it.
+3. **Did Route 1 fail?** If `updateSearchIndex` is missing or errors for any reason, fall back to Route 2 and say why. Never drop `quickstart_text` to work around it.
+
+When unsure, take Route 2. It works in every setup and leaves the index already serving queries untouched.
+
+**Route 1 — edit the existing index.** Requires mongosh or a driver. `db.collection.updateSearchIndex(<name>, {<definition>})` updates an index in place: the old definition keeps serving queries while the new one builds, then swaps over. Pass the **complete** new definition (it replaces, not merges), with `title` as a multi-type field:
 
 ```json
 "title": [
@@ -469,7 +505,7 @@ Autocomplete needs `title` indexed as an `autocomplete` type, which `quickstart_
 ]
 ```
 
-**⚠️ Required when driving this from the MongoDB MCP server — create a second index instead.** The MCP exposes `create-index` and `drop-index` but **no update-index tool**, so there is no way to edit `quickstart_text` in place from here. Don't attempt it and don't drop the working index. Create a dedicated index named `quickstart_autocomplete`:
+**⚠️ Route 2 — create a second index.** The default, and the only option when the MongoDB MCP server is your path to the cluster: it exposes `create-index` and `drop-index` but **no update-index tool**, so `quickstart_text` cannot be edited in place from here. Don't attempt it and don't drop the working index. Create a dedicated index named `quickstart_autocomplete`:
 
 ```json
 {
@@ -482,13 +518,11 @@ Autocomplete needs `title` indexed as an `autocomplete` type, which `quickstart_
 }
 ```
 
-Then query it with `index: "quickstart_autocomplete"` instead of `quickstart_text`. It counts against the tier index caps in Step 3a.3 ①. The Wrap Up script uses this second-index route too, so it reuses whatever these steps created.
+Then query it with `index: "quickstart_autocomplete"`, or the collision name from step 1, instead of `quickstart_text`. It counts against the tier index caps in Step 3a.3 ①. The Wrap Up script takes this second-index route too; its `AUTOCOMPLETE_INDEX_NAME` constant defaults to `quickstart_autocomplete`, so set it to the collision name if you created one.
 
-Tell the user which route you took and why.
+Tell the user which route you took and why, then run that route's query. **The index name is not interchangeable: using the wrong one returns an error, because only one of the two indexes has `title` typed as `autocomplete`.**
 
-Then run the query for the route you took. **The index name is not interchangeable — using the wrong one returns an error, because only one of the two indexes has `title` typed as `autocomplete`.**
-
-**MCP route (second index):**
+**Route 2 (second index):**
 ```javascript
 db.movies.aggregate([
   {
@@ -504,17 +538,17 @@ db.movies.aggregate([
 ])
 ```
 
-**mongosh / driver / Atlas UI route (updated index):** same pipeline with `index: "quickstart_text"`.
+**Route 1 (updated index):** same pipeline with `index: "quickstart_text"`.
 
 **Explain:**
-> "Three characters returned relevant title suggestions instantly. Autocomplete pre-indexes word fragments — it's purpose-built for speed so it can respond as fast as a user types."
+> "Three characters returned relevant title suggestions instantly. Autocomplete pre-indexes word fragments, so it's purpose-built for speed and can respond as fast as a user types."
 
 Note the operator change: `autocomplete` replaces `text` inside `$search`, `query` holds the partial input, and `path` must point at a field indexed as `autocomplete` type — this is the call a search box makes on every keystroke.
 
 ### Step 7b — Bridge to Hybrid
 
 Use AskUserQuestion:
-> "Keyword search finds exact matches. Want to see hybrid search — where MongoDB runs both keyword and semantic search at once and merges the results into one ranked list?"
+> "Keyword search finds exact matches. Want to see hybrid search, where MongoDB runs both keyword and semantic search at once and merges the results into one ranked list?"
 
 - **Yes** → proceed to Path C
 - **No, just the script** → skip to Wrap Up
@@ -523,13 +557,19 @@ Use AskUserQuestion:
 
 *Prerequisites: the `quickstart_text` index (from Path B) and the `quickstart_semantic` index (from Path A), both on `sample_mflix.movies`.*
 
-Run `collection-indexes` on `sample_mflix.movies` to confirm both exist. If either is missing, don't create it implicitly — return to the step that creates it (Step 3b for `quickstart_text`, Step 4a for `quickstart_semantic`) and get the same explicit confirmation that step prescribes.
+**How users get here.** Step 2's hybrid route, Step 8a (from Path A), or Step 7b (from Path B). All three have already created or confirmed the two indexes, and nothing below changes based on which one it was.
 
-If the user arrived through Path A2, they have `quickstart_manual` on `sample_mflix.embedded_movies` — a different index on a different collection, which this pipeline can't use. Tell the user:
+Run `collection-indexes` on `sample_mflix.movies` to confirm both exist. If either is missing, don't create it implicitly: re-enter only the step that creates it (Step 3b for `quickstart_text`, Step 4a for `quickstart_semantic`) as a **create-only re-entry**:
 
-> "Hybrid search needs both pipelines pointed at the same collection, so the semantic index has to be on `movies` alongside the keyword index. Yours is on `embedded_movies` from earlier. I can create an Automated Embedding index on `movies` instead — that generates embeddings for about 21,000 plots and counts against your tier's search index cap. Want me to?"
+- Run that step's explanation and its confirmation question again. That is the user's consent to build an index, so it is never skipped or assumed.
+- Run nothing else from that path: no repeating queries or explanations the user already saw, no re-offering branches they declined.
+- Come back here, re-run `collection-indexes`, and continue to Step 8c once both report `READY`.
 
-If the user agrees, run Step 4a to create `quickstart_semantic`, then continue. Otherwise skip to Wrap Up.
+If the user arrived through Path A2, they have `quickstart_manual` on `sample_mflix.embedded_movies`, a different index on a different collection that this pipeline can't use. Tell the user:
+
+> "Hybrid search needs both pipelines pointed at the same collection, so the semantic index has to be on `movies` alongside the keyword index. Yours is on `embedded_movies` from earlier. I can create an Automated Embedding index on `movies` instead. That generates embeddings for about 21,000 plots and counts against your tier's search index cap. Want me to?"
+
+If the user agrees, run Step 4a as a create-only re-entry under the rules above, then continue. If they decline, skip to Wrap Up and do not ask again.
 
 ### Step 8c — Run Hybrid Search
 
@@ -586,7 +626,7 @@ db.movies.aggregate([
 Display results.
 
 **Explain:**
-> "MongoDB ran two searches — one by meaning, one by keywords — then merged them using an algorithm called **Reciprocal Rank Fusion**. Movies that ranked highly in **both** searches scored highest overall. The weights (70% semantic, 30% keyword) control how much each signal matters. You can tune these per query type."
+> "MongoDB ran two searches, one by meaning and one by keywords, then merged them using an algorithm called **Reciprocal Rank Fusion**. Movies that ranked highly in **both** searches scored highest overall. The weights (70% semantic, 30% keyword) control how much each signal matters. You can tune these per query type."
 
 Two facts about the pipeline worth stating: the sub-pipelines run one after another rather than in parallel, with the ranked results merged at the end, and `$rankFusion` is not limited to two — any number of pipelines can be weighted to fit the use case.
 
@@ -603,10 +643,10 @@ If yes, re-run with `keywordPipeline: 0.7, semanticPipeline: 0.3` and show the d
 ## Wrap Up
 
 Congratulate the user. Use AskUserQuestion:
-> "Want a standalone Python script with everything you just ran — index creation, semantic search, keyword search, and hybrid search?"
+> "Want a standalone Python script with everything you just ran: index creation, semantic search, keyword search, and hybrid search?"
 
 If yes, copy `scripts/quickstart_complete.py` from this skill directory into the user's working directory, then tell the user:
-> "Your script is at `<destination path>`. Set `MONGODB_URI` to your connection string and it runs against `sample_mflix.movies` — it reads `MDB_MCP_CONNECTION_STRING` too if that is already exported for the MCP server. To point it at your own data, change the `DB_NAME` and `COLLECTION_NAME` variables at the top — and because the script hard-codes the sample schema (`plot`, `genres`, and `title`), also update the index definitions, the `$project` stages, and the query strings to match your own field names."
+> "Your script is at `<destination path>`. Set `MONGODB_URI` to your connection string and it runs against `sample_mflix.movies`. It reads `MDB_MCP_CONNECTION_STRING` too if that is already exported for the MCP server. To point it at your own data, change the `DB_NAME` and `COLLECTION_NAME` variables at the top. Because the script hard-codes the sample schema (`plot`, `genres`, and `title`), also update the index definitions, the `$project` stages, and the query strings to match your own field names."
 
 ## Troubleshooting
 

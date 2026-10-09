@@ -21,6 +21,10 @@
 DB_NAME = "sample_mflix"
 COLLECTION_NAME = "movies"
 
+# If the walkthrough hit a name collision and created `quickstart_autocomplete_2`,
+# set this to that name so the script reuses the index instead of creating another.
+AUTOCOMPLETE_INDEX_NAME = "quickstart_autocomplete"
+
 INDEX_WAIT_TIMEOUT_SECONDS = 600
 
 # ─────────────────────────────────────────────────────────────
@@ -289,9 +293,9 @@ autocomplete_definition = {
 ensure_index(
     SearchIndexModel(
         definition=autocomplete_definition,
-        name="quickstart_autocomplete"
+        name=AUTOCOMPLETE_INDEX_NAME
     ),
-    "quickstart_autocomplete",
+    AUTOCOMPLETE_INDEX_NAME,
     autocomplete_definition
 )
 
@@ -300,7 +304,7 @@ print("\nAutocomplete query: 'inc'")
 results = list(collection.aggregate([
     {
         "$search": {
-            "index": "quickstart_autocomplete",
+            "index": AUTOCOMPLETE_INDEX_NAME,
             "autocomplete": { "query": "inc", "path": "title" }
         }
     },
