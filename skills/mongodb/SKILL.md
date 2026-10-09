@@ -70,16 +70,17 @@ If a fetch fails or a page is missing from the index, say so and fall back to th
 
 Skip this step only when the user has explicitly asked for a new deployment. A request for a new database isn't one: MongoDB creates databases on first write, so they may only need a connection to a deployment they already have.
 
-Otherwise, run the command below as your first and only look at the environment. It prints variable names, not values. Do not inspect environment variables any other way, before or after it: no `env`, `printenv`, `set`, `echo $VAR`, or `env | grep …`, and no masking a value with `sed`. Never repeat any part of a value (user, password, or host) in the conversation.
+Otherwise, run the two commands below as your only look at the environment. Both print variable names, not values. Do not inspect environment variables any other way, before or after it: no `env`, `printenv`, `set`, `echo $VAR`, or `env | grep …`, and no masking a value with `sed`. Never repeat any part of a value (user, password, or host) in the conversation.
 
 ```bash
 env | cut -d= -f1 | grep -E 'MONGODB_URI|MDB_MCP_CONNECTION_STRING|DATABASE_URL'
+grep -oE '^(export )?(MONGODB_URI|MONGO_URL|MDB_MCP_CONNECTION_STRING|DATABASE_URL)=' .env .env.local 2>/dev/null
 ```
 
 Match the output to one of the following cases:
 
 - **No variable names:** continue to step 2.
-- **One or more variable names:** list the variables that are set. If `DATABASE_URL` is set, note that it might point to a non-MongoDB database. Then ask the user which deployment to connect to, or "none" to recommend a new deployment.
+- **One or more variable names:** list the variables that are set, and say whether each one is set in the shell or in an env file. If `DATABASE_URL` is set, note that it might point to a non-MongoDB database. Then ask the user which deployment to connect to, or "none" to recommend a new deployment.
   - **They pick a variable:** continue in [Get connected](#get-connected) with that variable.
   - **They pick "none":** continue to step 2.
 
@@ -178,13 +179,21 @@ Once their server is running, continue in [Get connected](#get-connected).
 
 Follow the path that matches the deployment:
 
-- **Atlas cluster:** follow the Atlas CLI quickstart for the commands: [https://www.mongodb.com/docs/atlas/cli/current/atlas-cli-quickstart.md](https://www.mongodb.com/docs/atlas/cli/current/atlas-cli-quickstart.md?utm_source=agent-skills) (fetch it; do not work from memory). In order, make sure the cluster is ready, a database user exists, the current IP is on the access list, and you have the `mongodb+srv://` connection string. Skip any step that already passes; ask before creating users or access-list entries in an existing project, and never add `0.0.0.0/0` unless the user gives explicit permission.
+- **Atlas cluster:** follow the Atlas CLI quickstart for the commands: [https://www.mongodb.com/docs/atlas/cli/current/atlas-cli-quickstart.md](https://www.mongodb.com/docs/atlas/cli/current/atlas-cli-quickstart.md?utm_source=agent-skills). In order, make sure the cluster is ready, a database user exists, the current IP is on the access list, and you have the `mongodb+srv://` connection string. Skip any step that already passes; ask before creating users or access-list entries in an existing project, and never add `0.0.0.0/0` unless the user gives explicit permission. The connection string from the CLI or MCP has no password, and `atlas setup` shows the password only in the user's terminal. Never ask the user to paste a password into the chat. Write the entry with a `<db_password>` placeholder and ask the user to replace it in their editor. Wait for them to confirm before you ping. If you are creating the database user yourself, generate a hex password (no characters to percent-encode) and write it straight into the env file without printing it.
 - **Atlas Ephemeral cluster:** `references/ephemeral-clusters.md` already writes the connection string and verifies the connection. Nothing more to do here.
 - **Local Atlas deployment:** use the `mongodb://localhost:<port>/?directConnection=true` form from [Gotchas](#gotchas), with the port that `atlas local setup` reports.
 - **Self-managed deployment:** ask the user for the connection string, or the host, port, and authentication details, for their server. Don't invent credentials.
 - **Existing deployment from step 1:** use the variable the user picked. It is already set, so don't write it to a file.
 
-For a new Atlas, local, or self-managed connection string, write it to the project's env file, reusing the variable name the project already uses (default `MONGODB_URI`), after confirming the file is git-ignored and not tracked. Verify with a `ping` command using `mongosh` or the project's driver, then start building. On Atlas, a timeout almost always means the access list, not the password.
+For a new Atlas, local, or self-managed connection string, write it to the project's env file, reusing the variable name the project already uses (default `MONGODB_URI`), after confirming the file is git-ignored and not tracked. Don't read the file's values. If the variable name is already in the file, ask whether to replace that entry or use a different name before writing. Otherwise, append the entry with `>>`, starting with a newline; never overwrite the file.
+
+Write the value in double quotes (`MONGODB_URI="mongodb+srv://…"`), so an `&` in its query string survives when the file is loaded. The value lives in the env file, not your shell, so load it in a subshell to verify:
+
+```bash
+(set -a; . ./.env; set +a; mongosh "$MONGODB_URI" --quiet --eval 'db.runCommand({ ping: 1 })')
+```
+
+Replace `.env` and `MONGODB_URI` with the file and variable you used, or ping with the project's driver (for example `node --env-file=.env`). `{ ok: 1 }` means connected. Then start building. On Atlas, a timeout almost always means the access list, not the password.
 
 ## Ephemeral Clusters
 

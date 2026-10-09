@@ -56,19 +56,9 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
    Save the response body to a file outside the project (for example `curl -o "$TMPDIR/ec-create.json"`) instead of printing it. It holds the only copy of the real password; the status endpoint redacts it.
 
-2. Read `clusterId`, `claimUrl`, `status`, and `expiresAt` from that file. Never print `connectionString` or the whole file, including when a command fails. Pass the connection string from the file straight into the env file in step 4.
+2. Read `clusterId`, `claimUrl`, `status`, and `expiresAt` from that file. Never print `connectionString` or the whole file, including when a command fails. Pass the connection string from the file straight into the env file in step 3.
 
-3. Check `status`.
-
-   If it's `ACTIVE`, continue.
-
-   If it's `PROVISIONING` (or `PAUSED`), the cluster isn't connectable yet — poll `GET /ephemeralClusters/{clusterId}` (the status endpoint above) until `status` is `ACTIVE`, waiting a few seconds between checks.
-
-   Don't loop indefinitely: if it hasn't gone `ACTIVE` after 10 seconds, tell the user it's still provisioning and stop rather than hammering the endpoint.
-
-   Treat `429` and `500` from the status check the same as elsewhere — don't retry a `429` without a `retry-after`.
-
-4. Write the connection string into the project's env file.
+3. Write the connection string into the project's env file now, before checking status. The saved response is the only copy of the password.
 
    Before writing, confirm that env file is git-ignored — check `.gitignore` (and that the file isn't already tracked); if it isn't ignored, add it, since you're writing a live credential to disk.
 
@@ -76,11 +66,23 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
    Do not read the env file's values. If the variable name is already in the file, ask the user whether to replace that entry or use a different name before writing anything. Otherwise, append the new entry with `>>`, starting with a newline in case the file doesn't end with one; do not overwrite the file.
 
-   Put the claim URL and `expiresAt` as comments directly above it so they survive after the chat ends. Also, give the user the claim URL in your reply.
+   Write the value in double quotes, so an `&` in its query string survives when the file is loaded. Put the claim URL and `expiresAt` as comments directly above it so they survive after the chat ends.
+
+   Give the user the claim URL in your reply. Then delete the saved response file.
+
+4. Check `status`.
+
+   If it's `ACTIVE`, continue.
+
+   If it's `PROVISIONING`, the cluster isn't connectable yet — poll `GET /ephemeralClusters/{clusterId}` (the status endpoint above) every few seconds until `status` is `ACTIVE`.
+
+   Don't loop indefinitely: if it hasn't gone `ACTIVE` after 10 seconds, tell the user it's still provisioning, that the connection string is already saved in the env file, and that you can verify the connection when they're ready. Then stop.
+
+   Treat `429` and `500` from the status check the same as elsewhere — don't retry a `429` without a `retry-after`.
 
 5. Connect using the user's existing driver, or the MongoDB MCP server if that's their setup.
 
-6. Confirm the connection works: `mongosh "$MONGODB_URI" --eval 'db.runCommand({ ping: 1 })'` (`{ ok: 1 }` means good), then start building.
+6. Confirm the connection works with the ping in [Get connected](../SKILL.md#get-connected), then start building.
 
    If the ping fails, wait a few seconds and retry once. If it still fails, report the error without printing the connection string, give the user the claim URL, and stop rather than looping.
 
