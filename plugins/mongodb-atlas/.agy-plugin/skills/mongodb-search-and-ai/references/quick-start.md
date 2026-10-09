@@ -53,6 +53,11 @@ Never re-offer a declined branch, and never substitute one the user didn't ask f
 
 Use AskUserQuestion with those two options. If the user picks 1, wait for the Atlas cloud connection and restart at Step 0. If they pick 2, leave this walkthrough and use the main skill workflow in `SKILL.md`; without Voyage AI keys configured, semantic search there means manual embeddings (`vector-search.md`), not `autoEmbed`.
 
+**0.3 — Confirm index creation is available.** Every path here creates at least one search index, so check for a `create-index` tool before starting one. If it is absent, the session is read-only in the sense `SKILL.md` defines (no `create`, `update`, or `delete` operation tools) and the walkthrough cannot complete. Do not enter a path and stop at its creation step. Tell the user:
+> "I can read your cluster in this session but not create search indexes, so I can't run the guided tour for you. What I can do is design the indexes and queries and hand you the index JSON to create in the Atlas UI yourself."
+
+Then leave this walkthrough and use the main skill workflow in `SKILL.md`, which handles read-only mode.
+
 ## Step 1 — Load Sample Data
 
 Use `list-databases` to check if `sample_mflix` exists on the cluster.
@@ -645,7 +650,10 @@ If yes, re-run with `keywordPipeline: 0.7, semanticPipeline: 0.3` and show the d
 Congratulate the user. Use AskUserQuestion:
 > "Want a standalone Python script with everything you just ran: index creation, semantic search, keyword search, and hybrid search?"
 
-If yes, copy `scripts/quickstart_complete.py` from this skill directory into the user's working directory, then tell the user:
+**Path A2 exception — check before asking that.** The script creates `quickstart_semantic` on `sample_mflix.movies` as its first action and never touches `embedded_movies`, so it does not reproduce Path A2 and it does generate embeddings. If the user reached Wrap Up with only `quickstart_manual` (Step 6a2's "No, I'm done", with no autoEmbed index created in Path A or Path C), say so instead of the question above:
+> "I have a standalone Python script, but it covers the Automated Embedding path rather than the manual-embedding one you just ran: it creates an autoEmbed index on `movies` and embeds about 21,000 plots, which uses tokens. Want it anyway?"
+
+If they decline, do not copy the script. Otherwise copy `scripts/quickstart_complete.py` from this skill directory into the user's working directory, then tell the user:
 > "Your script is at `<destination path>`. Set `MONGODB_URI` to your connection string and it runs against `sample_mflix.movies`. It reads `MDB_MCP_CONNECTION_STRING` too if that is already exported for the MCP server. To point it at your own data, change the `DB_NAME` and `COLLECTION_NAME` variables at the top. Because the script hard-codes the sample schema (`plot`, `genres`, and `title`), also update the index definitions, the `$project` stages, and the query strings to match your own field names."
 
 ## Troubleshooting
