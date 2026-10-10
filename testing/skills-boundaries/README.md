@@ -62,8 +62,9 @@ Tests the boundary between:
 
 **Clear Cases:**
 - ✅ **>=95% accuracy**: Expected skill invoked, should_not_trigger skill not invoked
-- 5 mongodb-natural-language-querying tests (basic filtering, aggregation)
-- 8 search-and-ai tests (fuzzy matching, semantic search, full-text search)
+- 6 mongodb-natural-language-querying tests (basic filtering, aggregation)
+- 5 search-and-ai tests (fuzzy matching, semantic search, full-text search)
+- 5 onboarding tests (open-ended "how does search work" / "where do I start" prompts, which belong to search-and-ai rather than being answered from general knowledge)
 
 **Ambiguous Cases:**
 - ✅ **>=70% expected behavior**: Expected skill invoked

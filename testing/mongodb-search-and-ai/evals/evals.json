@@ -100,13 +100,13 @@
     {
       "id": 17,
       "prompt": "I have a very large collection and cost is my main concern, but I still want MongoDB to generate the embeddings for me automatically. Which model should I use?",
-      "expected_output": "Should recommend Automated Embedding with the voyage-4-lite model for high-volume, cost-sensitive workloads (rather than voyage-4, voyage-4-large, or voyage-code-3). Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should show an autoEmbed index definition with type: 'autoEmbed', modality: 'text', path, and model: 'voyage-4-lite'. Should mention the per-model pricing tiers and the 200M one-time free tokens per model per organization (shared across the org, does not refresh). Should note that queries use the plain-text 'query' field. Should ask for approval before creating the index.",
+      "expected_output": "Should recommend Automated Embedding with the voyage-4-lite model for high-volume, cost-sensitive workloads (rather than voyage-4, voyage-4-large, or voyage-code-4). Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should show an autoEmbed index definition with type: 'autoEmbed', modality: 'text', path, and model: 'voyage-4-lite'. Should mention the per-model pricing tiers and the 200M one-time free tokens per model per organization (shared across the org, does not refresh). Should note that queries use the plain-text 'query' field. Should ask for approval before creating the index.",
       "files": []
     },
     {
       "id": 18,
       "prompt": "I want semantic search over my code snippets collection where each document has a 'source' field, and I'd like MongoDB to handle the embeddings for me.",
-      "expected_output": "Should recognize this as Automated Embedding for code/technical content and recommend the voyage-code-3 model. Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should propose an autoEmbed vector search index with type: 'autoEmbed', modality: 'text', path: 'source', and model: 'voyage-code-3'. Should construct a $vectorSearch query using the plain-text 'query' field (auto-generated embedding), not a queryVector. Should ask for approval before creating the index.",
+      "expected_output": "Should recognize this as Automated Embedding for code/technical content and recommend the voyage-code-4 model. Should perform a cluster check before proceeding: confirm whether the deployment is Atlas (all tiers including M0 free are supported) or self-managed (requires MongoDB 8.3+ with mongot and a Voyage AI API key), and call out that M10+ dedicated clusters require storage auto-scaling to be enabled before index creation. Should note that voyage-code-4 requires an Atlas deployment and that voyage-code-3 is the code model to use on a self-managed deployment. Should propose an autoEmbed vector search index with type: 'autoEmbed', modality: 'text', path: 'source', and model: 'voyage-code-4' (or 'voyage-code-3' if the deployment is self-managed). Should construct a $vectorSearch query using the plain-text 'query' field (auto-generated embedding), not a queryVector. Should ask for approval before creating the index.",
       "files": []
     },
     {
@@ -143,6 +143,64 @@
           "type": "called_successfully",
           "match": {
             "any_mcp": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "_note": "Covers the technical payload of references/quick-start.md Path A (autoEmbed index + $vectorSearch on plain-text query) non-interactively. The walkthrough's AskUserQuestion gates are deliberately suppressed: the harness has no respondent. Requires an Atlas cloud cluster — autoEmbed does not exist on mongodb-atlas-local.",
+      "prompt": "The MongoDB MCP server is connected to an Atlas cluster. In the `sample` database,\n`movies` collection, set up semantic search over the `plot` field using MongoDB's Automated\nEmbedding: create a Vector Search index named `quickstart_semantic` whose `plot` field is an\n`autoEmbed` field. Do not generate or store embeddings yourself — the documents have no\nvector field. Poll until the index is queryable, then run a `$vectorSearch` query for the\nplain text \"a story about growing up\" returning the 2 closest movies. Save ONLY the\naggregation pipeline you used, as a JSON array, to /workspace/pipeline.json. Use the MongoDB\nMCP server tools directly; do not delegate to a subagent and do not ask for confirmation.",
+      "expectations": [
+        "Creates a Vector Search index with an autoEmbed field on plot rather than a vector field",
+        "Waits for the index to become queryable before querying",
+        "Queries with $vectorSearch using the plain-text `query` field, not a `queryVector`",
+        "Returns the two coming-of-age movies"
+      ],
+      "seed": "seeded_movies_autoembed",
+      "functional_check": {
+        "type": "aggregation",
+        "artifact": "/workspace/pipeline.json",
+        "database": "sample",
+        "collection": "movies",
+        "compare_fields": [
+          "title"
+        ],
+        "ordered": false,
+        "expected": [
+          {
+            "title": "Ninth Grade"
+          },
+          {
+            "title": "Summer of Eleven"
+          }
+        ]
+      },
+      "trajectory_checks": [
+        {
+          "id": "creates-the-index",
+          "critical": true,
+          "type": "called_successfully",
+          "match": {
+            "tool": "create-index"
+          }
+        },
+        {
+          "id": "index-before-query",
+          "critical": true,
+          "type": "order",
+          "first": {
+            "tool": "create-index"
+          },
+          "then": {
+            "tool": "aggregate"
+          }
+        },
+        {
+          "id": "polls-index-status",
+          "type": "called_successfully",
+          "match": {
+            "tool": "collection-indexes"
           }
         }
       ]
