@@ -26,6 +26,18 @@ Never ask the user to decide something they haven't seen yet.
 
 Never re-offer a declined branch, and never substitute one the user didn't ask for.
 
+## Creating an Index
+
+Four steps create one: Step 4a (`quickstart_semantic`), Step 4a2 (`quickstart_manual`), Step 3b (`quickstart_text`), and Step 6b (`quickstart_autocomplete`). Both rules below apply at every one of them.
+
+**1 — Ask first.** `create-index` mutates the cluster, so it needs the explicit approval `SKILL.md` requires, in the turn immediately before the call. Steps 4a, 3b, and 6b each carry their own confirmation question; Step 4a2 is reached only by the user picking **Try with existing embeddings** or **Switch to manual embeddings**, which is itself the approval. Never treat a path choice as index approval: picking Hybrid at Step 2, or answering yes at Step 8a or Step 7b, selects a route, not consent to each index along it.
+
+**2 — Check the name before using it.** Run `collection-indexes` on the target collection first, because re-running the tour on a cluster that already has these index names is the common case.
+
+- **Name free** → create it.
+- **Name taken, definition matches what the step would create** → create nothing. Tell the user you're reusing it and skip to that step's query if the status is `READY`. `Building` or `Pending` → poll per Step 3a.3 ②. `Stale` → handle per Step 3a.3 ②.
+- **Name taken by a different definition** → do **not** drop it. Say the name is in use and create `<name>_2` instead. That name then replaces the original everywhere downstream: the step's own queries, Path C's pipelines, and the matching constant in the Wrap Up script.
+
 ## Step 0 — Check Connection and Deployment
 
 **0.1 — Verify the MongoDB MCP is connected** by calling `list-databases`.
@@ -74,7 +86,12 @@ Repeat until `sample_mflix` is confirmed present before continuing.
 
 **For everyone (whether dataset was just loaded or already present):**
 
-Use `collection-schema` on `sample_mflix.movies`, show a condensed example document (`title`, `plot`, `genres` only), and tell the user this is a real dataset of ~21,000 movies already on their cluster, one document per movie, with `title`, `plot`, and `genres` being the fields the walkthrough makes searchable — the same structure they would use for their own content.
+**Confirm the collection, not just the database name.** A cluster can carry a `sample_mflix` database that is not the Atlas sample dataset, so run `list-collections` on it before anything else. Only `movies` matters here; `embedded_movies` is checked at Step 3a2, and its absence does not block Path A, B, or C.
+
+- **`movies` missing:** the sample dataset is not loaded, whatever the database name suggests. Repeat the Load Sample Dataset instructions above and re-verify, treating "there is no Load Sample Dataset option" exactly as described above — the Step 0.2 routing message.
+- **`movies` present but `collection-schema` shows no `title`, `plot`, or `genres`:** this is the user's own collection, not the sample one. Do not index it and do not rename anything. Use the Step 0.2 routing message; its second option, building search on their own data through `SKILL.md`, is the fit here.
+
+Otherwise use `collection-schema` on `sample_mflix.movies`, show a condensed example document (`title`, `plot`, `genres` only), and tell the user this is a real dataset of ~21,000 movies already on their cluster, one document per movie, with `title`, `plot`, and `genres` being the fields the walkthrough makes searchable — the same structure they would use for their own content.
 
 ## Step 2 — Choose Your Path
 
@@ -201,9 +218,9 @@ Use AskUserQuestion:
 - **Yes, create it** → proceed to create the index
 - **Try with existing embeddings** → route to Path A2 (manual vector search using pre-embedded data, no auto embedding needed)
 
-If yes, use `create-index` (or `mcp__mongodb-mcp-server__create-index`) to create a Vector Search index with `autoEmbed` type on `sample_mflix.movies` using the definition above.
+If yes, apply the name check in **Creating an Index** rule 2 to `sample_mflix.movies`, then use `create-index` (or `mcp__mongodb-mcp-server__create-index`) to create a Vector Search index with `autoEmbed` type on it using the definition above.
 
-Name the index: `quickstart_semantic`
+Name the index: `quickstart_semantic`, or the collision name rule 2 produced. If rule 2 found a matching `READY` index, create nothing and go straight to Step 5a — skip the build message below.
 
 **While the index builds, tell the user:**
 > "MongoDB is now generating embeddings for all ~21,000 movie plots. This runs in the background and typically takes a few minutes for a collection of this size. I'll check when it's ready."
@@ -328,7 +345,7 @@ Because the vectors are supplied rather than generated, the index definition mus
 
 ### Step 4a2 — Create Manual Vector Index
 
-Use `create-index` to create a vectorSearch index on `sample_mflix.embedded_movies`:
+Apply the name check in **Creating an Index** rule 2 to `sample_mflix.embedded_movies`, then use `create-index` to create a vectorSearch index on it:
 
 ```json
 {
@@ -343,7 +360,7 @@ Use `create-index` to create a vectorSearch index on `sample_mflix.embedded_movi
 }
 ```
 
-Name the index: `quickstart_manual`
+Name the index: `quickstart_manual`, or the collision name rule 2 produced.
 
 **While it builds, explain:**
 > "The index organizes the embeddings that are already stored in your documents into a structure that makes similarity lookups fast."
@@ -401,7 +418,15 @@ Use AskUserQuestion:
 
 ### Step 3b — Create Text Search Index
 
-Use `create-index` to create an Atlas Search index on `sample_mflix.movies`:
+Ask before creating anything, with AskUserQuestion:
+> "Keyword search needs a MongoDB Search index on the movies collection — a separate structure MongoDB builds alongside your data, like the index at the back of a book. It doesn't change your documents, it just makes specific fields fast to search. Want me to create it?"
+
+- **Yes, create it** → continue below
+- **No** → Path B and Path C both need this index, so skip to Wrap Up and do not re-offer it
+
+This question is required on every route in, including Step 2's hybrid route, Step 8a's abbreviated Path B, and Step 7b. Those answers chose a path; none of them approved this index.
+
+Then apply the name check in **Creating an Index** rule 2 to `sample_mflix.movies` and use `create-index` to create an Atlas Search index on it:
 
 ```json
 {
@@ -416,10 +441,10 @@ Use `create-index` to create an Atlas Search index on `sample_mflix.movies`:
 }
 ```
 
-Name the index: `quickstart_text`
+Name the index: `quickstart_text`, or the collision name rule 2 produced — that name then goes in every `$search` stage below and in Path C's keyword pipeline.
 
 **Explain while it builds:**
-> "A search index is a separate structure MongoDB builds alongside your data, like the index at the back of a book. It doesn't change your documents, it just makes specific fields fast to search. We're indexing title and plot as searchable text, plus genres as an exact-match field you can filter on."
+> "We're indexing title and plot as searchable text, plus genres as an exact-match field you can filter on. It builds in the background and your documents stay exactly as they are."
 
 The queries in this path search `title` and `plot` only. `genres` is indexed as `token` so exact-match filtering is available, mirroring the `filter` field in Path A's vector index. Do not claim the queries below search `genres`.
 
@@ -650,8 +675,11 @@ If yes, re-run with `keywordPipeline: 0.7, semanticPipeline: 0.3` and show the d
 Congratulate the user. Use AskUserQuestion:
 > "Want a standalone Python script with everything you just ran: index creation, semantic search, keyword search, and hybrid search?"
 
-**Path A2 exception — check before asking that.** The script creates `quickstart_semantic` on `sample_mflix.movies` as its first action and never touches `embedded_movies`, so it does not reproduce Path A2 and it does generate embeddings. If the user reached Wrap Up with only `quickstart_manual` (Step 6a2's "No, I'm done", with no autoEmbed index created in Path A or Path C), say so instead of the question above:
-> "I have a standalone Python script, but it covers the Automated Embedding path rather than the manual-embedding one you just ran: it creates an autoEmbed index on `movies` and embeds about 21,000 plots, which uses tokens. Want it anyway?"
+**Check the index state before asking that.** Run `collection-indexes` on `sample_mflix.movies`. The script creates `quickstart_semantic` there as its first action and embeds about 21,000 movie plots, which uses tokens.
+
+- **`quickstart_semantic` present:** the script reproduces what the user already ran and agreed to. Ask the question above as written.
+- **Absent:** the script would do embedding work the user never approved, so say so instead of asking the question above. Gate on this index, not on which path was taken: the gap covers Path A2 ending at Step 6a2, Path B ending at Step 7b, Path A stopping at Step 4a's confirmation, and any path cut short by an error.
+  > "I have a standalone Python script covering all three search types, but it goes further than what you just ran: it creates an Automated Embedding index on `movies` and embeds about 21,000 movie plots, which uses tokens. Want it anyway?"
 
 If they decline, do not copy the script. Otherwise copy `scripts/quickstart_complete.py` from this skill directory into the user's working directory, then tell the user:
 > "Your script is at `<destination path>`. Set `MONGODB_URI` to your connection string and it runs against `sample_mflix.movies`. It reads `MDB_MCP_CONNECTION_STRING` too if that is already exported for the MCP server. To point it at your own data, change the `DB_NAME` and `COLLECTION_NAME` variables at the top. Because the script hard-codes the sample schema (`plot`, `genres`, and `title`), also update the index definitions, the `$project` stages, and the query strings to match your own field names."
