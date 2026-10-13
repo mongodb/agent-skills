@@ -33,6 +33,7 @@ later, since it is the 9.0 manual.
 | Kernel 6.19 through 7.0.13 | Not affected | FAIL | Affects 8.0 and later only, not 7.0. Severity and remedy depend on the maintenance release; see "Kernel restriction, by maintenance release". |
 | Minimum kernel | 2.6.36 | 2.6.36 | XFS needs 2.6.25; ext4 needs 2.6.28; RHEL/CentOS needs 2.6.18-194 |
 | Oracle Linux kernel | RHCK only | RHCK only | UEK is not supported |
+| Ubuntu 24.04 | Not supported | Supported | The 9.0 notes list only "Ubuntu LTS"; confirm a specific LTS in the platform support matrix |
 | CPU cores | 2 real cores | 2 real cores | Per mongod or mongos instance |
 | AES-NI | Recommended | Recommended | Material advantage for the encrypted storage engine (Enterprise) |
 | Endianness | Little-endian | Little-endian | Server requires x86/x86_64 little-endian; client libraries accept either |
@@ -67,6 +68,9 @@ Three consequences that change a remediation:
 - On 8.0.0 through 8.0.20 the failure is worse than a refusal to start: mongod
   runs, then crashes, with potential corruption. Treat it as a data-loss risk,
   not an availability one.
+- A bare major.minor with no patch component cannot be placed in a band, so
+  the scripts return the strictest verdict that band could carry. Report the
+  assumption rather than inferring a fix you cannot see.
 
 A distro kernel well below the range, such as RHEL 9.4 on
 `5.14.0-427.13.1.el9_4`, sits outside every restriction above.

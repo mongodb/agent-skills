@@ -71,7 +71,8 @@ Audit only the host the user named as the target.
 ## Workflow
 
 1. Confirm the major version; capture distro and kernel.
-2. Run the suite: `bash scripts/run-all-checks.sh --version 9.0 --dbpath /var/lib/mongo`
+2. Run the suite with the version confirmed in step 1:
+   `bash scripts/run-all-checks.sh --version <major.minor[.patch]> --dbpath /var/lib/mongo`
 3. For every WARN and FAIL, read `references/checks-reference.md` for the expected
    value and the remediation.
 4. Write the report using the Report section below.
@@ -84,8 +85,8 @@ every WARN and FAIL carries a remediation.
 `scripts/run-all-checks.sh` runs every category and tallies the totals. Prefer it
 over per-script runs.
 
-- `--version` takes `7.0`, `8.0`, `8.3`, or `9.0`. Bare `7` and `8` are tolerated
-  as 7.0 and 8.0. A patch version such as `8.0.4` is accepted and retained: the
+- `--version` takes `7.0`, `8.0`, `8.3`, or `9.0`. Bare `7`, `8` and `9` are tolerated
+  as 7.0, 8.0 and 9.0. A patch version such as `8.0.4` is accepted and retained: the
   checks score against `8.0`, and the kernel rule uses the patch component.
 - Any other value is a hard error: the run exits non-zero with a usage line
   rather than degrading silently.
@@ -197,47 +198,19 @@ findings the scripts produced.
 
 ## Version Differences
 
-- Transparent huge pages invert at 8.0. On MongoDB 8.0 and later, THP enabled
-  (`always`, defrag `defer+madvise`, `khugepaged/max_ptes_none` 0,
-  `vm.overcommit_memory` 1) is what MongoDB documents; THP disabled is not
-  compliant with MongoDB documented performance guidance. On 7.0 and earlier
-  the reverse holds and `never` is the documented value. Confirm the major
-  version before reporting a THP status, because the documented value for one
-  version is a FAIL on the other.
-- The kernel restriction is keyed to the MongoDB maintenance release, not the
-  major version, so resolve the patch version before scoring it. Source:
-  SERVER-125742.
-  - 7.0 is not affected on any kernel. Do not carry a kernel finding into a
-    7.0 audit.
-  - 8.0.0 through 8.0.20 on kernel 6.19 through 7.0.13: mongod starts, then
-    crashes after roughly 60 seconds, with potential corruption. This is a
-    data-loss risk, not an availability one. Kernel 7.0.14 or later clears it.
-  - 8.0.21 through 8.0.29 and 8.3.0 through 8.3.8: mongod exits during startup
-    on any kernel 6.19 or later, 7.0.14 included. A kernel upgrade is not a
-    remedy here, which is the counterintuitive case; only a MongoDB upgrade
-    clears it.
-  - 8.0.30 and later, 8.3.9 and later, and 9.0: mongod exits during startup on
-    6.19 through 7.0.13 only, and kernel 7.0.14 or later clears it.
-  - A bare major.minor with no patch component cannot be placed in a band, so
-    the scripts return the strictest verdict that band could carry. Report the
-    assumption rather than inferring a fix you cannot see.
-- No host-level tunable requirement differs between 8.0, 8.3 and 9.0. THP,
-  `khugepaged/max_ptes_none`, `vm.overcommit_memory`, ulimits, readahead,
-  `vm.swappiness` and `tcp_keepalive_time` are identical across the three, so
-  8.3 and 9.0 inherit the 8.0-and-later expectations. Confirmed against the 9.0
-  production notes, which restate `vm.swappiness` 1 or 0,
-  `tcp_keepalive_time` 120, readahead 8 to 32, and the same WiredTiger cache
-  formula. That page phrases the THP rule as "If you are running MongoDB 8.0,
-  enable Transparent Hugepages", without naming 9.0; read it as 8.0 and later,
-  since it is the 9.0 manual.
-- ARM64 requires ARMv8.2-A minimum on 7.0 and later; ARMv8.4-A is usable.
-- RHEL 8 on ppc64le and s390x use legacy TCMalloc even on 8.0 and later.
-- Ubuntu 24.04 is supported on 8.0 and later, not on 7.0. The 9.0 production
-  notes list platforms only as "Ubuntu LTS" and defer to the platform support
-  matrix, so confirm a specific LTS there rather than from the notes page.
+Three rules change a verdict. The values behind them are in
+`references/checks-reference.md`.
 
-`references/checks-reference.md` carries every threshold and the full
-version-specific detail.
+- THP guidance inverts at 8.0: enabled on 8.0 and later, disabled on 7.0. Confirm
+  the major version before reporting a THP status, because the documented value
+  for one version is a FAIL on the other.
+- The kernel 6.19 restriction is keyed to the maintenance release, so resolve the
+  patch version before scoring it. 7.0 is not affected on any kernel. On 8.0.21
+  through 8.0.29 and 8.3.0 through 8.3.8, mongod exits during startup on any
+  kernel 6.19 or later, 7.0.14 included, so a kernel upgrade is not a remedy;
+  only a MongoDB upgrade clears it.
+- 8.3 and 9.0 inherit the 8.0-and-later host expectations; no host-level tunable
+  differs between them.
 
 ## Report
 
