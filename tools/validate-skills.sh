@@ -58,8 +58,10 @@ fi
 # Ensure the path ends with a trailing slash for consistency with the validator.
 [[ "$SKILL_PATH" != */ ]] && SKILL_PATH="$SKILL_PATH/"
 
-skill-validator check --strict "$SKILL_PATH"
-VALIDATOR_STATUS=$?
+# set -e would exit on a validator failure before the self-tests run, so
+# capture the status instead.
+VALIDATOR_STATUS=0
+skill-validator check --strict "$SKILL_PATH" || VALIDATOR_STATUS=$?
 
 # Run any self-tests the validated skills ship. These assert skill logic the
 # validator cannot see, such as the kernel compatibility matrix in
