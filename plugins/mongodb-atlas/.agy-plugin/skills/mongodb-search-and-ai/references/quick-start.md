@@ -675,9 +675,9 @@ If yes, re-run with `keywordPipeline: 0.7, semanticPipeline: 0.3` and show the d
 Congratulate the user. Use AskUserQuestion:
 > "Want a standalone Python script with everything you just ran: index creation, semantic search, keyword search, and hybrid search?"
 
-**Check the index state before asking that.** Run `collection-indexes` on `sample_mflix.movies`. The script creates `quickstart_semantic` there as its first action and embeds about 21,000 movie plots, which uses tokens.
+**Check the index state before asking that.** Run `collection-indexes` on `sample_mflix.movies` and check for the semantic index name carried from Step 4a (for example, `quickstart_semantic` or `quickstart_semantic_2`). The script creates that named index there as its first action and embeds about 21,000 movie plots, which uses tokens.
 
-- **`quickstart_semantic` present:** the script reproduces what the user already ran and agreed to. Ask the question above as written.
+- **The carried semantic index is present:** the script reproduces what the user already ran and agreed to. Ask the question above as written.
 - **Absent:** the script would do embedding work the user never approved, so say so instead of asking the question above. Gate on this index, not on which path was taken: the gap covers Path A2 ending at Step 6a2, Path B ending at Step 7b, Path A stopping at Step 4a's confirmation, and any path cut short by an error.
   > "I have a standalone Python script covering all three search types, but it goes further than what you just ran: it creates an Automated Embedding index on `movies` and embeds about 21,000 movie plots, which uses tokens. Want it anyway?"
 
