@@ -21,8 +21,12 @@
 DB_NAME = "sample_mflix"
 COLLECTION_NAME = "movies"
 
-# If the walkthrough hit a name collision and created `quickstart_autocomplete_2`,
-# set this to that name so the script reuses the index instead of creating another.
+# Index names. The walkthrough uses these defaults, but creates `<name>_2` when
+# the default is already taken by an incompatible definition. If that happened,
+# set the matching constant to the name it created, so this script reuses that
+# index instead of stopping on the conflicting one.
+SEMANTIC_INDEX_NAME = "quickstart_semantic"
+TEXT_INDEX_NAME = "quickstart_text"
 AUTOCOMPLETE_INDEX_NAME = "quickstart_autocomplete"
 
 INDEX_WAIT_TIMEOUT_SECONDS = 600
@@ -102,8 +106,9 @@ def check_definition(name, expected):
              " not match the one this script needs, so the queries below would"
              " fail. An index created by another route (for example the MCP"
              " walkthrough) can omit fields this script queries. Drop"
-             f" '{name}' in Atlas and rerun, or edit this script to use a"
-             f" different index name.\n  Existing definition: {actual}")
+             f" '{name}' in Atlas and rerun, or point the matching"
+             " *_INDEX_NAME constant at the top of this script at a name that"
+             f" is free or already correct.\n  Existing definition: {actual}")
 
 def ensure_index(model, name, definition):
     try:
@@ -149,10 +154,10 @@ semantic_definition = {
 ensure_index(
     SearchIndexModel(
         definition=semantic_definition,
-        name="quickstart_semantic",
+        name=SEMANTIC_INDEX_NAME,
         type="vectorSearch"
     ),
-    "quickstart_semantic",
+    SEMANTIC_INDEX_NAME,
     semantic_definition
 )
 
@@ -161,7 +166,7 @@ print("\nQuery: 'a story about growing up'")
 results = list(collection.aggregate([
     {
         "$vectorSearch": {
-            "index": "quickstart_semantic",
+            "index": SEMANTIC_INDEX_NAME,
             "path": "plot",
             "query": "a story about growing up",
             "numCandidates": 100,
@@ -184,7 +189,7 @@ print("\nFiltered query: 'a story about growing up' + Drama only")
 results = list(collection.aggregate([
     {
         "$vectorSearch": {
-            "index": "quickstart_semantic",
+            "index": SEMANTIC_INDEX_NAME,
             "path": "plot",
             "query": "a story about growing up",
             "filter": { "genres": { "$eq": "Drama" } },
@@ -223,9 +228,9 @@ text_definition = {
 ensure_index(
     SearchIndexModel(
         definition=text_definition,
-        name="quickstart_text"
+        name=TEXT_INDEX_NAME
     ),
-    "quickstart_text",
+    TEXT_INDEX_NAME,
     text_definition
 )
 
@@ -234,7 +239,7 @@ print("\nKeyword query: 'space adventure'")
 results = list(collection.aggregate([
     {
         "$search": {
-            "index": "quickstart_text",
+            "index": TEXT_INDEX_NAME,
             "text": {
                 "query": "space adventure",
                 "path": ["title", "plot"]
@@ -258,7 +263,7 @@ print("\nFuzzy query: 'sapce adventre' (intentional typos)")
 results = list(collection.aggregate([
     {
         "$search": {
-            "index": "quickstart_text",
+            "index": TEXT_INDEX_NAME,
             "text": {
                 "query": "sapce adventre",
                 "path": ["title", "plot"],
@@ -277,7 +282,7 @@ results = list(collection.aggregate([
 ]))
 print_results(results, fields=["title"])
 
-# Autocomplete needs 'title' typed as autocomplete, which quickstart_text does
+# Autocomplete needs 'title' typed as autocomplete, which the text index does
 # not provide. Use a dedicated index, matching the walkthrough's MCP route.
 print("\nCreating autocomplete index on 'title'...")
 
@@ -329,7 +334,7 @@ try:
                         "semanticPipeline": [
                             {
                                 "$vectorSearch": {
-                                    "index": "quickstart_semantic",
+                                    "index": SEMANTIC_INDEX_NAME,
                                     "path": "plot",
                                     "query": "a story about growing up",
                                     "numCandidates": 100,
@@ -340,7 +345,7 @@ try:
                         "keywordPipeline": [
                             {
                                 "$search": {
-                                    "index": "quickstart_text",
+                                    "index": TEXT_INDEX_NAME,
                                     "text": {
                                         "query": "coming of age",
                                         "path": "plot"

@@ -36,7 +36,7 @@ Four steps create one: Step 4a (`quickstart_semantic`), Step 4a2 (`quickstart_ma
 
 - **Name free** → create it.
 - **Name taken, definition matches what the step would create** → create nothing. Tell the user you're reusing it and skip to that step's query if the status is `READY`. `Building` or `Pending` → poll per Step 3a.3 ②. `Stale` → handle per Step 3a.3 ②.
-- **Name taken by a different definition** → do **not** drop it. Say the name is in use and create `<name>_2` instead. That name then replaces the original everywhere downstream: the step's own queries, Path C's pipelines, and the matching constant in the Wrap Up script.
+- **Name taken by a different definition** → do **not** drop it. Say the name is in use and create `<name>_2` instead. That name then replaces the original everywhere downstream: the step's own queries, Path C's pipelines, and the matching `SEMANTIC_INDEX_NAME`, `TEXT_INDEX_NAME`, or `AUTOCOMPLETE_INDEX_NAME` constant if the Wrap Up script is handed over. Carry any collision name you created to Wrap Up; left at its default, the script stops on the conflicting index instead of reusing yours.
 
 ## Step 0 — Check Connection and Deployment
 
@@ -548,7 +548,7 @@ When unsure, take Route 2. It works in every setup and leaves the index already 
 }
 ```
 
-Then query it with `index: "quickstart_autocomplete"`, or the collision name from step 1, instead of `quickstart_text`. It counts against the tier index caps in Step 3a.3 ①. The Wrap Up script takes this second-index route too; its `AUTOCOMPLETE_INDEX_NAME` constant defaults to `quickstart_autocomplete`, so set it to the collision name if you created one.
+Then query it with `index: "quickstart_autocomplete"`, or the collision name from step 1, instead of `quickstart_text`. It counts against the tier index caps in Step 3a.3 ①. The Wrap Up script takes this second-index route too, so its `AUTOCOMPLETE_INDEX_NAME` constant is covered by the handoff rule in **Creating an Index** rule 2.
 
 Tell the user which route you took and why, then run that route's query. **The index name is not interchangeable: using the wrong one returns an error, because only one of the two indexes has `title` typed as `autocomplete`.**
 
@@ -681,7 +681,11 @@ Congratulate the user. Use AskUserQuestion:
 - **Absent:** the script would do embedding work the user never approved, so say so instead of asking the question above. Gate on this index, not on which path was taken: the gap covers Path A2 ending at Step 6a2, Path B ending at Step 7b, Path A stopping at Step 4a's confirmation, and any path cut short by an error.
   > "I have a standalone Python script covering all three search types, but it goes further than what you just ran: it creates an Automated Embedding index on `movies` and embeds about 21,000 movie plots, which uses tokens. Want it anyway?"
 
-If they decline, do not copy the script. Otherwise copy `scripts/quickstart_complete.py` from this skill directory into the user's working directory, then tell the user:
+If they decline, do not copy the script. Otherwise copy `scripts/quickstart_complete.py` from this skill directory into the user's working directory.
+
+**Then carry over any collision names.** The script's `SEMANTIC_INDEX_NAME`, `TEXT_INDEX_NAME`, and `AUTOCOMPLETE_INDEX_NAME` constants default to the three `quickstart_*` names. For every index you created under a collision name, edit the matching constant in the copy before handing it over, and say which ones you changed. Skip this and the script stops on the conflicting index rather than reusing the one the user watched you build.
+
+Then tell the user:
 > "Your script is at `<destination path>`. Set `MONGODB_URI` to your connection string and it runs against `sample_mflix.movies`. It reads `MDB_MCP_CONNECTION_STRING` too if that is already exported for the MCP server. To point it at your own data, change the `DB_NAME` and `COLLECTION_NAME` variables at the top. Because the script hard-codes the sample schema (`plot`, `genres`, and `title`), also update the index definitions, the `$project` stages, and the query strings to match your own field names."
 
 ## Troubleshooting
