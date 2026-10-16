@@ -1,6 +1,6 @@
 ---
 name: mongodb-schema-design
-description: MongoDB schema design patterns and anti-patterns. Use when designing data models, reviewing schemas, migrating from SQL, or troubleshooting performance issues caused by schema problems. Triggers on "design schema", "embed vs reference", "MongoDB data model", "schema review", "unbounded arrays", "one-to-many", "tree structure", "16MB limit", "schema validation", "JSON Schema", "time series", "schema migration", "polymorphic", "TTL", "data lifecycle", "archive", "index explosion", "unnecessary indexes", "approximation pattern", "document versioning".
+description: MongoDB schema design patterns and anti-patterns. Use when designing data models, reviewing schemas, migrating from SQL, migrating or cleaning up existing collections with inconsistent document shapes, deriving schema changes from workload data, or troubleshooting performance issues caused by schema problems. Triggers on "design schema", "embed vs reference", "MongoDB data model", "schema review", "schema drift", "inconsistent fields", "backfill", "migrate existing documents", "schema versioning", "access patterns", "$queryStats", "query stats", "slow query log", "unbounded arrays", "one-to-many", "tree structure", "16MB limit", "schema validation", "JSON Schema", "time series", "schema migration", "polymorphic", "TTL", "data lifecycle", "archive", "index explosion", "unnecessary indexes", "approximation pattern", "document versioning".
 license: Apache-2.0
 metadata:
   version: "1.0.0"
@@ -151,23 +151,21 @@ When connected, I can automatically:
 
 ### ⚠️ Action Policy
 
-**I will NEVER execute write operations without your explicit approval.**
+**I will not write to a database you haven't asked me to change.**
 
-Before any write or destructive operation via MCP, I will: (1) summarize the exact operation (collection, index/validator, estimated number of docs affected), and (2) ask for explicit confirmation (yes/no). I will not proceed on partial or ambiguous approvals.
+This applies to every write path: MCP tools, `mongosh`, and driver scripts.
 
-| Operation Type | MCP Tools | Action |
+- **You asked me to change a local or dev database:** I proceed. A task like "migrate the local `crm.contacts` collection" is your approval. I summarize what I changed afterward.
+- **Production, shared, or unspecified targets, or any destructive operation:** I first show the exact operation (collection, index/validator, estimated number of docs affected) and wait for an explicit yes. I will not proceed on partial or ambiguous approvals.
+- **You asked for recommendations, not changes:** I show the command and don't run it.
+
+| Operation Type | Example MCP Tools | Action |
 |---------------|-----------|--------|
 | **Read (Safe)** | `find`, `aggregate`, `collection-schema`, `db-stats`, `count` | I may run automatically to verify |
-| **Write (Requires Approval)** | `update-many`, `insert-many`, `create-collection` | I will show the command and wait for your "yes" |
-| **Destructive (Requires Approval)** | `delete-many`, `drop-collection`, `drop-database` | I will warn you and require explicit confirmation |
+| **Write** | `update-many`, `insert-many`, `create-collection` | I run it if you asked for the change on a local or dev database. Otherwise I show the command and wait for your "yes" |
+| **Destructive (Requires Approval)** | `delete-many`, `drop-collection`, `drop-database` | I warn you and require explicit confirmation |
 
-When I recommend schema changes or data modifications:
-1. I'll explain **what** I want to do and **why**
-2. I'll show you the **exact command**
-3. I'll **wait for your approval** before executing
-4. If you say "go ahead" or "yes", only then will I run it
-
-**Your database, your decision.** I'm here to advise, not to act unilaterally.
+**Your database, your decision.** When you ask me to act, I act within the scope you gave me.
 
 ### Working Together
 
@@ -177,5 +175,3 @@ If you're not sure about a recommendation:
 3. I'll adjust my recommendation based on your actual data
 
 We're a team—let's get this right together.
-
-
