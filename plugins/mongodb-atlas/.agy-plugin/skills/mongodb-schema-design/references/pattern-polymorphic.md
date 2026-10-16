@@ -164,4 +164,4 @@ db.products.aggregate([
 db.products.countDocuments({ type: { $exists: false } })
 ```
 
-Reference: [Polymorphic Schema Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/polymorphic-data/polymorphic-schema-pattern/)
+Reference: [Polymorphic Schema Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/polymorphic-data/polymorphic-schema-pattern/?utm_source=agent-skills)

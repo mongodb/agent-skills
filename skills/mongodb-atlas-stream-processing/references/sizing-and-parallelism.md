@@ -136,7 +136,7 @@ Charges are **per-hour, calculated per-second**, only while the processor is run
 - VPC Peering (AWS and GCP)
 - Private Link connectivity
 
-For current pricing: https://www.mongodb.com/docs/atlas/billing/stream-processing-costs/
+For current pricing: https://www.mongodb.com/docs/atlas/billing/stream-processing-costs/?utm_source=agent-skills
 
 ## Sizing Workflow with MCP Tools
 

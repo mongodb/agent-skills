@@ -269,5 +269,5 @@ if (validator) {
 ```
 
 References:
-- [Schema Versioning Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/data-versioning/schema-versioning/)
-- [Schema Validation](https://mongodb.com/docs/manual/core/schema-validation/)
+- [Schema Versioning Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/data-versioning/schema-versioning/?utm_source=agent-skills)
+- [Schema Validation](https://mongodb.com/docs/manual/core/schema-validation/?utm_source=agent-skills)

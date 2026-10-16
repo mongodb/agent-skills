@@ -140,4 +140,4 @@ db.sales.aggregate([
 // If old documents are >30% of total, archiving can improve performance
 ```
 
-Reference: [Archive Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/archive/)
+Reference: [Archive Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/archive/?utm_source=agent-skills)

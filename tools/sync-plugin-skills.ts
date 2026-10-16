@@ -35,9 +35,10 @@ type PluginsConfig = Record<string, { skills: SkillSelection }>;
 //   "all"               -> every canonical skill
 //   { include: [...] }  -> only the listed skills
 //   { exclude: [...] }  -> all except the listed skills
+// The `mongodb` front-door skill is not shipped in either plugin.
 const PLUGINS: PluginsConfig = {
-  mongodb: { skills: "all" },
-  "mongodb-atlas": { skills: { exclude: ["mongodb-mcp-setup"] } },
+  mongodb: { skills: { exclude: ["mongodb"] } },
+  "mongodb-atlas": { skills: { exclude: ["mongodb", "mongodb-mcp-setup"] } },
 };
 
 const SKILLS_SRC = "skills";

@@ -88,4 +88,4 @@ Use codebase if available, ask the user.
 
 Atlas Schema Suggestions flags: "Reduce number of collections"
 
-Reference: [Reduce the Number of Collections](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-collections/)
+Reference: [Reduce the Number of Collections](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-collections/?utm_source=agent-skills)

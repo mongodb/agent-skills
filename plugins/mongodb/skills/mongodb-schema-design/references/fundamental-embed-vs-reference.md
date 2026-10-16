@@ -410,9 +410,9 @@ db.categories.aggregate([
 ```
 
 References:
-- [Embedding vs Referencing](https://mongodb.com/docs/manual/data-modeling/concepts/embedding-vs-references/)
-- [Model One-to-One Relationships](https://mongodb.com/docs/manual/tutorial/model-embedded-one-to-one-relationships-between-documents/)
-- [Model One-to-Many Relationships with Embedded Documents](https://mongodb.com/docs/manual/tutorial/model-embedded-one-to-many-relationships-between-documents/)
-- [Model One-to-Many Relationships with References](https://mongodb.com/docs/manual/tutorial/model-referenced-one-to-many-relationships-between-documents/)
-- [Model Many-to-Many Relationships](https://mongodb.com/docs/manual/tutorial/model-embedded-many-to-many-relationships-between-documents/)
-- [Model Tree Structures](https://mongodb.com/docs/manual/applications/data-models-tree-structures/)
+- [Embedding vs Referencing](https://mongodb.com/docs/manual/data-modeling/concepts/embedding-vs-references/?utm_source=agent-skills)
+- [Model One-to-One Relationships](https://mongodb.com/docs/manual/tutorial/model-embedded-one-to-one-relationships-between-documents/?utm_source=agent-skills)
+- [Model One-to-Many Relationships with Embedded Documents](https://mongodb.com/docs/manual/tutorial/model-embedded-one-to-many-relationships-between-documents/?utm_source=agent-skills)
+- [Model One-to-Many Relationships with References](https://mongodb.com/docs/manual/tutorial/model-referenced-one-to-many-relationships-between-documents/?utm_source=agent-skills)
+- [Model Many-to-Many Relationships](https://mongodb.com/docs/manual/tutorial/model-embedded-many-to-many-relationships-between-documents/?utm_source=agent-skills)
+- [Model Tree Structures](https://mongodb.com/docs/manual/applications/data-models-tree-structures/?utm_source=agent-skills)
