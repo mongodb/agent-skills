@@ -57,7 +57,9 @@
     {
       "id": 5,
       "prompt": "Help me troubleshoot my connection issue.",
-      "files": ["assets/case1.md"],
+      "files": [
+        "assets/case1.md"
+      ],
       "expected_output": "Agent identifies a connection issue not necessarily related to client configuration but still recommends decreasing the connection pool size.",
       "expectations": [
         "Asks diagnosing questions",
@@ -82,7 +84,9 @@
     {
       "id": 7,
       "prompt": "Help me troubleshoot my connection issue.",
-      "files": ["assets/case2.md"],
+      "files": [
+        "assets/case2.md"
+      ],
       "expected_output": "Agent identifies the issue is reaching the server's max connection limit and recommends decreasing max pool size.",
       "expectations": [
         "Identifies the issue is connection rejection due to reaching the server's max connection limit",
@@ -91,6 +95,121 @@
         "Presents calculations to justify the maxPoolSize recommendation",
         "Factors in the calculations 2 extra monitoring connections created per client",
         "Provide specific monitoring recommendations"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Review only: each Vercel request creates a MongoClient, connects, runs a findOne, and closes the client in finally. Connections spike as traffic grows. Explain the smallest lifecycle change and how to verify it; no codebase or credentials are available.",
+      "expected_output": "Recommends per-instance reuse, safe initialization and validation without inventing a pool budget.",
+      "expectations": [
+        "Removes shared-client close from request lifecycle",
+        "Distinguishes per-instance reuse from a global cross-instance pool",
+        "Avoids Postgres release semantics",
+        "Does not invent workload-based pool settings"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Plan only: add attachDatabasePool to our Mongoose application on Fluid compute. I have not supplied package versions. Can we pass the Mongoose connection object and set every pool to 100 immediately?",
+      "expected_output": "Requires package and accepted-object verification and refuses arbitrary pool sizing.",
+      "expectations": [
+        "Requests or inspects installed versions",
+        "Does not assert the ODM wrapper is supported without evidence",
+        "Does not prescribe pool size 100 without a budget",
+        "Separates documented support from tested compatibility"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "We see pool checkout waits on Vercel and Atlas CPU is already saturated. Should we double maxPoolSize and socketTimeoutMS? Give a diagnostic plan only; no resources may be changed.",
+      "expected_output": "Investigates slow operations and saturation before increasing connections or timeouts.",
+      "expectations": [
+        "Does not double the pool on a saturated database",
+        "Distinguishes pool wait from socket timeout",
+        "Requests or recommends before/after measurements",
+        "Preserves consistency and security settings"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Review only: a module caches client.connect() in a shared promise. The first attempt rejects during a temporary network failure, and later requests await that same rejected promise forever. How should we reason about a fix under concurrent requests?",
+      "expected_output": "Explains recoverable, concurrency-safe initialization without unbounded retry or per-request client creation.",
+      "expectations": [
+        "Identifies permanently cached rejection",
+        "Requires concurrency-safe recovery",
+        "Prevents stale failure cleanup from clearing newer state or closing a newer healthy client",
+        "Avoids unbounded retries",
+        "Includes a failure-then-recovery test"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Review only: two server handlers use the same MongoDB URI but each owns a MongoClient. Twenty first requests can arrive at once. Describe a singleton and cached-initialization design and how tests would prove reuse. Does one MongoClient mean exactly one TCP socket across all Vercel instances?",
+      "expected_output": "Explains a shared server-only helper, cached client and in-flight initialization per runtime/configuration, with measurable tests rather than global-singleton claims.",
+      "expectations": [
+        "Uses one shared helper for both handlers",
+        "Publishes shared initialization before awaiting it",
+        "Counts client construction and initialization separately from sockets",
+        "Requires concurrent calls to share initialization",
+        "Distinguishes per-runtime pools from a deployment-wide single socket",
+        "Does not close shared clients when requests complete"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Review only: our Next.js development server re-evaluates modules on hot reload and the module-local MongoClient cache keeps being recreated. Should we use a development global cache? Will it also share clients across all production Vercel instances, and does it cache find results? We have not supplied framework or driver versions.",
+      "expected_output": "Inspects framework/version conventions before proposing hot-reload-safe client caching and distinguishes its scope from production distribution and query caching.",
+      "expectations": [
+        "Requires framework/version-specific hot-reload handling",
+        "Reuses client and initialization state during supported module re-evaluation",
+        "Does not claim globalThis shares clients across processes or instances",
+        "States client caching is not query-result caching",
+        "Requires hot-reload testing rather than claiming it passes"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Plan only: enforce exactly one MongoClient everywhere in our app. One workflow uses a read-only database credential and another uses a different cluster and credential. Can we collapse both into a global singleton to lower connection counts?",
+      "expected_output": "Preserves intentional credential/configuration boundaries while reusing clients within each appropriate runtime/configuration scope.",
+      "expectations": [
+        "Does not merge distinct credentials or clusters into one client",
+        "Scopes reuse by connection configuration and runtime",
+        "Preserves authorization boundaries",
+        "Requires tests that different configurations stay isolated",
+        "Does not invent pool limits"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Review only: can we cite the Atlas Vercel partner integration guide as proof that our cached connection-promise implementation and Mongoose attachDatabasePool adapter are correct? Which sources and tests do we actually need?",
+      "expected_output": "Separates authoritative integration defaults from driver behavior, platform API compatibility, and application lifecycle evidence.",
+      "expectations": [
+        "Identifies the Atlas Vercel guide as primary for native integration behavior",
+        "Does not attribute singleton code or adapter compatibility to that guide",
+        "Requires driver documentation matching installed versions",
+        "Requires Vercel API and accepted-object verification",
+        "Requires executable cached-initialization lifecycle tests"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Write a MongoDB aggregation pipeline that groups the orders collection by calendar month of createdAt and sums the total field, sorted by month.",
+      "expected_output": "Answers the aggregation directly without connection advice.",
+      "expectations": [
+        "Provides a correct aggregation pipeline",
+        "Does not inject unrelated connection-pool, Vercel or lifecycle advice"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "We run Next.js on Vercel with Fluid compute enabled, mongodb driver 6.18 and @vercel/functions 3.9 in the lockfile, native driver (no ODM). Show me how to wire attachDatabasePool into our lib/mongodb.ts and which client options matter for it. No codebase attached.",
+      "expected_output": "Concrete attachDatabasePool(client) wiring with a non-zero maxIdleTimeMS and the reason for it.",
+      "expectations": [
+        "Provides concrete code calling attachDatabasePool(client) once at module scope right after creating the MongoClient",
+        "Passes the MongoClient itself (not a Db, promise, or connection)",
+        "Explains that a non-zero maxIdleTimeMS matters because the adapter uses it to decide how long to keep the function alive for idle-connection release (driver default 0)",
+        "Does not invent Postgres release() semantics",
+        "Gives a deployed verification step"
       ]
     }
   ]

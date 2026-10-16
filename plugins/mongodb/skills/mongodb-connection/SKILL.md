@@ -1,9 +1,9 @@
 ---
 name: mongodb-connection
-description: Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill when working/updating/reviewing on functions that instantiate or configure a MongoDB client (eg, when calling `connect()`), configuring connection pools, troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion), optimizing performance issues related to connections. This includes scenarios like building serverless functions with MongoDB, creating API endpoints that use MongoDB, optimizing high-traffic MongoDB applications, creating long-running tasks and concurrency, or debugging connection-related failures.
+description: Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill when working/updating/reviewing on functions that instantiate or configure a MongoDB client (eg, when calling `connect()`), configuring connection pools, troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion), optimizing performance issues related to connections. This includes scenarios like building serverless functions with MongoDB, creating API endpoints that use MongoDB, optimizing high-traffic MongoDB applications, creating long-running tasks and concurrency, or debugging connection-related failures. It also covers client lifecycle and pool behavior for Node.js apps on Vercel Functions and Fluid compute, including wiring `attachDatabasePool` from `@vercel/functions`.
 license: Apache-2.0
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # MongoDB Connection Optimizer
@@ -87,6 +87,15 @@ Total potential connections = instances × (maxPoolSize + 2) × replica set memb
 | `maxIdleTimeMS` | 10-30s | Release unused connections more quickly |
 | `connectTimeoutMS` | >0 | Set to a value greater than the longest network latency you have to a member of the set |
 | `socketTimeoutMS` | >0 | Use socketTimeoutMS to ensure that sockets are always closed |
+
+##### Scenario: Vercel Functions and Fluid compute (Node.js)
+
+Use this instead of the generic serverless table when the app runs on Vercel. Fluid compute lets one function instance serve concurrent requests and suspends it when idle, so pool and idle settings behave differently from one-request-per-instance platforms.
+
+- **Client lifecycle:** use one lazy, server-only helper that caches the in-flight `connect()` promise, recovers after a failed connect, and never touches Atlas at import time (so `next build` works). Never create and close a client per request. See `references/client-helper.md`.
+- **Pool size:** keep the driver default until checkout waits are measured. Do not invent a `maxPoolSize`; raise it only for demonstrated waits on a database with headroom. If you cap it for connection-budget reasons, base it on measured concurrency, not on the generic 3-5 figure above, because one Fluid instance serves many concurrent requests.
+- **Releasing idle connections:** only when the project is on Fluid compute and the question involves connection release or suspension, register the `MongoClient` once with `attachDatabasePool` from `@vercel/functions` and set a non-zero `maxIdleTimeMS` (for example 5000). With the driver default of 0 the adapter releases nothing. For Mongoose, pass `mongoose.connection.getClient()`. See `references/fluid-compute.md`. Do not add the adapter to unrelated lifecycle fixes.
+- **First-deployment failures** (works locally but fails on Preview, server selection timeouts, Atlas access list, environment scopes) are networking and configuration issues, not pool issues. Use the `mongodb-vercel-deployment` skill if it is installed.
 
 ##### Scenario: Traditional Long-Running Servers (OLTP Workload)
 
@@ -194,6 +203,10 @@ When operations queue, pool is exhausted.
 
 **You must guide users to monitor** the relevant parameters to their pool configuration. 
 For detailed monitoring setup, see `references/monitoring-guide.md`.
+
+On Vercel, a local test cannot show suspension behavior. Verify connection release on an approved non-production deployment by comparing Atlas connection count and creation rate with and without the adapter (see `references/fluid-compute.md`).
+
+When you rely on facts from the reference files (for example `attachDatabasePool` behavior verified against `@vercel/functions` 3.9.11), attribute them to those versions. Do not say you checked or verified something in the current session unless you actually did.
 
 ---
 

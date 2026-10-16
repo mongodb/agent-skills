@@ -1,0 +1,81 @@
+{
+  "test_suite": "MongoDB Connection vs Vercel Deployment - Skill Invocation Tests",
+  "description": "Validates that the correct skill is invoked based on user prompts. Tests the boundary between connection lifecycle/pool tuning and first-deployment Atlas-on-Vercel setup (network access, environment scopes, runtime).",
+  "version": "1.0",
+  "skills_tested": [
+    "mongodb-connection",
+    "mongodb-vercel-deployment"
+  ],
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "clear_vercel_deployment",
+      "prompt": "My Next.js app reads from Atlas locally, but Vercel preview requests fail with a server selection timeout. How do I get it working?",
+      "expected_skill": "mongodb-vercel-deployment",
+      "should_not_trigger": "mongodb-connection",
+      "reasoning": "Works locally but fails on Vercel is a network access and environment scope problem, not a pool problem",
+      "trigger_keywords": ["vercel", "preview", "server selection timeout"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 2,
+      "category": "clear_vercel_deployment",
+      "prompt": "I want to connect my Vercel project to Atlas with the Marketplace integration. What does it set up and what should I check afterwards?",
+      "expected_skill": "mongodb-vercel-deployment",
+      "should_not_trigger": "mongodb-connection",
+      "reasoning": "Marketplace integration defaults, network access and environment bindings belong to the deployment workflow",
+      "trigger_keywords": ["vercel", "marketplace", "integration"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 3,
+      "category": "clear_connection",
+      "prompt": "Our Vercel function creates a MongoClient and closes it on every request, and Atlas connections spike as traffic grows. What should change?",
+      "expected_skill": "mongodb-connection",
+      "should_not_trigger": "mongodb-vercel-deployment",
+      "reasoning": "Per-request client creation is a client lifecycle problem",
+      "trigger_keywords": ["MongoClient", "connections spike", "every request"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 4,
+      "category": "clear_connection",
+      "prompt": "How do I wire attachDatabasePool from @vercel/functions to my MongoClient on Fluid compute?",
+      "expected_skill": "mongodb-connection",
+      "should_not_trigger": "mongodb-vercel-deployment",
+      "reasoning": "attachDatabasePool and idle connection release are connection lifecycle topics",
+      "trigger_keywords": ["attachDatabasePool", "Fluid compute", "MongoClient"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 5,
+      "category": "ambiguous",
+      "prompt": "I'm setting up MongoDB for a new Next.js app on Vercel. Write lib/mongodb.ts and the API route.",
+      "expected_skill": "mongodb-vercel-deployment",
+      "acceptable_alternative": "mongodb-connection",
+      "reasoning": "Fresh setup on Vercel is a deployment task, but the helper it produces is the connection skill's canonical pattern",
+      "trigger_keywords": ["new", "vercel", "lib/mongodb.ts"],
+      "ambiguity_level": "high"
+    },
+    {
+      "id": 6,
+      "category": "edge_case",
+      "prompt": "Design a MongoDB schema for a multi-tenant SaaS product deployed on Vercel.",
+      "expected_skill": "mongodb-schema-design",
+      "should_not_trigger": "mongodb-vercel-deployment",
+      "reasoning": "Schema design is out of scope for the deployment skill even though Vercel is mentioned",
+      "trigger_keywords": ["schema", "multi-tenant"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 7,
+      "category": "edge_case",
+      "prompt": "Write an aggregation pipeline that groups orders by customer and returns the top 5 by total spend.",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-connection",
+      "reasoning": "An aggregation request with no client or connection context must not trigger the connection skill",
+      "trigger_keywords": ["aggregation", "pipeline", "group"],
+      "ambiguity_level": "low"
+    }
+  ]
+}

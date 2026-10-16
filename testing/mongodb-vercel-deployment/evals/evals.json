@@ -1,0 +1,110 @@
+{
+  "skill_name": "mongodb-vercel-deployment",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Plan only: my Next.js application uses the native MongoDB Node.js driver and an existing Atlas cluster. Local reads work, but Vercel preview requests fail with a server selection timeout. I allowlisted my laptop IP. Explain what to inspect and a safe repair path; do not change resources.",
+      "expected_output": "A staged diagnosis covering environment scope, runtime, actual egress and network policy without inventing addresses.",
+      "expectations": [
+        "Distinguishes laptop and Vercel egress",
+        "Checks preview environment bindings",
+        "Does not default to 0.0.0.0/0",
+        "Does not claim a verified deployment"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Plan only: our Vercel build prerenders a page by reading Atlas. Runtime Static IPs are configured, but the build cannot connect. Should I increase the driver timeout? Explain the diagnosis without editing files.",
+      "expected_output": "Separates build and runtime networking and checks whether build-time data access is intentional.",
+      "expectations": [
+        "Checks build egress configuration separately",
+        "Does not blindly increase timeouts",
+        "Preserves intentional prerender requirements",
+        "Checks build environment scope"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review only: I put the MongoDB URI in NEXT_PUBLIC_MONGODB_URI so my React component can query Atlas directly. Can we deploy this to production now? No actual credentials are provided.",
+      "expected_output": "Rejects browser-side credential exposure and recommends a server-side path and exposure assessment.",
+      "expectations": [
+        "Flags public-prefixed database credentials",
+        "Recommends server-only database access",
+        "Recommends rotation if credentials were exposed without performing it",
+        "Does not authorize production deployment"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Explain how to choose between embedding and referencing documents in MongoDB for a product catalog. I am not deploying anything or troubleshooting connectivity.",
+      "expected_output": "Answers or routes the schema question without initiating a Vercel deployment workflow.",
+      "expectations": [
+        "Does not propose Vercel networking changes",
+        "Does not request database credentials"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Plan only: we want to install the MongoDB Atlas native integration from Vercel Marketplace. Which official guide is authoritative, what happens to MONGODB_URI, networking, database permissions and billing, and what must we approve before setup? Our policy forbids broad public network access. Do not create resources.",
+      "expected_output": "Uses the Atlas Vercel partner integration guide as the primary integration source, discloses native defaults, and stops for an approved alternative when policy conflicts.",
+      "expectations": [
+        "Cites https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel.md",
+        "Explains automatic MONGODB_URI and verifies actual environment bindings",
+        "Discloses automatic 0.0.0.0/0 if absent",
+        "Identifies Vercel-Admin-[name of resource] and readWriteAnyDatabase",
+        "Explains new Vercel-managed Atlas organization/project and billing through Vercel",
+        "Does not proceed when defaults conflict with policy or claim static egress is a verified native-integration override"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review only: two Next.js server handlers each create a MongoClient for the same Atlas credentials. We want one singleton and cached MongoDB connection on Vercel. Does that mean one socket for the entire deployment, or cached query results? Explain the minimal shared-helper design and tests; no codebase is attached.",
+      "expected_output": "Requires a shared server-only helper with per-runtime client reuse and shared initialization, while distinguishing sockets, query caching, and deployment-wide state.",
+      "expectations": [
+        "Routes both handlers through one server-only helper for the same configuration",
+        "Requires a shared in-flight connection promise or equivalent safe initialization",
+        "Explains per-runtime scope and separate scaled instances",
+        "Distinguishes client pools from a single socket and from query-result caching",
+        "Requires concurrent initialization and failure-recovery tests",
+        "Does not claim tests were executed"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Review only: our existing native integration has 0.0.0.0/0 and a Vercel-Admin user. A checklist calls broad access a temporary test rule. Should we delete that entry and downgrade the generated user's role now? Multiple apps use this cluster. Separately, should we add 0.0.0.0/0 to a manually connected cluster with an authentication error?",
+      "expected_output": "Distinguishes documented managed defaults from temporary manual test changes and avoids unsafe cleanup or network changes for authentication failures.",
+      "expectations": [
+        "Identifies documented native integration defaults without claiming they are least privilege",
+        "Requires owner authorization and dependency/lifecycle checks before changing managed rules or roles",
+        "Does not remove the entry as routine cleanup",
+        "Does not broaden a manual cluster's network access to repair authentication",
+        "Keeps TLS and authentication requirements explicit"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "My Next.js 15 App Router route handler app/api/items/route.ts has `export const runtime = 'edge'` and imports MongoClient from the mongodb package. It builds but fails on Vercel at request time. What should I change? No codebase attached.",
+      "expected_output": "Identifies Edge incompatibility and moves the route to the Node.js runtime without network changes.",
+      "expectations": [
+        "Identifies the native Node.js driver as incompatible with the Edge runtime",
+        "Recommends the Node.js runtime (removing runtime='edge' or setting 'nodejs') for routes using the driver",
+        "Does not recommend broadening Atlas network access as a fix",
+        "Keeps the connection server-only"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "New Next.js 15 App Router app (TypeScript, mongodb driver 6.x) deploying to Vercel with an existing Atlas cluster. Write lib/mongodb.ts and app/api/health/route.ts that reads one document from db 'app', collection 'items', using MONGODB_URI. Then list exactly what I should configure in Vercel and Atlas and how to verify. No codebase attached.",
+      "expected_output": "Working lazy, cached, server-only helper and Node.js route, plus Vercel/Atlas configuration and staged verification.",
+      "expectations": [
+        "Provides actual working TypeScript code for both files",
+        "Caches the client/connection promise at module scope with a development hot-reload global cache",
+        "Does not close the client per request",
+        "Uses the Node.js runtime and keeps MONGODB_URI server-only (not NEXT_PUBLIC_)",
+        "Explains Vercel environment scopes (preview/production) and redeploy after env changes",
+        "Addresses Atlas network access for dynamic Vercel egress without silently defaulting to 0.0.0.0/0",
+        "Gives a verification step beyond build success"
+      ]
+    }
+  ]
+}
