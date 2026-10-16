@@ -6,7 +6,8 @@
 // `skills` CLI, the VS Code submodule sync, validate-skills, and the Gemini
 // community extension all read). Each plugin needs its own physical copy of the
 // skills it ships, because Claude/Cursor/Codex install the plugin from git and
-// resolve `skills: "./skills/"` relative to the plugin root.
+// resolve `skills: "./skills/"` relative to the plugin root (Antigravity reads
+// the same skills/ folder by convention).
 //
 // This script is idempotent: it fully regenerates each plugin's skills/ and
 // assets/ directories from the canonical sources. CI runs it and fails if the
@@ -98,23 +99,14 @@ for (const [plugin, cfg] of Object.entries(PLUGINS)) {
   const selected = selectSkills(plugin, cfg.skills);
 
   // Regenerate skills/
-  const destSkillsDirs = [join(pluginDir, SKILLS_SRC)];
-  const agyPluginDir = join(pluginDir, ".agy-plugin");
-  if (!existsSync(agyPluginDir)) {
-    console.error(`[${plugin}] .agy-plugin directory not found: ${agyPluginDir}`);
-    totalErrors++;
-    continue;
-  }
-  destSkillsDirs.push(join(agyPluginDir, SKILLS_SRC));
-  for (const destSkills of destSkillsDirs) {
-    rmSync(destSkills, { recursive: true, force: true });
-    mkdirSync(destSkills, { recursive: true });
-    for (const skill of selected) {
-      cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
-        recursive: true,
-        filter: copyFilter,
-      });
-    }
+  const destSkills = join(pluginDir, SKILLS_SRC);
+  rmSync(destSkills, { recursive: true, force: true });
+  mkdirSync(destSkills, { recursive: true });
+  for (const skill of selected) {
+    cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
+      recursive: true,
+      filter: copyFilter,
+    });
   }
 
   // Regenerate assets/.
