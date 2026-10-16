@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mongodb",
+  "version": "1.2.1",
+  "description": "Build applications with MongoDB - query databases, manage collections, create indexes, run aggregations, manage Atlas clusters, optimize connection pools and timeouts, design schemas with proven patterns, translate natural language to queries, diagnose slow queries with explain plans, implement full-text and vector search, and build streaming pipelines with Atlas Stream Processing",
+  "author": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com",
+    "url": "https://www.mongodb.com"
+  },
+  "homepage": "https://www.mongodb.com/docs/mcp-server/get-started/",
+  "repository": "https://github.com/mongodb/agent-skills",
+  "license": "Apache-2.0",
+  "keywords": ["mongodb", "mongo", "nosql", "database", "atlas", "aggregation", "collection", "document", "schema", "connection pool", "query optimization", "indexing", "explain", "slow query", "natural language query", "MQL", "vector search", "atlas search", "full-text search", "hybrid search", "semantic search", "RAG", "stream processing", "kafka", "schema design", "embed vs reference", "mcp setup", "connection string"]
+}
