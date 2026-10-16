@@ -1,0 +1,64 @@
+$ bash scripts/run-all-checks.sh --version 8.0 --dbpath /var/lib/mongo
+============================================================
+ Self-Managed Deployments Checks
+ Host:    db-node-03.internal.example
+ Date:    2026-09-30 16:22:09
+ Kernel:  5.14.0-427.13.1.el9_4.x86_64
+ Version: MongoDB 8.0
+============================================================
+
+--- Platform & OS ---
+=== Platform & OS Check ===
+[INFO] os: Red Hat Enterprise Linux 9.4
+[INFO] kernel: 5.14.0-427.13.1.el9_4.x86_64
+[INFO] architecture: x86_64
+[PASS] kernel-version: 5.14.0-427.13.1.el9_4.x86_64 is outside the documented kernel restrictions for 8.0
+[PASS] cpu-avx: AVX instruction set available
+[PASS] kernel-minimum: 5.14.0-427.13.1.el9_4.x86_64 meets the 2.6.36 minimum
+[PASS] cpu-cores: 16 cores available (minimum 2 real cores per mongod or mongos)
+[PASS] os-supported: Red Hat Enterprise Linux appears to be in the MongoDB supported OS list
+--- Kernel & System Parameters ---
+=== Kernel & System Parameters Check ===
+[PASS] vm.swappiness: 1 (recommended: 1)
+[PASS] vm.zone_reclaim_mode: 0 (correct for NUMA systems)
+[PASS] net.core.somaxconn: 4096
+[PASS] net.ipv4.tcp_keepalive_time: 120 seconds
+--- Transparent Huge Pages ---
+=== Transparent Huge Pages (THP) Check ===
+[INFO] thp-version: scoring against MongoDB 8.0 expectations
+[INFO] thp-enabled-raw: [always] madvise never
+[PASS] thp-enabled: THP is 'always', as MongoDB 8.0 and later require
+[PASS] thp-defrag: defrag is 'defer+madvise', as MongoDB 8.0 and later require
+[PASS] thp-max-ptes-none: khugepaged max_ptes_none is 0, as MongoDB 8.0 and later require
+[PASS] thp-overcommit: vm.overcommit_memory is 1, as MongoDB 8.0 and later require
+[INFO] thp-tuned: tuned active profile: golden-mongodb-80
+[INFO] thp-persistent: tuned profile 'golden-mongodb-80' is active and may set THP at boot; confirm it sets the value this version needs
+--- Ulimits ---
+=== Ulimits Check ===
+[PASS] ulimit-open-files: soft=64000 hard=64000 (recommended >= 64000)
+[PASS] ulimit-processes: soft=64000 hard=64000 (recommended >= 64000)
+--- MongoDB Process & Config ---
+=== MongoDB Process Check ===
+[PASS] mongod-running: mongod is running (PID 2231)
+[INFO] mongod-version: 7.0.21
+[PASS] mongod-version-support: 7.0.21 is a supported version (7.0, 8.0, 8.3 or 9.0)
+[WARN] mongod-version-match: installed mongod is 7.0.21 but the audit was run with --version 8.0
+       Fix: re-run with --version 7.0 so the checks use the right expected values
+[PASS] mongod-user: mongod is running as non-root user (mongod)
+[PASS] mongod-auth: security.authorization is enabled
+--- TCMalloc (8.0 and later) ---
+=== TCMalloc Check (MongoDB 8.0 and later) ===
+[INFO] tcmalloc-arch: x86_64 uses updated TCMalloc in MongoDB 8.0
+[PASS] tcmalloc-kernel619: Kernel 5.14.0-427.13.1.el9_4.x86_64 is outside the documented kernel restrictions for 8.0
+============================================================
+ SUMMARY
+============================================================
+ PASS:  20
+ WARN:  1
+ FAIL:  0
+ UNKNOWN: 0
+WARNINGS (fix before high-load production use):
+  WARN: mongod-version-match: installed mongod is 7.0.21 but the audit was run with --version 8.0
+
+Reference: https://www.mongodb.com/docs/manual/administration/production-notes/
+============================================================

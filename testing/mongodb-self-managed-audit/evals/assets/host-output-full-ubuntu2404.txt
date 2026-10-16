@@ -1,0 +1,170 @@
+$ bash scripts/run-all-checks.sh --version 8.0.25
+============================================================
+ Self-Managed Deployments Checks
+ Host:    db-node-01.internal.example
+ Date:    2026-09-16 01:22:42
+ Kernel:  6.17.0-1022-azure
+ Version: MongoDB 8.0
+============================================================
+
+--- Platform & OS ---
+=== Platform & OS Check ===
+[INFO] os: Ubuntu 24.04
+[INFO] kernel: 6.17.0-1022-azure
+[INFO] architecture: x86_64
+[PASS] kernel-version: 6.17.0-1022-azure is outside the documented kernel restrictions for 8.0
+[PASS] cpu-avx: AVX instruction set available
+[INFO] cpu-model: Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz
+[INFO] cpu-microarch: minimum is Intel Haswell or later Core, Intel Tiger Lake or later Celeron/Pentium, or AMD Bulldozer or later
+[PASS] kernel-minimum: 6.17.0-1022-azure meets the 2.6.36 minimum
+[PASS] cpu-cores: 2 cores available (minimum 2 real cores per mongod or mongos)
+[PASS] os-supported: Ubuntu appears to be in the MongoDB supported OS list
+[INFO] virtualization: microsoft
+
+--- Kernel & System Parameters ---
+=== Kernel & System Parameters Check ===
+[FAIL] vm.swappiness: 60 (recommended: 1 — high swappiness causes severe MongoDB performance degradation)
+       Fix: echo 'vm.swappiness=1' >> /etc/sysctl.conf && sysctl -p
+[WARN] vm.dirty_ratio: 20 (recommended: <= 15 — high value delays flushing dirty pages)
+       Fix: echo 'vm.dirty_ratio=15' >> /etc/sysctl.conf && sysctl -p
+[WARN] vm.dirty_background_ratio: 10 (recommended: 3-5)
+       Fix: echo 'vm.dirty_background_ratio=5' >> /etc/sysctl.conf && sysctl -p
+[PASS] kernel.pid_max: 4194304
+[PASS] fs.file-max: 9223372036854775807
+[PASS] net.core.somaxconn: 4096
+[WARN] net.ipv4.tcp_keepalive_time: 7200 seconds (recommended: 120; the 7200 default leaves stale connections)
+       Fix: echo 'net.ipv4.tcp_keepalive_time=120' >> /etc/sysctl.conf && sysctl -p
+[PASS] vm.zone_reclaim_mode: 0 (correct for NUMA systems)
+[INFO] fs.file-nr: 1297 open / 9223372036854775807 max
+
+--- NUMA Configuration ---
+=== NUMA Check ===
+[INFO] numa-topology: Single NUMA node or NUMA not present — no NUMA tuning required
+
+--- Transparent Huge Pages ---
+=== Transparent Huge Pages (THP) Check ===
+[INFO] thp-version: scoring against MongoDB 8.0 expectations
+[INFO] thp-enabled-raw: [always] madvise never
+[PASS] thp-enabled: THP is 'always', as MongoDB 8.0 and later require
+[WARN] thp-defrag: defrag is 'madvise'; MongoDB 8.0 and later expect 'defer+madvise'
+       Fix: echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag
+[WARN] thp-max-ptes-none: khugepaged max_ptes_none is 511; MongoDB 8.0 and later expect 0
+       Fix: echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none
+[WARN] thp-overcommit: vm.overcommit_memory is 0; MongoDB 8.0 and later expect 1
+       Fix: sysctl -w vm.overcommit_memory=1 and persist in /etc/sysctl.conf
+[WARN] thp-persistent: no persistence mechanism detected; THP settings reset on reboot
+       Fix: persist these across reboot with a systemd unit ordered before
+       mongod, a tuned profile, or the host build image. Whichever you use,
+       it must set:
+         echo always > /sys/kernel/mm/transparent_hugepage/enabled
+         echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag
+         echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none
+         echo 1 > /proc/sys/vm/overcommit_memory
+
+--- Filesystem & Storage ---
+[INFO] dbpath: Using /var/lib/mongo
+=== Storage & Filesystem Check ===
+[WARN] dbpath-exists: /var/lib/mongo does not exist or is not accessible
+[INFO] storage-engine: Configured engine: wiredTiger
+
+--- Ulimits ---
+=== Ulimits Check ===
+[WARN] ulimits-source: mongod not running — checking system-level limits
+[WARN] ulimit-open-files: soft=1024 hard=1048576 (recommended >= 64000)
+       Fix: Add to /etc/security/limits.conf or /etc/security/limits.d/99-mongodb.conf:
+         mongod soft nofile 64000
+         mongod hard nofile 64000
+[FAIL] ulimit-processes: soft=31436 hard=31436 (critically low, recommended >= 64000)
+       Fix: Add to /etc/security/limits.conf or /etc/security/limits.d/99-mongodb.conf:
+         mongod soft nproc 64000
+         mongod hard nproc 64000
+[WARN] limits-file: No mongod-specific limits file found in /etc/security/limits.d/
+       Fix: Create /etc/security/limits.d/99-mongodb.conf with:
+         mongod soft nofile 64000
+         mongod hard nofile 64000
+         mongod soft nproc 64000
+         mongod hard nproc 64000
+         mongod soft memlock unlimited
+         mongod hard memlock unlimited
+
+--- Network ---
+=== Network Check ===
+[INFO] hostname: db-node-01.internal.example
+[PASS] dns-resolution: Hostname db-node-01.internal.example resolves correctly
+[WARN] net-tcp-keepalive: net.ipv4.tcp_keepalive_time=7200 (recommended: 120; the 7200 default leaves stale connections)
+       Fix: echo 'net.ipv4.tcp_keepalive_time=120' >> /etc/sysctl.conf && sysctl -p
+[PASS] net-somaxconn: net.core.somaxconn=4096
+[WARN] net-syn-backlog: net.ipv4.tcp_max_syn_backlog=512 (recommended >= 4096)
+       Fix: echo 'net.ipv4.tcp_max_syn_backlog=4096' >> /etc/sysctl.conf && sysctl -p
+[WARN] net-netdev-backlog: net.core.netdev_max_backlog=1000 (recommended >= 3000)
+       Fix: echo 'net.core.netdev_max_backlog=3000' >> /etc/sysctl.conf && sysctl -p
+[INFO] net-mongo-port: Nothing detected on port 27017 (mongod may not be running)
+[INFO] nic-eth1: speed=100000Mb/s state=up
+[INFO] nic-eth0: speed=100000Mb/s state=up
+
+--- Clock Synchronization ---
+=== Clock Synchronization Check ===
+[INFO] clock-now: 2026-09-16 01:22:43 UTC
+[PASS] clock-daemon: chronyd is running
+[PASS] clock-synchronized: the system clock is synchronized
+[INFO] clock-offset: chrony reports a system time offset of 0.000000425s
+[INFO] clock-timezone: Etc/UTC; keep this consistent across every cluster member
+[INFO] clock-drift-parameter: mongod caps tolerated drift with maxAcceptableLogicalClockDriftSecs; drift beyond it breaks communication between components
+
+--- MongoDB Process & Config ---
+=== MongoDB Process Check ===
+[WARN] mongod-running: mongod is not running — checking config files only
+[WARN] mongod-config: No mongod.conf found in standard locations
+
+--- WiredTiger Configuration ---
+=== WiredTiger Check ===
+[INFO] system-ram: 7.7 GB total RAM
+[INFO] wiredtiger-cache-recommended: ~3.351 GB (default is max(50% of (RAM - 1GB), 0.256GB))
+[INFO] wiredtiger-checkpoint: Using default 60-second checkpoint interval
+
+--- Security ---
+=== Security Check ===
+[PASS] cpu-aes-ni: AES-NI is available, which the encrypted storage engine benefits from
+[INFO] apparmor: apparmor module is loaded.
+
+--- TCMalloc (8.0 and later) ---
+=== TCMalloc Check (MongoDB 8.0 and later) ===
+[INFO] tcmalloc-arch: x86_64 uses updated TCMalloc in MongoDB 8.0
+[PASS] tcmalloc-kernel619: Kernel 6.17.0-1022-azure is outside the documented kernel restrictions for 8.0
+[INFO] tcmalloc-summary: Updated TCMalloc (8.0 and later default). See tuning guide:
+       https://www.mongodb.com/docs/manual/administration/tcmalloc-performance/
+
+============================================================
+ SUMMARY
+============================================================
+ PASS:  16
+ WARN:  16
+ FAIL:  2
+ UNKNOWN: 0
+
+FAILURES (must fix before production):
+  FAIL: vm.swappiness: 60 (recommended: 1 — high swappiness causes severe MongoDB performance degradation)
+  FAIL: ulimit-processes: soft=31436 hard=31436 (critically low, recommended >= 64000)
+
+WARNINGS (fix before high-load production use):
+  WARN: vm.dirty_ratio: 20 (recommended: <= 15 — high value delays flushing dirty pages)
+  WARN: vm.dirty_background_ratio: 10 (recommended: 3-5)
+  WARN: net.ipv4.tcp_keepalive_time: 7200 seconds (recommended: 120; the 7200 default leaves stale connections)
+  WARN: thp-defrag: defrag is 'madvise'; MongoDB 8.0 and later expect 'defer+madvise'
+  WARN: thp-max-ptes-none: khugepaged max_ptes_none is 511; MongoDB 8.0 and later expect 0
+  WARN: thp-overcommit: vm.overcommit_memory is 0; MongoDB 8.0 and later expect 1
+  WARN: thp-persistent: no persistence mechanism detected; THP settings reset on reboot
+  WARN: dbpath-exists: /var/lib/mongo does not exist or is not accessible
+  WARN: ulimits-source: mongod not running — checking system-level limits
+  WARN: ulimit-open-files: soft=1024 hard=1048576 (recommended >= 64000)
+  WARN: limits-file: No mongod-specific limits file found in /etc/security/limits.d/
+  WARN: net-tcp-keepalive: net.ipv4.tcp_keepalive_time=7200 (recommended: 120; the 7200 default leaves stale connections)
+  WARN: net-syn-backlog: net.ipv4.tcp_max_syn_backlog=512 (recommended >= 4096)
+  WARN: net-netdev-backlog: net.core.netdev_max_backlog=1000 (recommended >= 3000)
+  WARN: mongod-running: mongod is not running — checking config files only
+  WARN: mongod-config: No mongod.conf found in standard locations
+
+Found 2 failure(s). Resolve all FAILs before deploying to production.
+
+Reference: https://www.mongodb.com/docs/manual/administration/production-notes/
+============================================================

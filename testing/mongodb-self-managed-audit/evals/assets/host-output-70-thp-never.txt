@@ -1,0 +1,34 @@
+$ bash scripts/run-all-checks.sh --version 7.0.14 --dbpath /var/lib/mongo
+=== Platform & OS Check ===
+[INFO] os: Red Hat Enterprise Linux 9.4
+[INFO] kernel: 5.14.0-427.13.1.el9_4.x86_64
+[PASS] kernel-version: 5.14.0-427.13.1.el9_4.x86_64 is outside the documented kernel restrictions for 7.0.14
+[PASS] cpu-avx: AVX instruction set available
+[PASS] cpu-cores: 16 cores available
+
+=== Transparent Huge Pages ===
+[INFO] thp-version: scoring against MongoDB 7.0 expectations
+[PASS] thp-enabled: /sys/kernel/mm/transparent_hugepage/enabled is always madvise [never]
+[PASS] thp-defrag: /sys/kernel/mm/transparent_hugepage/defrag is always defer defer+madvise madvise [never]
+[PASS] thp-persistent: tuned profile sets THP at boot
+
+=== Kernel & System ===
+[PASS] vm.swappiness: 1 (recommended: 1)
+[PASS] vm.zone_reclaim_mode: 0
+
+=== Ulimits ===
+[PASS] ulimit-nofile: open files limit is 64000
+[PASS] ulimit-nproc: processes limit is 64000
+
+=== MongoDB Process & Config ===
+[PASS] mongod-running: mongod is running as user mongod
+[PASS] mongod-version: 7.0.14
+[PASS] mongod-version-support: 7.0.14 is a supported version (7.0, 8.0, 8.3 or 9.0)
+[PASS] mongod-auth: security.authorization is enabled
+
+============================================================
+ SUMMARY
+============================================================
+ PASS:  14
+ WARN:  0
+ FAIL:  0
