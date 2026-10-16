@@ -56,6 +56,7 @@
         "qa_skip_reason": {
           "type": "string",
           "minLength": 1,
+          "pattern": "\\S",
           "description": "When present, excludes this case from QA evals; include the reason for the skip."
         },
         "prompt": {
