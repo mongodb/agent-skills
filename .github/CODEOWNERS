@@ -4,18 +4,18 @@
 * @mongodb/devdocs
 
 # GitHub configuration and workflows
-/.github/ @mongodb/dbx-devtools @mongodb/apix-devtools @mongodb/devdocs
+/.github/ @mongodb/abx-interfaces @mongodb/devdocs
 
 # Plugin packaging infrastructure
-/.claude-plugin/ @mongodb/dbx-devtools @mongodb/apix-devtools
-/.cursor-plugin/ @mongodb/dbx-devtools @mongodb/apix-devtools
-/.agents/ @mongodb/dbx-devtools @mongodb/apix-devtools
-/gemini-extension.json @mongodb/dbx-devtools @mongodb/apix-devtools
-/plugins/ @mongodb/dbx-devtools @mongodb/apix-devtools
-/assets/ @mongodb/dbx-devtools
+/.claude-plugin/ @mongodb/abx-interfaces
+/.cursor-plugin/ @mongodb/abx-interfaces
+/.agents/ @mongodb/abx-interfaces
+/gemini-extension.json @mongodb/abx-interfaces
+/plugins/ @mongodb/abx-interfaces
+/assets/ @mongodb/abx-interfaces
 
 # Repo tooling (sync + release scripts). review-skill/ is overridden below.
-/tools/ @mongodb/dbx-devtools @mongodb/apix-devtools
+/tools/ @mongodb/abx-interfaces
 
 # Review tooling
 /tools/review-skill/ @mongodb/devdocs
