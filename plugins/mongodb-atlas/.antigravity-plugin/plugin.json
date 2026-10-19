@@ -1,5 +1,12 @@
 {
     "name": "mongodb-atlas",
+    "displayName": "MongoDB Atlas (Managed MCP)",
     "version": "1.2.1",
-    "description": "Official Antigravity plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more."
+    "description": "Official Antigravity plugin for MongoDB Atlas (hosted MCP Server + Skills). Connect to the MongoDB-hosted Atlas MCP server, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+    "logo": "assets/logo.png",
+    "suggestedPrompts": [
+        "List my Atlas clusters and the databases on each one",
+        "Review the schema of my orders collection and suggest improvements",
+        "Find slow queries on my Atlas cluster and recommend indexes"
+    ]
 }
