@@ -1,30 +1,40 @@
 #!/usr/bin/env npx tsx
 
 /**
- * Trigger eval runner for mongodb-schema-design skill.
+ * Trigger eval runner for skill-selection evals.
  *
- * Uses the Claude CLI (`claude`) to send each prompt from trigger-eval.json
+ * Uses the Claude CLI (`claude`) to send each prompt from a trigger-eval.json
  * with all skill descriptions in the system prompt, then checks whether
- * Claude selected the mongodb-schema-design skill via structured JSON output.
+ * Claude selected the target skill via structured JSON output. Defaults to the
+ * mongodb-schema-design set alongside this file; point it at another skill's
+ * set with EVALS_FILE and TARGET_SKILL.
  *
  * Usage:
  *   npx tsx run-trigger-eval.ts
  *   MODEL=sonnet npx tsx run-trigger-eval.ts
+ *   TARGET_SKILL=mongodb-search-and-ai \
+ *     EVALS_FILE=../mongodb-search-and-ai/trigger-eval.json \
+ *     npx tsx run-trigger-eval.ts
  *
  * Environment variables:
- *   MODEL    - Optional. Claude model to use (default: sonnet).
- *   DELAY_MS - Optional. Delay between CLI calls in ms (default: 500).
+ *   MODEL        - Optional. Claude model to use (default: sonnet).
+ *   DELAY_MS     - Optional. Delay between CLI calls in ms (default: 500).
+ *   TARGET_SKILL - Optional. Skill whose selection is asserted
+ *                  (default: mongodb-schema-design).
+ *   EVALS_FILE   - Optional. Path to the trigger-eval.json to run, absolute or
+ *                  relative to this file (default: ./trigger-eval.json).
+ *                  Results are written next to it.
  */
 
 import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '../../skills');
-const EVALS_FILE = join(__dirname, 'trigger-eval.json');
-const TARGET_SKILL = 'mongodb-schema-design';
+const EVALS_FILE = resolve(__dirname, process.env.EVALS_FILE ?? 'trigger-eval.json');
+const TARGET_SKILL = process.env.TARGET_SKILL ?? 'mongodb-schema-design';
 
 const MODEL = process.env.MODEL ?? 'sonnet';
 const DELAY_MS = Number(process.env.DELAY_MS ?? 500);
@@ -201,7 +211,7 @@ function main() {
   const systemPrompt = buildSystemPrompt(skills);
   const jsonSchema = buildJsonSchema(skills);
 
-  console.log(`\nLoading eval cases from trigger-eval.json`);
+  console.log(`\nLoading eval cases from ${EVALS_FILE}`);
   const evalCases: EvalCase[] = JSON.parse(readFileSync(EVALS_FILE, 'utf-8'));
   console.log(`  Found ${evalCases.length} test cases\n`);
 
@@ -313,7 +323,7 @@ function main() {
   }
 
   // Write the results to a json file.
-  const outFile = join(__dirname, 'trigger-eval-results.json');
+  const outFile = join(dirname(EVALS_FILE), 'trigger-eval-results.json');
   writeFileSync(
     outFile,
     JSON.stringify(
@@ -336,7 +346,7 @@ function main() {
       2
     )
   );
-  console.log(`\nResults written to trigger-eval-results.json`);
+  console.log(`\nResults written to ${outFile}`);
 
   process.exit(failed > 0 ? 1 : 0);
 }

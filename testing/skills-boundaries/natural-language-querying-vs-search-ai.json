@@ -256,13 +256,75 @@
       "reasoning": "Hybrid search (full-text and semantic search) would find all relevant movies; regex would not capture semantic matches",
       "trigger_keywords": ["find", "about"],
       "ambiguity_level": "high"
+    },
+    {
+      "id": 26,
+      "category": "onboarding_search",
+      "prompt": "I'm new to MongoDB search, where do I start?",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Open-ended onboarding request about search; search-and-ai owns the quickstart offer rather than answering from general knowledge",
+      "trigger_keywords": ["new to", "search", "where do I start"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 27,
+      "category": "onboarding_search",
+      "prompt": "How does search work in MongoDB?",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Explanatory search question asked before the user has data or a use case",
+      "trigger_keywords": ["how does", "search"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 28,
+      "category": "onboarding_search",
+      "prompt": "What's the difference between Atlas Search and Vector Search?",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Comparison of two search types, both owned by search-and-ai",
+      "trigger_keywords": ["difference", "Atlas Search", "Vector Search"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 29,
+      "category": "onboarding_search",
+      "prompt": "Can you walk me through setting up search on some sample data so I can learn how it works?",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "Guided-tour request on sample data; this is the quickstart path, not query generation",
+      "trigger_keywords": ["walk me through", "sample data", "learn"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 30,
+      "category": "onboarding_search",
+      "prompt": "I want to try vector search but I don't have any data yet",
+      "expected_skill": "mongodb-search-and-ai",
+      "should_not_trigger": "mongodb-natural-language-querying",
+      "reasoning": "No collection to query, so nothing for natural-language-querying to translate; search-and-ai handles the no-data starting point",
+      "trigger_keywords": ["try", "vector search", "no data"],
+      "ambiguity_level": "low"
+    },
+    {
+      "id": 31,
+      "category": "clear_natural_language_querying",
+      "prompt": "Show me the top 10 movies by year from the sample_mflix database",
+      "expected_skill": "mongodb-natural-language-querying",
+      "should_not_trigger": "mongodb-search-and-ai",
+      "reasoning": "Mentioning the sample dataset is not an onboarding request; this is sorting and limiting, with no search feature involved",
+      "trigger_keywords": ["show me", "top 10", "sample_mflix"],
+      "ambiguity_level": "medium",
+      "notes": "Guards against the quickstart offer firing on any prompt that names sample_mflix"
     }
   ],
   "evaluation_metrics": {
-    "total_tests": 25,
-    "clear_mongodb_natural_language_querying": 5,
+    "total_tests": 31,
+    "clear_mongodb_natural_language_querying": 6,
     "clear_search_ai": 5,
-    "ambiguous_cases": 10,
+    "onboarding_cases": 5,
+    "ambiguous_cases": 11,
     "edge_cases": 4,
     "high_ambiguity_count": 2,
     "acceptable_threshold": ">=90% accuracy on clear cases, >=70% expected behavior on ambiguous cases"
