@@ -127,7 +127,7 @@ Key quickstarts:
 ## Pipeline Rules & Warnings
 
 **Invalid constructs** — these are NOT valid in streaming pipelines:
-- **`$$NOW`**, **`$$ROOT`**, **`$$CURRENT`** — NOT available in stream processing. NEVER use these. Use the document's own timestamp field or `_stream_meta` metadata for event time instead of `$$NOW`.
+- **`$$NOW`**, **`$$CURRENT`** — NOT available in stream processing. NEVER use these. Use the document's own timestamp field or `_stream_meta` metadata for event time instead of `$$NOW`.
 - **HTTPS connections as `$source`** — HTTPS is for `$https` enrichment or sink only, NOT as a data source
 - **Kafka `$source` without `topic`** — topic field is required
 - **Pipelines without a sink** — terminal stage (`$merge`, `$emit`, `$https`, or `$externalFunction` async) required for deployed processors (sinkless only works via `sp.process()`)
