@@ -3,6 +3,7 @@
 // repo. All plugin manifests are kept in lockstep on one version:
 //   - gemini-extension.json (root community Gemini extension)
 //   - every plugin.json under plugins/ (each client's manifest, wherever it lives)
+//   - kiro/plugin.json (the Kiro power manifest)
 //
 // Manifests are discovered by finding every plugin.json under plugins/ (plus the
 // known root manifests), rather than assuming a `.<client>-plugin/` layout — so a
@@ -59,11 +60,14 @@ function findPluginManifests(dir: string): string[] {
   return found;
 }
 
-// Every versioned manifest: known root manifests + all plugin.json under plugins/.
+// Every versioned manifest: known root manifests + all plugin.json under
+// plugins/ and kiro/.
 function discoverManifests(): string[] {
   const manifests: string[] = ROOT_MANIFESTS.filter((m) => existsSync(m));
-  if (existsSync("plugins")) {
-    manifests.push(...findPluginManifests("plugins"));
+  for (const dir of ["plugins", "kiro"]) {
+    if (existsSync(dir)) {
+      manifests.push(...findPluginManifests(dir));
+    }
   }
 
   return manifests.sort();
