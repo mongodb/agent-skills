@@ -29,6 +29,12 @@ Tests the boundary between:
 - **mongodb-natural-language-querying**: Query generation, syntax help, SQL translation
 - **mongodb-query-optimizer**: Query/index optimization, slow query analysis, explain plans
 
+### connection-vs-vercel-deployment.json
+
+Tests the boundary between:
+- **mongodb-connection**: Client lifecycle, pool sizing, timeouts, Fluid compute `attachDatabasePool`
+- **mongodb-vercel-deployment**: First-deployment Atlas setup on Vercel (network access, Marketplace integration, environment scopes, runtime)
+
 ## Running Tests
 
 ### Manual Testing
