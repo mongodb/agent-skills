@@ -21,7 +21,7 @@ Never print environment variable or env file values, not even to check them. To 
 | The user wants to…                                                                                                                                                                 | Go to                                                                                                                                                                          |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Get a database, or doesn't have one yet                                                                                                                                            | [Recommend a deployment](#recommend-a-deployment)                                                                                                                                              |
-| Choose between Atlas, local, and self-managed deployments | Step 2 of [Recommend a deployment](#2-recommend-deployment-by-goal); skip step 1 |
+| Choose between Atlas, local, and self-managed deployments | Step 2 of [Recommend a deployment](#2-recommend-deployment-by-goal); run step 1 before setting anything up |
 | Model application data: choose document shapes, decide when to embed or reference, migrate relational data, avoid unbounded arrays, enforce validation, or model time-series data. | mongodb-schema-design                                                                                                                                                          |
 | Describe a question in plain English and get a safe, read-only MongoDB find query or aggregation pipeline.                                                                         | mongodb-natural-language-querying                                                                                                                                              |
 | Diagnose or improve a slow query, select or validate indexes, interpret explain() output, or use Atlas Performance Advisor recommendations.                                        | mongodb-query-optimizer                                                                                                                                                        |
@@ -65,12 +65,25 @@ If a fetch fails or a page is missing from the index, say so and fall back to th
 
 ## Recommend a deployment
 
+First, discard any option the feature can't do. Never recommend or offer:
+
+- An Ephemeral cluster in a chosen region, provider, or tier. It is always the Free tier on AWS us-east-1.
+- Stream Processing on an unclaimed Ephemeral cluster or a local Atlas deployment. It needs an Atlas project and API credentials.
+
+Then rank what's left. When signals conflict, the higher rule wins:
+
+1. **Safety.** Check for an existing deployment, don't create resources in a paid organization without asking, don't put sensitive data on an unclaimed Ephemeral cluster, don't print secrets or ask for a password in chat, don't write a connection string to a tracked file, don't add `0.0.0.0/0` without explicit permission, don't run `atlas setup` or `atlas auth login` yourself, and ask before provisioning, installing, or creating users or access-list entries. An explicit instruction never overrides these.
+2. **Explicit instruction.** The user names a deployment, or says not to reuse what they have.
+3. **Hard constraint.** A requirement the deployment must meet: data beyond Free cluster limits, a production workload, offline work, or compliance.
+4. **Blocker.** Something that stops a path today: the user can't sign in, the Atlas CLI is missing, Docker isn't running, or Ephemeral provisioning hit the hourly cap.
+5. **Goal.** The row in [step 2](#2-recommend-deployment-by-goal) that matches what they're trying to do.
+6. **Default.** An Atlas Free cluster.
+
+When a higher rule overrides a lower one, say in one sentence what the lower one costs the user, for example that a Free cluster won't hold their 150 GB.
 
 ### 1. Check for an existing deployment
 
-Skip this step only when the user has explicitly asked for a new deployment. A request for a new database isn't one: MongoDB creates databases on first write, so they may only need a connection to a deployment they already have.
-
-Otherwise, run the two commands below as your only look at the environment. Both print variable names, not values. Do not inspect environment variables any other way, before or after it: no `env`, `printenv`, `set`, `echo $VAR`, or `env | grep …`, and no masking a value with `sed`. Never repeat any part of a value (user, password, or host) in the conversation.
+Run this check even when the user explicitly asks for a new deployment. Use the two commands below as your only look at the environment. Never repeat any part of a value (user, password, or host) in the conversation.
 
 ```bash
 env | cut -d= -f1 | grep -E 'MONGODB_URI|MDB_MCP_CONNECTION_STRING|DATABASE_URL'
@@ -80,9 +93,9 @@ grep -oE '^(export )?(MONGODB_URI|MONGO_URL|MDB_MCP_CONNECTION_STRING|DATABASE_U
 Match the output to one of the following cases:
 
 - **No variable names:** continue to step 2.
-- **One or more variable names:** list the variables that are set, and say whether each one is set in the shell or in an env file. If `DATABASE_URL` is set, note that it might point to a non-MongoDB database. Then ask the user which deployment to connect to, or "none" to recommend a new deployment.
-  - **They pick a variable:** continue in [Get connected](#get-connected) with that variable.
-  - **They pick "none":** continue to step 2.
+- **One or more variable names:** list the variables that are set, and say whether each one is set in the shell or in an env file. Then:
+  - **The user explicitly asked for a new deployment:** don't offer them as the deployment. Continue to step 2.
+  - **Otherwise:** if `DATABASE_URL` is set, note that it might point to a non-MongoDB database. Ask the user which deployment to connect to, or "none" to recommend a new deployment. A request for a new database isn't an explicit request for a new deployment: MongoDB creates databases on first write. If they pick a variable, continue in [Get connected](#get-connected) with it. If they pick "none", continue to step 2.
 
 ### 2. Recommend deployment by goal
 
@@ -92,14 +105,13 @@ Match the output to one of the following cases:
 | Ship an application they intend to keep                            | Atlas Free cluster to start | The default. A persistent, managed deployment that grows past Free cluster limits and includes the Atlas services.                                               |
 | Evaluate MongoDB, or assess production requirements                | Atlas Free cluster       | Free cluster limits fit most evaluations. Ask a follow-up only when workload, capacity, availability, or compliance requirements point to a Flex or Dedicated cluster. |
 | Build RAG, semantic, or full-text search                           | Atlas Free cluster to start | MongoDB Search and Vector Search are fully managed on Atlas; self-managed support needs extra setup.                                                          |
-| Build streaming or event pipelines                                 | Atlas cluster            | Stream Processing is cloud-only and needs Atlas API credentials.                                                                                                    |
+| Build streaming or event pipelines                                 | Atlas Free cluster to start | Stream Processing is cloud-only, needs Atlas API credentials, and bills per running stream processor even on a Free cluster. Free cluster throughput limits suit testing, not sustained streams. |
 | Run a production workload                                          | Atlas Dedicated cluster  | Free clusters are shared and limited to 512 MB. This size limit makes them unsuitable for production workloads.                                                     |
 | Develop offline, or run Atlas locally                              | Local Atlas deployment   | Runs on Docker and supports local development workflows, including MongoDB Search and Vector Search.                                                                 |
 | Operate MongoDB themselves, on their own machine or infrastructure | Self-managed deployment  | The user explicitly wants to manage all aspects of their deployment. They own upgrades, backups, monitoring, and security.                                          |
-| Prototype MongoDB                                                  | Atlas Ephemeral cluster  | A live, claimable Atlas connection with no signup. Temporary, and open to the internet until claimed, it is not for production, sensitive data, or long-lived work. |
+| Prototype MongoDB, POC, demo, or hackathon project                 | Atlas Ephemeral cluster  | A live, claimable Atlas connection with no signup. Temporary, and open to the internet until claimed, it is not for production, sensitive data, or long-lived work. |
+| Get a database with no login or authentication                     | Atlas Ephemeral cluster  | Provisions with no Atlas account, CLI, or login. The user can claim it into an Atlas account later to keep their work.                                              |
 
-
-When the goal doesn't match a row, recommend an Atlas Free cluster.
 
 When you recommend a Free, Flex, or Dedicated cluster and the Atlas CLI is installed, run `atlas auth whoami 2>/dev/null` before you answer; it is read-only. If it shows a login, run `atlas orgs list` and name the account and organization in your recommendation, so the user can confirm it or switch before any setup. The paid-organization rule in [Before an Atlas path](#before-an-atlas-path) applies. If it shows no login, leave it out.
 
@@ -193,7 +205,7 @@ Write the value in double quotes (`MONGODB_URI="mongodb+srv://…"`), so an `&` 
 (set -a; . ./.env; set +a; mongosh "$MONGODB_URI" --quiet --eval 'db.runCommand({ ping: 1 })')
 ```
 
-Replace `.env` and `MONGODB_URI` with the file and variable you used, or ping with the project's driver (for example `node --env-file=.env`). `{ ok: 1 }` means connected. Then start building. On Atlas, a timeout almost always means the access list, not the password.
+Replace `.env` and `MONGODB_URI` with the file and variable you used. If `mongosh` isn't installed (`command not found`), ping with the project's driver if it already has one (for example `node --env-file=.env`). If neither works, ask the user whether to install `mongosh`, or tell them the connection is unverified and let them check it themselves. Don't install it without their answer. If they agree, on macOS run `brew install mongosh`. On Windows and Linux, point them to the [install docs](https://www.mongodb.com/docs/mongodb-shell/install.md?utm_source=agent-skills) and let them drive, as with [Self-managed deployment](#self-managed-deployment). `{ ok: 1 }` means connected. Then start building. On Atlas, a timeout almost always means the access list, not the password.
 
 ## Ephemeral Clusters
 
