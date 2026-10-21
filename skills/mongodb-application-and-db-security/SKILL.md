@@ -61,7 +61,6 @@ Stop and route when the request is about:
 - Queryable Encryption, CSFLE, encryption at rest, or `auditLog` settings → out of scope. Say so
   in one line.
 - Queries, aggregation pipelines, or schema design → out of scope.
-- When declining a general audit, read `references/posture-review.md` for the read-only checks to offer.
 
 
 **In scope: advisory posture review.** When the user shares configuration files, architecture

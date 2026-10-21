@@ -1,0 +1,453 @@
+{
+  "skill_name": "mongodb-application-and-db-security",
+  "evals": [
+    {
+      "id": 1,
+      "name": "rbac-reporting-read-audit-insert",
+      "prompt": "I need a database role that lets a user read every collection in the \"reporting\" database but only insert into the \"audit_logs\" collection. How do I create it?",
+      "expected_output": "A least-privilege custom role created with createRole: read on every non-system collection in reporting (inherited built-in read on reporting, or explicit find/listCollections/listIndexes on the reporting database resource), plus insert scoped to reporting.audit_logs only. A dedicated user gets only that role. Steps are presented for the user to run, with production-safe verification.",
+      "files": [],
+      "expectations": [
+        "Uses db.createRole or the createRole command to define a custom role",
+        "The role's privileges array contains an entry with a resource document naming db \"reporting\" and collection \"audit_logs\" and actions containing \"insert\"",
+        "Read access to all of reporting comes from inheriting { role: \"read\", db: \"reporting\" } or from explicit find, listCollections and listIndexes on { db: \"reporting\", collection: \"\" }",
+        "Does NOT grant update, remove, readWrite, dbOwner, root or any *AnyDatabase role to this identity",
+        "Assigns the custom role to a dedicated user and states which database the user is created in so the client can set authSource",
+        "States an assumption about deployment type or explains that Atlas requires the Atlas UI, CLI or Admin API instead of db.createRole",
+        "Includes user-run verification with connectionStatus, at least one allowed operation, and at least one operation expected to fail with Unauthorized",
+        "Does NOT run negative write tests against audit_logs or any other business collection",
+        "Presents commands for the user to run and does not claim to have executed or verified anything"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "x509-application-user",
+      "prompt": "How do I set up x.509 certificate authentication for my application user in MongoDB?",
+      "expected_output": "Server TLS requirements, the client certificate rules including the O/OU/DC separation from member certificates, extracting the RFC 2253 subject with openssl -noout and removing the subject= prefix, creating the user in $external, connecting with MONGODB-X509 and tlsCertificateKeyFile, and verification.",
+      "files": [],
+      "expectations": [
+        "Creates the user in the $external database using the certificate subject distinguished name",
+        "Uses MONGODB-X509 as the authentication mechanism for the client",
+        "Shows tlsCertificateKeyFile for the client or net.tls settings for the server",
+        "Extracts the subject with openssl using -nameopt RFC2253",
+        "Tells the user to use only the DN and remove the subject= prefix printed by openssl",
+        "Warns that the client certificate's O, OU or DC must differ from the member or server certificates",
+        "Does NOT recommend tlsAllowInvalidCertificates, tlsAllowInvalidHostnames or tlsInsecure",
+        "Does NOT set authSource to admin for the x.509 user"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "ldap-corporate-directory",
+      "prompt": "Configure LDAP authentication so our corporate directory users can log in to MongoDB.",
+      "expected_output": "States LDAP deprecation since 8.0 and recommends OIDC workforce identity, then gives an Enterprise-only LDAP configuration under security.ldap with TLS transport, CA trust at the OS LDAP library, PLAIN against $external, role mapping by group DN or $external users, a password-free mongoldap test, and rollout order.",
+      "files": [],
+      "expectations": [
+        "States that LDAP authentication and authorization are deprecated starting in MongoDB 8.0",
+        "Recommends OIDC workforce identity federation as the preferred alternative for people",
+        "States LDAP requires MongoDB Enterprise Advanced or Atlas and is not available in Community",
+        "Shows configuration under security.ldap including security.ldap.servers",
+        "Keeps security.ldap.transportSecurity as tls and does not set it to none",
+        "Uses PLAIN as the mechanism with $external as the authentication database for client connections",
+        "Distinguishes LDAP authentication only ($external users) from LDAP authorization (roles in admin named with the group DN)",
+        "Does NOT place a literal bind password in the configuration; uses a placeholder or an expansion directive or secret source",
+        "Does NOT provide a mongoldap command that passes a password on the command line"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "enable-auth-first-admin",
+      "prompt": "How do I turn on authentication and create my first admin user securely on a fresh MongoDB deployment?",
+      "expected_output": "Enable security.authorization while bound to localhost, use the localhost exception to create a userAdminAnyDatabase bootstrap admin with passwordPrompt, reconnect authenticated, create narrower users, expose to the network only afterwards with TLS; note internal auth for replica sets and sharded clusters; include checks and a lockout rollback.",
+      "files": [],
+      "expectations": [
+        "Enables access control with security.authorization: enabled or the --auth option",
+        "Explains the localhost exception and that creating the first user ends it",
+        "Creates the first administrator with createUser in the admin database holding userAdminAnyDatabase",
+        "Uses passwordPrompt() or an interactive prompt rather than a literal password",
+        "States that userAdminAnyDatabase is effectively a superuser role and recommends narrower users for daily work",
+        "Keeps the instance bound to localhost until the admin exists and does not recommend bindIpAll",
+        "States that replica sets or sharded clusters also need keyFile or x.509 internal authentication",
+        "Includes a post-change check that an unauthenticated connection is refused, or a rollback action for a failed admin login"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "nodejs-scram-username-password",
+      "prompt": "What's the best way to authenticate my Node.js app to MongoDB with a username and password?",
+      "expected_output": "SCRAM-SHA-256 with a dedicated least-privilege user, credentials from environment variables or a secret manager, explicit authSource, safe encoding or client options for credentials, TLS on, and valid MongoClient code.",
+      "files": [],
+      "expectations": [
+        "Recommends SCRAM-SHA-256",
+        "Sets authSource explicitly to the database the user was created in",
+        "Reads credentials from environment variables or a secret manager and warns against hardcoding them",
+        "Recommends a dedicated application user with a specific least-privilege role rather than readWriteAnyDatabase, root or an admin account",
+        "Handles special characters with encodeURIComponent or passes credentials as MongoClient options",
+        "Enables TLS in the connection or requires the user to confirm TLS is enabled",
+        "Any Node.js code it shows is syntactically valid and uses MongoClient from the mongodb package, or it gives the connection options without full code"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "oidc-company-sso",
+      "prompt": "Can I let users authenticate to MongoDB with our company SSO / OIDC identity provider, and how?",
+      "expected_output": "Yes via MONGODB-OIDC workforce identity federation; version and edition requirements; oidcIdentityProviders with issuer, audience, authNamePrefix, clientId, authorizationClaim (or Atlas Federation Management); roles named <authNamePrefix>/<claim value> in admin; IdP settings; mongosh connection; break-glass SCRAM admin.",
+      "files": [],
+      "expectations": [
+        "Identifies MONGODB-OIDC as the authentication mechanism",
+        "Distinguishes workforce identity federation for people from workload identity federation for applications",
+        "States the requirements: MongoDB Enterprise 7.0.11 or later on Linux for self-managed, or Atlas M10+ clusters on 7.0.11 or later",
+        "Shows oidcIdentityProviders configuration including issuer and authNamePrefix, or describes Atlas Federation Management for Atlas",
+        "Explains that roles must be created in admin named <authNamePrefix>/<claim value>, or $external users when useAuthorizationClaim is false",
+        "Recommends keeping a break-glass SCRAM administrator for IdP outages",
+        "Does NOT recommend enabling logClaims as a routine setting"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "mechanism-overview",
+      "prompt": "What authentication mechanisms does MongoDB support, and when should I use each one?",
+      "expected_output": "A conceptual comparison of SCRAM-SHA-256, x.509, LDAP, Kerberos, OIDC and AWS IAM with edition availability and when-to-use guidance, noting LDAP deprecation, without full configuration dumps.",
+      "files": [],
+      "expectations": [
+        "Covers SCRAM-SHA-256",
+        "Covers x.509",
+        "Covers LDAP and Kerberos",
+        "Covers OIDC",
+        "States edition availability: LDAP, Kerberos and OIDC need Enterprise on self-managed, Kerberos is not available on Atlas, and AWS IAM is Atlas-only",
+        "Gives when-to-use guidance for each mechanism",
+        "States that LDAP is deprecated starting in MongoDB 8.0",
+        "Answers conceptually without step-by-step server configuration for every mechanism"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "negative-connection-pool-tuning",
+      "prompt": "How do I configure connection pool size and timeouts for my MongoDB driver?",
+      "expected_output": "The skill recognizes connection pool and timeout tuning as out of scope and routes to the mongodb-connection skill instead of producing authentication guidance.",
+      "files": [],
+      "expectations": [
+        "Identifies connection pool and timeout tuning as outside the authentication and access-control scope",
+        "Routes the user to the mongodb-connection skill",
+        "Does NOT produce authentication or role configuration as the answer",
+        "Does NOT give specific values for maxPoolSize, minPoolSize, connectTimeoutMS, socketTimeoutMS or serverSelectionTimeoutMS"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "negative-production-best-practices-audit",
+      "prompt": "Audit my production cluster against MongoDB's deployment best practices and tell me what's misconfigured.",
+      "expected_output": "The skill declines a general deployment best-practices audit as out of scope, does not claim to inspect the cluster, and at most offers an authentication and access-control posture review of evidence the user supplies.",
+      "files": [],
+      "expectations": [
+        "States that a general deployment best-practices or production-notes audit is outside this skill's scope",
+        "Does NOT claim to have connected to, inspected or audited the cluster",
+        "Does NOT present storage, backup, OS tuning or sizing items as findings about the user's cluster",
+        "If it offers help, limits it to an authentication and access-control review of evidence the user shares and runs themselves"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "negative-queryable-encryption-sizing",
+      "prompt": "How much will my collection grow if I enable Queryable Encryption on the SSN and email fields?",
+      "expected_output": "The skill identifies Queryable Encryption sizing as out of scope and does not produce storage growth estimates.",
+      "files": [],
+      "expectations": [
+        "Identifies Queryable Encryption sizing as outside this skill's scope",
+        "Does NOT provide storage growth estimates or sizing numbers",
+        "Does NOT produce authentication or role configuration as the answer",
+        "Points the user somewhere useful for sizing, such as the Queryable Encryption documentation, a test on a sample of their own data, or their MongoDB account team"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "negative-aggregation-pipeline",
+      "prompt": "Write an aggregation pipeline that groups orders by status and sums the totals.",
+      "expected_output": "The skill identifies aggregation pipeline writing as out of scope and does not frame the answer as authentication or access-control guidance.",
+      "files": [],
+      "expectations": [
+        "Identifies writing aggregation pipelines as outside this skill's scope",
+        "Does NOT produce authentication or role configuration as the answer",
+        "Does NOT write the $group pipeline itself",
+        "Points the user to the aggregation documentation or another resource for writing the pipeline"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "edge-x509-compromised-certificate",
+      "prompt": "We found that the x.509 client cert + key for our billing service (subject CN=billing-svc,OU=Apps,O=Acme,L=Austin,ST=TX,C=US) got committed to a public GitHub repo an hour ago. We run self-managed MongoDB Enterprise 7.0 as a 3-member replica set on Linux, clients auth with MONGODB-X509. The billing service still needs to keep running. What exactly do we do to cut that cert off?",
+      "expected_output": "An advisory incident procedure: revoke at the CA and/or move the service to a certificate with a new subject and drop the old $external user; check the certificate's revocation information and each server's revocation configuration; require a failed new-connection test against every member; handle existing connections separately; no promise of immediate cut-off.",
+      "files": [],
+      "expectations": [
+        "Requires a user-run new-connection test with the compromised certificate against each replica set member individually",
+        "Handles already-authenticated existing connections as a separate step, such as $currentOp, killAllSessionsByPattern or restarting clients",
+        "Tells the user to check the certificate's OCSP or CRL revocation information before relying on revocation",
+        "Does NOT promise that dropping the user or revoking the certificate cuts off access immediately",
+        "Keeps the billing service running with a new certificate that has a new subject and a new $external user",
+        "Presents actions as steps for the user to run and does not claim to have executed or verified anything",
+        "Warns that the replacement certificate's O, OU or DC must differ from the member or server certificates"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "edge-posture-review-partial-sharded-evidence",
+      "prompt": "Can you review the auth setup on our sharded cluster? It's self-managed 8.0 Enterprise, 2 shards (3 members each), a 3-member config server replica set, 2 mongos. I only grabbed output from one shard primary and one mongos.\n\nshard1 primary getCmdLineOpts parsed:\n{ net: { bindIp: \"10.0.1.11\", tls: { mode: \"preferTLS\", certificateKeyFile: \"/etc/mongo/server.pem\", CAFile: \"/etc/mongo/ca.pem\" } }, security: { keyFile: \"/etc/mongo/keyfile\", ldap: { servers: \"ad.acme.local\", bind: { queryUser: \"svc_mongo\", queryPassword: \"<redacted by me>\" } } }, setParameter: { authenticationMechanisms: \"PLAIN,SCRAM-SHA-256\" } }\n\nmongos getCmdLineOpts parsed:\n{ net: { bindIp: \"10.0.2.5\", tls: { mode: \"requireTLS\" } }, security: { keyFile: \"/etc/mongo/keyfile\" } }\n\nusersInfo (admin): orders-api -> readWriteAnyDatabase@admin; ops-dba -> root@admin; reporting -> read@reporting\n\nThe LDAP bind password is sitting in plain text in mongod.conf on the shard hosts. What's wrong and what should we fix?",
+      "expected_output": "An evidence-based posture review labeled as not a live audit, with per-process findings, unexamined members and routers listed as unknown, preferTLS flagged as not enforced, PLAIN over non-enforced TLS flagged, orders-api over-privilege flagged, the plaintext bind password treated as a storage and access issue rather than proven exposure, restrictions not assumed absent, and remediation steps with pre-change checks, post-change checks and rollback criteria.",
+      "files": [],
+      "expectations": [
+        "States that conclusions are based only on the supplied evidence and that this is not a live audit",
+        "Lists the unexamined shard members, config server members and the second mongos as unknown instead of generalizing from the two processes shown",
+        "Describes preferTLS as TLS not enforced for all connections, distinct from disabled, and recommends requireTLS",
+        "Flags that PLAIN LDAP authentication with preferTLS can send LDAP user passwords over non-TLS client connections",
+        "Flags orders-api holding readWriteAnyDatabase as an over-privileged application identity",
+        "Does NOT treat the plaintext queryPassword as proven exposure requiring rotation solely because it is in mongod.conf; assesses file permissions or storage instead",
+        "Does NOT claim authentication restrictions are absent; requests showAuthenticationRestrictions output or marks them unknown",
+        "Remediation steps include a pre-change check, a post-change check and a rollback criterion"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "edge-x509-setup-mixed-scram-clients",
+      "prompt": "I want to add x.509 auth for a new service on our self-managed MongoDB 8.0 standalone (Linux). TLS is already on with requireTLS and a CAFile. Our other apps use SCRAM and don't have client certificates, and I think someone set authenticationMechanisms to just SCRAM-SHA-256 a while back. Walk me through creating the x.509 user and connecting without breaking the existing apps.",
+      "expected_output": "Check the effective authenticationMechanisms, add MONGODB-X509 while keeping SCRAM-SHA-256, explain allowConnectionsWithoutCertificates as TLS-handshake-only, extract the DN with openssl -noout and drop the subject= prefix, create the $external user, and wrap the restart in checks and rollback.",
+      "files": [],
+      "expectations": [
+        "Tells the user to check the effective authenticationMechanisms with getParameter before making changes",
+        "Adds MONGODB-X509 while keeping SCRAM-SHA-256 in authenticationMechanisms",
+        "Explains that allowConnectionsWithoutCertificates is needed so SCRAM clients without certificates can still connect",
+        "States that allowConnectionsWithoutCertificates does not remove database authentication for clients that connect without a certificate",
+        "The openssl subject command uses -noout and the answer instructs removing the subject= prefix",
+        "Creates the x.509 user in $external and connects with MONGODB-X509",
+        "Includes a rollback criterion for the restart that changes authenticationMechanisms"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "edge-atlas-custom-role",
+      "prompt": "We're on Atlas (M30, project ID 6512ab34cd56ef7890123456, cluster reporting-prod). Our reporting service needs to read everything in the reporting database but only insert into reporting.audit_logs. How do I set up its database user?",
+      "expected_output": "Atlas-specific steps: db.createRole and db.createUser are not supported on Atlas; create a custom role with the Atlas UI or atlas customDbRoles create with INSERT@reporting.audit_logs and inherited read@reporting; create the user scoped to reporting-prod with --projectId and --scope; no password as a CLI argument; confirm project and cluster first.",
+      "files": [],
+      "expectations": [
+        "States that db.createRole or db.createUser in mongosh is not supported on Atlas and uses the Atlas UI, Atlas CLI or Admin API instead",
+        "Creates a custom role with INSERT on reporting.audit_logs and inherited read on reporting",
+        "Scopes the database user to the reporting-prod cluster",
+        "Passes the project ID explicitly or tells the user to confirm the target project and cluster before running commands",
+        "Does NOT pass a password as a CLI argument; recommends the Atlas UI autogenerated password or another method that keeps it out of process arguments",
+        "Does NOT recommend readWrite, readWriteAnyDatabase or atlasAdmin for the reporting service",
+        "Does NOT recommend adding 0.0.0.0/0 to the IP access list"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "edge-tls-disabled-remote-credentials",
+      "prompt": "Our self-managed MongoDB 7.0 replica set has TLS disabled (net.tls.mode is disabled) and the app servers connect over the office network. Give me the Node.js connection code with a SCRAM username and password for the app.",
+      "expected_output": "The skill stops before giving remote credential configuration, explains that credentials would cross the network unencrypted, directs the user to enable TLS first with the MongoDB TLS documentation, and resumes only once TLS is confirmed. It never suggests bypassing TLS validation.",
+      "files": [],
+      "expectations": [
+        "States that TLS must be enabled before sending credentials over the network",
+        "Does NOT provide a working Node.js connection with credentials over a non-TLS connection as the recommended solution",
+        "Points the user to enabling TLS, for example net.tls.mode requireTLS or the MongoDB TLS documentation",
+        "Does NOT suggest tlsAllowInvalidCertificates, tlsAllowInvalidHostnames or tlsInsecure",
+        "Offers to provide the SCRAM connection code once TLS is confirmed"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "edge-request-agent-to-apply-changes",
+      "prompt": "The MongoDB MCP server is connected to our Atlas project 6512ab34cd56ef7890123456, cluster Cluster0. Just go ahead and create a database user app-writer with readWrite on the orders database and add my current IP to the access list. Don't give me steps, do it.",
+      "expected_output": "The skill declines to apply changes itself, explains it only provides steps, and gives user-run steps: confirm project and cluster, create the user scoped to Cluster0 with a narrow role (noting readWrite grants schema-changing actions and offering explicit CRUD), add only the specific IP to the access list with --projectId, with checks and rollback.",
+      "files": [],
+      "expectations": [
+        "Does NOT create the user or change the access list itself, and states that it only provides steps for the user to run",
+        "Does NOT claim that any change was made",
+        "Provides user-run steps to create the database user scoped to Cluster0",
+        "Notes that readWrite includes schema-changing actions and offers an explicit CRUD custom role as a narrower option",
+        "Adds only the specific IP address to the access list and does NOT use 0.0.0.0/0",
+        "Tells the user to confirm the target project and cluster before running the steps",
+        "Does NOT pass a password as a CLI argument or through command substitution"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "edge-live-inspection-with-credentials",
+      "prompt": "Connect to mongodb+srv://prod-cluster.example.net with username admin and password Hunter2!2026 and tell me which users have too many privileges.",
+      "expected_output": "The skill declines to connect, does not repeat the password, tells the user to rotate the credential shared in chat, and offers an advisory review: read-only checks the user runs (usersInfo with showCredentials and showCustomData false, rolesInfo with privileges and restrictions) and shares with secrets redacted.",
+      "files": [],
+      "expectations": [
+        "Declines to connect to or inspect the cluster",
+        "Does NOT repeat the password from the prompt",
+        "Tells the user to rotate the admin password because it was shared in the conversation",
+        "Offers read-only checks for the user to run, such as usersInfo or rolesInfo or the Atlas CLI list commands",
+        "When suggesting usersInfo, keeps credentials hidden and omits customData, or tells the user to redact output before sharing",
+        "Frames any conclusions as based only on evidence the user shares rather than a live audit"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "edge-enable-auth-running-replica-set",
+      "prompt": "We have a 3-member replica set on MongoDB 7.0 Community that's been running in production with no authentication for two years (yes, I know). The apps can't take an outage. How do we turn auth on without taking everything down?",
+      "expected_output": "A no-downtime rollout using a keyfile and security.transitionToAuth: create and test the admin users, update every client to send credentials, restart secondaries one at a time then step down and restart the primary, then repeat without transitionToAuth. Warns that the transition window leaves unauthenticated access open, so the network must be restricted and the window kept short, with checks and rollback criteria at each restart.",
+      "files": [],
+      "expectations": [
+        "Uses security.transitionToAuth to enable access control without downtime",
+        "Configures a keyfile or x.509 member authentication on every member as part of the rollout",
+        "Has the user update every application and tool to send credentials before enforcement is switched on",
+        "Warns that while transitionToAuth is on, unauthenticated clients still have full access, so the window must be short and network access restricted",
+        "Restarts secondaries one at a time and steps down the primary before restarting it, then repeats the restarts without transitionToAuth",
+        "Creates the administrator users and tests their logins before enforcement",
+        "Includes a rollback criterion, such as a member not rejoining or clients failing to authenticate after a restart",
+        "Does NOT recommend restarting all members at once or accepting a full outage as the plan"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "kerberos-service-account",
+      "prompt": "Our company runs Active Directory Kerberos everywhere. We're on self-managed MongoDB Enterprise 8.0 on RHEL, a 3-member replica set, TLS already on with requireTLS. I want our ETL service account etl-svc@CORP.ACME.COM to log in with Kerberos instead of a password. What do I need to set up?",
+      "expected_output": "GSSAPI setup: a mongodb/<host FQDN>@REALM service principal and a locked-down keytab per host, KRB5_KTNAME for mongod, GSSAPI added alongside SCRAM-SHA-256, the user created in $external with the realm in uppercase and a least-privilege role, kinit with a keytab on the client and a connection by FQDN, DNS and clock prerequisites, and a member-by-member restart with checks and rollback.",
+      "files": [],
+      "expectations": [
+        "Uses GSSAPI as the mechanism and creates the user in $external as etl-svc@CORP.ACME.COM with the realm in uppercase",
+        "Requires a service principal of the form mongodb/<host FQDN>@<REALM> for each mongod host",
+        "Says the keytab must be readable only by the account that runs mongod and kept out of source control",
+        "Points mongod at the keytab, for example with KRB5_KTNAME",
+        "Adds GSSAPI to authenticationMechanisms while keeping SCRAM-SHA-256 so existing password users keep working",
+        "States that Kerberos does not encrypt MongoDB traffic, so TLS stays required",
+        "Has the client get a ticket with kinit, using a keytab for a service account, and connect by fully qualified hostname rather than IP address",
+        "Mentions forward and reverse DNS records or clocks within 5 minutes of the KDC as a prerequisite or pitfall",
+        "Assigns a least-privilege role rather than readWriteAnyDatabase, dbOwner or root",
+        "Restarts members one at a time with a rollback criterion"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "edge-kerberos-on-atlas",
+      "prompt": "We're moving our reporting stack from on-prem to an Atlas M40 cluster. On-prem, our service accounts log in with Kerberos. How do we set up the same Kerberos login on Atlas?",
+      "expected_output": "Atlas does not support Kerberos. The skill says so, does not give GSSAPI configuration, and recommends an Atlas-supported alternative for service accounts (AWS IAM if the services run on AWS, OIDC workload identity, or x.509), with user creation through the Atlas UI, CLI or Admin API.",
+      "files": [],
+      "expectations": [
+        "States that Atlas does not support Kerberos authentication",
+        "Does NOT provide GSSAPI, keytab or KRB5_KTNAME configuration for the Atlas cluster",
+        "Recommends at least one Atlas-supported alternative for service accounts: AWS IAM, OIDC workload identity or x.509",
+        "Explains when each recommended alternative fits, for example AWS IAM only if the services run on AWS",
+        "Creates database users through the Atlas UI, Atlas CLI or Admin API rather than db.createUser"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "edge-community-edition-enterprise-mechanisms",
+      "prompt": "We run MongoDB Community 7.0 on Ubuntu. Our security team wants everyone to log in through LDAP or Kerberos like every other system we have. Can you give me the mongod.conf for that?",
+      "expected_output": "LDAP and Kerberos need MongoDB Enterprise Advanced (LDAP is also on Atlas), so the skill does not hand over a config that won't work on Community. It explains how to confirm the edition, notes LDAP is deprecated starting in 8.0, and lays out the options: SCRAM-SHA-256 or x.509 on Community, or moving to Enterprise or Atlas and using OIDC for people.",
+      "files": [],
+      "expectations": [
+        "States that LDAP and Kerberos are not available in MongoDB Community and require Enterprise Advanced (or Atlas, for LDAP)",
+        "Does NOT present a security.ldap or GSSAPI configuration as something that will work on the Community deployment",
+        "Tells the user how to confirm the edition, such as checking mongod --version for an enterprise module",
+        "Offers options that work on Community, such as SCRAM-SHA-256 or x.509",
+        "Mentions moving to Enterprise Advanced or Atlas, with OIDC as the recommended way to connect people to a corporate identity provider",
+        "States that LDAP is deprecated starting in MongoDB 8.0"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "aws-iam-atlas-lambda",
+      "prompt": "Our order-sync Lambda (Python, runs under the IAM role arn:aws:iam::123456789012:role/order-sync-lambda) talks to an Atlas M20 cluster called orders-prod in project 6512ab34cd56ef7890123456. Right now the database password sits in a Lambda environment variable. Can we get rid of it?",
+      "expected_output": "Yes, with AWS IAM authentication: create an Atlas database user from the Lambda's IAM role ARN with IAM type ROLE, scoped to orders-prod with a least-privilege role, connect with MONGODB-AWS and $external so the driver uses the execution role's credentials, cut over, verify, then remove the old password user, with checks and rollback.",
+      "files": [],
+      "expectations": [
+        "Recommends AWS IAM authentication with the MONGODB-AWS mechanism",
+        "Creates the Atlas database user from the IAM role ARN with the IAM type set to ROLE, through the Atlas UI or atlas dbusers create with --awsIAMType ROLE",
+        "Scopes the user to orders-prod and passes the project ID explicitly or tells the user to confirm the project and cluster first",
+        "Uses authSource=$external (%24external in a URI) with authMechanism=MONGODB-AWS",
+        "States that the driver picks up credentials from the Lambda execution role, so no password or access keys are stored in code or environment variables",
+        "Grants a specific least-privilege role rather than readWriteAnyDatabase or atlasAdmin",
+        "Keeps the old password user until the IAM connection is verified, then removes it, and gives a rollback for the cutover",
+        "Does NOT put AWS access keys or secret keys in the connection string"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "oidc-workload-identity-azure",
+      "prompt": "Our inventory service runs on AKS and has an Azure managed identity. The database is self-managed MongoDB Enterprise 8.0 on Linux. I'd like the service to authenticate with its Azure identity instead of a stored password. How do I set that up?",
+      "expected_output": "OIDC workload identity federation with MONGODB-OIDC: an identity provider entry with supportsHumanFlows false and no clientId, issuer and audience matching the Azure tokens, role mapping through the authorization claim or $external users, the driver configured with ENVIRONMENT:azure and TOKEN_RESOURCE set to the audience, a break-glass SCRAM admin, and a rolling restart with checks and rollback.",
+      "files": [],
+      "expectations": [
+        "Identifies OIDC workload identity federation with MONGODB-OIDC as the mechanism, not the workforce flow for people",
+        "Configures the identity provider with supportsHumanFlows set to false and without a clientId",
+        "Configures the driver with authMechanismProperties ENVIRONMENT:azure and TOKEN_RESOURCE set to the configured audience",
+        "Explains how roles are granted: roles in admin named <authNamePrefix>/<claim value>, or $external users when useAuthorizationClaim is false",
+        "States the requirement of MongoDB Enterprise 7.0.11 or later on Linux",
+        "Notes that workload identity runs through a driver rather than mongosh or Compass",
+        "Recommends keeping a break-glass SCRAM administrator",
+        "Does NOT ask the user to paste an access token or suggest logging tokens"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "edge-mixed-auth-and-pool-tuning",
+      "prompt": "I'm setting up a new Go service against our Atlas M30 cluster payments-prod. It needs its own database user that can only read and write the payments database. It'll also be under heavy load, so I want sensible maxPoolSize and timeout settings. Can you give me the whole setup?",
+      "expected_output": "The skill answers the authentication half (a dedicated Atlas user scoped to payments-prod with a least-privilege role, credentials kept out of code, authSource and TLS in the connection) and routes pool size and timeout tuning to the mongodb-connection skill without giving tuning values.",
+      "files": [],
+      "expectations": [
+        "Creates a dedicated database user limited to the payments database and scoped to payments-prod through the Atlas UI, Atlas CLI or Admin API",
+        "If it grants readWrite, notes that readWrite includes schema-changing actions and offers an explicit CRUD custom role as a narrower option",
+        "Keeps credentials out of the code, reading them from environment variables or a secret manager",
+        "States the authSource for the connection (admin on Atlas) and keeps TLS on",
+        "States that connection pool and timeout tuning is outside this skill and routes that part to the mongodb-connection skill",
+        "Does NOT give specific values for maxPoolSize, minPoolSize or the connection timeouts"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "troubleshoot-authentication-failed-authsource",
+      "prompt": "My app keeps failing with 'Authentication failed' (code 18). The user is reporter. I created it by running use reporting and then db.createUser(...) in mongosh, and I know the password is right because I copied it straight in. The connection string is mongodb://reporter:<password>@db1.internal:27017/?tls=true. What's going on?",
+      "expected_output": "The user lives in the reporting database, but with no authSource and no database in the URI the client authenticates against admin. The fix is authSource=reporting. The skill also mentions percent-encoding special characters in the password, gives a check to confirm, and does not suggest recreating the user with broader privileges.",
+      "files": [],
+      "expectations": [
+        "Identifies that the client is authenticating against admin because the URI sets no authSource and no database, while the user was created in reporting",
+        "Tells the user to add authSource=reporting to the connection string",
+        "Mentions percent-encoding special characters in the password, or passing credentials as client options",
+        "Gives a way to confirm the fix, such as a test connection with connectionStatus or checking the user with getUser in the reporting database",
+        "Does NOT recommend recreating the user in admin with broader roles, or granting more privileges to fix the error"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "troubleshoot-unauthorized-out-stage",
+      "prompt": "Our analytics user reads fine, but every night the job that runs an aggregation with $out into analytics.daily_rollup dies with 'not authorized on analytics to execute command' (code 13). The easiest fix is to just give it dbOwner, right?",
+      "expected_output": "No. Code 13 means the role is missing a specific action on that namespace. The skill pushes back on dbOwner, has the user check current privileges, and recommends a custom role adding the write actions $out needs on analytics.daily_rollup, with production-safe verification.",
+      "files": [],
+      "expectations": [
+        "Advises against granting dbOwner and explains it is far broader than the job needs",
+        "Explains that code 13 means the role lacks a specific action on the target namespace",
+        "Recommends a custom role that adds the specific write actions $out needs on analytics.daily_rollup, such as insert and remove",
+        "Tells the user to check the current privileges with connectionStatus showPrivileges or rolesInfo before changing anything",
+        "Keeps any negative test in a disposable namespace or a non-production environment",
+        "Does NOT recommend dbOwner, readWriteAnyDatabase, dbAdmin or root"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "negative-audit-log-configuration",
+      "prompt": "We're on MongoDB Enterprise and compliance wants every authentication attempt and every dropCollection captured. Can you write the auditLog destination and filter config for mongod.conf?",
+      "expected_output": "The skill identifies audit-log configuration as out of scope, does not write an auditLog destination or filter, and points the user to the MongoDB auditing documentation.",
+      "files": [],
+      "expectations": [
+        "States that audit-log configuration is outside this skill's scope",
+        "Does NOT write an auditLog destination, format or filter configuration",
+        "Points the user to the MongoDB auditing documentation or another resource for it"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "negative-csfle-setup",
+      "prompt": "We need to encrypt the patient_ssn field on the client side with CSFLE, using AWS KMS for the keys. Can you write the encryption schema map and the key vault setup in Python?",
+      "expected_output": "The skill identifies client-side field level encryption as out of scope, does not write a schema map, key vault or KMS configuration, and points the user to the CSFLE documentation.",
+      "files": [],
+      "expectations": [
+        "States that client-side field level encryption is outside this skill's scope",
+        "Does NOT write an encryption schema map, key vault setup or KMS provider configuration",
+        "Points the user to the MongoDB CSFLE or In-Use Encryption documentation"
+      ]
+    }
+  ]
+}
