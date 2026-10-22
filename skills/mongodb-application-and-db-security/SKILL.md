@@ -46,21 +46,58 @@ A wrong auth change can lock every user out of a production cluster, so:
 Proceed when the request is about who can connect (authentication) or what a connected
 identity can do (authorization, roles, privileges).
 
+**These boundaries bind your answer, not your choice of skill.** The topics below are ones this
+skill deliberately does not cover, and that decision governs the whole response, including any
+part you would write from your own knowledge. "This skill doesn't apply here, so I answered
+directly" is the exact failure this rule exists to prevent, not a way around it — and neither is
+naming the boundary in your opening line and then producing the artifact underneath it.
+
+The reason is what loading this skill does to the reader. Your answer now looks like one a
+security skill vetted, so an encryption schema map, an audit filter or a pool size that no
+review stands behind is *more* dangerous here than the same text would be anywhere else: it
+arrives wearing authority it has not earned, and the user cannot see where the vetted part
+stopped. Producing it is worse than never having loaded the skill.
+
+So for anything below: name the topic in one line, link the documentation that owns it, offer
+the adjacent part you genuinely can help with, and stop there. "I can't write the CSFLE schema
+map, but I can design the role the key-vault admin needs" is the shape. A complete schema map
+under a disclaimer is the failure.
+
 Stop and route when the request is about:
 
-- Connection management (pool size, timeouts, retries, or `ECONNREFUSED`-style connection errors) → use the
-  `mongodb-connection` skill. If the same request also needs credentials, answer the auth part
-  here and hand off the pool part.
+- Connection management (pool size, timeouts, retries, or `ECONNREFUSED`-style connection errors) → the
+  `mongodb-connection` skill owns this. **Name it, in those words, in your answer** — not "another
+  skill", not a documentation link in its place. A link sends the user reading; the skill's name
+  tells them what to load so an agent handles it properly next time, and they cannot ask for a
+  skill they have never heard of. Link the driver documentation as well if it helps. If the same
+  request also needs credentials, answer the auth part here and hand off the pool part. Don't
+  give pool or timeout values yourself: pool sizing depends on workload shape and server capacity
+  this skill never asks about, so any number here is a guess wearing the authority of a
+  recommendation.
 - A general audit of a deployment against best practices or production notes (storage, backups,
-  OS tuning, sizing, and so on) → out of scope. Say so in one line, then offer the posture
-  review below. Read `references/posture-review.md` first, so the read-only checks you offer
-  come from its checklist and not from memory.
+  OS tuning, sizing, and so on) → out of scope. Say so in one line, link the
+  [production notes](https://www.mongodb.com/docs/manual/administration/production-notes/), then
+  offer the posture review below. Read `references/posture-review.md` first, so the read-only
+  checks you offer come from its checklist and not from memory.
 - A request to connect to, scan, or inspect a live cluster → decline the inspection. Offer the
   posture review below instead: the user runs the read-only checks and shares the output. Read
   `references/posture-review.md` for those checks.
-- Queryable Encryption, CSFLE, encryption at rest, or `auditLog` settings → out of scope. Say so
-  in one line.
-- Queries, aggregation pipelines, or schema design → out of scope.
+- Queryable Encryption, CSFLE, or encryption at rest → out of scope. Say so in one line and link
+  [In-Use Encryption](https://www.mongodb.com/docs/manual/core/queryable-encryption/) or
+  [Encryption at Rest](https://www.mongodb.com/docs/manual/core/security-encryption-at-rest/).
+  Produce none of the deliverables: not the schema map, the key vault setup or the KMS provider
+  configuration in any language, and not storage growth, overhead or capacity estimates. A
+  number carries more authority than a sentence, so an off-hand "roughly 0.5–1 KB per document"
+  becomes someone's capacity plan — if the topic is out of scope, its numbers are too. Key
+  access is in scope: the role and identity the key-vault admin and the application each need is
+  a question this skill answers.
+- `auditLog` settings → out of scope. Say so in one line and link
+  [Auditing](https://www.mongodb.com/docs/manual/core/auditing/). Don't write the audit filter.
+- Queries, aggregation pipelines, or schema design → out of scope. Say so in one line and link
+  [Aggregation](https://www.mongodb.com/docs/manual/aggregation/) or
+  [Data Modeling](https://www.mongodb.com/docs/manual/data-modeling/). Don't write the pipeline
+  or the schema, in any form. If the user hit an authorization error running a pipeline, the
+  error is in scope: diagnose the privilege, not the pipeline.
 
 
 **In scope: advisory posture review.** When the user shares configuration files, architecture
@@ -145,7 +182,13 @@ Do not load reference files or produce configuration unless the user asks for it
 5. Write the answer in the response shape below, as steps the user performs.
 6. Wrap every change in a **deployment-ready procedure** with three parts:
    - **Pre-change check:** what the user confirms before starting. For example, a working admin
-     login, a healthy replica set majority, clients already updated, or TLS on.
+     login, a healthy replica set majority, clients already updated, or TLS on. When the change
+     alters an existing identity's access, capture what that identity can do *now* first —
+     `db.runCommand({ connectionStatus: 1, showPrivileges: true })` as that user, or
+     `db.runCommand({ rolesInfo: "<ROLE>", showPrivileges: true })` for the role. `db.getUser()`
+     lists role names, not the actions they expand to, so it won't tell you what you are about
+     to take away. Without that snapshot there is nothing to compare against and nothing to
+     restore to, which turns a rollback into guesswork.
    - **Post-change check:** what proves it worked: `db.runCommand({ connectionStatus: 1 })`, one
      operation that must succeed, and one that must fail with `Unauthorized` (code 13).
    - **Rollback criterion and action:** the observable condition that means stop and roll back
@@ -191,6 +234,11 @@ Do not load reference files or produce configuration unless the user asks for it
   them: reply with the steps to run.
 - Never ask the user to paste passwords, private keys, keytabs, or tokens into the chat. Never
   log, echo, or print a full connection string that contains credentials.
+- **If the user pastes a credential anyway, never repeat it back** — not in a quote, not in a
+  command, not while explaining what they shared. Say "the password you posted" and move on.
+  Repeating it copies it into another transcript, another log and another context window, so an
+  exposure the user could have contained by rotating one secret now spans everywhere this
+  conversation is stored. Tell them to rotate it, and give the steps using a placeholder.
 - Use placeholders such as `<DB_USERNAME>`, `<CLUSTER_HOST>`, `<CA_FILE_PATH>`, and
   `<CERT_SUBJECT_DN>`. Read secrets from environment variables or a secret manager. Use
   `passwordPrompt()` in mongosh, and use `-p` with no value so mongosh prompts instead of

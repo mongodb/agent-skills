@@ -124,11 +124,11 @@
       "id": 8,
       "name": "negative-connection-pool-tuning",
       "prompt": "How do I configure connection pool size and timeouts for my MongoDB driver?",
-      "expected_output": "The skill recognizes connection pool and timeout tuning as out of scope and routes to the mongodb-connection skill instead of producing authentication guidance.",
+      "expected_output": "Connection pool and timeout tuning is out of scope. The skill says so, names the mongodb-connection skill as the place it belongs, and withholds the tuning itself: no values for maxPoolSize, minPoolSize or the timeout options, and no table of defaults. It does not substitute authentication or role guidance for the question that was asked.",
       "files": [],
       "expectations": [
         "Identifies connection pool and timeout tuning as outside the authentication and access-control scope",
-        "Routes the user to the mongodb-connection skill",
+        "Names the mongodb-connection skill as where this belongs, whether or not that skill is installed in the current environment",
         "Does NOT produce authentication or role configuration as the answer",
         "Does NOT give specific values for maxPoolSize, minPoolSize, connectTimeoutMS, socketTimeoutMS or serverSelectionTimeoutMS"
       ]
@@ -163,7 +163,7 @@
       "id": 11,
       "name": "negative-aggregation-pipeline",
       "prompt": "Write an aggregation pipeline that groups orders by status and sums the totals.",
-      "expected_output": "The skill identifies aggregation pipeline writing as out of scope and does not frame the answer as authentication or access-control guidance.",
+      "expected_output": "Writing aggregation pipelines is out of scope. The skill says so, withholds the pipeline itself in any form, and points the user to the MongoDB aggregation documentation. It does not substitute authentication or access-control guidance for the question that was asked.",
       "files": [],
       "expectations": [
         "Identifies writing aggregation pipelines as outside this skill's scope",
@@ -228,7 +228,8 @@
       "expected_output": "Atlas-specific steps: db.createRole and db.createUser are not supported on Atlas; create a custom role with the Atlas UI or atlas customDbRoles create with INSERT@reporting.audit_logs and inherited read@reporting; create the user scoped to reporting-prod with --projectId and --scope; no password as a CLI argument; confirm project and cluster first.",
       "files": [],
       "expectations": [
-        "States that db.createRole or db.createUser in mongosh is not supported on Atlas and uses the Atlas UI, Atlas CLI or Admin API instead",
+        "Creates the custom role and the database user through the Atlas UI, Atlas CLI or Admin API rather than mongosh commands",
+        "States that mongosh user or role creation (db.createRole, db.createUser) is not supported on Atlas; naming either command is enough",
         "Creates a custom role with INSERT on reporting.audit_logs and inherited read on reporting",
         "Scopes the database user to the reporting-prod cluster",
         "Passes the project ID explicitly or tells the user to confirm the target project and cluster before running commands",
@@ -336,12 +337,12 @@
       "id": 22,
       "name": "edge-community-edition-enterprise-mechanisms",
       "prompt": "We run MongoDB Community 7.0 on Ubuntu. Our security team wants everyone to log in through LDAP or Kerberos like every other system we have. Can you give me the mongod.conf for that?",
-      "expected_output": "LDAP and Kerberos need MongoDB Enterprise Advanced (LDAP is also on Atlas), so the skill does not hand over a config that won't work on Community. It explains how to confirm the edition, notes LDAP is deprecated starting in 8.0, and lays out the options: SCRAM-SHA-256 or x.509 on Community, or moving to Enterprise or Atlas and using OIDC for people.",
+      "expected_output": "LDAP and Kerberos need MongoDB Enterprise Advanced (LDAP is also on Atlas), so the skill does not hand over a config that won't work on Community. It treats the reported edition as unverified (either saying how to confirm it or flagging it as an assumption), notes LDAP is deprecated starting in 8.0, and lays out the options: SCRAM-SHA-256 or x.509 on Community, or moving to Enterprise or Atlas and using OIDC for people.",
       "files": [],
       "expectations": [
         "States that LDAP and Kerberos are not available in MongoDB Community and require Enterprise Advanced (or Atlas, for LDAP)",
         "Does NOT present a security.ldap or GSSAPI configuration as something that will work on the Community deployment",
-        "Tells the user how to confirm the edition, such as checking mongod --version for an enterprise module",
+        "Treats the stated edition as an unverified premise: either tells the user how to confirm it (for example mongod --version showing an enterprise module) or states explicitly that the answer rests on the edition they reported and has not been verified",
         "Offers options that work on Community, such as SCRAM-SHA-256 or x.509",
         "Mentions moving to Enterprise Advanced or Atlas, with OIDC as the recommended way to connect people to a corporate identity provider",
         "States that LDAP is deprecated starting in MongoDB 8.0"

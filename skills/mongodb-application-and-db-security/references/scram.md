@@ -51,6 +51,43 @@ mongosh without leaving the password in shell history:
 mongosh "mongodb://<HOST>:27017/?authSource=admin&tls=true" -u <APP_USERNAME> -p
 ```
 
+### Driver code: connect once, and keep it runnable
+
+A driver snippet the user pastes into a file has to run as written. The common way to get this
+wrong is `await` at the top level of a CommonJS file — valid in an ES module, a `SyntaxError` in
+a `require()` script — so pick one module system and keep the snippet consistent with it. When
+in doubt, give the connection options rather than a full program; an options object the user
+drops into their own code is more useful than a file that won't start.
+
+CommonJS, with the `await` inside an async function:
+
+```javascript
+const { MongoClient } = require("mongodb");
+
+const client = new MongoClient(process.env.MONGODB_URI, {
+  auth: {
+    username: process.env.MONGODB_USERNAME,
+    password: process.env.MONGODB_PASSWORD,
+  },
+  authSource: "<AUTH_DB>",
+  tls: true,
+});
+
+async function main() {
+  await client.connect();
+  // reuse `client` for the process lifetime; don't connect per request
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+```
+
+In an ES module (`.mjs`, or `"type": "module"`), the same `await client.connect()` may sit at
+the top level. Passing credentials through `auth` rather than in the URI avoids percent-encoding
+problems when the password contains `@`, `:`, `/` or `%`.
+
 ## Rotating passwords
 
 - Change a password with `db.changeUserPassword("<APP_USERNAME>", passwordPrompt())`.

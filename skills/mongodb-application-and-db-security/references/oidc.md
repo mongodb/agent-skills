@@ -7,7 +7,12 @@
 | Who | People (developers, DBAs, analysts) | Applications and services |
 | Protocol | OIDC: Authorization Code Flow with PKCE, or Device Authorization Flow | OAuth 2.0 access tokens |
 | Typical identity | IdP user or group (Okta, Entra ID, Ping, ADFS) | Azure managed identity or service principal, GCP service account, Kubernetes service account |
-| Clients | mongosh, Compass, and drivers with a human callback | Drivers (on Atlas, only supported drivers; mongosh and Compass don't do workload) |
+| Clients | mongosh, Compass, and drivers with a human callback | Drivers only. mongosh and Compass do not implement the workload flow on any deployment, and on Atlas only supported driver versions do. |
+
+When you answer a workload identity question, say that the application authenticates through
+its driver and that mongosh and Compass cannot use this flow. People reach for mongosh first to
+test a new mechanism, and with workload identity that test fails for a reason that has nothing
+to do with their configuration — so they go looking for the fault in the wrong place.
 
 Requirements:
 
@@ -115,6 +120,15 @@ Applications:
   - `ENVIRONMENT:gcp,TOKEN_RESOURCE:<AUDIENCE>`
   - `ENVIRONMENT:k8s`
   - or a custom token callback
+- **`TOKEN_RESOURCE` must be the same literal string as the `audience` configured on the
+  server.** It is what the driver asks the cloud provider to mint a token *for*, and the server
+  rejects a token whose `aud` claim doesn't match its own `audience`. On Entra ID the registered
+  identifier may be an Application ID URI (`api://<NAME>`) or the application's client-ID GUID —
+  either works, but whichever one is in `oidcIdentityProviders.audience` is the one that goes in
+  `TOKEN_RESOURCE`, character for character. Don't present an `api://` URI alongside a GUID
+  audience: that pair fails authentication every time, and the error gives no hint that the two
+  values disagree. When you don't know which the user registered, say so and have them read it
+  off the provider config rather than guessing.
 - OIDC needs Node.js driver 6.7+, and k8s needs 6.11+. Check the driver docs for other languages.
 - Never ask the user for a token, and never log tokens.
 

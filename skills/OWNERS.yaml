@@ -73,5 +73,5 @@ skills:
   - name: mongodb-application-and-db-security
     dris:
       - asysdev
-    last_reviewed: 2026-10-12
+    last_reviewed: 2026-10-22
     review_cadence_days: 90
