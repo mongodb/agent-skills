@@ -123,6 +123,24 @@ if [ -n "$CONF_FILE" ]; then
   fi
 fi
 
+# --- net.ipv4.tcp_retries2 ---
+# FAQ diagnostics: Linux defaults to 15; MongoDB does better at "on the order of
+# 5 (12 seconds) or lower". PASS at 5 or lower, WARN above 5, FAIL above 15.
+TCP_RETRIES2=$(sysctl -n net.ipv4.tcp_retries2 2>/dev/null)
+if [ -z "$TCP_RETRIES2" ]; then
+  echo "$UNKNOWN net.ipv4.tcp_retries2: could not be read ($(sysctl_unknown_reason net.ipv4.tcp_retries2))"
+elif ! [[ "$TCP_RETRIES2" =~ ^[0-9]+$ ]]; then
+  echo "$UNKNOWN net.ipv4.tcp_retries2: sysctl returned a non-numeric value: $TCP_RETRIES2"
+elif [ "$TCP_RETRIES2" -le 5 ]; then
+  echo "$PASS net.ipv4.tcp_retries2: $TCP_RETRIES2 (recommended: 5 or lower)"
+elif [ "$TCP_RETRIES2" -le 15 ]; then
+  echo "$WARN net.ipv4.tcp_retries2: $TCP_RETRIES2 (recommended: 5 or lower; the Linux default of 15 can stall connections for minutes)"
+  echo "       Fix: echo 'net.ipv4.tcp_retries2=5' >> /etc/sysctl.conf && sysctl -p"
+else
+  echo "$FAIL net.ipv4.tcp_retries2: $TCP_RETRIES2 (above the Linux default of 15; recommended: 5 or lower)"
+  echo "       Fix: echo 'net.ipv4.tcp_retries2=5' >> /etc/sysctl.conf && sysctl -p"
+fi
+
 # --- Legacy HTTP interface ---
 if [ -n "$CONF_FILE" ] && grep -qE '^\s*(httpinterface|net\.http)' "$CONF_FILE" 2>/dev/null; then
   echo "$FAIL net-http-interface: the HTTP interface is configured; production notes require it off in production"

@@ -1,8 +1,10 @@
+$ cat /proc/version_signature
+Ubuntu 7.0.0-38.38-generic 7.0.14
 $ bash scripts/run-all-checks.sh --version 9.0.1 --dbpath /var/lib/mongo
 === Platform & OS Check ===
 [INFO] os: Ubuntu 26.04 LTS
-[INFO] kernel: 7.0.14-14-generic
-[PASS] kernel-version: 7.0.14-14-generic is outside the documented kernel restrictions for 9.0.1
+[INFO] kernel: 7.0.0-38-generic
+[PASS] kernel-version: 7.0.0-38-generic is outside the documented kernel restrictions for 9.0.1
 
 === Transparent Huge Pages ===
 [INFO] thp-version: scoring against MongoDB 9.0 expectations

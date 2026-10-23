@@ -20,8 +20,13 @@
 #   8.0.0 - 8.0.20     ok             do_not_use (corruption)      ok
 #   8.0.21 - 8.0.29    ok             bad_range                    ge_619
 #   8.3.0 - 8.3.8      ok             bad_range                    ge_619
-#   8.0.30+ 8.3.9+ 9.0 ok             bad_range                    ok
-
+#   8.0.30-34 8.3.9-13 ok             bad_range                    ok, except Ubuntu
+#                                                                  kernels labelled 7.0.0
+#   8.0.35+ 8.3.14+ 9.0 ok            bad_range                    ok
+#
+# The distro (default rhel) and the /proc/version_signature upstream version
+# (default none) are pinned per case so a run on an Ubuntu CI host cannot
+# change a verdict. Release dates for 8.0.35 and 8.3.14 are not asserted.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib-version.sh
 . "$SCRIPT_DIR/lib-version.sh"
@@ -29,16 +34,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PASSED=0
 FAILED=0
 
-# assert_status <mongo-version> <kernel-string> <expected-status>
+# assert_status <mongo-version> <kernel-string> <expected-status> [distro-id] [upstream]
 assert_status() {
-  local mongo="$1" kernel="$2" want="$3" got
+  local mongo="$1" kernel="$2" want="$3" distro="${4:-rhel}" sig="${5:-none}" got
 
   # Reset so a previous case cannot leak its patch component into this one.
   MONGO_VERSION="unknown"
   MONGO_VERSION_PATCH=""
   mongo_normalize_version "$mongo" >/dev/null 2>&1 || true
 
-  got=$(kernel_tcmalloc_status "$kernel")
+  got=$(kernel_tcmalloc_status "$kernel" "$distro" "$sig")
   if [ "$got" = "$want" ]; then
     PASSED=$((PASSED + 1))
   else
@@ -95,11 +100,31 @@ assert_status 8.0    5.14.0                      ok
 section "real distro kernel strings parse correctly"
 assert_status 8.0.4  5.14.0-427.13.1.el9_4.x86_64 ok
 assert_status 8.0.30 6.19.2-1.el9.x86_64          bad_range
-# Ubuntu ships 7.0.0-XX-generic. It is numerically >= 6.19 but never >= 7.0.14,
-# so the guard keeps treating it as affected even once the rseq fix is
-# backported (SERVER-131155, SERVER-131779). Asserted so the known-wrong
-# real-world behaviour stays visible rather than being silently "fixed" here.
+# A 7.0.0-XX label on a non-Ubuntu host is numerically below 7.0.14 and stays
+# in the blocked range.
 assert_status 9.0.1  7.0.0-28-generic             bad_range
+
+section "Ubuntu labels the fixed kernel 7.0.0-NNN (SERVER-131779)"
+# version_signature shows upstream 7.0.14: the kernel carries the fix
+assert_status 8.0.34 7.0.0-1011-gcp               ubuntu_needs_upgrade ubuntu 7.0.14
+assert_status 8.3.13 7.0.0-28-generic             ubuntu_needs_upgrade ubuntu 7.0.14
+assert_status 8.0.35 7.0.0-1011-gcp               ok                   ubuntu 7.0.14
+assert_status 8.3.14 7.0.0-28-generic             ok                   ubuntu 7.1.2
+assert_status 9.0.1  7.0.0-28-generic             ok                   ubuntu 7.0.14
+assert_status 8.0.25 7.0.0-28-generic             ge_619               ubuntu 7.0.14
+assert_status 8.0.4  7.0.0-28-generic             ok                   ubuntu 7.0.14
+assert_status 7.0.4  7.0.0-28-generic             ok                   ubuntu 7.0.14
+assert_status 8.0    7.0.0-28-generic             ge_619               ubuntu 7.0.14
+
+section "Ubuntu 7.0.0 label without evidence of the fix stays strict"
+# No signature, or an upstream below 7.0.14: score the label literally, so the
+# 8.0.0-8.0.20 corruption band is never cleared on an assumption.
+assert_status 8.0.4  7.0.0-28-generic             do_not_use           ubuntu
+assert_status 8.0.4  7.0.0-28-generic             do_not_use           ubuntu 7.0.9
+assert_status 8.0.35 7.0.0-1011-gcp               bad_range            ubuntu
+assert_status 8.0.34 7.0.0-1011-gcp               bad_range            ubuntu 7.0.13
+assert_status 8.0.34 7.0.0-1011-gcp               bad_range
+assert_status 8.0.34 6.19.2-1-generic             bad_range            ubuntu 6.19.2
 
 printf '\n=== %d passed, %d failed ===\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

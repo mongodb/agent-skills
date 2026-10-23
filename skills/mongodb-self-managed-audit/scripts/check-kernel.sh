@@ -54,30 +54,31 @@ elif [ -n "$SWAPPINESS" ]; then
 fi
 
 # --- vm.dirty_ratio ---
+# Informational guidance: the MongoDB production notes (v7.0 to v9.0) do not
+# state a vm.dirty_ratio value. Recommended 10 to 15; above 15 WARN for
+# possible write-stall impact. Never FAIL.
 if ! DIRTY_RATIO=$(check_sysctl vm.dirty_ratio); then
   echo "$UNKNOWN vm.dirty_ratio: $(sysctl_unknown_reason vm.dirty_ratio)"
 fi
 if [[ "$DIRTY_RATIO" =~ ^[0-9]+$ ]]; then
   if [ "$DIRTY_RATIO" -le 15 ]; then
-    echo "$PASS vm.dirty_ratio: $DIRTY_RATIO (recommended: <= 15)"
-  elif [ "$DIRTY_RATIO" -le 40 ]; then
-    echo "$WARN vm.dirty_ratio: $DIRTY_RATIO (recommended: <= 15 — high value delays flushing dirty pages)"
-    echo "       Fix: echo 'vm.dirty_ratio=15' >> /etc/sysctl.conf && sysctl -p"
+    echo "$PASS vm.dirty_ratio: $DIRTY_RATIO (recommended: 10-15; informational guidance, no MongoDB public reference)"
   else
-    echo "$FAIL vm.dirty_ratio: $DIRTY_RATIO (critically high — may cause large write stalls)"
+    echo "$WARN vm.dirty_ratio: $DIRTY_RATIO (recommended: 10-15; a higher value may delay flushing and cause write stalls. Informational guidance, no MongoDB public reference)"
     echo "       Fix: echo 'vm.dirty_ratio=15' >> /etc/sysctl.conf && sysctl -p"
   fi
 fi
 
 # --- vm.dirty_background_ratio ---
+# Informational guidance, same caveat as vm.dirty_ratio. Recommended 3 to 5.
 if ! DIRTY_BG=$(check_sysctl vm.dirty_background_ratio); then
   echo "$UNKNOWN vm.dirty_background_ratio: $(sysctl_unknown_reason vm.dirty_background_ratio)"
 fi
 if [[ "$DIRTY_BG" =~ ^[0-9]+$ ]]; then
   if [ "$DIRTY_BG" -le 5 ]; then
-    echo "$PASS vm.dirty_background_ratio: $DIRTY_BG (recommended: 3-5)"
+    echo "$PASS vm.dirty_background_ratio: $DIRTY_BG (recommended: 3-5; informational guidance, no MongoDB public reference)"
   else
-    echo "$WARN vm.dirty_background_ratio: $DIRTY_BG (recommended: 3-5)"
+    echo "$WARN vm.dirty_background_ratio: $DIRTY_BG (recommended: 3-5; informational guidance, no MongoDB public reference)"
     echo "       Fix: echo 'vm.dirty_background_ratio=5' >> /etc/sysctl.conf && sysctl -p"
   fi
 fi
@@ -107,6 +108,34 @@ if [[ "$FILE_MAX" =~ ^[0-9]+$ ]]; then
   else
     echo "$FAIL fs.file-max: $FILE_MAX (critically low)"
     echo "       Fix: echo 'fs.file-max=98000' >> /etc/sysctl.conf && sysctl -p"
+  fi
+fi
+
+# --- kernel.threads-max ---
+# Production checklist (operations): 64000 is a starting point for large systems.
+if ! THREADS_MAX=$(check_sysctl kernel.threads-max); then
+  echo "$UNKNOWN kernel.threads-max: $(sysctl_unknown_reason kernel.threads-max)"
+fi
+if [[ "$THREADS_MAX" =~ ^[0-9]+$ ]]; then
+  if [ "$THREADS_MAX" -ge 64000 ]; then
+    echo "$PASS kernel.threads-max: $THREADS_MAX"
+  else
+    echo "$WARN kernel.threads-max: $THREADS_MAX (recommended: >= 64000)"
+    echo "       Fix: echo 'kernel.threads-max=64000' >> /etc/sysctl.conf && sysctl -p"
+  fi
+fi
+
+# --- vm.max_map_count ---
+# Production checklist (operations): 131060 is a starting point for large systems.
+if ! MAX_MAP=$(check_sysctl vm.max_map_count); then
+  echo "$UNKNOWN vm.max_map_count: $(sysctl_unknown_reason vm.max_map_count)"
+fi
+if [[ "$MAX_MAP" =~ ^[0-9]+$ ]]; then
+  if [ "$MAX_MAP" -ge 131060 ]; then
+    echo "$PASS vm.max_map_count: $MAX_MAP"
+  else
+    echo "$WARN vm.max_map_count: $MAX_MAP (recommended: >= 131060)"
+    echo "       Fix: echo 'vm.max_map_count=131060' >> /etc/sysctl.conf && sysctl -p"
   fi
 fi
 

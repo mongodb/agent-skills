@@ -31,6 +31,10 @@ if [ "$MONGO_VERSION" = "unknown" ]; then
   exit 1
 fi
 
+# Pass the patch on to each check: the kernel verdict bands on it (8.0.30,
+# 8.0.35, 8.3.9, 8.3.14), and a bare major.minor takes the strictest band.
+MONGO_REL="$MONGO_VERSION${MONGO_VERSION_PATCH:+.$MONGO_VERSION_PATCH}"
+
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 HOSTNAME=$(hostname -f 2>/dev/null || hostname)
 KERNEL=$(uname -r)
@@ -40,7 +44,7 @@ echo " Self-Managed Deployments Checks"
 echo " Host:    $HOSTNAME"
 echo " Date:    $TIMESTAMP"
 echo " Kernel:  $KERNEL"
-echo " Version: MongoDB $MONGO_VERSION"
+echo " Version: MongoDB $MONGO_REL"
 echo "============================================================"
 echo ""
 
@@ -68,7 +72,7 @@ run_check() {
   fi
 
   echo "--- $label ---"
-  OUTPUT=$(bash "$SCRIPT_DIR/$script" --version "$MONGO_VERSION" 2>&1)
+  OUTPUT=$(bash "$SCRIPT_DIR/$script" --version "$MONGO_REL" 2>&1)
   echo "$OUTPUT"
   echo ""
 

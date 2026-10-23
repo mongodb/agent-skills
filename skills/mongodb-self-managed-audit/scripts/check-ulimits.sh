@@ -6,6 +6,7 @@ PASS="[PASS]"
 WARN="[WARN]"
 FAIL="[FAIL]"
 INFO="[INFO]"
+UNKNOWN="[UNKNOWN]"
 
 echo "=== Ulimits Check ==="
 
@@ -40,6 +41,20 @@ check_limit() {
   fi
 }
 
+# check_unlimited FLAG NAME SOFT LABEL
+# The ulimit reference lists -f, -t and -m as unlimited for mongod and mongos.
+check_unlimited() {
+  local flag="$1" name="$2" soft="$3" label="$4"
+  if [ -z "$soft" ]; then
+    echo "$UNKNOWN ulimit-$label: not readable by this run (ulimit $flag); re-run with sudo or against the running mongod"
+  elif [ "$soft" = "unlimited" ]; then
+    echo "$PASS ulimit-$label: unlimited"
+  else
+    echo "$WARN ulimit-$label: soft=$soft (recommended: unlimited for ulimit $flag, $name)"
+    echo "       Fix: add the matching mongod soft and hard entries as unlimited in /etc/security/limits.d/99-mongodb.conf"
+  fi
+}
+
 if [ -n "$MONGOD_PID" ]; then
   echo "$INFO ulimits-source: Reading from running mongod process (PID $MONGOD_PID)"
 
@@ -58,9 +73,18 @@ if [ -n "$MONGOD_PID" ]; then
         MEMLOCK_SOFT=$(echo "$line" | awk '{print $4}')
         MEMLOCK_HARD=$(echo "$line" | awk '{print $5}')
         ;;
-      *"Max virtual memory"*)
+      *"Max address space"*|*"Max virtual memory"*)
         AS_SOFT=$(echo "$line" | awk '{print $4}')
         AS_HARD=$(echo "$line" | awk '{print $5}')
+        ;;
+      *"Max file size"*)
+        FSIZE_SOFT=$(echo "$line" | awk '{print $4}')
+        ;;
+      *"Max cpu time"*)
+        CPU_SOFT=$(echo "$line" | awk '{print $4}')
+        ;;
+      *"Max resident set"*)
+        RSS_SOFT=$(echo "$line" | awk '{print $4}')
         ;;
       *"Max core file size"*)
         CORE_SOFT=$(echo "$line" | awk '{print $5}')
@@ -85,6 +109,10 @@ if [ -n "$MONGOD_PID" ]; then
     echo "$WARN ulimit-virtual-memory: soft=$AS_SOFT (recommended: unlimited)"
   fi
 
+  check_unlimited "-f" "file size"     "${FSIZE_SOFT:-}" "file-size"
+  check_unlimited "-t" "cpu time"      "${CPU_SOFT:-}"   "cpu-time"
+  check_unlimited "-m" "resident set"  "${RSS_SOFT:-}"   "resident-set"
+
   if [ "${CORE_SOFT:-0}" = "unlimited" ]; then
     echo "$PASS ulimit-core: unlimited (useful for debugging)"
   else
@@ -102,6 +130,9 @@ else
 
   check_limit "nofile" "$NOFILE_SOFT" "$NOFILE_HARD" 64000 "open-files"
   check_limit "nproc"  "$NPROC_SOFT"  "$NPROC_HARD"  64000 "processes" 32768
+  check_unlimited "-f" "file size"    "$(ulimit -Sf 2>/dev/null)" "file-size"
+  check_unlimited "-t" "cpu time"     "$(ulimit -St 2>/dev/null)" "cpu-time"
+  check_unlimited "-m" "resident set" "$(ulimit -Sm 2>/dev/null)" "resident-set"
 
   # Check /etc/security/limits.d/ for mongod entries
   LIMITS_FILE=$(grep -rl 'mongod' /etc/security/limits.d/ 2>/dev/null | head -1)

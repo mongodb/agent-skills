@@ -59,10 +59,10 @@
       "files": [
         "assets/mongod-conf-wt-cache.txt"
       ],
-      "expected_output": "Flags that cacheSizeGB and cacheSizePct are both set, which is a FAIL: exactly one of the two is permitted. Flags that cacheSizePct 0.85 exceeds the 80 percent ceiling. Flags that the 48GB cache exceeds the 32GB cgroup memory limit, so the container limit governs, not host RAM. Flags security.javascriptEnabled true under SELinux Enforcing as a FAIL that segfaults mongod. Notes bind_ip 0.0.0.0. Keeps config findings valid even though mongod is stopped, and marks runtime values UNKNOWN.",
+      "expected_output": "Flags that cacheSizeGB and cacheSizePct are both set, which is a FAIL: exactly one of the two is permitted. Does not flag cacheSizePct 0.85 as above the 80 percent ceiling: the value is a percentage, so 0.85 means 0.85 percent. Flags that cacheSizeGB 48 is above the default of about 30.5 GB on a 62 GB host, which the documentation advises against. Flags that the 48GB cache exceeds the 32GB cgroup memory limit, so the container limit governs, not host RAM. Flags security.javascriptEnabled true under SELinux Enforcing as a FAIL that segfaults mongod. Notes bind_ip 0.0.0.0. Keeps config findings valid even though mongod is stopped, and marks runtime values UNKNOWN.",
       "expectations": [
         "Flags that cacheSizeGB and cacheSizePct are both set as a FAIL, stating only one of the two may be configured",
-        "Flags cacheSizePct 0.85 as above the documented 80 percent ceiling",
+        "Does not report cacheSizePct 0.85 as above the 80 percent ceiling, reading the value as a percentage (0.85 percent) rather than a fraction",
         "Flags security.javascriptEnabled true under SELinux Enforcing as a FAIL that causes mongod to segfault",
         "Marks values that cannot be established from the pasted evidence as UNKNOWN with a reason, rather than PASS, while keeping the config-file findings valid despite mongod being stopped"
       ]
@@ -70,15 +70,15 @@
     {
       "id": 5,
       "name": "90-inherits-80-expectations",
-      "prompt": "First MongoDB 9.0 deployment for us, 9.0.1 Enterprise on Ubuntu 26.04, kernel 7.0.14-14-generic. Check output attached. Two questions from my team: our runbook says disable transparent huge pages for MongoDB, so are these three THP failures real or is the script scoring against the wrong version? And are we exposed to the kernel 6.19 issue on this kernel?",
+      "prompt": "First MongoDB 9.0 deployment for us, 9.0.1 Enterprise on Ubuntu 26.04, kernel 7.0.0-38-generic. Check output attached. Two questions from my team: our runbook says disable transparent huge pages for MongoDB, so are these three THP failures real or is the script scoring against the wrong version? And are we exposed to the kernel 6.19 issue on this kernel?",
       "files": [
         "assets/host-output-90-thp-never.txt"
       ],
-      "expected_output": "Confirms the THP failures are real: 9.0 inherits the 8.0-and-later expectations, so enabled=always and defrag=defer+madvise are documented and never is a FAIL. The runbook predates 8.0 and should be updated. On the kernel question, 9.0 carries the narrowed startup guard, so kernel 7.0.14 is outside the restriction and this host is not exposed. May note the Ubuntu 7.0.0-XX version-string caveat as adjacent.",
+      "expected_output": "Confirms the THP failures are real: 9.0 inherits the 8.0-and-later expectations, so enabled=always and defrag=defer+madvise are documented and never is a FAIL. The runbook predates 8.0 and should be updated. On the kernel question, /proc/version_signature shows the 7.0.0-38-generic kernel is upstream 7.0.14, and 9.0 carries the narrowed, Ubuntu-aware guard, so the kernel is outside the restriction and this host is not exposed. May note that the Ubuntu 7.0.0-NNN label would still trip the guard on 8.0.30 to 8.0.34 and 8.3.9 to 8.3.13.",
       "expectations": [
         "Confirms the three THP FAILs are real and that 9.0 follows the 8.0-and-later expectations (enabled=always, defrag=defer+madvise, max_ptes_none=0)",
         "Tells the team their disable-THP runbook is outdated for 8.0 and later rather than validating it",
-        "States this host is NOT exposed to the kernel restriction, because 9.0 carries the narrowed guard and kernel 7.0.14 is outside the affected range",
+        "States this host is NOT exposed to the kernel restriction, because 9.0 carries the narrowed guard and the 7.0.0-38-generic kernel is upstream 7.0.14 per /proc/version_signature, outside the affected range",
         "Also flags vm.overcommit_memory=0 and the missing THP persistence mechanism as items to fix alongside"
       ]
     },
@@ -112,7 +112,7 @@
         "Leads with the two FAIL items, vm.swappiness 60 and ulimit-processes 31436, as the blocking pre-install work, ahead of the WARN items",
         "Covers ulimits: processes 31436 is a blocking FAIL below the 32768 threshold, open files soft 1024 is below the 64000 recommendation, and no mongod limits file exists in /etc/security/limits.d/",
         "Covers network tuning: tcp_keepalive_time 7200 against the recommended 120, plus at least one of tcp_max_syn_backlog 512 or netdev_max_backlog 1000",
-        "Covers kernel tuning: vm.dirty_ratio 20 and vm.dirty_background_ratio 10 are above the recommended values",
+        "Covers kernel tuning: vm.dirty_ratio 20 (recommended 10 to 15) and vm.dirty_background_ratio 10 (recommended 3 to 5) are WARN, described as informational guidance with no MongoDB public reference, not as blocking",
         "Covers THP for 8.0: defrag=madvise, khugepaged/max_ptes_none=511 and vm.overcommit_memory=0 are all wrong for this version, and no persistence mechanism is configured",
         "Covers storage: dbPath /var/lib/mongo does not exist, which is expected before install but must be created and owned by the mongod user",
         "Reports the clock checks as satisfied rather than omitting them, since a time daemon is running and synchronised",
@@ -182,6 +182,40 @@
         "Identifies the active tuned profile golden-mongodb-80 as the reason the wrong THP values come back after every reboot, and proposes a 7.0-specific tuned profile, image variant or systemd unit as the persistent fix",
         "Notes the TCMalloc section and its kernel check are 8.0-only, and that 7.0 is not affected by the kernel 6.19 restriction",
         "Recommends re-running the suite with --version 7.0 after the THP change before the node joins"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "80-ppc64le-thp-always",
+      "_note": "THP on ppc64le and s390x. The TCMalloc page says MongoDB uses the legacy TCMalloc on these architectures regardless of OS version and to disable THP. The fixture shows output from an older checker that scored always as correct for every 8.0 host.",
+      "prompt": "Our MongoDB 8.0.4 Enterprise host is RHEL 9 on ppc64le. We followed the 8.0 production notes and set THP to always, defer+madvise, max_ptes_none 0 and overcommit 1, and the THP check passes. Output attached. Is the THP configuration correct for this host?",
+      "files": [
+        "assets/host-output-80-ppc64le-thp-always.txt"
+      ],
+      "expected_output": "Says the configuration is not correct for this host. On ppc64le MongoDB uses the legacy TCMalloc at every version, regardless of OS version, and the TCMalloc page says to disable THP on PPC64LE and s390x. THP enabled=always is a FAIL and defrag should be never. The 8.0 values (always, defer+madvise, max_ptes_none 0, overcommit 1) belong to the updated TCMalloc on x86_64 and arm64. The PASS lines in the attached output come from the x86_64 rule and do not apply here. Recommends setting THP to never and persisting it, then re-running the check.",
+      "expectations": [
+        "States the THP configuration is not correct for a ppc64le host even though the supplied output shows PASS",
+        "Explains that ppc64le and s390x use the legacy TCMalloc regardless of operating system version and that the documentation says to disable THP on them",
+        "Identifies enabled=always as a FAIL on this architecture and recommends never",
+        "Does not apply the x86_64 and arm64 8.0 rule (always, defer+madvise, max_ptes_none 0, overcommit 1) to this host",
+        "Presents the fix as a change for the user to approve and run, not as applied by the audit"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "8034-ubuntu-kernel-labelled-700",
+      "_note": "Ubuntu labels a kernel carrying the rseq fix as 7.0.0-NNN. On 8.0.30 to 8.0.34 and 8.3.9 to 8.3.13 the literal version guard still trips; the fix is in 8.0.35 and 8.3.14 (SERVER-131779). No release date may be stated.",
+      "prompt": "Ubuntu 24.04 GCP VM, MongoDB Enterprise 8.0.34, mongod will not stay up. The kernel is the Ubuntu 7.0.0 build and /proc/version_signature says 7.0.14, so it should be past the 6.19 to 7.0.13 problem. Attached is the evidence. What is going on and what do we do?",
+      "files": [
+        "assets/host-output-8034-ubuntu-kernel-7014.txt"
+      ],
+      "expected_output": "Explains that Ubuntu labels the kernel 7.0.0-1011-gcp even though /proc/version_signature shows it carries the 7.0.14 fix, and that mongod 8.0.34 compares the kernel version literally, so it exits during startup. The Ubuntu-aware guard is in MongoDB 8.0.35 and 8.3.14 (SERVER-131779). The remedy is a MongoDB upgrade to 8.0.35 or later; upgrading the Ubuntu kernel package does not help while it keeps the 7.0.0 label, though a kernel labelled 7.0.14 or later would also clear the guard. States no release date for 8.0.35 or 8.3.14. Presents the fix as a command for the user to run after approval.",
+      "expectations": [
+        "Identifies the 7.0.0-1011-gcp label as the cause even though /proc/version_signature reports 7.0.14",
+        "Identifies the remedy as upgrading MongoDB to 8.0.35 or later (or 8.3.14 or later), not changing the kernel",
+        "Does not state or imply a release date or availability for 8.0.35 or 8.3.14",
+        "Does not present reimaging or an Ubuntu kernel package upgrade as the fix, since the 7.0.0 label stays; may note that a kernel labelled 7.0.14 or later would also clear the guard",
+        "Does not quote internal Slack or ticket discussion; cites SERVER-125742 and SERVER-131779 only"
       ]
     }
   ]

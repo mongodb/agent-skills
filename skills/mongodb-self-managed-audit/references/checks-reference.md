@@ -6,7 +6,11 @@ Sources:
 - 8.3: https://www.mongodb.com/docs/v8.3/administration/production-notes/
 - 8.0: https://www.mongodb.com/docs/v8.0/administration/production-notes/
 - 7.0: https://www.mongodb.com/docs/v7.0/administration/production-notes/
-- THP: https://www.mongodb.com/docs/manual/tutorial/transparent-huge-pages/
+- THP, 8.0 and later (also the TCMalloc page): https://www.mongodb.com/docs/manual/administration/tcmalloc-performance/
+- THP, 7.0 and earlier: https://www.mongodb.com/docs/v7.0/tutorial/transparent-huge-pages/
+- Kernel tunables: https://www.mongodb.com/docs/v8.0/administration/production-checklist-operations/
+- ulimit: https://www.mongodb.com/docs/v8.0/reference/ulimit/
+- TCP retransmission and keepalive: https://www.mongodb.com/docs/v8.0/faq/diagnostics/
 
 Version columns below mean the MongoDB major version, not the kernel or OS
 version. Checked against the 8.3 and 9.0 production notes.
@@ -40,11 +44,12 @@ later, since it is the 9.0 manual.
 
 ### Kernel restriction, by maintenance release
 
-Source: SERVER-125742, issue status as of 2026-08-24, which carries the
+Source: SERVER-125742, as read 2026-10-21, which carries the
 authoritative compatibility matrix. Root cause: rseq behavior changes in the
 Linux kernel broke the TCMalloc vendored in MongoDB. Kernel 7.0.14+ and 7.1.0+
 restore the previous userspace behavior, and mongod's own startup guard was
-narrowed to match in 8.0.30, 8.3.9 and 9.0.
+narrowed to match in 8.0.30, 8.3.9 and 9.0. The Ubuntu-aware guard
+(SERVER-131779) is in 8.0.35 and 8.3.14.
 
 The verdict depends on the MongoDB maintenance release, so resolve the patch
 version before scoring. `scripts/lib-version.sh` implements this matrix in
@@ -56,9 +61,10 @@ version before scoring. `scripts/lib-version.sh` implements this matrix in
 | 8.0.0 - 8.0.20 | Supported | DO NOT USE: crashes after roughly 60s, potential corruption | Supported |
 | 8.0.21 - 8.0.29 | Supported | Exits during startup | Exits during startup |
 | 8.3.0 - 8.3.8 | Supported | Exits during startup | Exits during startup |
-| 8.0.30+, 8.3.9+, 9.0 all versions | Supported | Exits during startup | Supported |
+| 8.0.30 - 8.0.34, 8.3.9 - 8.3.13 | Supported | Exits during startup | Supported, except Ubuntu kernels labelled 7.0.0-NNN, which exit during startup |
+| 8.0.35+, 8.3.14+, 9.0 all versions | Supported | Exits during startup | Supported, Ubuntu included |
 
-Three consequences that change a remediation:
+Four consequences that change a remediation:
 
 - 7.0 is not affected on any kernel. Do not carry a kernel finding into a 7.0
   audit.
@@ -68,6 +74,17 @@ Three consequences that change a remediation:
 - On 8.0.0 through 8.0.20 the failure is worse than a refusal to start: mongod
   runs, then crashes, with potential corruption. Treat it as a data-loss risk,
   not an availability one.
+- On Ubuntu, the kernel is labelled `7.0.0-NNN` even when it carries the rseq fix.
+  On 8.0.30 through 8.0.34 and 8.3.9 through 8.3.13 that label still trips the
+  guard, and the remedy is MongoDB 8.0.35 or 8.3.14 or later (SERVER-131779).
+  Upgrading the Ubuntu kernel package does not help while it keeps the 7.0.0
+  label; a kernel labelled 7.0.14 or later would also clear the guard. The
+  script reads the distro from `/etc/os-release` and counts the label as the
+  fixed kernel only when `/proc/version_signature` shows upstream 7.0.14 or
+  later. Without that evidence the label is scored literally, so 8.0.0 through
+  8.0.20 on an unverified Ubuntu 7.0.0 kernel stays DO NOT USE. 9.0 on Ubuntu is
+  treated as fixed, as the ticket table lists 9.0 without a caveat.
+  The skill states no release date for 8.0.35 or 8.3.14.
 - A bare major.minor with no patch component cannot be placed in a band, so
   the scripts return the strictest verdict that band could carry. Report the
   assumption rather than inferring a fix you cannot see.
@@ -105,6 +122,12 @@ the path of least resistance, so check `tuned-adm active` before proposing a new
 unit. A tuned profile that sets the wrong value for the deployment's version is
 worse than none, because it silently reasserts it on every boot.
 
+Exception: on ppc64le and s390x MongoDB uses the legacy TCMalloc "regardless of
+operating system version" at every version, and the TCMalloc page says to disable
+THP there. On those architectures, 8.0 and later expect `enabled=never` and
+`defrag=never`: `always` is a FAIL, `madvise` a WARN. The `max_ptes_none` and
+`vm.overcommit_memory` settings belong to the updated TCMalloc and are not scored.
+
 ## Kernel & System
 
 | Check | Expected | Status rule |
@@ -113,10 +136,12 @@ worse than none, because it silently reasserts it on every boot.
 | `vm.force_cgroup_v2_swappiness` | 1 on RHEL/CentOS | WARN if 0, so that `vm.swappiness` overrides the cgroup default |
 | `vm.zone_reclaim_mode` | 0 | FAIL if non-zero |
 | `vm.overcommit_memory` | 1 on 8.0 and later | WARN otherwise, set alongside THP. Evaluated inside `check-thp.sh`, not `check-kernel.sh`. |
-| `vm.dirty_ratio` | 15 or lower | Above 40 WARN |
-| `vm.dirty_background_ratio` | 3 to 5 | Above 10 WARN |
+| `vm.dirty_ratio` | 10 to 15 | Above 15 WARN. Informational guidance: no MongoDB public reference states it. Never FAIL. |
+| `vm.dirty_background_ratio` | 3 to 5 | Above 5 WARN. Informational guidance: no MongoDB public reference states it. |
 | `kernel.pid_max` | 64000 or more | Below 32768 WARN |
 | `fs.file-max` | 98000 or more | Below 64000 WARN |
+| `kernel.threads-max` | 64000 or more | WARN below. The operations checklist gives 64000 as a starting point for large systems. |
+| `vm.max_map_count` | 131060 or more | WARN below. The operations checklist gives 131060 as a starting point for large systems. |
 | Swap strategy | Either assign swap with `vm.swappiness=1`, or run without swap and `vm.swappiness=0` | Swapping is preferable to the OOM killer terminating mongod |
 
 ## NUMA
@@ -159,6 +184,7 @@ worse than none, because it silently reasserts it on every boot.
 | `net.core.somaxconn` | 4096 or more | Below 128 WARN |
 | `net.ipv4.tcp_max_syn_backlog` | 4096 or more | Below 512 WARN |
 | `net.core.netdev_max_backlog` | 3000 or more | Below 1000 WARN |
+| `net.ipv4.tcp_retries2` | 5 or lower | WARN above 5, FAIL above 15. Linux defaults to 15; the FAQ recommends "on the order of 5 (12 seconds) or lower". Applies to IPv4 and IPv6. |
 | Hostname resolution | Resolves | FAIL when unresolvable, since replica sets depend on it |
 | Connection pool sizing | 110 to 115 percent of typical concurrent requests | INFO. Tune via `maxIncomingConnections`; observe with `connPoolStats`. |
 | HTTP interface | Off | FAIL if enabled in production |
@@ -180,6 +206,9 @@ worse than none, because it silently reasserts it on every boot.
 | open files (`nofile`) | 64000 or more | mongod logs a startup warning below 64000. Below 1024 FAIL. |
 | processes (`nproc`) | 64000 or more | Below 32768 FAIL |
 | virtual memory (`as`) | unlimited | WARN if limited |
+| file size (`-f`) | unlimited | WARN if limited |
+| cpu time (`-t`) | unlimited | WARN if limited |
+| resident set size (`-m`) | unlimited | WARN if limited |
 | max locked memory | unlimited | WARN if limited |
 | core file size | unlimited for debugging | INFO |
 
@@ -202,15 +231,16 @@ worse than none, because it silently reasserts it on every boot.
 
 | Check | Expected | Status rule |
 |---|---|---|
-| Default cache size | `max(50% of (RAM - 1GB), 0.256GB)` | Bounded between 0.256 GB and 10000 GB |
+| Default cache size | `max(50% of (RAM - 1GB), 0.256GB)` | Bounded between 0.256 GB and 10000 GB. Unset is the default and passes. |
+| Configured cache vs default | At or below the default | WARN when `cacheSizeGB`, or `cacheSizePct` converted to GB, exceeds the default. The configuration reference says to avoid increasing the cache above its default. |
 | `cacheSizeGB` / `cacheSizePct` | Exactly one of the two | FAIL when both are set |
-| `cacheSizePct` ceiling | 80 percent of available memory | FAIL above 80 |
+| `cacheSizePct` ceiling | 80 percent of available memory | FAIL above 80. The value is a percentage of physical RAM (10 means 10 percent), not a fraction. Documented on the 8.3 and 9.0 mongod pages and mentioned on the 7.0 configuration page; not found on the v8.0 mongod or configuration pages, so confirm it is accepted on the 8.0 release in use. |
 | Container memory limit | Cache below the container limit | WARN when a cgroup limit sits below host RAM. `hostInfo` reports `system.memLimitMB`. |
 | Multiple instances per host | `(50% of (RAM - 1GB)) / instance count` | WARN when unadjusted |
 | Block compressor | snappy default; zstd for best ratio at lower CPU than zlib | INFO |
 | Index prefix compression | On by default | INFO |
-| Journaling | Enabled | FAIL when disabled |
 | Concurrency | Throughput rises with concurrency up to the CPU count, then falls | INFO. Observe `ar` and `aw` in mongostat. |
+| Journaling | Always enabled | No check. `storage.journal.enabled` was removed in 6.1 ("Changed in version 6.1" in the configuration options), so journaling cannot be turned off on any version in scope. |
 | Cache statistics | `db.serverStatus().wiredTiger.cache` | INFO. Watch the eviction rate. |
 
 ## TCMalloc (8.0 and later, including 8.3 and 9.0)
@@ -218,9 +248,14 @@ worse than none, because it silently reasserts it on every boot.
 | Check | Expected | Status rule |
 |---|---|---|
 | Kernel 6.19 through 7.0.13 | Avoided | FAIL on 8.0 and later. 8.0.0-8.0.20 risk corruption; 8.0.21-8.0.29 and 8.3.0-8.3.8 also fail on 7.0.14+. See "Kernel restriction, by maintenance release". |
-| `MALLOC_CONF` | Unset, or deliberately correct | WARN when an override is present |
-| RHEL 8 on ppc64le and s390x | Legacy TCMalloc | INFO. Expected on those platforms. |
-| `tcmalloc.aggressive_memory_decommit` | Tuned for the workload | INFO |
+| `LD_PRELOAD` | Unset | WARN when a custom allocator is preloaded into mongod |
+| ppc64le and s390x | Legacy TCMalloc at every version, regardless of OS version | INFO. THP is expected disabled there; see Transparent Huge Pages. |
+| Linux kernel for per-CPU caches | 4.18 or later (x86_64, arm64) | WARN below. Per-CPU caches need rseq. |
+| `tcmalloc.usingPerCPUCaches`, `tcmalloc.tcmalloc.cpu_free` | `true`, greater than 0 | Runtime values from `serverStatus`; UNKNOWN without a live server. If not met, disable glibc rseq (`GLIBC_TUNABLES=glibc.pthread.rseq=0`). |
+| `tcmallocAggressiveMemoryDecommit` | Not tuned | INFO. Deprecated in 8.0; see `tcmallocEnableBackgroundThread`. |
+
+No `MALLOC_CONF` check: that is a jemalloc variable, and the TCMalloc page names
+only `GLIBC_TUNABLES`.
 
 ## Security
 

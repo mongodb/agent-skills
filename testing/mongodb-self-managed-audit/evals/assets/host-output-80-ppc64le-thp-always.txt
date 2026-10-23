@@ -1,0 +1,13 @@
+$ uname -m
+ppc64le
+$ rpm -q mongodb-enterprise-server
+mongodb-enterprise-server-8.0.4-1.el9.ppc64le
+$ bash scripts/check-thp.sh --version 8.0.4
+=== Transparent Huge Pages (THP) Check ===
+[INFO] thp-version: scoring against MongoDB 8.0 and later expectations
+[INFO] thp-enabled-raw: [always] madvise never
+[PASS] thp-enabled: THP is 'always', as MongoDB 8.0 and later require
+[PASS] thp-defrag: defrag is 'defer+madvise', as MongoDB 8.0 and later require
+[PASS] thp-max-ptes-none: khugepaged max_ptes_none is 0, as MongoDB 8.0 and later require
+[PASS] thp-overcommit: vm.overcommit_memory is 1, as MongoDB 8.0 and later require
+[INFO] thp-persistent: a THP-related systemd unit is present; confirm it sets the value this version needs

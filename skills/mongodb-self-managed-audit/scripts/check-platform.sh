@@ -39,12 +39,21 @@ MONGO_REL="$MONGO_VERSION${MONGO_VERSION_PATCH:+.$MONGO_VERSION_PATCH}"
 case "$(kernel_tcmalloc_status "$KERNEL")" in
   do_not_use)
     echo "$FAIL kernel-version: DO NOT USE. MongoDB $MONGO_REL on kernel $KERNEL starts, then crashes after roughly 60 seconds, with potential data corruption. Kernel 6.19 through 7.0.13 is affected. Move to kernel 7.0.14 or later, or to the latest 8.0 maintenance release. (SERVER-125742)"
+    case "$KERNEL" in
+      7.0.0-*) echo "       Note: on Ubuntu a 7.0.0-NNN label can carry the rseq fix; /proc/version_signature shows the upstream version. If it reads 7.0.14 or later, re-run where it is readable or score it with MONGO_KERNEL_SIGNATURE." ;;
+    esac
     ;;
   bad_range)
     echo "$FAIL kernel-version: Kernel $KERNEL is not compliant with MongoDB documented guidance for $MONGO_REL; mongod exits during startup by design. Affected range is 6.19 through 7.0.13. Move to kernel 7.0.14 or later. (SERVER-125742)"
+    case "$KERNEL" in
+      7.0.0-*) echo "       Note: on Ubuntu a 7.0.0-NNN label can carry the rseq fix; /proc/version_signature shows the upstream version. If it reads 7.0.14 or later, re-run where it is readable or score it with MONGO_KERNEL_SIGNATURE." ;;
+    esac
     ;;
   ge_619)
-    echo "$FAIL kernel-version: Kernel $KERNEL is not compliant with MongoDB documented guidance for $MONGO_REL; mongod exits during startup on any kernel 6.19 or later, so a kernel upgrade is not a remedy on this release. Move to MongoDB 8.0.30 or later, 8.3.9 or later, or a kernel below 6.19. (SERVER-125742)"
+    echo "$FAIL kernel-version: Kernel $KERNEL is not compliant with MongoDB documented guidance for $MONGO_REL; mongod exits during startup on any kernel 6.19 or later, so a kernel upgrade is not a remedy on this release. Move to MongoDB 8.0.30 or later or 8.3.9 or later (8.0.35 or later, 8.3.14 or later on Ubuntu), or a kernel below 6.19. (SERVER-125742)"
+    ;;
+  ubuntu_needs_upgrade)
+    echo "$FAIL kernel-version: Kernel $KERNEL is Ubuntu's label for a kernel that carries the rseq fix, but mongod $MONGO_REL compares the version literally and exits during startup. Fixed in MongoDB 8.0.35 and 8.3.14 (SERVER-131779). Upgrading the Ubuntu kernel package does not help while it keeps the 7.0.0 label; a kernel labelled 7.0.14 or later would also clear the guard. (SERVER-125742)"
     ;;
   *)
     echo "$PASS kernel-version: $KERNEL is outside the documented kernel restrictions for $MONGO_REL"
@@ -73,10 +82,10 @@ case "$ARCH" in
     fi
     ;;
   ppc64le)
-    echo "$INFO cpu-ppc64le: ppc64le detected. Enterprise only. Legacy TCMalloc used on RHEL8/9 with MongoDB 8.0."
+    echo "$INFO cpu-ppc64le: ppc64le detected. Enterprise only. Legacy TCMalloc used with MongoDB 8.0 and later regardless of OS version; disable THP."
     ;;
   s390x)
-    echo "$INFO cpu-s390x: s390x detected. Enterprise only. Legacy TCMalloc used on RHEL8/9 with MongoDB 8.0."
+    echo "$INFO cpu-s390x: s390x detected. Enterprise only. Legacy TCMalloc used with MongoDB 8.0 and later regardless of OS version; disable THP."
     ;;
   *)
     echo "$WARN cpu-arch: Unrecognized architecture $ARCH. Verify MongoDB support."

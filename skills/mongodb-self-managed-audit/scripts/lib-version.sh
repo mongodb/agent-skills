@@ -8,7 +8,8 @@
 #   mongo_normalize_version [value]  canonicalise to major.minor from the accepted set
 #   mongo_version_at_least MAJ MIN   compare the resolved version against a floor
 #   kernel_in_bad_tcmalloc_range     the documented 6.19.0 - 7.0.13 kernel range test
-#   kernel_tcmalloc_status           version-aware verdict: ok|bad_range|ge_619
+#   kernel_tcmalloc_status           version-aware verdict:
+#                                    ok|do_not_use|bad_range|ge_619|ubuntu_needs_upgrade
 #
 # Exports MONGO_VERSION (e.g. 8.3, or "unknown"), MONGO_VERSION_MAJOR,
 # MONGO_VERSION_MINOR and MONGO_VERSION_NUM (major*1000+minor).
@@ -172,10 +173,12 @@ kernel_in_bad_tcmalloc_range() {
 }
 
 # Version-aware kernel verdict, implementing the compatibility matrix in
-# SERVER-125742 (status as of 2026-08-24). rseq behaviour changes in the Linux
+# SERVER-125742 (as read 2026-10-21). rseq behaviour changes in the Linux
 # kernel broke the vendored TCMalloc; kernel 7.0.14+ and 7.1.0+ restore the old
 # userspace behaviour, and mongod's own guard was narrowed to match in 8.0.30,
-# 8.3.9 and 9.0.
+# 8.3.9 and 9.0. Ubuntu reports its kernel as 7.0.0-NNN even when it carries the
+# fix, so the numeric guard stays tripped there until the Ubuntu-aware guard
+# (SERVER-131779) in 8.0.35 and 8.3.14.
 #
 #   MongoDB            kernel <6.19   6.19-7.0.13                  7.0.14+/7.1.0+
 #   7.0 (all)          ok             ok                           ok
@@ -183,26 +186,77 @@ kernel_in_bad_tcmalloc_range() {
 #                                     ~60s, potential corruption
 #   8.0.21 - 8.0.29    ok             exits during startup         exits during startup
 #   8.3.0 - 8.3.8      ok             exits during startup         exits during startup
-#   8.0.30+ 8.3.9+ 9.0 ok             exits during startup         ok
+#   8.0.30-34, 8.3.9-13 ok            exits during startup         ok, except Ubuntu
+#                                                                  kernels labelled 7.0.0
+#   8.0.35+ 8.3.14+ 9.0 ok            exits during startup         ok
 #
 # Echoes one of:
-#   ok              no restriction for this release and kernel
-#   do_not_use      data-loss risk: runs, then crashes, may corrupt
-#   bad_range       mongod refuses to start, kernel 7.0.14+ clears it
-#   ge_619          mongod refuses to start on any kernel >= 6.19; upgrading
-#                   the kernel is not a remedy, only a MongoDB upgrade is
+#   ok                  no restriction for this release and kernel
+#   do_not_use          data-loss risk: runs, then crashes, may corrupt
+#   bad_range           mongod refuses to start, kernel 7.0.14+ clears it
+#   ge_619              mongod refuses to start on any kernel >= 6.19; upgrading
+#                       the kernel is not a remedy, only a MongoDB upgrade is
+#   ubuntu_needs_upgrade  Ubuntu kernel labelled 7.0.0-NNN on a release that
+#                       predates the Ubuntu-aware guard; only a MongoDB upgrade
+#                       to 8.0.35+ or 8.3.14+ clears it
 # and returns 0 for ok, 1 otherwise, so callers can branch either way.
+#
+# The distro comes from the second argument, then MONGO_DISTRO, then the ID in
+# /etc/os-release. A 7.0.0-NNN label on Ubuntu counts as the fixed kernel only
+# when the upstream version Ubuntu records in /proc/version_signature (third
+# argument, then MONGO_KERNEL_SIGNATURE) is 7.0.14 or later; "none" means no
+# signature. Without that evidence the label is scored literally, so an
+# unpatched Ubuntu kernel keeps its strict verdict. Release dates for 8.0.35
+# and 8.3.14 are not stated here.
 #
 # A target with no patch component cannot be placed in a band, so the caller
 # gets the strictest verdict that band could carry. A production gate should
 # not infer a fix it cannot see. Resolve the patch version to score precisely.
-# Usage: kernel_tcmalloc_status [kernel-string]   (default: uname -r)
+# Usage: kernel_tcmalloc_status [kernel-string] [distro-id] [upstream-version]
+kernel_distro_id() {
+  local ID=""
+  if [ -n "${1:-}" ]; then echo "$1"; return 0; fi
+  if [ -n "${MONGO_DISTRO:-}" ]; then echo "$MONGO_DISTRO"; return 0; fi
+  if [ -r /etc/os-release ]; then
+    # shellcheck disable=SC1091
+    ID=$( . /etc/os-release 2>/dev/null; echo "${ID:-}" )
+  fi
+  echo "$ID"
+}
+
+# Upstream kernel version Ubuntu records as the last field of
+# /proc/version_signature, e.g. "Ubuntu 7.0.0-1011.11~24.04.1-gcp 7.0.14".
+# Echoes nothing when the file is absent or the caller passed "none".
+kernel_upstream_signature() {
+  local sig="${1:-${MONGO_KERNEL_SIGNATURE:-}}" line
+  if [ "$sig" = "none" ]; then return 0; fi
+  if [ -n "$sig" ]; then echo "$sig"; return 0; fi
+  if [ -r /proc/version_signature ]; then
+    read -r line < /proc/version_signature || true
+    echo "${line##* }"
+  fi
+}
+
 kernel_tcmalloc_status() {
-  local num p band
+  local num p band distro upstream upstream_num ubuntu_label=0
   num=$(kernel_version_num "${1:-$(uname -r)}") || { echo "ok"; return 0; }
+  distro=$(kernel_distro_id "${2:-}")
 
   # 7.0 is unaffected on every kernel.
   if [ "$MONGO_VERSION" = "7.0" ]; then echo "ok"; return 0; fi
+
+  # Ubuntu labels a kernel carrying the rseq fix as 7.0.0-NNN. Score it as the
+  # fixed kernel only when /proc/version_signature shows upstream 7.0.14 or
+  # later, and let the release band decide whether mongod's guard recognises
+  # that label.
+  if [ "$distro" = "ubuntu" ] && [ "$num" -eq $(( 7 * 1000000 )) ]; then
+    upstream=$(kernel_upstream_signature "${3:-}")
+    if [ -n "$upstream" ] && upstream_num=$(kernel_version_num "$upstream") \
+       && [ "$upstream_num" -gt "$KERNEL_TCMALLOC_HIGH" ]; then
+      ubuntu_label=1
+      num="$upstream_num"
+    fi
+  fi
 
   p="$MONGO_VERSION_PATCH"
 
@@ -210,16 +264,18 @@ kernel_tcmalloc_status() {
     if [ -z "$p" ]; then                 band="unknown"
     elif [ "$p" -le 20 ]; then           band="corrupt"
     elif [ "$p" -le 29 ]; then           band="always"
-    else                                 band="bounded"
+    elif [ "$p" -le 34 ]; then           band="bounded"
+    else                                 band="full"
     fi
   elif [ "$MONGO_VERSION" = "8.3" ]; then
     if [ -z "$p" ]; then                 band="unknown"
     elif [ "$p" -le 8 ]; then            band="always"
-    else                                 band="bounded"
+    elif [ "$p" -le 13 ]; then           band="bounded"
+    else                                 band="full"
     fi
   else
-    # 9.0 and later carry the narrowed guard.
-    band="bounded"
+    # 9.0 and later carry the narrowed, Ubuntu-aware guard.
+    band="full"
   fi
 
   if [ "$num" -lt "$KERNEL_TCMALLOC_LOW" ]; then echo "ok"; return 0; fi
@@ -235,6 +291,9 @@ kernel_tcmalloc_status() {
   # Kernel 7.0.14 or later.
   case "$band" in
     always|unknown) echo "ge_619"; return 1 ;;
-    *)              echo "ok";     return 0 ;;
+    bounded)
+      if [ "$ubuntu_label" -eq 1 ]; then echo "ubuntu_needs_upgrade"; return 1; fi
+      echo "ok"; return 0 ;;
+    *) echo "ok"; return 0 ;;
   esac
 }

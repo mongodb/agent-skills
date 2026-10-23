@@ -181,6 +181,11 @@ open no database connection, so applied runtime state stays out of reach: the
 effective values from `getParameter`, WiredTiger cache usage from
 `serverStatus`, and replica set status.
 
+Per-CPU TCMalloc caches on 8.0 and later (x86_64, arm64) are in this group:
+`tcmalloc.usingPerCPUCaches` should be `true` and `tcmalloc.tcmalloc.cpu_free`
+greater than 0 in `serverStatus`. If not, the documented remedies are disabling
+glibc rseq (`GLIBC_TUNABLES=glibc.pthread.rseq=0`) and Linux 4.18 or later.
+
 Where those values matter, read them through the MongoDB MCP server, which holds
 the credentials. Keep connection strings, usernames, and passwords out of script
 arguments, environment variables, and the report. Where the MCP server is
@@ -203,12 +208,26 @@ Three rules change a verdict. The values behind them are in
 
 - THP guidance inverts at 8.0: enabled on 8.0 and later, disabled on 7.0. Confirm
   the major version before reporting a THP status, because the documented value
-  for one version is a FAIL on the other.
+  for one version is a FAIL on the other. The exception is ppc64le and s390x,
+  where MongoDB uses the legacy TCMalloc at every version regardless of OS
+  version and THP is expected disabled, so `always` is a FAIL there on 8.0 and
+  later.
 - The kernel 6.19 restriction is keyed to the maintenance release, so resolve the
   patch version before scoring it. 7.0 is not affected on any kernel. On 8.0.21
   through 8.0.29 and 8.3.0 through 8.3.8, mongod exits during startup on any
   kernel 6.19 or later, 7.0.14 included, so a kernel upgrade is not a remedy;
   only a MongoDB upgrade clears it.
+- Ubuntu labels a kernel that carries the rseq fix as `7.0.0-NNN`, which the
+  literal version guard still treats as affected. The scripts count that label
+  as the fixed kernel only when `/proc/version_signature` shows upstream 7.0.14
+  or later; otherwise they score it literally. On Ubuntu, 8.0.30 through 8.0.34
+  and 8.3.9 through 8.3.13 still exit during startup on such a kernel; the fix is
+  in MongoDB 8.0.35 and 8.3.14 (SERVER-131779). Upgrading the Ubuntu kernel
+  package does not help while it keeps the 7.0.0 label. Other distros clear the
+  guard from 8.0.30 and 8.3.9 on kernel 7.0.14 or later. None of this applies
+  on a kernel below 6.19: there is no kernel finding, so do not lead with a
+  MongoDB version change. At most, note the label as a caveat for a future
+  kernel upgrade.
 - 8.3 and 9.0 inherit the 8.0-and-later host expectations; no host-level tunable
   differs between them.
 

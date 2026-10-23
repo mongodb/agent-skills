@@ -6,6 +6,7 @@ PASS="[PASS]"
 WARN="[WARN]"
 FAIL="[FAIL]"
 INFO="[INFO]"
+UNKNOWN="[UNKNOWN]"
 
 echo "=== WiredTiger Check ==="
 
@@ -34,6 +35,7 @@ if [[ "$TOTAL_RAM_KB" =~ ^[0-9]+$ ]]; then
     echo "$INFO wiredtiger-cache-recommended: ~${RECOMMENDED_CACHE} GB (default is max(50% of (RAM - 1GB), 0.256GB))"
   fi
 fi
+DEFAULT_CACHE_GB="${RECOMMENDED_CACHE:-}"
 
 # --- Container memory limit ---
 CGROUP_LIMIT=""
@@ -51,26 +53,23 @@ if [ -n "$CGROUP_LIMIT" ] && [ "$CGROUP_LIMIT" != "max" ] && [[ "$CGROUP_LIMIT" 
 fi
 
 # --- cacheSizeGB from config ---
+# Documented rule: avoid increasing the cache above its default (v7.0
+# Configuration File Options). An unset value is the default, so it passes.
+# Decimal GB values are compared with bc; one status is emitted per check.
 if [ -n "$CONF_FILE" ]; then
   CACHE_SIZE=$(grep -E 'cacheSizeGB' "$CONF_FILE" 2>/dev/null | awk -F': ' '{print $2}' | tr -d ' ' | head -1)
   if [ -n "$CACHE_SIZE" ]; then
-    echo "$PASS wiredtiger-cachesize: cacheSizeGB=$CACHE_SIZE explicitly configured"
-    # Check if it's more than 90% of RAM (leaving no room for OS)
-    CACHE_MB=$(echo "$CACHE_SIZE * 1024" | bc 2>/dev/null | cut -d. -f1)
-    RAM_MB=$(echo "$TOTAL_RAM_KB / 1024" | bc 2>/dev/null)
-    if [[ "$CACHE_MB" =~ ^[0-9]+$ ]] && [[ "$RAM_MB" =~ ^[0-9]+$ ]]; then
-      RATIO=$(echo "$CACHE_MB * 100 / $RAM_MB" | bc 2>/dev/null)
-      if [ "$RATIO" -gt 75 ] 2>/dev/null; then
-        echo "$WARN wiredtiger-cachesize: cacheSizeGB=${CACHE_SIZE} is > 75% of RAM — leaves little room for OS and filesystem cache"
-      fi
-    fi
-  else
-    if [[ "$TOTAL_RAM_KB" =~ ^[0-9]+$ ]] && [ "$TOTAL_RAM_KB" -gt 8388608 ]; then
-      echo "$WARN wiredtiger-cachesize: cacheSizeGB not explicitly set and system has >8GB RAM — consider setting explicitly"
-      echo "       Fix: Set storage.wiredTiger.engineConfig.cacheSizeGB in $CONF_FILE"
+    ABOVE_DEFAULT=$(echo "$CACHE_SIZE > ${DEFAULT_CACHE_GB:-0}" | bc 2>/dev/null)
+    if [ -z "$DEFAULT_CACHE_GB" ] || [ -z "$ABOVE_DEFAULT" ]; then
+      echo "$UNKNOWN wiredtiger-cachesize: cacheSizeGB=$CACHE_SIZE configured; could not compare it with the default (RAM or value not readable)"
+    elif [ "$ABOVE_DEFAULT" = "1" ]; then
+      echo "$WARN wiredtiger-cachesize: cacheSizeGB=${CACHE_SIZE} is above the default of ~${DEFAULT_CACHE_GB} GB; MongoDB documents avoiding an increase above the default"
+      echo "       Fix: lower storage.wiredTiger.engineConfig.cacheSizeGB in $CONF_FILE, or remove it to use the default"
     else
-      echo "$INFO wiredtiger-cachesize: Using default (acceptable for small RAM)"
+      echo "$PASS wiredtiger-cachesize: cacheSizeGB=$CACHE_SIZE is at or below the default of ~${DEFAULT_CACHE_GB} GB"
     fi
+  elif ! grep -qE 'cacheSizePct' "$CONF_FILE" 2>/dev/null; then
+    echo "$PASS wiredtiger-cachesize: cacheSizeGB and cacheSizePct not set; the default of max(50% of (RAM - 1GB), 0.256GB) applies"
   fi
 
   # --- cacheSizePct, mutually exclusive with cacheSizeGB ---
@@ -84,7 +83,13 @@ if [ -n "$CONF_FILE" ]; then
       echo "$FAIL wiredtiger-cachesizepct: cacheSizePct=$CACHE_PCT exceeds the documented maximum of 80"
       echo "       Fix: set cacheSizePct to 80 or lower in $CONF_FILE"
     else
-      echo "$PASS wiredtiger-cachesizepct: cacheSizePct=$CACHE_PCT (maximum is 80)"
+      PCT_GB=$(echo "scale=3; $CACHE_PCT * $TOTAL_RAM_KB / 1024 / 1024 / 100" | bc 2>/dev/null)
+      PCT_ABOVE=$(echo "$PCT_GB > ${DEFAULT_CACHE_GB:-0}" | bc 2>/dev/null)
+      if [ -n "$DEFAULT_CACHE_GB" ] && [ "$PCT_ABOVE" = "1" ]; then
+        echo "$WARN wiredtiger-cachesizepct: cacheSizePct=$CACHE_PCT is about ${PCT_GB} GB, above the default of ~${DEFAULT_CACHE_GB} GB; MongoDB documents avoiding an increase above the default (maximum is 80)"
+      else
+        echo "$PASS wiredtiger-cachesizepct: cacheSizePct=$CACHE_PCT (maximum is 80)"
+      fi
     fi
   fi
 
@@ -96,16 +101,6 @@ if [ -n "$CONF_FILE" ]; then
     zlib)   echo "$INFO wiredtiger-compressor: zlib — better compression at higher CPU cost" ;;
     *)      echo "$WARN wiredtiger-compressor: $COMPRESSOR is not one of snappy, zlib, or zstd" ;;
   esac
-
-  # --- Journaling ---
-  JOURNAL=$(grep -E 'journal' "$CONF_FILE" 2>/dev/null | grep -v '#' | head -5)
-  JOURNAL_ENABLED=$(grep -E 'enabled' "$CONF_FILE" 2>/dev/null | grep -i journal | awk -F': ' '{print $2}' | tr -d ' ' | head -1)
-  if [ "$JOURNAL_ENABLED" = "false" ]; then
-    echo "$FAIL wiredtiger-journal: WiredTiger journaling is DISABLED — risk of data loss on crash"
-    echo "       Fix: Remove or set storage.journal.enabled: true in $CONF_FILE"
-  else
-    echo "$PASS wiredtiger-journal: Journaling is enabled (default)"
-  fi
 
   # --- Compression ---
   COMPRESS=$(grep -E 'blockCompressor' "$CONF_FILE" 2>/dev/null | awk -F': ' '{print $2}' | tr -d ' ' | head -1)
