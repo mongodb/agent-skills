@@ -66,6 +66,17 @@ for skill in "${changed_skills[@]}"; do
   # 2. Filter out ::error/::warning/::notice lines before writing to the summary
   skill-validator check --strict --emit-annotations -o markdown "skills/$skill/" \
     > >(tee >(grep -v '^::' >> "${GITHUB_STEP_SUMMARY:-/dev/null}")) 2>&1 || FAILED=1
+
+  # Run any self-tests the skill ships. These assert skill logic the validator
+  # cannot see, such as a version compatibility matrix encoded in a shell lib.
+  while IFS= read -r test_file; do
+    echo "Running $test_file"
+    if ! bash "$test_file"; then
+      echo "::error file=$test_file::skill self-test failed"
+      echo "- \`$test_file\` FAILED" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+      FAILED=1
+    fi
+  done < <(find "skills/$skill/" -type f -name 'test-*.sh' | sort)
 done
 
 if [ $FAILED -ne 0 ]; then
