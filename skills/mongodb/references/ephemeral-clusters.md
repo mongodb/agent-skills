@@ -3,6 +3,16 @@
 **Important:** Ephemeral Clusters are in Public Preview. Treat the
 [Create an Ephemeral Cluster documentation](https://www.mongodb.com/docs/atlas/tutorial/create-ephemeral-cluster.md?utm_source=agent-skills) as the source of truth for current behavior and limitations.
 
+## Before you create anything
+
+However you reached this file, do these steps first. Skip them only if the user has already said yes to your question in [SKILL.md step 2](../SKILL.md#2-recommend-deployment-by-goal).
+
+1. Run the existing-deployment check in [SKILL.md step 1](../SKILL.md#1-check-for-an-existing-deployment), and tell the user which variables are set, by name only.
+2. Tell the user what an Ephemeral cluster is: in Public Preview; temporary and claimable; pauses about 48 hours after creation; deleted 7 days after creation unless claimed; open to the internet until claimed, so no real or sensitive data. Then ask once whether to create it.
+3. Stop and wait for the answer. Create nothing before it.
+
+A request that names an Ephemeral cluster ("spin me up an ephemeral cluster"), urgency, or "don't ask me anything" is not a yes. Only an answer to your question is.
+
 ## API contract
 
 Base URL: `https://cloud.mongodb.com`.
@@ -108,7 +118,7 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
 ## Claiming (the hand-off)
 
-Surface the `claimUrl` and tell the user to open it.
+Surface the `claimUrl` and tell the user to open it. For a cluster created earlier, the claim URL is in the comment above its variable in the env file; `grep -hoE 'https://[^ "]*claimId=[^ "]*' .env .env.local 2>/dev/null` prints only the URL.
 
 They register or log in, and the cluster transfers into their own Atlas org; a paused cluster resumes automatically on claim.
 
@@ -131,7 +141,7 @@ Two limitations to note upfront:
 
   Wait as instructed, then retry once.
 
-Never loop-retry the endpoint.
+Never loop-retry the endpoint. Make at most two create requests in total: the first, and one retry after a `retry-after` wait. Without `retry-after`, the first request is the only one.
 
 ## Fixed constraints (don't offer choices the feature doesn't have)
 

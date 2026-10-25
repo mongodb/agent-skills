@@ -1,6 +1,6 @@
 ---
 name: mongodb
-description: Front door for MongoDB and MongoDB Atlas. Use when the user mentions "MongoDB" or "Atlas", or for "document database", "NoSQL", "BSON", "Mongoose", "PyMongo", "RAG", "Vector Search", "aggregation pipeline", "change streams", or "backend", or needs a new or temporary database. Also, use for answers to general MongoDB development questions (CRUD, transactions, drivers and ODMs, server versions) from current docs. This skill recommends a deployment, gets the user connected, and routes each task to the matching MongoDB skill. Do NOT use it when you have access to a more specific MongoDB skill that matches the task, such as schema design, query writing or optimization, search and vector search, stream processing, connection tuning, or MCP server setup; load that skill instead.
+description: Front door for MongoDB and MongoDB Atlas. Use it before answering which database, MongoDB deployment, Atlas tier, or database hosting to use, even for advice-only questions, and before setting up, provisioning, or connecting to MongoDB or Atlas. Also use when the user mentions "MongoDB", "Atlas", "document database", "NoSQL", "BSON", "Mongoose", "PyMongo", "RAG", "Vector Search", "aggregation pipeline", "change streams", or "backend", and for general MongoDB development questions (CRUD, transactions, drivers and ODMs, server versions) from current docs. If a more specific MongoDB skill is installed and matches the task (schema design, query writing or optimization, search and vector search, stream processing, connection tuning, MCP server setup), load that instead; if it isn't installed, use this skill, which routes to it.
 license: Apache-2.0
 metadata:
   version: "1.0.0"
@@ -18,18 +18,18 @@ Never print environment variable or env file values, not even to check them. To 
 
 ## Route by task
 
-| The user wants to…                                                                                                                                                                 | Go to                                                                                                                                                                          |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Get a database, or doesn't have one yet                                                                                                                                            | [Recommend a deployment](#recommend-a-deployment)                                                                                                                                              |
+| The user wants to… | Go to |
+| --- | --- |
+| Get a database, or doesn't have one yet | [Recommend a deployment](#recommend-a-deployment) |
 | Choose between Atlas, local, and self-managed deployments | Step 2 of [Recommend a deployment](#2-recommend-deployment-by-goal); run step 1 before setting anything up |
-| Model application data: choose document shapes, decide when to embed or reference, migrate relational data, avoid unbounded arrays, enforce validation, or model time-series data. | mongodb-schema-design                                                                                                                                                          |
-| Describe a question in plain English and get a safe, read-only MongoDB find query or aggregation pipeline.                                                                         | mongodb-natural-language-querying                                                                                                                                              |
-| Diagnose or improve a slow query, select or validate indexes, interpret explain() output, or use Atlas Performance Advisor recommendations.                                        | mongodb-query-optimizer                                                                                                                                                        |
-| Build full-text, semantic/vector, or hybrid search, including: RAG, autocomplete, typo tolerance, fuzzy matching, and relevance tuning.                                            | mongodb-search-and-ai                                                                                                                                                          |
-| Build or troubleshoot real-time stream processing, including Kafka, S3, Lambda, change-stream, source, and sink integrations.                                                      | mongodb-atlas-stream-processing                                                                                                                                                |
-| Configure driver connection pools and timeouts, reuse clients in serverless environments, or troubleshoot connection errors.                                                       | mongodb-connection                                                                                                                                                             |
-| Configure, authenticate, or troubleshoot credentials for the MongoDB MCP Server.                                                                                                   | mongodb-mcp-setup                                                                                                                                                              |
-| Anything else in MongoDB: CRUD, aggregation syntax, transactions, change streams, drivers and ODMs (Node, PyMongo, Mongoose, Go, Java, C#)                                         | Stay here. Fetch current docs via [Fetch relevant docs](#fetch-relevant-docs) — the drivers index for driver and ODM questions, the top-level index for everything else. |
+| Model application data: choose document shapes, decide when to embed or reference, migrate relational data, avoid unbounded arrays, enforce validation, or model time-series data. | mongodb-schema-design |
+| Describe a question in plain English and get a safe, read-only MongoDB find query or aggregation pipeline. | mongodb-natural-language-querying |
+| Diagnose or improve a slow query, select or validate indexes, interpret explain() output, or use Atlas Performance Advisor recommendations. | mongodb-query-optimizer |
+| Build full-text, semantic/vector, or hybrid search, including: RAG, autocomplete, typo tolerance, fuzzy matching, and relevance tuning. | mongodb-search-and-ai |
+| Build or troubleshoot real-time stream processing, including Kafka, S3, Lambda, change-stream, source, and sink integrations. | mongodb-atlas-stream-processing |
+| Configure driver connection pools and timeouts, reuse clients in serverless environments, or troubleshoot connection errors. | mongodb-connection |
+| Configure, authenticate, or troubleshoot credentials for the MongoDB MCP Server. | mongodb-mcp-setup |
+| Anything else in MongoDB: CRUD, aggregation syntax, transactions, change streams, drivers and ODMs (Node, PyMongo, Mongoose, Go, Java, C#) | Stay here. Fetch current docs via [Fetch relevant docs](#fetch-relevant-docs) — the drivers index for driver and ODM questions, the top-level index for everything else. |
 
 
 When the task matches one of the skills listed:
@@ -72,8 +72,8 @@ First, discard any option the feature can't do. Never recommend or offer:
 
 Then rank what's left. When signals conflict, the higher rule wins:
 
-1. **Safety.** Check for an existing deployment, don't create resources in a paid organization without asking, don't put sensitive data on an unclaimed Ephemeral cluster, don't print secrets or ask for a password in chat, don't write a connection string to a tracked file, don't add `0.0.0.0/0` without explicit permission, don't run `atlas setup` or `atlas auth login` yourself, and ask before provisioning, installing, or creating users or access-list entries. An explicit instruction never overrides these.
-2. **Explicit instruction.** The user names a deployment, or says not to reuse what they have.
+1. **Safety.** Check for an existing deployment, don't create resources in a paid organization without asking, don't put sensitive data on an unclaimed Ephemeral cluster, don't print secrets or ask for a password in chat, don't write a connection string to a tracked file, don't add `0.0.0.0/0` without explicit permission, don't run `atlas setup` or `atlas auth login` yourself, and ask before provisioning, installing, or creating users or access-list entries. Starting any database counts, even a throwaway test instance (`docker run`, `docker compose up`, `atlas local setup`, `brew`/`apt install`, `mongod`). An explicit instruction never overrides these.
+2. **Explicit instruction.** The user names a deployment, or says not to reuse what they have. This picks the deployment but doesn't authorize provisioning: "spin me up an ephemeral cluster" or "don't ask me anything" isn't a yes; only an answer to your step 2 question is.
 3. **Hard constraint.** A requirement the deployment must meet: data beyond Free cluster limits, a production workload, offline work, or compliance.
 4. **Blocker.** Something that stops a path today: the user can't sign in, the Atlas CLI is missing, Docker isn't running, or Ephemeral provisioning hit the hourly cap.
 5. **Goal.** The row in [step 2](#2-recommend-deployment-by-goal) that matches what they're trying to do.
@@ -83,7 +83,7 @@ When a higher rule overrides a lower one, say in one sentence what the lower one
 
 ### 1. Check for an existing deployment
 
-Run this check even when the user explicitly asks for a new deployment. Use the two commands below as your only look at the environment. Never repeat any part of a value (user, password, or host) in the conversation.
+Run this check even when the user explicitly asks for a new deployment. Use the two commands below as your only look at the environment; both print variable names, not values. Don't inspect the environment or an env file any other way, before or after, except with a command this skill gives you: no `env`, `printenv`, `set`, `echo $VAR`, `${VAR:-…}`, `env | grep …`, `cat .env`, or `node -e 'console.log(process.env…)'`, and no masking a value with `sed`. Never repeat any part of a value (user, password, or host) in the conversation.
 
 ```bash
 env | cut -d= -f1 | grep -E 'MONGODB_URI|MDB_MCP_CONNECTION_STRING|DATABASE_URL'
@@ -100,18 +100,17 @@ Match the output to one of the following cases:
 ### 2. Recommend deployment by goal
 
 
-| Their goal                                                         | Recommend                | Why                                                                                                                                                                 |
-| ------------------------------------------------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ship an application they intend to keep                            | Atlas Free cluster to start | The default. A persistent, managed deployment that grows past Free cluster limits and includes the Atlas services.                                               |
-| Evaluate MongoDB, or assess production requirements                | Atlas Free cluster       | Free cluster limits fit most evaluations. Ask a follow-up only when workload, capacity, availability, or compliance requirements point to a Flex or Dedicated cluster. |
-| Build RAG, semantic, or full-text search                           | Atlas Free cluster to start | MongoDB Search and Vector Search are fully managed on Atlas; self-managed support needs extra setup.                                                          |
-| Build streaming or event pipelines                                 | Atlas Free cluster to start | Stream Processing is cloud-only, needs Atlas API credentials, and bills per running stream processor even on a Free cluster. Free cluster throughput limits suit testing, not sustained streams. |
-| Run a production workload                                          | Atlas Dedicated cluster  | Free clusters are shared and limited to 512 MB. This size limit makes them unsuitable for production workloads.                                                     |
-| Develop offline, or run Atlas locally                              | Local Atlas deployment   | Runs on Docker and supports local development workflows, including MongoDB Search and Vector Search.                                                                 |
-| Operate MongoDB themselves, on their own machine or infrastructure | Self-managed deployment  | The user explicitly wants to manage all aspects of their deployment. They own upgrades, backups, monitoring, and security.                                          |
-| Prototype MongoDB, POC, demo, or hackathon project                 | Atlas Ephemeral cluster  | A live, claimable Atlas connection with no signup. Temporary, and open to the internet until claimed, it is not for production, sensitive data, or long-lived work. |
-| Get a database with no login or authentication                     | Atlas Ephemeral cluster  | Provisions with no Atlas account, CLI, or login. The user can claim it into an Atlas account later to keep their work.                                              |
-
+| Their goal | Recommend | Why |
+| --- | --- | --- |
+| Ship an application they intend to keep | Atlas Free cluster to start | The default. A persistent, managed deployment that grows past Free cluster limits and includes the Atlas services. |
+| Evaluate MongoDB, or assess production requirements | Atlas Free cluster | Free cluster limits fit most evaluations. Ask a follow-up only when workload, capacity, availability, or compliance requirements point to a Flex or Dedicated cluster. |
+| Build RAG, semantic, or full-text search | Atlas Free cluster to start | MongoDB Search and Vector Search are fully managed on Atlas; self-managed support needs extra setup. |
+| Build streaming or event pipelines | Atlas Free cluster to start | Stream Processing is cloud-only, needs Atlas API credentials, and bills per running stream processor even on a Free cluster. Free cluster throughput limits suit testing, not sustained streams. |
+| Run a production workload | Atlas Dedicated cluster | Free clusters are shared and limited to 512 MB. This size limit makes them unsuitable for production workloads. |
+| Develop offline, or run Atlas locally | Local Atlas deployment | Runs on Docker and supports local development workflows, including MongoDB Search and Vector Search. |
+| Operate MongoDB themselves, on their own machine or infrastructure | Self-managed deployment | The user explicitly wants to manage all aspects of their deployment. They own upgrades, backups, monitoring, and security. |
+| Prototype MongoDB, POC, demo, or hackathon project | Atlas Ephemeral cluster | A live, claimable Atlas connection with no signup, even when Docker is available locally. Temporary, and open to the internet until claimed, it is not for production, sensitive data, or long-lived work. |
+| Get a database with no login or authentication | Atlas Ephemeral cluster | Provisions with no Atlas account, CLI, or login. The user can claim it into an Atlas account later to keep their work. |
 
 When you recommend a Free, Flex, or Dedicated cluster and the Atlas CLI is installed, run `atlas auth whoami 2>/dev/null` before you answer; it is read-only. If it shows a login, run `atlas orgs list` and name the account and organization in your recommendation, so the user can confirm it or switch before any setup. The paid-organization rule in [Before an Atlas path](#before-an-atlas-path) applies. If it shows no login, leave it out.
 
@@ -153,7 +152,7 @@ atlas auth whoami 2>/dev/null
 - **Starts with `Logged in as`**: run `atlas orgs list` and tell the user which account and organization the CLI is using. If they already confirmed the organization in step 2, don't ask again. Otherwise, reuse the login only after the user confirms that organization is where this project belongs. If it looks like an employer's or production organization and the project is personal, ask which organization to use or suggest a personal account. **Never create cloud resources in someone's paid organization without asking.**
 - **Nothing**: the CLI isn't signed in. Ask the user to run `atlas auth login` themselves, and wait for their answer:
   - **They signed in**: run `atlas auth whoami 2>/dev/null` again and match the new output.
-  - **They can't sign in right now**: keep the recommendation from step 2. If an Atlas cluster is the right deployment, say so and let them sign in later. Offer an Ephemeral Cluster only when the user wants to start building immediately — and tell them it can be claimed into an Atlas account afterward, so the work carries over. If they mention SSO or a federated organization, also give them the claim requirement from [Ephemeral Clusters](#ephemeral-clusters).
+  - **They can't sign in right now**: keep the recommendation from step 2. If an Atlas cluster is the right deployment, say so and let them sign in later. Offer an Ephemeral Cluster only when the user wants to start building immediately — and tell them it can be claimed into an Atlas account afterward, so the work carries over. If they mention SSO or a federated organization, also tell them that claiming into an organization requires the Organization Owner role there.
 
 ### Atlas Free, Flex or Dedicated cluster
 
@@ -209,9 +208,7 @@ Replace `.env` and `MONGODB_URI` with the file and variable you used. If `mongos
 
 ## Ephemeral Clusters
 
-Inform the user that this feature is in Public Preview. Provisioning returns a connection string and a claim URL. The deployment pauses at expiresAt (about 48 hours if unclaimed) and is deleted seven days after creation unless it is claimed. Tell the user to claim it to retain their work, and never put sensitive or production data on it before claiming. Claiming into an existing organization requires the Organization Owner role there.
-
-To provision an Ephemeral cluster, read `references/ephemeral-clusters.md`.
+To provision an Ephemeral cluster, claim one, or find the claim URL of one created earlier, read `references/ephemeral-clusters.md`.
 
 ## Gotchas
 
@@ -220,6 +217,4 @@ To provision an Ephemeral cluster, read `references/ephemeral-clusters.md`.
 - **IP access list is the most common Atlas connection failure** — a timeout usually means the IP is not allowed, not that the password is wrong.
 - **Free cluster (M0) limits**: 512 MB including indexes, 500 connections, ~100 ops/sec. Free clusters allow 3 MongoDB Search and Vector Search indexes total (Flex allows 10). Moving to a higher tier rebuilds them.
 - **`$vectorSearch` must be the first stage** of its pipeline, and cannot run inside a `$lookup` sub-pipeline, a `$facet` stage, or a view definition. To match documents across collections by meaning, run `$vectorSearch` on one collection and `$lookup` from its results. Route the design to the `mongodb-search-and-ai` skill.
-- **Ephemeral Clusters allow** `0.0.0.0/0`**.** Prototyping only, never production or real customer data.
 - **Percent-encode** any `@`, `:`, `/`, or `%` in connection string credentials.
-- **Never write a connection string** into source or a non-gitignored file.
