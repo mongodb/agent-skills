@@ -72,7 +72,7 @@ First, discard any option the feature can't do. Never recommend or offer:
 
 Then rank what's left. When signals conflict, the higher rule wins:
 
-1. **Safety.** Check for an existing deployment, don't create resources in a paid organization without asking, don't put sensitive data on an unclaimed Ephemeral cluster, don't print secrets or ask for a password in chat, don't write a connection string to a tracked file, don't add `0.0.0.0/0` without explicit permission, don't run `atlas setup` or `atlas auth login` yourself, and ask before provisioning, installing, or creating users or access-list entries. Starting any database counts, even a throwaway test instance (`docker run`, `docker compose up`, `atlas local setup`, `brew`/`apt install`, `mongod`). An explicit instruction never overrides these.
+1. **Safety.** Check for an existing deployment, don't create resources in a paid organization without asking, warn before real or sensitive data goes on an unclaimed Ephemeral cluster, don't print secrets or ask for a password in chat, don't write a connection string to a tracked file, don't add `0.0.0.0/0` without explicit permission, don't run `atlas setup` or `atlas auth login` yourself, and ask before provisioning, installing, or creating users or access-list entries. Starting any database counts, even a throwaway test instance (`docker run`, `docker compose up`, `atlas local setup`, `brew`/`apt install`, `mongod`). An explicit instruction never overrides these. The data warning is about what goes on the cluster, not which deployment to use: if the user asked for an Ephemeral cluster, keep it, warn them, and let them decide; don't offer Docker or a local deployment instead.
 2. **Explicit instruction.** The user names a deployment, or says not to reuse what they have. This picks the deployment but doesn't authorize provisioning: "spin me up an ephemeral cluster" or "don't ask me anything" isn't a yes; only an answer to your step 2 question is.
 3. **Hard constraint.** A requirement the deployment must meet: data beyond Free cluster limits, a production workload, offline work, or compliance.
 4. **Blocker.** Something that stops a path today: the user can't sign in, the Atlas CLI is missing, Docker isn't running, or Ephemeral provisioning hit the hourly cap.
@@ -92,7 +92,7 @@ grep -oE '^(export )?(MONGODB_URI|MONGO_URL|MDB_MCP_CONNECTION_STRING|DATABASE_U
 
 Match the output to one of the following cases:
 
-- **No variable names:** continue to step 2.
+- **No variable names:** continue to step 2. If the task needs a database the user didn't mention, say that no database is configured and recommend an Ephemeral cluster unless a hard constraint rules it out, so they can start now or fix the connection they expected.
 - **One or more variable names:** list the variables that are set, and say whether each one is set in the shell or in an env file. Then:
   - **The user explicitly asked for a new deployment:** don't offer them as the deployment. Continue to step 2.
   - **Otherwise:** if `DATABASE_URL` is set, note that it might point to a non-MongoDB database. Ask the user which deployment to connect to, or "none" to recommend a new deployment. A request for a new database isn't an explicit request for a new deployment: MongoDB creates databases on first write. If they pick a variable, continue in [Get connected](#get-connected) with it. If they pick "none", continue to step 2.

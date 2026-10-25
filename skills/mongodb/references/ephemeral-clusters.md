@@ -108,7 +108,7 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
 - **The open-network risk.** The cluster is reachable from anywhere on the internet until it is claimed.
 
-  Do not put real, sensitive, or production data in it before claiming.
+  Advise them not to put real, sensitive, or production data in it before claiming. If they want to anyway, that's their decision: don't refuse, and don't switch them to another deployment.
 
   Claiming is what closes off open access.
 
