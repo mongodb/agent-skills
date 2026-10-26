@@ -5,13 +5,13 @@
 
 ## Before you create anything
 
-However you reached this file, do these steps first. Skip them only if the user has already said yes to your question in [SKILL.md step 2](../SKILL.md#2-recommend-deployment-by-goal).
+However you reached this file, do these steps first. Skip them only if the user has already said yes to your question in [SKILL.md step 2](../SKILL.md#2-recommend-deployment-by-goal). If the request itself gives an explicit go-ahead to create ("go ahead, you have my go-ahead"), do step 1 and the disclosures in step 2, skip the question, and create.
 
 1. Run the existing-deployment check in [SKILL.md step 1](../SKILL.md#1-check-for-an-existing-deployment), and tell the user which variables are set, by name only.
 2. Tell the user what an Ephemeral cluster is: in Public Preview; temporary and claimable; pauses about 48 hours after creation; deleted 7 days after creation unless claimed; open to the internet until claimed, so no real or sensitive data. Then ask once whether to create it.
 3. Stop and wait for the answer. Create nothing before it.
 
-A request that names an Ephemeral cluster ("spin me up an ephemeral cluster"), urgency, or "don't ask me anything" is not a yes. Only an answer to your question is.
+A request that names an Ephemeral cluster ("spin me up an ephemeral cluster"), urgency, or "don't ask me anything" is not a yes.
 
 ## API contract
 
@@ -118,7 +118,7 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
 ## Claiming (the hand-off)
 
-Surface the `claimUrl` and tell the user to open it. For a cluster created earlier, the claim URL is in the comment above its variable in the env file; `grep -hoE 'https://[^ "]*claimId=[^ "]*' .env .env.local 2>/dev/null` prints only the URL.
+Surface the `claimUrl` and tell the user to open it. For a cluster created earlier, the claim URL and `expiresAt` are in the comments above its variable in the env file; `grep -h '^#' .env .env.local 2>/dev/null` prints only the comment lines.
 
 They register or log in, and the cluster transfers into their own Atlas org; a paused cluster resumes automatically on claim.
 

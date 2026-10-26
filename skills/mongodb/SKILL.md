@@ -73,7 +73,7 @@ First, discard any option the feature can't do. Never recommend or offer:
 Then rank what's left. When signals conflict, the higher rule wins:
 
 1. **Safety.** Check for an existing deployment, don't create resources in a paid organization without asking, warn before real or sensitive data goes on an unclaimed Ephemeral cluster, don't print secrets or ask for a password in chat, don't write a connection string to a tracked file, don't add `0.0.0.0/0` without explicit permission, don't run `atlas setup` or `atlas auth login` yourself, and ask before provisioning, installing, or creating users or access-list entries. Starting any database counts, even a throwaway test instance (`docker run`, `docker compose up`, `atlas local setup`, `brew`/`apt install`, `mongod`). An explicit instruction never overrides these. The data warning is about what goes on the cluster, not which deployment to use: if the user asked for an Ephemeral cluster, keep it, warn them, and let them decide; don't offer Docker or a local deployment instead.
-2. **Explicit instruction.** The user names a deployment, or says not to reuse what they have. This picks the deployment but doesn't authorize provisioning: "spin me up an ephemeral cluster" or "don't ask me anything" isn't a yes; only an answer to your step 2 question is.
+2. **Explicit instruction.** The user names a deployment, or says not to reuse what they have. This picks the deployment but doesn't authorize provisioning: "spin me up an ephemeral cluster" or "don't ask me anything" isn't a yes; an explicit go-ahead to create is, in the request or as the answer to your step 2 question.
 3. **Hard constraint.** A requirement the deployment must meet: data beyond Free cluster limits, a production workload, offline work, or compliance.
 4. **Blocker.** Something that stops a path today: the user can't sign in, the Atlas CLI is missing, Docker isn't running, or Ephemeral provisioning hit the hourly cap.
 5. **Goal.** The row in [step 2](#2-recommend-deployment-by-goal) that matches what they're trying to do.
@@ -83,7 +83,7 @@ When a higher rule overrides a lower one, say in one sentence what the lower one
 
 ### 1. Check for an existing deployment
 
-Run this check even when the user explicitly asks for a new deployment. Use the two commands below as your only look at the environment; both print variable names, not values. Don't inspect the environment or an env file any other way, before or after, except with a command this skill gives you: no `env`, `printenv`, `set`, `echo $VAR`, `${VAR:-…}`, `env | grep …`, `cat .env`, or `node -e 'console.log(process.env…)'`, and no masking a value with `sed`. Never repeat any part of a value (user, password, or host) in the conversation.
+Run this check even when the user explicitly asks for a new deployment. Use the two commands below as your only look at the environment; both print variable names, not values. Don't inspect the environment or an env file any other way, before or after, except with a command this skill gives you, or `env` or env-file output piped through `sed 's/=.*/=<set>/'`: no `printenv`, `set`, `echo $VAR`, `${VAR:-…}`, unmasked `env` or `cat .env`, or `node -e 'console.log(process.env…)'`, and no mask that keeps part of a value. Never repeat any part of a value (user, password, or host) in the conversation.
 
 ```bash
 env | cut -d= -f1 | grep -E 'MONGODB_URI|MDB_MCP_CONNECTION_STRING|DATABASE_URL'
