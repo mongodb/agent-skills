@@ -122,7 +122,7 @@ Then ask whether to set it up now, and don't continue until they answer. Continu
 
 Start this section only after the user agrees, in step 2, to set up a deployment.
 
-Go to the subsection for the deployment the user agreed to. For a Free, Flex, or Dedicated cluster, start with [Before an Atlas path](#before-an-atlas-path). For an Ephemeral cluster, go straight to [Ephemeral Clusters](#ephemeral-clusters); it needs no CLI or login and handles its own connection.
+Go to the subsection for the deployment the user agreed to. For a Free, Flex, or Dedicated cluster, start with [Before an Atlas path](#before-an-atlas-path). For an Ephemeral cluster, go straight to [Atlas Ephemeral cluster](#atlas-ephemeral-cluster); it needs no CLI or login and handles its own connection.
 
 If MongoDB MCP Server tools are available in this session, use them for the Atlas steps below and in [Get connected](#get-connected). Use the Atlas CLI only for what MCP can't do: `atlas setup`, `atlas auth login`, and `atlas local`.
 
@@ -166,6 +166,10 @@ It creates an account if needed, a Free cluster, and a database user. Print the 
 
 Then continue in [Get connected](#get-connected).
 
+### Atlas Ephemeral cluster
+
+To provision an Ephemeral cluster, claim one, or find the claim URL of one created earlier, read `references/ephemeral-clusters.md`.
+
 ### Local Atlas deployment
 
 This needs the Atlas CLI but no Atlas login. If `atlas --version` fails, install the CLI as shown in [Before an Atlas path](#before-an-atlas-path), and skip its sign-in check.
@@ -205,10 +209,6 @@ Write the value in double quotes (`MONGODB_URI="mongodb+srv://…"`), so an `&` 
 ```
 
 Replace `.env` and `MONGODB_URI` with the file and variable you used. If `mongosh` isn't installed (`command not found`), ping with the project's driver if it already has one (for example `node --env-file=.env`). If neither works, ask the user whether to install `mongosh`, or tell them the connection is unverified and let them check it themselves. Don't install it without their answer. If they agree, on macOS run `brew install mongosh`. On Windows and Linux, point them to the [install docs](https://www.mongodb.com/docs/mongodb-shell/install.md?utm_source=agent-skills) and let them drive, as with [Self-managed deployment](#self-managed-deployment). `{ ok: 1 }` means connected. Then start building. On Atlas, a timeout almost always means the access list, not the password.
-
-## Ephemeral Clusters
-
-To provision an Ephemeral cluster, claim one, or find the claim URL of one created earlier, read `references/ephemeral-clusters.md`.
 
 ## Gotchas
 

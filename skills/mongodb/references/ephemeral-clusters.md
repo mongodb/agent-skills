@@ -26,7 +26,7 @@ POST /api/atlas/v2/unauth/ephemeralClusters:create
 Accept: application/vnd.atlas.preview+json     <-- REQUIRED, exact version
 Content-Type: application/json
 
-{ "clusterName": "optional-name" }     // body optional; omit to default to Cluster0
+{ "clusterName": "optional-name" }     // body required: send {} to default to Cluster0
 ```
 
 Success is `201` with this body:
@@ -44,7 +44,7 @@ Success is `201` with this body:
 
 Error responses:
 
-- `400` — invalid `clusterName`.
+- `400` — invalid `clusterName`, or no body (`INVALID_JSON`): send `{}`.
 - `429` — two distinct cases, handle differently (see "When provisioning is refused").
 - `500` — server error.
 
@@ -62,7 +62,7 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
 1. POST the create endpoint above.
 
-   Include `clusterName` only if the user named it.
+   Include `clusterName` only if the user named it; otherwise send `{}`. With `Content-Type: application/json`, an empty body returns `400 INVALID_JSON`.
 
    Save the response body to a file outside the project (for example `curl -o "$TMPDIR/ec-create.json"`) instead of printing it. It holds the only copy of the real password; the status endpoint redacts it.
 
