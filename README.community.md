@@ -64,6 +64,16 @@ Install the plugin from the GitHub repository: `/plugin install https://github.c
 
 To install just the agent skills without a plugin — via the Agent Skills Directory or a local clone — see [Installing the skills directly](README.md#installing-the-skills-directly) in the main README.
 
+### Kiro
+
+1. Open the **Powers** panel and choose **Add power from GitHub**, then enter:
+
+   ```
+   https://github.com/mongodb/agent-skills/tree/main/plugins/mongodb/.kiro-plugin
+   ```
+
+2. When prompted, configure `MDB_MCP_CONNECTION_STRING` (and optionally the `MDB_MCP_API_CLIENT_ID` / `MDB_MCP_API_CLIENT_SECRET` Atlas Service Account variables).
+
 ## Configuration
 
 Using the MCP Server to connect to MongoDB requires authentication - you can use the `mongodb-mcp-setup` skill to guide you through the process. Alternatively, refer to the [MongoDB MCP server documentation](https://www.mongodb.com/docs/mcp-server/configuration/options/) for a full list of configuration options.

@@ -29,6 +29,7 @@ backs all of them:
 | Codex | `mongodb`, `mongodb-atlas` | `.agents/plugins/marketplace.json` | `plugins/<name>/.codex-plugin/plugin.json` |
 | Grok (xAI) | `mongodb`, `mongodb-atlas` | `.grok-plugin/marketplace.json` | `plugins/<name>/.grok-plugin/plugin.json` |
 | Copilot / VS Code | `mongodb-atlas` only | `.github/plugin/marketplace.json` | `plugins/<name>/.github/plugin/plugin.json` |
+| Kiro | `mongodb`, `mongodb-atlas` | _(none)_ | `plugins/<name>/.kiro-plugin/plugin.json` |
 | Antigravity | `mongodb`, `mongodb-atlas` | _(none — Google-curated only)_ | `plugins/<name>/.antigravity-plugin/plugin.json` |
 
 The plugin format is shared across Grok, Copilot, VS Code, and Claude —
