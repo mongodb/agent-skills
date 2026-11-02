@@ -1,0 +1,124 @@
+{
+  "skill_name": "mongodb-qe-size-estimation",
+  "evals": [
+    {
+      "id": 1,
+      "name": "manual-inputs",
+      "workflow": [
+         { "turn": 1, 
+           "prompt": "I want to use QE to encrypt some fields in this collection. How big will it be?"
+         },
+         { "turn": 2, 
+           "prompt": "Manually" 
+         },
+         { "turn": 3, 
+           "prompt": "3 million" 
+         },
+         { "turn": 4, 
+           "prompt": "1"
+         },
+         { "turn": 5, 
+           "prompt": "2"
+         },
+         { "turn": 6, 
+           "prompt": "SSN, not queryable"
+         },
+         { "turn": 7, 
+           "prompt": "11"
+         },
+         { "turn": 8, 
+           "prompt": "lastname, with substring queries. It's usually about 20 characters."
+         },
+         { "turn": 9, 
+           "prompt": "max length 30, lower bound 3, upper bound 6"
+         },
+         { "turn": 10, 
+           "prompt": "username, with prefix and suffix queries. Usually 10 characters. Lower bound 2, upper bound 4."
+         }
+      ],
+      "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
+      "expectations": [
+         "For the username field, the agent sets lb_prefix and lb_suffix to 2, and ub_prefix and ub_suffix to 4.",
+         "The agent does not set plain lb or ub values for fields that have both prefix and suffix queries enabled",
+         "After getting all inputs, the agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions.",
+         "Total disk storage impact is 135.81 GB",
+         "Total memory impact is 16.61 GiB",
+         "The top field by impact is lastname",
+         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/lb_prefix/ub_prefix/lb_suffix/ub_suffix/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory, match those in expected/qe-sizing-calculations-1.md. Intermediate formulas or formatting may diverge.",
+         "Advice prose correctly derives any new values by recomputing the corresponding formula"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "encryption-schema-input",
+      "files": ["assets/sample-schema.json"],
+      "workflow": [
+         { "turn": 1,
+           "prompt": "I'm using Queryable Encryption and want to know how much bigger my collection will get. The collection has about 3 million documents. Here's my encryption schema."
+         },
+         { "turn": 2,
+           "prompt": "ssn is about 11 bytes, name averages 20, username is 10, bio is usually 200, userId is 8, profile runs about 500, and idScan averages 20000."
+         }
+      ],
+      "expected_output": "Agent should calculate intermediate values and final results, written to a qe-sizing-calculations.md file.",
+      "expectations": [
+         "On turn 1, the user provides an encryption schema and the document count. The agent invokes the skill, validates the schema, and records numUnindexed 2, numIndexed 7, and numEntries 9",
+         "The agent asks for the average byte length (v) of ssn, bio, userId, profile, idScan, username, and name fields",
+         "The agent doesn't ask for v for balance or birthdate.",
+         "The agent informs the user that balance and birthdate use range queries, which have no sizing formula, so their impact is estimated as 0",
+         "On turn 2, the user provides the v values. The agent calculates results and outputs Total Disk Storage Impact, Required Memory, and Fields by Impact to the user, along with suggestions",
+         "The agent does not set lb_prefix or ub_prefix values for the username field.",
+         "Total disk storage impact is 314.51 GB",
+         "Total memory impact is 30.99 GiB",
+         "The top field by impact is bio",
+         "The recorded values in the agent's qe-sizing-calculations.md file: each entry's mlen/lb/ub/lb_prefix/ub_prefix/lb_suffix/ub_suffix/v, T, and Document Storage, plus N, numUnindexed, numIndexed, T_Total, Index Storage, Total Disk Storage, and Memory, match those in expected/qe-sizing-calculations-2.md. Intermediate formulas or formatting may diverge.",
+         "Advice prose correctly derives any new values by recomputing the corresponding formula"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "encryption-schema-input-2",
+      "prompt": "I'm using Queryable Encryption and want to know how much bigger my collection will get. The collection has about 3 million documents. Here's my encryption schema.",
+      "files": ["assets/sample-schema-2.json"],
+      "expected_output": "Agent rejects the provided schema as invalid and stops skill execution awaiting valid inputs.",
+      "expectations": [
+         "The agent invokes the skill and validates the schema against the skill's validation rules",
+         "The email and bio fields fail validation because the only valid multi-query configuration is prefix + suffix", 
+         "The age field fails validation because only prefix + suffix may be combined.",
+         "The count field fails validation because int fields only support equality or range query types", 
+         "The note field fails validation because string fields don't support range queries", 
+         "The meta field fails validation because object fields only support unindexed encryption",
+         "The labels field fails validation either because it uses a Public Preview query type, or because substringPreview isn't one of the explicitly listed valid types",
+         "The agent does NOT state that the fields 'ssn' and 'name' are invalid",
+         "The agent rejects the schema and doesn't proceed. It doesn't run any calculations or request byte length data since the user didn't provide valid input."
+      ]
+    },
+    {
+      "id": 4,
+      "name": "csfle-collection",
+      "prompt": "We're encrypting several fields in our users collection with Client-Side Field Level Encryption and I want to plan capacity. How much extra storage will the encrypted fields add, and how much memory do we need?",
+      "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for CSFLE.",
+      "expectations": [
+         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "unencrypted-collection",
+      "prompt": "How can I estimate how much disk space my MongoDB collection will use as it grows?",
+      "expected_output": "This is a negative test case. The QE sizing skill should NOT be invoked for estimating the size of unencrypted collections",
+      "expectations": [
+         "The mongodb-qe-size-estimation skill is NOT invoked for this prompt"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "sample-data",
+      "prompt": "I'm using Queryable Encryption and want to know how much bigger my collection will get. The collection has about 3 million documents. Here's a sample document that shows encrypted fields.",
+      "expected_output": "Agent rejects the sample document for security reasons and stops skill execution.",
+      "expectations": [
+         "The agent invokes the skill, then rejects the input because it contains sample data"
+      ]
+    }
+   ]
+}

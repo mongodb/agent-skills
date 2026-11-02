@@ -75,3 +75,9 @@ skills:
       - asysdev
     last_reviewed: 2026-11-02
     review_cadence_days: 90
+
+  - name: mongodb-qe-size-estimation
+    dris:
+      - nvillahermosa-mdb
+    last_reviewed: 2026-09-25
+    review_cadence_days: 90

@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "eval_name": "encryption-schema-input-2",
+  "pre_test_setup": [
+    {
+      "step": "clean_temp_calculations_file",
+      "action": "Delete qe-sizing-calculations.md from the OS temp directory ($TMPDIR, or /tmp if unset) if it exists, so the skill starts with no pre-existing calculations file and its existing-file confirmation step does not fire.",
+      "optional": false
+    }
+  ]
+}
