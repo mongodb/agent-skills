@@ -1,14 +1,6 @@
 name: Draft Release
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "gemini-extension.json"
-      - "plugins/*/.claude-plugin/plugin.json"
-      - "plugins/*/.cursor-plugin/plugin.json"
-      - "plugins/*/.codex-plugin/plugin.json"
   workflow_dispatch:
 
 permissions:
@@ -35,6 +27,16 @@ jobs:
       - name: Install tools dependencies
         run: pnpm install --frozen-lockfile
         working-directory: tools
+
+      - name: Verify generated plugins are current before tagging
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/sync-plugin-skills.ts
+          if [ -n "$(git status --porcelain -- plugins/mongodb/skills plugins/mongodb/assets plugins/mongodb-atlas/skills plugins/mongodb-atlas/assets)" ]; then
+            echo "::error::Generated plugin copies are stale or missing. Merge a public generation PR before releasing."
+            exit 1
+          fi
 
       - name: Read and validate plugin versions
         id: version
