@@ -47,7 +47,7 @@
       "id": 7,
       "name": "debug-failed-processor",
       "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
-      "expected_output": "Calls diagnose-processor first, then get-logs with logType='operational', analyzes error patterns, identifies root cause (e.g., connection issue, schema mismatch, OOM), provides specific fix steps",
+      "expected_output": "Calls diagnose-processor first, analyzes the available evidence, identifies a likely root cause or states what evidence is needed, and provides specific fix steps.",
       "files": []
     },
     {
@@ -117,7 +117,7 @@
       "id": 17,
       "name": "get-operational-logs",
       "prompt": "Show me the operational logs for processor 'fraud-detector' in workspace 'security-streams'",
-      "expected_output": "Calls atlas-streams-discover with action='get-logs', logType='operational', workspaceName='security-streams', resourceName='fraud-detector'",
+      "expected_output": "Directs the user to the Atlas UI: Atlas → Stream Processing → Workspace 'security-streams' → Processor 'fraud-detector' → Logs tab",
       "files": []
     },
     {
@@ -131,14 +131,14 @@
       "id": 19,
       "name": "billing-warning-before-start",
       "prompt": "Start processor 'analytics-pipeline' in workspace 'prod-streams'",
-      "expected_output": "Warns about billing costs before starting, mentions per-second charging, confirms user has payment method, then calls atlas-streams-manage with action='start-processor'",
+      "expected_output": "Warns about billing costs before starting, mentions per-second charging until the processor is stopped, waits for user confirmation, then calls atlas-streams-manage with action='start-processor'",
       "files": []
     },
     {
       "id": 20,
       "name": "create-s3-sink",
       "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
-      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection (with path, format, compression fields), DLQ configured",
+      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection using path (not prefix) and config.outputFormat (not a top-level format), optionally config.compression, DLQ configured",
       "files": []
     },
     {
@@ -180,7 +180,21 @@
       "id": 26,
       "name": "create-privatelink-kafka-aws",
       "prompt": "Set up a PrivateLink connection for Confluent Kafka on AWS in workspace 'prod-streams'",
-      "expected_output": "Calls atlas-streams-build with resource='privatelink', privateLinkProvider='AWS', privateLinkConfig includes provider, vendor: 'CONFLUENT', dnsDomain, dnsSubDomain; then references the PrivateLink ID in the Kafka connection's networking.access config",
+      "expected_output": "Calls atlas-streams-build with resource='privatelink', privateLinkConfig.provider='AWS', vendor='CONFLUENT', and dnsDomain/dnsSubDomain; then references the PrivateLink ID in the Kafka connection's networking.access config",
+      "files": []
+    },
+    {
+      "id": 27,
+      "name": "root-variable-allowed",
+      "prompt": "In my stream processor I want to keep the entire incoming event under a field called 'raw' and add a processing note. Can I use $$ROOT for that? Show me the stage.",
+      "expected_output": "Confirms that the ASP engine supports $$ROOT and that it can be used in $addFields (also $group and $replaceRoot). Shows a stage such as {\"$addFields\": {\"raw\": \"$$ROOT\", \"note\": \"...\"}}. If the MCP server version rejects $$ROOT when creating via atlas-streams-build, notes that limitation or provides an equivalent MCP-safe alternative; otherwise uses $$ROOT directly. Does not claim the ASP engine does not support $$ROOT and does not substitute $$NOW.",
+      "files": []
+    },
+    {
+      "id": 28,
+      "name": "now-variable-invalid",
+      "prompt": "Can I add the current processing time to each document with $$NOW inside a stream processor pipeline?",
+      "expected_output": "Explains that $$NOW is not available in Atlas Stream Processing and must not be used. Recommends using the source record timestamp for event time — either a timestamp field in the document or {\"$meta\": \"stream.source.ts\"}. Does not claim $$NOW is supported.",
       "files": []
     }
   ]
