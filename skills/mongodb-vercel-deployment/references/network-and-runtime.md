@@ -32,10 +32,10 @@ Documentation reviewed October 12, 2026. Check current plan capabilities and the
 
 ## Sources
 
-Use the Atlas integration guide for native provisioning, credentials, environment variables, billing, and lifecycle. Use Vercel docs for platform networking and compute, and the driver docs that match the installed version for pooling.
+Load a source only when its trigger applies. Do not fetch them all by default.
 
-- [Atlas: Integrate with Vercel](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel.md)
-- [Vercel Static IPs](https://vercel.com/docs/connectivity/static-ips.md) and [setup](https://vercel.com/docs/connectivity/static-ips/getting-started.md)
-- [Atlas IP access lists](https://www.mongodb.com/docs/atlas/security/ip-access-list.md)
-- [Vercel Functions API: attachDatabasePool](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package.md)
-- [Node.js driver connection pools](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/connection-pools/)
+- [Atlas: Integrate with Vercel](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel.md): when the user uses or considers the Marketplace integration and you need to confirm provisioning, credentials, environment variables, billing, or lifecycle behavior.
+- [Vercel Static IPs](https://vercel.com/docs/connectivity/static-ips.md) and [setup](https://vercel.com/docs/connectivity/static-ips/getting-started.md): when the Atlas access list must be restricted and you need Vercel's egress addresses, plan availability, or setup steps.
+- [Atlas IP access lists](https://www.mongodb.com/docs/atlas/security/ip-access-list.md): when adding, auditing, or removing access-list entries in Atlas.
+- [Vercel Functions API: attachDatabasePool](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package.md): only on Fluid compute, when the user asks about releasing idle connections.
+- [Node.js driver connection pools](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/connection-pools/): when tuning pool size or idle settings for the installed driver version.

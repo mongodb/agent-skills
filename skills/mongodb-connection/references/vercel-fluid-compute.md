@@ -31,8 +31,10 @@ A local test cannot exercise suspension. On an approved non-production deploymen
 
 ## Sources
 
-- [Vercel Functions API: `attachDatabasePool`](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package.md)
-- [Fluid compute pooling guide](https://vercel.com/kb/guide/efficiently-manage-database-connection-pools-with-fluid-compute.md)
-- `@vercel/functions` package source: `db-connections/index.js` in the installed version
-- [Node.js driver connection pools](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/connection-pools/). Use the docs for the installed driver version.
-- [Atlas: Integrate with Vercel](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel.md) is the source for native integration behavior (`MONGODB_URI`, network defaults, generated user, billing). It does not cover client code or the adapter.
+Load a source only when its trigger applies. Do not fetch them all by default.
+
+- [Vercel Functions API: `attachDatabasePool`](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package.md): when you need the documented signature or supported-database list for the adapter.
+- [Fluid compute pooling guide](https://vercel.com/kb/guide/efficiently-manage-database-connection-pools-with-fluid-compute.md): when explaining why pools need releasing before suspension, or when sizing connections across instances.
+- `@vercel/functions` package source, `db-connections/index.js` in the installed version: when the installed version differs from the one verified above.
+- [Node.js driver connection pools](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/connection-pools/): when choosing `maxIdleTimeMS` or other pool options. Use the docs for the installed driver version.
+- [Atlas: Integrate with Vercel](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel.md): only when the user uses the native integration and you need `MONGODB_URI`, network defaults, generated user, or billing details. It does not cover client code or the adapter.

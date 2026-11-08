@@ -14,16 +14,7 @@ Describes the client lifecycle for the native Node.js driver on Vercel Functions
 - **With an ODM**, keep its supported lifecycle and cache its connect promise the same way. Do not add a parallel native-driver singleton.
 - **Keep driver defaults** for pool size and timeouts until measurements justify a change.
 
-Agents often get the recovery step wrong. This is the shape of it:
-
-```ts
-const promise = client.connect();
-cache = promise;
-promise.catch(() => {
-  if (cache === promise) cache = undefined; // never clear a newer attempt
-  void client.close().catch(() => {});
-});
-```
+Agents often get the recovery step wrong: the rejection handler must compare the cached promise with the one that failed before clearing, and must close the failed client without awaiting it in the handler.
 
 ## Hot reload
 

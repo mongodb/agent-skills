@@ -240,6 +240,7 @@
         "Looks up the integration slug, products, and plans (for example with vercel integration discover and --help) instead of guessing them",
         "Scopes the connection to production and preview with the environment option, not all environments",
         "States that the native integration adds a 0.0.0.0/0 access entry and a broad-privilege database user, which conflicts with the stated policy",
+        "Presents the open-to-the-internet access and broad-privilege user as a prominent, explicit security warning and lists mitigations, rather than a passing note",
         "Offers a manually connected cluster as the alternative instead of implying the integration can be locked down",
         "Lists what the user must approve (billing, network access, generated user, terms acceptance)",
         "Does not run or present as already executed any command that provisions resources"

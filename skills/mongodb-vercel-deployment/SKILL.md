@@ -3,7 +3,7 @@ name: mongodb-vercel-deployment
 description: Configure and troubleshoot MongoDB Atlas deployments on Vercel. Use when connecting an existing application or Marketplace integration to Atlas, wiring server-only environment variables, configuring Atlas network access, selecting a compatible runtime, or diagnosing an application that works locally but fails during Vercel build or runtime. Do not use for general schema design or query optimization.
 license: Apache-2.0
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # MongoDB Atlas on Vercel: deployment
@@ -34,7 +34,9 @@ If a decision is blocked, ask one targeted question. Never ask for a password or
 - A `0.0.0.0/0` access-list entry added if absent, because Vercel egress is dynamic.
 - A `Vercel-Admin-[resource name]` database user with `readWriteAnyDatabase` on non-system databases.
 
-Explain the network, privilege, ownership, and billing implications before an authorized setup. Broad reachability still requires TLS and authentication, but the generated user is not least privilege. The integration does not restrict network access. If its defaults violate the owner's policy, say so and offer a manually connected cluster as the alternative. Do not imply the integration can be locked down. After setup, check the actual resources and environment bindings, since documented defaults do not prove current state. Do not remove managed access entries, revoke managed roles, or disconnect shared resources without checking dependencies and getting the owner's approval.
+**Security warning (required).** Before any setup, tell the user plainly, in a clearly marked warning at the top of your answer and not buried in a list, that this integration opens the Atlas project to the entire internet (`0.0.0.0/0`) and creates a database user that can read and write every non-system database. State that this cannot be restricted through the integration. Then offer these mitigations: use a manually connected cluster with a least-privilege user and Vercel Static IPs or private networking; if the integration is still chosen, use it only for non-sensitive data, keep the generated credentials server-only, and have the owner review the access list and user afterwards. Do not continue with provisioning until the user explicitly acknowledges the risk. This applies to plan-only answers as well.
+
+Also explain the network, privilege, ownership, and billing implications before an authorized setup. Broad reachability still requires TLS and authentication, but the generated user is not least privilege. The integration does not restrict network access. If its defaults violate the owner's policy, say so and offer a manually connected cluster as the alternative. Do not imply the integration can be locked down. After setup, check the actual resources and environment bindings, since documented defaults do not prove current state. Do not remove managed access entries, revoke managed roles, or disconnect shared resources without checking dependencies and getting the owner's approval.
 
 **Installing the integration with the Vercel CLI.** When the user wants an agent to set up the Marketplace integration and has authorized provisioning, the Vercel CLI is the most direct path (`vercel integration add`, alias `vercel install`). It installs the same native integration, so the defaults above apply. Read [references/vercel-cli-integration.md](references/vercel-cli-integration.md) for the commands, and follow its plan-first sequence: look up the integration, show the exact commands and what needs approval, then run only after approval. Without authorization or CLI access, give the dashboard steps instead.
 

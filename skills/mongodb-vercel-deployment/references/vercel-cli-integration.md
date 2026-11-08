@@ -16,16 +16,13 @@ Source: [vercel integration](https://vercel.com/docs/cli/integration) (page last
 
 ## Options that matter
 
-| Option | Use |
-| --- | --- |
-| `-e, --environment <env>` | Connect only the named environments. Repeatable. Accepts `production`, `preview`, `development`, or a Custom Environment slug or ID of the linked project. **Without it, all three built-in environments are connected.** |
-| `-n, --name` | Name the resource. |
-| `-m, --metadata KEY=VALUE` | Provide required metadata. Repeatable. |
-| `-p, --plan` | Billing plan ID, from `--help`. |
-| `--prefix` | Prefix for the environment variable names, used as-is. Use it to avoid colliding with an existing `MONGODB_URI`. |
-| `--no-connect` | Provision without connecting to the project (this also skips the env pull). |
-| `--no-env-pull` | Skip `vercel env pull`, so no credentials are written to a local file. |
-| `-F, --format=json` | Machine-readable output for agents. |
+Run `vercel integration add --help` and read the current flags rather than relying on memory, since they change between CLI releases. Decide these points from that output:
+
+- **Environment scope.** Without an environment flag, all three built-in environments are connected. Scope explicitly to what the user approved (for example Production and Preview only).
+- **Local credentials.** Prefer the flag that skips `vercel env pull`, so no credentials are written to a local file, unless the user wants them.
+- **Variable names.** Use the prefix option if an existing `MONGODB_URI` would collide.
+- **Required inputs.** Resource name, metadata, and billing plan come from `--help` and `guide`, not from this document.
+- **Output.** Use JSON output for machine-readable results.
 
 Example, scoped to Production and Preview only (the slug and plan come from the lookup steps, not from this document):
 
