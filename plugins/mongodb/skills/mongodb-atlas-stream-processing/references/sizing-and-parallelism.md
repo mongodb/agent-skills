@@ -18,10 +18,7 @@ Every stage in a pipeline runs with default `parallelism: 1`. This base level is
 
 When you need higher throughput for specific stages, increase their parallelism beyond 1. **Only values > 1 count toward your tier's maximum.**
 
-Stages that commonly benefit from parallelism:
-- `$merge` — concurrent writes to Atlas
-- `$lookup` — concurrent reads for enrichment
-- `$https` — concurrent API calls
+Stages that support parallelism: `$source`, `$lookup`, `$merge`, `$emit`, and `$externalFunction`. `$https` does not have a `parallelism` field.
 
 ## Parallelism Calculation
 
@@ -61,7 +58,7 @@ Total = 3 + 3 = 6 → SP10 (max 8)
 **Complex pipeline:**
 ```
 $source:    parallelism = 1  (does not count)
-$https:     parallelism = 6  (counts as 5)
+$lookup:    parallelism = 6  (counts as 5)
 $merge:     parallelism = 8  (counts as 7)
 
 Total = 5 + 7 = 12 → SP30 (max 16)
@@ -116,7 +113,7 @@ For automated tier recommendation, score the pipeline:
 - 41-60: SP30
 - 61+: SP50
 
-**Tier selection:** the parallelism calculation sets the minimum tier. Use the complexity score only to decide whether to add headroom (usually one tier up); do not go below the parallelism-derived tier.
+**Tier selection:** the parallelism calculation sets the **minimum** tier. Use the complexity score only to decide whether to add headroom (usually one tier up). Do not go below the parallelism-derived tier, and treat the complexity score as an internal heuristic — official MongoDB guidance publishes only the cumulative-parallelism ceiling.
 
 ## Billing
 
@@ -144,7 +141,7 @@ For current pricing: https://www.mongodb.com/docs/atlas/billing/stream-processin
 
 1. Score the pipeline using the complexity heuristic above
 2. Calculate parallelism needs using the formula
-3. Take the higher recommendation
+3. Use the parallelism-derived tier as the minimum; consult the complexity score only for headroom
 4. Start with that tier (or one tier lower for cost savings during testing)
 
 ### Phase 2: Validation

@@ -8,11 +8,11 @@ Understanding stage categories helps compose valid pipelines. Stages must appear
 |----------|--------|-------|
 | **Source** (1, required) | `$source` | Must be first. One per pipeline. |
 | **Stateless Processing** | `$match`, `$project`, `$addFields`, `$unset`, `$unwind`, `$replaceRoot`, `$redact` | Can appear anywhere after source. No state or memory overhead. |
-| **Enrichment** | `$lookup`, `$https` | I/O-bound. Use `parallelism` setting. Place `$https` after windows to batch. |
+| **Enrichment** | `$lookup`, `$https`, `$externalFunction` (sync/async) | I/O-bound. `$lookup` and `$externalFunction` support `parallelism`; `$https` does not. Place `$https` after windows to batch. |
 | **Stateful/Window** | `$tumblingWindow`, `$hoppingWindow`, `$sessionWindow` | Accumulates state in memory. Monitor `memoryUsageBytes`. |
-| **Validation** | `$validate` | Schema enforcement. Use `validationAction: "dlq"` (not `"error"`). Place early to catch bad data. |
-| **Custom Code** | `$function` | JavaScript UDFs. Requires SP30+. |
-| **Output** (1+, required for deployed) | `$merge`, `$emit` | Must be last. Required for persistent processors. Sinkless = ephemeral only. |
+| **Validation** | `$validate` | Schema enforcement. Use `validationAction: "discard"` (default) or `"dlq"`; `"error"` is not supported. Place early to catch bad data. |
+| **Custom Code** | `$function` | JavaScript UDFs. SP30+ recommended. |
+| **Output** (exactly one, required for deployed) | `$merge`, `$emit`, `$iceberg`, `$https`, `$externalFunction` (sync or async; async recommended for sink) | Must be last. Required for persistent processors. Sinkless = ephemeral only. |
 
 **Key ordering principle:** Place `$match` as early as possible (reduces volume for all downstream stages). Place `$project` after `$match` (reduces document size). Place `$https` after windows (batches API calls).
 
@@ -141,12 +141,12 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 [
   {"$source": {"connectionName": "my-source"}},
   {"$match": {"status": "active"}},
-  {"$addFields": {"processed_at": "$$NOW_NOT_VALID"}},
+  {"$addFields": {"processed_at": "$timestamp"}},
   {"$project": {"userId": 1, "amount": 1, "processed_at": 1}},
   {"$merge": {"into": {"connectionName": "my-sink", "db": "test", "coll": "step3"}}}
 ]
 ```
-**Remember:** `$$NOW` is NOT valid in streaming. Use a field from the source document or omit.
+**Remember:** `$$NOW` is NOT valid in streaming. Use a field from the source document, `{"$meta": "stream.source.ts"}`, or omit.
 
 **Step 4: Add windowing or enrichment** (if needed)
 
@@ -183,7 +183,7 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 1. Right-size the tier:
    - See [sizing-and-parallelism.md](sizing-and-parallelism.md) for tier selection
    - Review `memoryUsageBytes` from diagnostics
-   - Consider parallelism needs for `$merge`, `$lookup`, `$https`
+   - Consider parallelism needs for `$merge`, `$lookup`, `$emit`, `$externalFunction`
    - Upgrade tier: `atlas-streams-manage` → `stop-processor`, then `start-processor` with `tier` override
 
 2. Ensure DLQ is configured (mandatory for production)
@@ -204,7 +204,7 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 2. If FAILED: read the error message in diagnostics
 3. Common causes:
    - Invalid pipeline syntax (missing `$source`, missing sink)
-   - `$$NOW`/`$$CURRENT` used (not valid in streaming)
+   - `$$NOW`/`$$CLUSTER_TIME`/`$$USER_ROLES`/`$SEARCH_META` used (not valid in streaming)
    - Kafka `$source` missing `topic` field
    - **Referenced connection doesn't exist** — validate with `list-connections` first
    - **Connection name doesn't match expected target** — inspect connection to verify actual cluster/resource
@@ -222,7 +222,7 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 1. `atlas-streams-discover` → `diagnose-processor` — check stats
 2. Check `memoryUsageBytes` — if near 80% of tier RAM, upgrade tier
 3. Check if `$match` is early in pipeline (reduces downstream volume)
-4. Check if `$https` has `parallelism` setting (increase for I/O-bound enrichment)
+4. Check `$lookup`/`$externalFunction` `parallelism` settings (increase for I/O-bound enrichment; `$https` has no parallelism field)
 5. Check if windows have `partitionIdleTimeout` (idle Kafka partitions block windows)
 6. Consider upgrading tier or increasing stage parallelism
 
@@ -253,7 +253,7 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 | Zero output (alert) | Probably normal — no anomalies detected | Verify with known test event |
 | Windows not closing | Idle Kafka partitions | Add `partitionIdleTimeout` to `$source` (e.g., `{"size": 30, "unit": "second"}`) |
 | OOM / processor crash | Tier too small for window state | `diagnose-processor` → check `memoryUsageBytes` → upgrade tier |
-| Slow throughput | Low parallelism on I/O stages | Increase `parallelism` on `$merge`/`$lookup`/`$https` |
+| Slow throughput | Low parallelism on I/O stages | Increase `parallelism` on `$merge`/`$lookup`/`$emit`/`$externalFunction` |
 | 404 on workspace | Doesn't exist or misspelled | `discover` → `list-workspaces` |
 | 409 on create | Name already exists | Inspect existing resource or pick new name |
 | 402 error on start | No billing configured | Do NOT retry. Add payment method in Atlas → Billing. Use `sp.process()` in mongosh as free alternative |
@@ -284,8 +284,9 @@ Before creating a processor, verify:
 
 ### Pipeline Validation
 - [ ] `search-knowledge` was called to validate sink/source field names
-- [ ] Pipeline starts with `$source` and ends with `$merge`, `$emit`, `$https`, or `$externalFunction` (async)
-- [ ] No `$$NOW` or `$$CURRENT` in the pipeline
+- [ ] Pipeline starts with `$source` and ends with exactly one sink: `$merge`, `$emit`, `$iceberg`, `$https`, or `$externalFunction` (async recommended for `$externalFunction` sink)
+- [ ] No `$$NOW`, `$$CLUSTER_TIME`, `$$USER_ROLES`, or `$SEARCH_META` in the pipeline
+- [ ] If your MCP server version rejects `$$ROOT`/`$$CURRENT` on `atlas-streams-build` (versions through v3.2.2): use explicit field references, `modify-processor`, or the Admin API
 - [ ] Kafka `$source` includes a `topic` field
 - [ ] Kafka `$source` with windowed pipeline includes `partitionIdleTimeout` (prevents windows from stalling on idle partitions)
 - [ ] HTTPS connections are only used in `$https` enrichment or sink stages, not in `$source`

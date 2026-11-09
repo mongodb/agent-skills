@@ -40,40 +40,40 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 
 **Pagination** (all list actions): `limit` (1-100, default 20), `pageNum` (default 1).
 **Response format**: `responseFormat` — `"concise"` (default for list actions) or `"detailed"` (default for inspect/diagnose).
-**Parameter naming:** `inspect-processor`, `inspect-connection`, and `diagnose-processor` take `resourceName` (not `processorName` or `connectionName`).
+**Parameter naming:** `inspect-processor`, `inspect-connection`, and `diagnose-processor` take `resourceName` (not `processorName` or `connectionName`). `workspaceName` is required for all actions except `list-workspaces` and `get-networking`.
 
 ### atlas-streams-build — ALL create operations
 | Resource | Key parameters |
 |----------|---------------|
 | `workspace` | `cloudProvider`, `region`, `tier` (default SP10), `includeSampleData` |
-| `connection` | `connectionName`, `connectionType` (Kafka/Cluster/S3/Https/Kinesis/Lambda/SchemaRegistry/Sample), `connectionConfig` |
-| `processor` | `processorName`, `pipeline` (must start with `$source`, end with `$merge`/`$emit`), `dlq`, `autoStart` |
+| `connection` | `connectionName`, `connectionType` (exact values: `Kafka`/`Cluster`/`S3`/`Https`/`AWSKinesisDataStreams`/`AWSLambda`/`SchemaRegistry`/`Sample`), `connectionConfig` |
+| `processor` | `processorName`, `pipeline` (must start with `$source`, end with a sink stage: `$merge`/`$emit`/`$iceberg`/`$https`/`$externalFunction`), `dlq`, `autoStart`, `processorTier`, `autoscaling` |
 | `privatelink` | `privateLinkConfig` (project-level, not tied to a specific workspace) |
 
 **Field mapping — only fill fields for the selected resource type:**
 
 - **resource = "workspace":** Fill: `projectId`, `workspaceName`, `cloudProvider`, `region`, `tier`, `includeSampleData`. Leave empty: all connection and processor fields.
 - **resource = "connection":** Fill: `projectId`, `workspaceName`, `connectionName`, `connectionType`, `connectionConfig`. Leave empty: all workspace and processor fields. (See [references/connection-configs.md](references/connection-configs.md) for type-specific schemas.)
-- **resource = "processor":** Fill: `projectId`, `workspaceName`, `processorName`, `pipeline`, `dlq` (recommended), `autoStart` (optional). Leave empty: all workspace and connection fields. (See [references/pipeline-patterns.md](references/pipeline-patterns.md) for pipeline examples.)
+- **resource = "processor":** Fill: `projectId`, `workspaceName`, `processorName`, `pipeline`, `dlq` (recommended), `autoStart` (optional), `processorTier`/`autoscaling` (optional). Leave empty: all workspace and connection fields. (See [references/pipeline-patterns.md](references/pipeline-patterns.md) for pipeline examples.)
 - **resource = "privatelink":** Fill: `projectId`, `privateLinkConfig`. Note: PrivateLink is **project-level**, not workspace-level. `workspaceName` is not required — omit it. Leave empty: all connection and processor fields.
 
 ### atlas-streams-manage — ALL update/state operations
 | Action | Notes |
 |--------|-------|
-| `start-processor` | Begins billing. Optional `tier` override, `resumeFromCheckpoint` |
+| `start-processor` | Begins billing. Optional `tier` override, `resumeFromCheckpoint`, `autoscaling` |
 | `stop-processor` | Stops billing. Retains state 45 days |
-| `modify-processor` | Processor must be stopped first. Change pipeline, DLQ, or name |
-| `update-workspace` | Change tier or region |
-| `update-connection` | Update config (networking is immutable — must delete and recreate) |
+| `modify-processor` | Processor must be stopped first. Change pipeline, DLQ, name, tier, or autoscaling |
+| `update-workspace` | Change tier or region (`newTier` maps to Admin API `streamConfig.tier`) |
+| `update-connection` | Update config. Auth/credentials are updatable; networking and connection type are immutable — delete and recreate |
 | `accept-peering` / `reject-peering` | VPC peering management |
 
 **Field mapping** — always fill `projectId`, `workspaceName`, then by action:
 
-- `"start-processor"` → `resourceName`. Optional: `tier`, `resumeFromCheckpoint`, `startAtOperationTime` (ISO 8601 timestamp to resume from a specific point)
+- `"start-processor"` → `resourceName`. Optional: `tier`, `resumeFromCheckpoint`, `startAtOperationTime` (ISO 8601 timestamp to resume from a specific point), `autoscaling`
 - `"stop-processor"` → `resourceName`
-- `"modify-processor"` → `resourceName`. At least one of: `pipeline`, `dlq`, `newName`
-- `"update-workspace"` → `newRegion` or `newTier`
-- `"update-connection"` → `resourceName`, `connectionConfig`. **Exception: networking config (e.g., PrivateLink) cannot be modified after creation** — delete and recreate.
+- `"modify-processor"` → `resourceName`. At least one of: `pipeline`, `dlq`, `newName`, `tier`, `autoscaling`
+- `"update-workspace"` → `newRegion` or `newTier` (Admin API field: `streamConfig.tier`; SPM uses `tier`)
+- `"update-connection"` → `resourceName`, `connectionConfig`. Use for auth/credential changes (e.g., Kafka password rotation) — do not delete/recreate. **Exception: networking config (e.g., PrivateLink) and the connection type cannot be modified after creation** — delete and recreate. Verify afterwards with `inspect-connection`.
 - `"accept-peering"` → `peeringId`, `requesterAccountId`, `requesterVpcId`
 - `"reject-peering"` → `peeringId`
 
@@ -87,7 +87,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 **Teardown safety checks:**
 - **Processor deletion** → auto-stops before deleting (no need to stop manually first)
 - **Connection deletion** → blocks if any running processor references it. Stop/delete referencing processors first.
-- **Workspace deletion** → See detailed workflow below (lines 108-111).
+- **Workspace deletion** → See "Before deleting a workspace" below.
 
 ### atlas-streams-teardown — ALL delete operations
 | Resource | Safety behavior |
@@ -127,23 +127,24 @@ Key quickstarts:
 
 ## Pipeline Rules & Warnings
 
-**`$$ROOT` is supported** — use it in `$addFields`, `$group`, or `$replaceRoot` when you need the whole document.
+**`$$ROOT` and `$$CURRENT`** — the ASP engine supports both (they reference the whole current document). MongoDB MCP Server versions through v3.2.2 reject any pipeline containing them when **creating a processor with `atlas-streams-build`** ("not available in streaming request"). If your server version does, use explicit field references (e.g. copy fields in `$addFields`), or deploy via `modify-processor` / `atlas api streams createStreamProcessor`, which do not run that validator.
 
 **Invalid constructs** — these are NOT valid in streaming pipelines:
-- **`$$NOW`**, **`$$CURRENT`** — NOT available in stream processing. NEVER use these. For event time, use `{"$meta": "stream.source.ts"}` (the source record timestamp) or a timestamp field from the event payload.
+- **`$$NOW`**, **`$$CLUSTER_TIME`**, **`$$USER_ROLES`**, **`$SEARCH_META`** — NOT available in stream processing. NEVER use these. Use the document's own timestamp field or `{"$meta": "stream.source.ts"}` for event time instead of `$$NOW`.
+- **`$$ROOT`/`$$CURRENT` when creating via `atlas-streams-build` on MCP server versions through v3.2.2** — blocked by the server's validator (see above), even though the engine supports them.
 - **HTTPS connections as `$source`** — HTTPS is for `$https` enrichment or sink only, NOT as a data source
 - **Kafka `$source` without `topic`** — topic field is required
-- **Pipelines without a sink** — terminal stage (`$merge`, `$emit`, `$https`, or `$externalFunction` async) required for deployed processors (sinkless only works via `sp.process()`)
-- **Lambda as `$emit` target** — Lambda uses `$externalFunction` (mid-pipeline enrichment), not `$emit`
-- **`$validate` with `validationAction: "error"`** — crashes processor; use `"dlq"` instead
+- **Pipelines without a sink** — terminal stage (`$merge`, `$emit`, `$iceberg`, `$https`, or `$externalFunction`) required for deployed processors (sinkless only works via `sp.process()`)
+- **Lambda as `$emit` target** — Lambda uses `$externalFunction` (mid-pipeline or sink), not `$emit`
+- **`$validate` with `validationAction: "error"`** — not supported; only `"discard"` (default) and `"dlq"` are valid
 
 **Required fields by stage:**
-- **`$source` (change stream)**: include `fullDocument: "updateLookup"` to get the full document content
+- **`$source` (change stream)**: include `config: { fullDocument: "updateLookup" }` to get the full document content (also `config.fullDocumentBeforeChange` for pre-images)
 - **`$source` (Kinesis)**: use `stream` (NOT `streamName` or `topic`)
 - **`$emit` (Kinesis)**: MUST include `partitionKey`
 - **`$emit` (S3)**: use `path` (NOT `prefix`)
-- **`$https`**: must include `connectionName`, `path`, `method`, `as`, `onError: "dlq"`
-- **`$externalFunction`**: must include `connectionName`, `functionName`, `execution`, `as`, `onError: "dlq"`
+- **`$https`**: must include `connectionName`. `path` and `method` (default `GET`) are optional; `as` is required for mid-pipeline enrichment and optional for a sink; set `onError: "dlq"` (the default) to route failures to the DLQ.
+- **`$externalFunction`**: must include `connectionName` and `functionName`. `execution` (default `sync`) and `onError` (default `dlq`) are optional. Include `as` for sync mid-pipeline; omit `as` for an async terminal sink (setting `as` with `execution: "async"` errors).
 - **`$validate`**: must include `validator` with `$jsonSchema` and `validationAction: "dlq"`
 - **`$lookup`**: include `parallelism` setting (e.g., `parallelism: 2`) for concurrent I/O
 - **AWS connections** (S3, Kinesis, Lambda): IAM role ARN must be registered via Atlas Cloud Provider Access first. Always confirm this with user. See [references/connection-configs.md](references/connection-configs.md) for details.
@@ -186,14 +187,14 @@ Know what each connection type can do before creating pipelines:
 | **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
 | **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
 | **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
-| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config`. Supports AWS PrivateLink. |
+| **S3** | ❌ Not valid | ✅ $emit to buckets; `$iceberg` (SP10+) | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config`. Supports AWS PrivateLink. |
 | **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
-| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
+| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (sync or async) | ✅ $externalFunction (sync or async) | **Sink:** sync or async; async recommended, and an async sink must omit `as`. **Mid-pipeline sync:** `as` required. |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
 | **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
 
 **Common connection usage mistakes to avoid:**
-- ❌ Using `$externalFunction` as sink with `execution: "sync"` → Must use `execution: "async"` for sink stage
+- ❌ Setting `as` on an async terminal `$externalFunction` → Omit `as` for async sinks; sync mid-pipeline requires it
 - ❌ Forgetting change streams exist → Atlas Cluster is a powerful source, not just a sink
 - ❌ Using `$merge` with Kafka → Use `$emit` for Kafka sinks
 
@@ -237,7 +238,7 @@ See [references/development-workflow.md](references/development-workflow.md) for
    See [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table.
 3. Classify processor type before interpreting output volume (alert vs transformation vs filter).
 4. Provide concrete, ordered fix steps specific to the diagnosed root cause. Do NOT present a list of hypothetical scenarios.
-5. Always direct the user to the Atlas UI for detailed operational logs: **Atlas → Stream Processing → Workspace → Processor → Logs tab**.
+5. If detailed logs are needed, direct the user to the Atlas UI: **Atlas → Stream Processing → Workspace → Processor → Logs tab**.
 
 ### Chained processors (multi-sink pattern)
 **CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). When users request multiple output destinations (e.g., "write to Atlas AND emit to Kafka"), you MUST acknowledge the single-sink constraint and propose chained processors using an intermediate destination. See [references/pipeline-patterns.md](references/pipeline-patterns.md) for the full pattern with examples.
@@ -247,6 +248,8 @@ See [references/development-workflow.md](references/development-workflow.md) for
 See [references/development-workflow.md](references/development-workflow.md) for the complete pre-deploy quality checklist (connection validation, pipeline validation) and post-deploy verification workflow.
 
 ## Tier Sizing & Performance
+
+**Tier guidance:** `$function` (JavaScript UDF) and `$sessionWindow` should run on **SP30 or higher** (a recommendation, not an API-enforced floor). `$tumblingWindow`/`$hoppingWindow` usually fit SP10–SP30; very large window state may need SP50.
 
 See [references/sizing-and-parallelism.md](references/sizing-and-parallelism.md) for tier specifications, parallelism formulas, complexity scoring, and performance optimization strategies.
 

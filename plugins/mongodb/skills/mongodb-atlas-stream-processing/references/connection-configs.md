@@ -11,21 +11,21 @@ Know what each connection type can do before creating pipelines:
 | **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
 | **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
 | **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
-| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config` |
+| **S3** | ❌ Not valid | ✅ $emit to buckets; `$iceberg` (SP10+) | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config` |
 | **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
-| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
+| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (sync or async) | ✅ $externalFunction (sync or async) | **Sink:** sync or async; async recommended, and an async sink must omit `as`. **Mid-pipeline sync:** `as` required. |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
 | **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
 
 **Common connection usage mistakes to avoid:**
 - ❌ Using HTTPS connections as `$source` → HTTPS is for enrichment or sink only
-- ❌ Using `$externalFunction` as sink with `execution: "sync"` → Must use `execution: "async"` for sink stage
+- ❌ Setting `as` on an async terminal `$externalFunction` → Omit `as` for async sinks; sync mid-pipeline requires it
 - ❌ Forgetting change streams exist → Atlas Cluster is a powerful source, not just a sink
 - ❌ Using `$merge` with Kafka → Use `$emit` for Kafka sinks
 
 **$externalFunction execution modes:**
-- **Mid-pipeline:** Can use `execution: "sync"` (blocks until Lambda returns) or `execution: "async"` (non-blocking)
-- **Final sink stage:** MUST use `execution: "async"` only
+- **Mid-pipeline:** Can use `execution: "sync"` (blocks until Lambda returns; requires `as`) or `execution: "async"` (non-blocking)
+- **Final sink stage:** Can use `execution: "sync"` or `"async"`; `async` is recommended and must omit `as`
 
 ## Connection Naming Best Practices
 
@@ -67,7 +67,7 @@ Know what each connection type can do before creating pipelines:
 See [development-workflow.md](development-workflow.md) "Pre-Deployment Connection Validation" section for the complete validation procedure.
 
 ## Important Notes
-- HTTPS connections are for `$https` enrichment ONLY — they are NOT valid as `$source` data sources
+- HTTPS connections are for `$https` enrichment or as a terminal `$https` sink — they are NOT valid as `$source` data sources
 - Store API authentication in connection settings, never hardcode in processor pipelines
 - AWS connections (S3, Kinesis, Lambda) require IAM role ARN registered via Atlas Cloud Provider Access first
 - Supported `connectionType` values: `Kafka`, `Cluster`, `S3`, `Https`, `AWSKinesisDataStreams`, `AWSLambda`, `SchemaRegistry`, `Sample`
@@ -138,20 +138,21 @@ This is a partial list. If unsure, inspect an existing workspace with `atlas-str
 
 All fields above are required. The tool will prompt the user for username/password via elicitation if not provided.
 
-Authentication mechanisms: `PLAIN`, `SCRAM-256`, `SCRAM-512`, `OAUTHBEARER`
+Authentication mechanisms: `PLAIN`, `SCRAM-256`, `SCRAM-512`, `OAUTHBEARER`, `AWS_MSK_IAM`
 Security protocols: `SASL_SSL`, `SASL_PLAINTEXT`, `SSL`
+
+For Amazon MSK IAM auth, use `mechanism: "AWS_MSK_IAM"` with `authentication: { aws: { roleArn: "<arn>" } }` — do not send a username/password.
 
 For Confluent Cloud, use `mechanism: "PLAIN"` with your API key as `username` and API secret as `password`.
 
 Kafka supports both **PrivateLink** and **VPC Peering** for private networking. See the [PrivateLink Reference](#privatelink-reference-all-vendors) section below for all supported vendors and providers.
 
 **VPC Peering:**
-- Supported for outbound connections to Kafka brokers in your own VPC
-- Requires `SASL_SSL` security protocol
+- Supported for connections to Kafka brokers in your own VPC (the documented self-hosted walkthrough uses `SASL_SSL`, port 9093)
 - Use `atlas-streams-manage` with `accept-peering` action to complete the peering setup
 - Requires AWS account ID, VPC ID, and region information
 
-**Important: Networking cannot be modified after connection creation.** To add or change PrivateLink/VPC peering on an existing Kafka connection, you must delete it and recreate it with the networking config.
+**Important: Networking and the connection type cannot be modified after connection creation.** The API enforces the networking restriction (`STREAM_NETWORKING_CANNOT_BE_MODIFIED`). To add or change PrivateLink/VPC peering on an existing Kafka connection, or to change its `connectionType`, you must delete it and recreate it. Auth/credential fields are updatable in place via `update-connection`.
 
 Use `atlas-streams-discover` → `action: "get-networking"` to list available PrivateLink endpoints and VPC peering connections.
 
@@ -182,7 +183,7 @@ Optional: `clusterGroupId` (if cluster is in a different project — requires cr
 ```
 **Prerequisite:** The IAM role ARN must be registered in the Atlas project via Cloud Provider Access before creating the connection.
 
-Required IAM policy permissions: `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`.
+Required IAM policy permissions: `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, `s3:GetObjectVersion`, `s3:GetBucketLocation`.
 
 ### Https
 ```json
@@ -263,23 +264,23 @@ Required IAM policy permissions: `kinesis:ListShards`, `kinesis:SubscribeToShard
 ### Sample
 No connectionConfig required. Provides built-in test data. Useful for development and testing without external infrastructure.
 
-Available sample formats: `sample_stream_solar` (default, auto-created when `includeSampleData: true` on workspace), `samplestock`, `sampleweather`, `sampleiot`, `samplelog`, `samplecommerce`.
+Available sample format: `sample_stream_solar` (default, auto-created when `includeSampleData: true` on workspace).
 
 ### PrivateLink Reference (All Vendors)
 
-PrivateLink is supported for Kafka, S3, Kinesis, and Azure EventHub connections. Create a project-level PrivateLink first, then reference it in the connection's `networking.access` config.
+Via the MCP tool, PrivateLink vendors are: AWS `CONFLUENT`/`MSK`/`S3`/`KINESIS`, Azure `EVENTHUB`/`CONFLUENT`, and GCP `CONFLUENT`. Create a project-level PrivateLink first, then reference it in the connection's `networking.access` config.
 
-**Step 1: Create project-level PrivateLink** via `atlas-streams-build` resource='privatelink':
+**Step 1: Create project-level PrivateLink** via `atlas-streams-build` resource='privatelink'. The field is `provider`; there is no `privateLinkProvider`. The MCP build tool only creates PrivateLink resources — to set `dnsDomain` after creation for an AWS Confluent **Enterprise** cluster, use the Atlas CLI (`atlas api streams updatePrivateLinkConnection`) or the Admin API PATCH endpoint.
 
 | Provider | Vendor | Required privateLinkConfig fields |
 |----------|--------|----------------------------------|
-| AWS | CONFLUENT | provider, vendor, dnsDomain, dnsSubDomain (array, [] if none) |
-| AWS | MSK | provider, vendor, arn |
+| AWS | CONFLUENT | provider, vendor, region, serviceEndpointId, dnsDomain (required for Dedicated; may be omitted and set later via PATCH for Enterprise), dnsSubDomain (array, [] if none) |
+| AWS | MSK | provider, vendor, arn, authenticationScheme (`TLS`/`SASL_SCRAM`/`IAM`) |
 | AWS | S3 | provider, vendor, region, serviceEndpointId (`com.amazonaws.<region>.s3`) |
 | AWS | KINESIS | provider, vendor, region, serviceEndpointId |
-| AZURE | EVENTHUB | provider, vendor, dnsDomain, serviceEndpointId |
-| AZURE | CONFLUENT | provider, vendor, dnsDomain |
-| GCP | CONFLUENT | provider, vendor, gcpServiceAttachmentUris |
+| AZURE | EVENTHUB | provider, vendor, region, dnsDomain, serviceEndpointId (full Azure Resource ID) |
+| AZURE | CONFLUENT | provider, vendor, region, dnsDomain, azureResourceIds |
+| GCP | CONFLUENT | provider, vendor, region, dnsDomain, gcpServiceAttachmentUris |
 
 **Step 2: Reference in connection networking config:**
 ```json
@@ -295,4 +296,4 @@ PrivateLink is supported for Kafka, S3, Kinesis, and Azure EventHub connections.
 
 Use `atlas-streams-discover` action='get-networking' to find the PrivateLink `_id`.
 
-**Note:** Networking config cannot be modified after connection creation — delete and recreate to change.
+**Note:** Networking config cannot be modified after connection creation (`STREAM_NETWORKING_CANNOT_BE_MODIFIED`) — delete and recreate to change.
