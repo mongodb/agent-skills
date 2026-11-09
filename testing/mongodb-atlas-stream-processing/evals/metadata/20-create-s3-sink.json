@@ -103,9 +103,7 @@
         "bucket": "company-logs",
         "path": "logs/year={$year}/month={$month}",
         "config": {
-          "outputFormat": {
-            "name": "json"
-          }
+          "outputFormat": "relaxedJson"
         }
       }
     }

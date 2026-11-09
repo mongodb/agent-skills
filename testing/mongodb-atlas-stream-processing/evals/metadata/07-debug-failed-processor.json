@@ -17,7 +17,7 @@
   "post_test_validation": [
     {
       "step": "verify_workflow_followed",
-      "expected": "Agent called diagnose-processor first, then get-logs second",
+      "expected": "Agent called diagnose-processor first, then directed the user to the Atlas UI Logs tab (no get-logs action exists)",
       "critical": true
     },
     {
@@ -44,13 +44,13 @@
       "description": "diagnose-processor call includes workspaceName and resourceName='payment-handler'"
     },
     {
-      "name": "calls_get_logs_second",
-      "description": "Second tool call is atlas-streams-discover with action='get-logs'",
+      "name": "does_not_call_get_logs",
+      "description": "Does not call a nonexistent get-logs action; the streams MCP tools have no log-retrieval action",
       "critical": true
     },
     {
-      "name": "get_logs_uses_operational_type",
-      "description": "get-logs call includes logType='operational'",
+      "name": "points_to_atlas_logs_tab",
+      "description": "Directs the user to Atlas → Stream Processing → Workspace → Processor → Logs tab for operational logs",
       "critical": true,
       "reason": "Operational logs contain runtime errors, Kafka failures, schema issues, OOM messages"
     },
@@ -87,14 +87,8 @@
     },
     {
       "step": 2,
-      "action": "Call get-logs",
-      "tool": "atlas-streams-discover",
-      "parameters": {
-        "action": "get-logs",
-        "logType": "operational",
-        "workspaceName": "<workspace>",
-        "resourceName": "payment-handler"
-      }
+      "action": "Direct user to Atlas UI Logs tab",
+      "description": "Atlas → Stream Processing → Workspace → Processor → Logs tab. The streams MCP tools have no get-logs action."
     },
     {
       "step": 3,

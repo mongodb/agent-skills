@@ -62,7 +62,7 @@
         "connectionName": "<https-connection>",
         "path": "/api/enrich",
         "method": "POST",
-        "body": "<request-body>",
+        "payload": "<inner-pipeline>",
         "as": "<field-name>",
         "onError": "dlq"
       }

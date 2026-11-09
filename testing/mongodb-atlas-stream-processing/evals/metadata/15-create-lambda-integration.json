@@ -22,17 +22,17 @@
     },
     {
       "name": "externalFunction_execution_async",
-      "description": "$externalFunction.execution='async' for sink usage",
+      "description": "$externalFunction.execution='async' (recommended for a sink)",
       "critical": true,
-      "reason": "When $externalFunction is the final sink stage, execution MUST be 'async'. Only mid-pipeline $externalFunction can use 'sync'."
+      "reason": "A terminal $externalFunction may use 'sync' or 'async'; 'async' is recommended for fire-and-forget. Setting `as` with 'async' returns an error."
     },
     {
       "name": "externalFunction_has_function_name",
       "description": "$externalFunction.functionName is specified"
     },
     {
-      "name": "externalFunction_has_as_field",
-      "description": "$externalFunction.as is specified (field name for Lambda response)"
+      "name": "externalFunction_omits_as_for_async_sink",
+      "description": "$externalFunction does not set `as` because execution='async' (setting `as` with async errors)"
     },
     {
       "name": "externalFunction_has_on_error_dlq",
@@ -41,9 +41,9 @@
     },
     {
       "name": "externalFunction_is_terminal_stage",
-      "description": "$externalFunction is the last pipeline stage (async sink)",
+      "description": "$externalFunction is the last pipeline stage (terminal sink)",
       "critical": true,
-      "note": "For this test, Lambda is used as a sink. It can also be used mid-pipeline for enrichment with execution='sync' or 'async'"
+      "note": "For this test, Lambda is used as a sink with async execution. It can also be used mid-pipeline for enrichment with execution='sync' (requires `as`) or 'async'"
     },
     {
       "name": "mentions_aws_prerequisites",
@@ -66,21 +66,20 @@
         "connectionName": "<lambda-connection>",
         "functionName": "<lambda-function-name>",
         "execution": "async",
-        "input": "<input-mapping>",
-        "as": "<response-field>",
+        "payload": "<inner-pipeline>",
         "onError": "dlq"
       }
     }
   ],
   "execution_mode_rules": {
-    "mid_pipeline": "Can use execution='sync' (blocks) or execution='async' (non-blocking)",
-    "terminal_sink": "MUST use execution='async' only"
+    "mid_pipeline": "Can use execution='sync' (blocks; requires `as`) or execution='async' (non-blocking; no `as`)",
+    "terminal_sink": "Can use execution='sync' or 'async'; 'async' is recommended and must omit `as`"
   },
   "common_mistakes": [
     {
-      "mistake": "execution='sync' as terminal sink",
-      "error": "Invalid configuration - sink must use async execution",
-      "fix": "Use execution='async' when $externalFunction is the last stage"
+      "mistake": "Setting `as` with execution='async'",
+      "error": "The API returns an error; `as` is only valid for sync non-sink stages",
+      "fix": "Omit `as` for an async terminal sink; include it only for sync mid-pipeline enrichment"
     },
     {
       "mistake": "Using $emit with Lambda",
