@@ -1,6 +1,6 @@
 ---
 name: mongodb-mcp-setup
-description: Guide users through configuring key MongoDB MCP server options. Use this skill when a user has the MongoDB MCP server installed but hasn't configured the required environment variables, or when they ask about connecting to MongoDB/Atlas and don't have the credentials set up.
+description: Guide users through installing and configuring the MongoDB MCP server. Use this skill when a user wants to connect their agent to MongoDB/Atlas through MCP, when the MongoDB MCP server is installed but its environment variables aren't configured, or when they don't have the server or credentials set up yet.
 license: Apache-2.0
 metadata:
   version: "1.0.0"
@@ -45,6 +45,18 @@ env | grep "^CODEX_"
 - **If any `CODEX_*` variables are present** → the user is running **Codex**. Credentials are stored in `~/.codex/config.toml` (macOS/Linux) or `%USERPROFILE%\.codex\config.toml` (Windows), not in shell environment variables. The desktop app does not inherit shell env vars when launched from Finder, Launchpad, or the Windows Start menu.
 
 Carry this **client type** (Codex vs. shell-based) forward through every subsequent step.
+
+## Step 0.5: Confirm the MCP Server Is Installed
+
+Check your own available tools for MongoDB MCP server tools such as `list-databases`, `find`, or `connect` (clients often prefix them with the server name, e.g. `mcp__mongodb__find`). 
+
+- **Tools present** → the server is installed. Continue to Step 1.
+- **Tools absent** → the server isn't installed, it was added but the client hasn't been restarted, or it failed to start. Ask which, then:
+  - **Added but not restarted**: fully quit and reopen the client, then return to this step.
+  - **Installed via the MongoDB plugin and restarted**: the server is bundled, so don't send them to install it. It failed to start; check that Node.js and `npx` are available and see [https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md](https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md?utm_source=agent-skills).
+  - **Not installed**: Fetch [https://www.mongodb.com/docs/mcp-server/get-started.md](https://www.mongodb.com/docs/mcp-server/get-started.md?utm_source=agent-skills), use only the section for the user's client (the page covers every client), and give the user those steps. Its install paths are the user's to run: plugin installs are slash commands, and `npx mongodb-mcp-server@latest setup` prompts for a connection string. Afterwards tell them to fully restart the client and run this skill again.
+
+**Codex**: the `[mcp_servers.mongodb.env]` snippets in Step 5 only take effect when a `[mcp_servers.mongodb]` entry with a `command` exists. If the server is registered under another name, use that name in the snippet.
 
 ## Step 1: Check Existing Configuration
 
