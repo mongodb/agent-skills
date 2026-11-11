@@ -60,25 +60,39 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
 ## Provision
 
-1. POST the create endpoint above.
+1. Confirm the project's env file is git-ignored: check `.gitignore`, and that the file isn't already tracked. If it isn't ignored, add it, since a live credential is about to be written to it.
 
-   Include `clusterName` only if the user named it; otherwise send `{}`. With `Content-Type: application/json`, an empty body returns `400 INVALID_JSON`.
+2. Pick the variable name. List the MongoDB variable names the code and env files use (this prints names only, never values):
 
-   Save the response body to a file outside the project (for example `curl -o "$TMPDIR/ec-create.json"`) instead of printing it. It holds the only copy of the real password; the status endpoint redacts it.
+   ```bash
+   grep -rIhoE '\b(MONGO(DB)?_UR[IL]|DATABASE_URL|MDB_MCP_CONNECTION_STRING)\b' --exclude-dir={.git,node_modules,dist,build,.next,.venv} . | sort -u
+   ```
 
-2. Read `clusterId`, `claimUrl`, `status`, and `expiresAt` from that file. Never print `connectionString` or the whole file, including when a command fails. Pass the connection string from the file straight into the env file in step 3.
+   Combine that with the names the SKILL.md step 1 check found, then choose:
 
-3. Write the connection string into the project's env file now, before checking status. The saved response is the only copy of the password.
+   - One of `MONGODB_URI`, `MONGO_URI`, `MONGO_URL`, or `MONGODB_URL`: use it.
+   - Several of those: ask the user which one the app reads.
+   - Only `DATABASE_URL`: use it only if the project's database is MongoDB (a MongoDB driver or ODM in its dependencies, and no other database's). Otherwise it likely points at another database, so use `MONGODB_URI` and tell the user the app must read that name.
+   - None: use `MONGODB_URI`.
 
-   Before writing, confirm that env file is git-ignored — check `.gitignore` (and that the file isn't already tracked); if it isn't ignored, add it, since you're writing a live credential to disk.
+   Don't list or read the env file any other way.
 
-   For the variable name, match what the project already uses: list the variable names in the existing env file (`cut -d= -f1 <env file>`) and grep the codebase for an existing MongoDB URI variable (e.g. `MONGODB_URI`, `MONGO_URL`, `DATABASE_URL`) and reuse it; if there's none, default to `MONGODB_URI`.
+3. Create the cluster with [scripts/create-ephemeral.sh](../scripts/create-ephemeral.sh), never with a hand-written `curl`:
 
-   Do not read the env file's values. If the variable name is already in the file, ask the user whether to replace that entry or use a different name before writing anything. Otherwise, append the new entry with `>>`, starting with a newline in case the file doesn't end with one; do not overwrite the file.
+   ```bash
+   bash <this skill's directory>/scripts/create-ephemeral.sh <env file> <variable name> [clusterName]
+   ```
 
-   Write the value in double quotes, so an `&` in its query string survives when the file is loaded. Put the claim URL and `expiresAt` as comments directly above it so they survive after the chat ends.
+   Pass `clusterName` only if the user named it. The create response holds the only copy of the real password (the status endpoint redacts it), so the script writes the connection string to the env file in double quotes, under a `# ephemeral-cluster: var=… claimUrl=… expiresAt=…` comment. It prints only `clusterId`, `claimUrl`, `status`, and `expiresAt`. Never read the env file afterwards, and never print the connection string.
 
-   Give the user the claim URL in your reply. Then delete the saved response file.
+   Every run except exits 2 and 3 sends a create request, and counts toward the limit in [When provisioning is refused](#when-provisioning-is-refused-the-two-429s).
+
+   - **Exit 3:** the variable is already in the env file, and nothing was sent. Ask the user whether to replace that entry or use a different name. To replace it, rerun with `--replace` as the first argument; the script removes the old entry itself. Never edit the env file by hand.
+   - **Exit 2:** nothing was sent. `jq` is missing, an argument is invalid, or the env file isn't writable. Tell the user what to fix; don't call the endpoint yourself.
+   - **Exit 1:** no `201`. The script prints the HTTP status with the API's error code and detail, or a curl network error. Handle a `429` as in [When provisioning is refused](#when-provisioning-is-refused-the-two-429s). For a `400`, tell the user why the name was rejected; for anything else, report the error and don't retry. After a network error the cluster may exist anyway, so don't retry.
+   - **Exit 4:** the cluster was created, but the connection string couldn't be saved, and the password is lost. Don't create another. Give the user the printed claim URL: after claiming, they can set a new database user password in Atlas.
+
+   Give the user the claim URL in your reply.
 
 4. Check `status`.
 
@@ -118,7 +132,7 @@ Returns the same field set as create, with one difference: **the `connectionStri
 
 ## Claiming (the hand-off)
 
-Surface the `claimUrl` and tell the user to open it. For a cluster created earlier, the claim URL and `expiresAt` are in the comments above its variable in the env file; `grep -h '^#' .env .env.local 2>/dev/null` prints only the comment lines.
+Surface the `claimUrl` and tell the user to open it. For a cluster created earlier, the claim URL and `expiresAt` are in the marker comment above its variable in the env file; `grep -H '^# ephemeral-cluster:' .env* 2>/dev/null` prints only those lines, with the file each is in and, in `var=`, the variable each belongs to. Don't print other comment lines: they can hold commented-out credentials.
 
 They register or log in, and the cluster transfers into their own Atlas org; a paused cluster resumes automatically on claim.
 

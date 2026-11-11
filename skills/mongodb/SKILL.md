@@ -83,11 +83,11 @@ When a higher rule overrides a lower one, say in one sentence what the lower one
 
 ### 1. Check for an existing deployment
 
-Run this check even when the user explicitly asks for a new deployment. Use the two commands below as your only look at the environment; both print variable names, not values. Don't inspect the environment or an env file any other way, before or after, except with a command this skill gives you, or `env` or env-file output piped through `sed 's/=.*/=<set>/'`: no `printenv`, `set`, `echo $VAR`, `${VAR:-…}`, unmasked `env` or `cat .env`, or `node -e 'console.log(process.env…)'`, and no mask that keeps part of a value. Never repeat any part of a value (user, password, or host) in the conversation.
+Run this check even when the user explicitly asks for a new deployment. Use the two commands below as your only look at the environment; both print variable names, not values. Don't inspect the environment or an env file any other way, before or after, except with a command this skill gives you, or `awk 'BEGIN{for (k in ENVIRON) print k}'`: no `printenv`, `set`, `echo $VAR`, `${VAR:-…}`, unmasked `env` or `cat .env`, or `node -e 'console.log(process.env…)'`, and no mask that keeps part of a value. Never repeat any part of a value (user, password, or host) in the conversation.
 
 ```bash
-env | cut -d= -f1 | grep -E 'MONGODB_URI|MDB_MCP_CONNECTION_STRING|DATABASE_URL'
-grep -oE '^(export )?(MONGODB_URI|MONGO_URL|MDB_MCP_CONNECTION_STRING|DATABASE_URL)=' .env .env.local 2>/dev/null
+awk 'BEGIN{for (k in ENVIRON) print k}' | grep -E 'MONGO(DB)?_UR[IL]|MDB_MCP_CONNECTION_STRING|DATABASE_URL'
+grep -oE '^(export )?(MONGO(DB)?_UR[IL]|MDB_MCP_CONNECTION_STRING|DATABASE_URL)=' .env .env.local 2>/dev/null
 ```
 
 Match the output to one of the following cases:
