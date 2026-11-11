@@ -334,7 +334,7 @@ For sync mid-pipeline enrichment, include `as` to store the Lambda response. The
 
 **Mid-pipeline usage:**
 - `execution`: `sync` (waits for Lambda result, stores in `as` field) or `async` (non-blocking)
-- `as`: Field name to store the Lambda response. Required for `sync`; **must be omitted whenever `execution: "async"`** — supplying it errors, sink or mid-pipeline.
+- `as`: Field name to store the Lambda response. Required for `sync` mid-pipeline; a sync sink may omit it. **Must be omitted whenever `execution: "async"`** — supplying it errors, sink or mid-pipeline.
 - `payload`: Optional inner pipeline to customize request body sent to Lambda
 - Use for enriching/transforming documents before downstream stages
 
@@ -354,7 +354,7 @@ For sync mid-pipeline enrichment, include `as` to store the Lambda response. The
 }}
 ```
 
-`validationAction`: `"discard"` (default) or `"dlq"` (recommended). `"error"` is not supported. `validator` accepts **any match expression** — `$jsonSchema` is one convenient option, not a requirement (`{"$expr": ...}` works too). Place early to catch bad data before expensive stages.
+`validationAction`: `"discard"` (default) or `"dlq"`. Use `"dlq"` when rejected documents should be captured — that also requires a DLQ connection. `"error"` is not supported. `validator` accepts **any match expression** — `$jsonSchema` is one convenient option, not a requirement (`{"$expr": ...}` works too). Place early to catch bad data before expensive stages.
 
 ### $function (JavaScript UDF)
 ```json
@@ -440,7 +440,7 @@ After a window stage, the `$meta` expression exposes window boundary timestamps 
 
 ## Checkpoint Resume Constraints
 
-With `resumeFromCheckpoint: true` (default), you CANNOT change: window type, interval, remove windows, or modify `$source`. Set `false` to make these changes (restarts from beginning).
+With `resumeFromCheckpoint: true` (default), you CANNOT change: window type, interval, `hopSize`, `allowedLateness`, remove windows, or modify `$source`. Set `false` to make these changes (restarts from beginning and drops window state).
 
 ## DLQ Configuration
 ```json

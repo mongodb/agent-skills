@@ -13,7 +13,7 @@ Know what each connection type can do before creating pipelines:
 | **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
 | **S3** | ❌ Not valid | ✅ $emit to buckets; `$iceberg` (SP10+) | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config` |
 | **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
-| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (sync or async) | ✅ $externalFunction (sync or async) | **Sink:** sync or async; async recommended, and `as` must be omitted whenever `execution: "async"`. **Sync:** `as` required. |
+| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (sync or async) | ✅ $externalFunction (sync or async) | **Sink:** sync or async; async recommended, and `as` must be omitted whenever `execution: "async"`. **Sync mid-pipeline:** `as` required; a sync sink may omit it. |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
 | **GCPPubSub** | ❌ Not valid | ✅ $emit to topics | ❌ | Sink only. Needs `topic`, `projectId`, `region`; private networking uses `publicPrivateNetworking` |
 | **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
@@ -25,7 +25,7 @@ Know what each connection type can do before creating pipelines:
 - ❌ Using `$merge` with Kafka → Use `$emit` for Kafka sinks
 
 **$externalFunction execution modes:**
-- **`execution: "sync"`** — blocks until Lambda returns; requires `as` to store the response
+- **`execution: "sync"`** — blocks until Lambda returns. Mid-pipeline it requires `as` to store the response; as a terminal sink the response has nowhere to go, so `as` may be omitted
 - **`execution: "async"`** — non-blocking; **must omit `as`** (supplying both errors). Works as a sink or mid-pipeline.
 
 ## Connection Naming Best Practices
@@ -140,15 +140,7 @@ This is a partial list. If unsure, inspect an existing workspace with `atlas-str
 
 All fields above are required. The tool will prompt the user for username/password via elicitation if not provided.
 
-Authentication mechanisms: `PLAIN`, `SCRAM-256`, `SCRAM-512`, `OAUTHBEARER`, `AWS_MSK_IAM`, plus mTLS and OIDC below.
-Security protocols: `SASL_SSL`, `SASL_PLAINTEXT`, `SSL`, `plaintext`. Optional `security.brokerPublicCertificate` supplies a CA certificate for self-signed brokers.
-
-**mTLS** — set `authentication.mechanism: "NONE"` and supply the certificate material:
-```json
-{"authentication": {"mechanism": "NONE", "sslCertificate": "...", "sslKey": "...", "sslKeyPassword": "..."}}
-```
-
-**OIDC** — `mechanism: "OAUTHBEARER"` with `clientId`, `clientSecret`, `scope`, `tokenEndpointUrl`, and optional `saslOauthbearerExtensions`.
+Through the MCP tool, `authentication.mechanism` accepts `PLAIN`, `SCRAM-256`, `SCRAM-512`, `OAUTHBEARER`, or `AWS_MSK_IAM`, and `security.protocol` accepts `SASL_SSL`, `SASL_PLAINTEXT`, or `SSL`. The Admin API also supports mTLS (`mechanism: "NONE"` with certificate material), richer OIDC fields, a `plaintext` protocol, and `security.brokerPublicCertificate`; the MCP tool's schema rejects those values, so configure them through the Admin API or Atlas UI instead.
 
 For Amazon MSK IAM auth, use `mechanism: "AWS_MSK_IAM"` with `authentication: { aws: { roleArn: "<arn>" } }` — do not send a username/password.
 
@@ -157,7 +149,8 @@ For Confluent Cloud, use `mechanism: "PLAIN"` with your API key as `username` an
 Kafka supports both **PrivateLink** and **VPC Peering** for private networking. See the [PrivateLink Reference](#privatelink-reference-all-vendors) section below for all supported vendors and providers.
 
 **VPC Peering:**
-- Supported for connections to Kafka brokers in your own VPC (the documented self-hosted walkthrough uses `SASL_SSL`, port 9093)
+- Supported for connections to Kafka brokers in your own VPC
+- **The security protocol must be `SASL_SSL`** for a VPC-peered Kafka connection
 - Use `atlas-streams-manage` with `accept-peering` action to complete the peering setup
 - Requires AWS account ID, VPC ID, and region information
 
@@ -306,7 +299,7 @@ Via the MCP tool, PrivateLink vendors are: AWS `CONFLUENT`/`MSK`/`S3`/`KINESIS`/
 | AZURE | CONFLUENT | provider, vendor, region, dnsDomain, azureResourceIds |
 | GCP | CONFLUENT | provider, vendor, region, dnsDomain, gcpServiceAttachmentUris |
 | GCP | PUBSUB | provider, vendor, region (required), gcpServiceAttachmentUris |
-| ANY | GENERIC (default) | provider, vendor, region, serviceEndpointId |
+| AWS/GCP/AZURE | GENERIC (default) | provider (`AWS`/`GCP`/`AZURE`), vendor, region, serviceEndpointId |
 
 **Step 2: Reference in connection networking config:**
 ```json

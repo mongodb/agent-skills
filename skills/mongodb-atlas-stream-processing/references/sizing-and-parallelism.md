@@ -85,7 +85,7 @@ When parallelism is all default (1), choose tier based on pipeline complexity:
 | `$lookup` or `$https` enrichment | Medium | SP10 |
 | `$group` aggregation | Medium | SP10 |
 | `$tumblingWindow` or `$hoppingWindow` | Medium-High | SP10-SP30 |
-| `$sessionWindow` | High | SP30 |
+| `$sessionWindow` | High | SP30 (enforced) |
 | `$function` (JavaScript UDFs; flag-gated) | High | SP30+ (enforced) |
 | Large window state (many unique keys) | Very High | SP30-SP50 |
 | Multiple windows or chained enrichment | Very High | SP50 |

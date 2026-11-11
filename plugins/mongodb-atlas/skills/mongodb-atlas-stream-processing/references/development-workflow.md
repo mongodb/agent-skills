@@ -186,7 +186,7 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
    - Consider parallelism needs for `$merge`, `$lookup`, and `$emit` (S3/blob/time-series only)
    - Upgrade tier: `atlas-streams-manage` → `stop-processor`, then `start-processor` with `tier` override
 
-2. Ensure DLQ is configured (mandatory for production)
+2. Configure a DLQ if the user asked for one, or if an `onError: "dlq"` stage needs a destination
 
 3. Use descriptive processor names (e.g., `fraud-detector`, `order-enricher`, `iot-rollup`)
 
@@ -292,7 +292,7 @@ Before creating a processor, verify:
 - [ ] Kafka `$source` includes a `topic` field
 - [ ] Kafka `$source` with windowed pipeline includes `partitionIdleTimeout` (prevents windows from stalling on idle partitions)
 - [ ] HTTPS connections are only used in `$https` enrichment or sink stages, not in `$source`
-- [ ] DLQ is configured (recommended for production)
+- [ ] DLQ is configured if the user asked for one, or if an `onError: "dlq"` stage needs a destination (do not add one silently)
 - [ ] `$https` stages use `onError: "dlq"` (not `"fail"`)
 - [ ] `$externalFunction` stages use `onError: "dlq"` and `execution` is explicitly set
 - [ ] API auth is stored in connection settings, not hardcoded in the pipeline
