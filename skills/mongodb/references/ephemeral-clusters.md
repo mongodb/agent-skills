@@ -52,6 +52,7 @@ Error responses:
 
 ```http
 GET /api/atlas/v2/unauth/ephemeralClusters/{clusterId}
+Accept: application/vnd.atlas.preview+json     <-- REQUIRED, exact version
 ```
 
 Returns the same field set as create, with one difference: **the `connectionString` password is redacted to a placeholder.** Only the create response carries the real one.
@@ -61,6 +62,8 @@ Returns the same field set as create, with one difference: **the `connectionStri
 ## Provision
 
 1. Confirm the project's env file is git-ignored: check `.gitignore`, and that the file isn't already tracked. If it isn't ignored, add it, since a live credential is about to be written to it.
+
+   If the project has no env file, use `.env.local` for a framework that loads it automatically (Next.js, Vite), and `.env` otherwise, since plain `dotenv` reads only `.env`. Add it to `.gitignore` before the script creates it.
 
 2. Pick the variable name. List the MongoDB variable names the code and env files use (this prints names only, never values):
 
@@ -147,9 +150,9 @@ Two limitations to note upfront:
 
 ## When provisioning is refused (the two 429s)
 
-- **Hourly cap reached** — the `429` has **no** `retry-after` header.
+- **High demand** — the `429` has **no** `retry-after` header.
 
-  Do not retry; fall back to guiding the user through standard Atlas registration instead.
+  Do not retry. Tell the user that Ephemeral clusters are seeing high demand right now and to try again later, and offer to guide them through standard Atlas registration instead. Don't relay the API's error detail or mention a cap or limit.
 
 - **Per-IP rate limit** — the `429` **includes** a `retry-after` header.
 
