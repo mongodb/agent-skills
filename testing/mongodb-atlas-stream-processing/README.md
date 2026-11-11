@@ -19,15 +19,17 @@ A case appears under every category it exercises, so a few IDs are cross-listed.
 - Multi-connection workspace setup
 - Workspace tier changes for OOM conditions
 
-### Connections (2, 14, 26, 29, 30, 35, 42)
+### Connections (2, 14, 26, 29, 30, 35, 42, 50, 51)
 - Kafka and Atlas Cluster connection creation
 - Pre-deployment connection validation (`list-connections` + `inspect-connection`)
 - PrivateLink setup for Confluent Kafka on AWS
 - Kinesis connection type and IAM prerequisites
 - Schema Registry / Avro `$emit` configuration
 - Networking immutability (delete and recreate, not update)
+- `get-networking` scope (project-level PrivateLink only; no VPC peering listing)
+- GCP Pub/Sub connection and sink
 
-### Processor Creation (5, 6, 11, 13, 15, 20, 21, 29, 32, 33, 37, 38, 39, 41)
+### Processor Creation (5, 6, 11, 13, 15, 20, 21, 29, 32, 33, 37, 38, 39, 41, 45, 47, 48, 54)
 - Kafka → Atlas `$merge`
 - Windowed aggregations (tumbling, hopping, session)
 - Change stream → Kafka, including `fullDocument: "updateLookup"`
@@ -35,28 +37,37 @@ A case appears under every category it exercises, so a few IDs are cross-listed.
 - AWS Lambda `$externalFunction` (async sink, sync/async enrichment)
 - S3 `$emit` with `path`, format, and compression
 - Kinesis source/sink with `stream` and `partitionKey`
-- JavaScript UDFs (`$function`, SP30+)
+- JavaScript UDFs (`$function`, flag-gated, SP30+ enforced)
+- Async `$externalFunction` must omit `as`
+- All five terminal sink stages
+- `$emit` to Atlas collections, including time-series
 
-### Pipeline Semantics (27, 28, 31, 38, 43)
-- `$$ROOT` and `$$CURRENT` are supported by the ASP engine, but MCP server versions through v3.2.2 reject them on `atlas-streams-build` (regression test for the corrected guidance)
+### Pipeline Semantics (27, 28, 31, 38, 43, 44, 46)
+- `$$ROOT` and `$$CURRENT` are supported by the ASP engine, but MCP server versions through at least v3.3.0 reject them on `atlas-streams-build` (regression test for the corrected guidance)
 - `$$NOW` remains invalid (case 43)
-- `$validate` with `validationAction: "dlq"` (not `"error"`)
+- `$$SEARCH_META` is silently missing rather than throwing (case 46)
+- `$validate` accepts any match expression, with `validationAction: "dlq"` (not `"error"`)
+- Parallelism is not available on `$externalFunction`/`$https`/top-level `$source` (case 44)
 - HTTPS connections are enrichment/sink only, never `$source`
 
-### Lifecycle & Safety (9, 10, 16, 19, 23, 34, 40)
+### Lifecycle & Safety (9, 10, 16, 19, 23, 34, 40, 52, 53, 55)
 - Stopping processors
 - Stop → modify → start, including the `resumeFromCheckpoint` window constraints
+- Modifying from FAILED without delete/recreate
+- Start-tier ceiling against the workspace `maxTierSize`
+- Read-only MCP mode blocks build/manage/teardown
 - Safe workspace deletion with inspection and confirmation
 - Billing warnings before starting a processor
 - 402 billing error handling without retry
 - Tier changes via `update-workspace`
 
-### Debugging & Troubleshooting (4, 7, 8, 17, 22, 36)
+### Debugging & Troubleshooting (4, 7, 8, 17, 22, 36, 49, 56)
 - Processor health diagnostics
-- Failed-processor diagnosis, including the Atlas UI Logs tab (the MCP tools have no log-retrieval action)
+- Failed-processor diagnosis, including the Atlas UI Logs tab (the MCP tools have no log-retrieval action, and `diagnose-processor` returns no error log)
 - Zero-output windowed pipelines (idle partitions)
 - Processor type classification (alert vs transformation)
 - MCP servers/tools unavailable fallback
+- `responseFormat` scope (list actions + `inspect-workspace` only)
 
 ### Sizing & Architecture (12, 25)
 - Tier sizing from the parallelism formula
@@ -80,11 +91,12 @@ Each eval validates that the skill:
 - Present a connection summary to the user for confirmation
 
 ### Pipeline Construction
-- Start with `$source`, end with `$merge`/`$emit`/`$https`/`$externalFunction` (async)
-- Include DLQ configuration for production processors
+- Start with `$source`, end with exactly one of `$merge`/`$emit`/`$iceberg`/`$https`/`$externalFunction`
+- Omit `as` whenever `$externalFunction` uses `execution: "async"`; require it for sync
+- Configure a DLQ when the user asks for one, or when `$https`/`$externalFunction` relies on the default `onError: "dlq"`
 - Add `partitionIdleTimeout` for windowed Kafka pipelines
 - Use `onError: "dlq"` for `$https` and `$externalFunction` stages
-- The ASP engine supports `$$ROOT`/`$$CURRENT`; MCP server versions through v3.2.2 reject them on `atlas-streams-build` — use explicit field references or deploy via `modify-processor`/the Admin API; never use `$$NOW`
+- The ASP engine supports `$$ROOT`/`$$CURRENT`; MCP server versions through at least v3.3.0 reject them on `atlas-streams-build` — use explicit field references or deploy via `modify-processor`/the Admin API; never use `$$NOW`
 
 ### Debugging Workflow
 1. Call `diagnose-processor` first
@@ -135,7 +147,7 @@ Cases assume these connections exist when the harness has live Atlas access:
 ## Notes
 
 - Cases are judge-graded guidance tests; they do not create real Atlas resources.
-- Cases 27 and 28 are the regression pair for the root-variable correction: 27 asserts the ASP engine supports `$$ROOT`, 28 asserts it supports `$$CURRENT` (which references the current document like `$$ROOT`) while `$$NOW` is not. Both also expect the answer to flag that MCP server versions through v3.2.2 reject `$$ROOT`/`$$CURRENT` on `atlas-streams-build`, so those deployments need an alternative. Case 43 separately asserts `$$NOW` is unavailable and points to `{"$meta": "stream.source.ts"}` for event time.
+- Cases 27 and 28 are the regression pair for the root-variable correction: 27 asserts the ASP engine supports `$$ROOT`, 28 asserts it supports `$$CURRENT` (which references the current document like `$$ROOT`) while `$$NOW` is not. Both also expect the answer to flag that MCP server versions through at least v3.3.0 reject `$$ROOT`/`$$CURRENT` on `atlas-streams-build`, so those deployments need an alternative. Case 43 separately asserts `$$NOW` is unavailable and points to `{"$meta": "stream.source.ts"}` for event time; case 46 asserts `$$SEARCH_META` is missing rather than throwing.
 - Case 21 covers calling `search-knowledge` to validate field names (S3 `$emit` in particular) before building a processor.
 - Case 17 verifies the `diagnose-processor` + Atlas UI Logs-tab workflow: the streams MCP tools have no `get-logs` action.
 - Case 4 and the root-cause part of case 7 need a live MCP connection to score fully; without one, they grade the described call rather than its result.

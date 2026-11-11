@@ -219,7 +219,7 @@
       "id": 17,
       "name": "operational-logs-ui",
       "prompt": "Show me the operational logs for processor 'fraud-detector' in workspace 'security-streams'",
-      "expected_output": "Explains that the streams MCP tools expose no log-retrieval action, so detailed operational logs are viewed in the Atlas UI. Calls atlas-streams-discover with action 'diagnose-processor' (and optionally 'inspect-processor') for workspace 'security-streams' and processor 'fraud-detector' to surface state and recent errors, then directs the user to Atlas -> Stream Processing -> the workspace -> the processor -> Logs tab.",
+      "expected_output": "Explains that the streams MCP tools expose no log-retrieval action, so detailed operational logs are viewed in the Atlas UI. Calls atlas-streams-discover with action 'diagnose-processor' (and optionally 'inspect-processor') for workspace 'security-streams' and processor 'fraud-detector' to surface state, stats, and connection health — noting that diagnose returns no error log — then directs the user to Atlas -> Stream Processing -> the workspace -> the processor -> Logs tab.",
       "files": [],
       "expectations": [
         "States that the streams MCP tools have no log-retrieval (get-logs) action",
@@ -295,7 +295,7 @@
       "id": 23,
       "name": "handle-402-billing-error",
       "prompt": "I got a 402 error when starting my processor",
-      "expected_output": "Explains no payment method configured, directs to Atlas \u2192 Organization \u2192 Billing, offers sp.process() in mongosh as free alternative, does NOT retry the start command",
+      "expected_output": "Explains no payment method configured, directs to Atlas → Organization → Billing, offers sp.process() in mongosh as free alternative, does NOT retry the start command",
       "files": [],
       "expectations": [
         "Explains that a 402 means billing is not configured / no payment method",
@@ -354,7 +354,7 @@
       "expectations": [
         "Confirms that the ASP engine supports $$ROOT",
         "Shows $$ROOT used in $addFields to preserve the incoming document",
-        "Notes that MCP server versions through v3.2.2 reject $$ROOT on atlas-streams-build, or offers an equivalent MCP-safe alternative",
+        "Notes that MCP server versions through at least v3.3.0 reject $$ROOT on atlas-streams-build, or offers an equivalent MCP-safe alternative",
         "Does NOT state that the ASP engine does not support $$ROOT",
         "Does NOT use $$NOW as a substitute"
       ],
@@ -368,7 +368,7 @@
       "expectations": [
         "Confirms that the ASP engine supports $$CURRENT",
         "Explains that $$CURRENT references the current document, similarly to $$ROOT",
-        "Notes that MCP server versions through v3.2.2 reject $$CURRENT on atlas-streams-build, or offers an equivalent MCP-safe alternative",
+        "Notes that MCP server versions through at least v3.3.0 reject $$CURRENT on atlas-streams-build, or offers an equivalent MCP-safe alternative",
         "Does NOT state that the ASP engine does not support $$CURRENT",
         "Optionally notes that $$NOW is unavailable and event time should come from the document or the `$meta: \"stream.source.ts\"` expression"
       ],
@@ -493,12 +493,13 @@
       "id": 37,
       "name": "function-udf-tier",
       "prompt": "I want to run a small JavaScript function over each temperature reading to convert Celsius to Fahrenheit. How do I do that in a stream processor?",
-      "expected_output": "Uses the $function expression with lang 'js', body, and args inside $addFields (or $project). Notes that $function requires SP30 or higher, and that the processor still needs a valid $source and terminal sink.",
+      "expected_output": "Uses the $function expression with lang 'js', body, and args inside $addFields (or $project). Notes that $function is gated behind the enableFunctionExpression feature flag (off by default) and requires SP30 or higher (enforced), and that the processor still needs a valid $source and terminal sink.",
       "expectations": [
         "Shows a $function expression with lang 'js'",
         "Includes the function body and an args array referencing the field",
         "Places it in a stage such as $addFields",
         "States that $function requires SP30 or higher",
+        "Mentions that $function needs the enableFunctionExpression feature flag, which is off by default",
         "Keeps a valid $source and terminal sink"
       ],
       "files": []
@@ -583,6 +584,170 @@
         "Does not use $$NOW in the pipeline",
         "Recommends a source timestamp field or {\"$meta\": \"stream.source.ts\"} for event time",
         "Does not claim $$NOW is supported"
+      ]
+    },
+    {
+      "id": 44,
+      "name": "parallelism-stage-support",
+      "prompt": "I want more throughput from my $externalFunction Lambda stage. Can I set parallelism: 4 on it?",
+      "expected_output": "Explains that $externalFunction has no parallelism field, so setting it is not valid. Says parallelism is available on $lookup, $merge, change-stream $source.initialSync, and $emit to S3/Azure Blob/time-series only — not on Kafka/Kinesis $emit, $https, or $externalFunction. Suggests other levers (tier, batching, concurrency inside Lambda) instead.",
+      "files": [],
+      "expectations": [
+        "States that $externalFunction does not support a parallelism field",
+        "Lists the stages that do support parallelism: $lookup, $merge, change-stream initialSync, and $emit to S3/Azure Blob/time-series",
+        "Does not claim parallelism works on $externalFunction, $https, or top-level $source",
+        "Suggests an alternative way to raise throughput"
+      ]
+    },
+    {
+      "id": 45,
+      "name": "async-external-function-as",
+      "prompt": "My pipeline ends with an async Lambda sink: {\"$externalFunction\": {\"connectionName\": \"my-lambda\", \"functionName\": \"fn\", \"execution\": \"async\", \"as\": \"result\"}}. Is that correct?",
+      "expected_output": "Says no — `as` must be omitted whenever execution is async, and supplying it errors. Explains that `as` stores a response and only applies to sync stages; an async stage is fire-and-forget. Corrects the stage by removing `as`.",
+      "files": [],
+      "expectations": [
+        "Identifies that `as` with execution 'async' is invalid",
+        "States that `as` must be omitted whenever execution is 'async' (sink or mid-pipeline)",
+        "Explains that `as` is used to store the response of a sync stage",
+        "Corrects the stage by removing `as`"
+      ]
+    },
+    {
+      "id": 46,
+      "name": "search-meta-variable",
+      "prompt": "How do I read $$SEARCH_META in a stream processor pipeline?",
+      "expected_output": "Explains that $$SEARCH_META is spelled with two dollar signs, and that unlike the other unavailable variables it does not throw — when unset it evaluates to missing. Notes that ASP has no $search stage, so it is effectively always missing, and recommends guarding it with $ifNull or omitting it.",
+      "files": [],
+      "expectations": [
+        "Uses the two-dollar spelling $$SEARCH_META",
+        "States that it evaluates to missing rather than throwing an error",
+        "Explains that ASP has no $search stage",
+        "Recommends guarding with $ifNull or omitting it"
+      ]
+    },
+    {
+      "id": 47,
+      "name": "terminal-sink-list",
+      "prompt": "Which stages can be the final stage of a stream processor pipeline?",
+      "expected_output": "Lists all five terminal stages: $merge, $emit, $iceberg, $https, and $externalFunction. States that exactly one is required for a deployed processor and that no stage may follow it. Mentions that $externalFunction must be async or sync with the matching `as` rule.",
+      "files": [],
+      "expectations": [
+        "Lists $merge, $emit, $iceberg, $https, and $externalFunction as terminal stages",
+        "States that exactly one terminal sink is allowed",
+        "States that no stage may follow the terminal sink"
+      ]
+    },
+    {
+      "id": 48,
+      "name": "function-feature-flag",
+      "prompt": "Build me a processor that uses $function to normalize a string field.",
+      "expected_output": "Notes that $function is gated behind the enableFunctionExpression feature flag, which is off by default, so it may be rejected. States that SP30 or higher is enforced. Offers a non-$function alternative (e.g. $toLower/$trim or $regexMatch expressions) in case the flag is unavailable.",
+      "files": [],
+      "expectations": [
+        "Mentions the enableFunctionExpression feature flag and that it is off by default",
+        "States that SP30 or higher is required and enforced",
+        "Offers an alternative that does not need $function"
+      ]
+    },
+    {
+      "id": 49,
+      "name": "diagnose-no-error-log",
+      "prompt": "My processor is in FAILED state. Run diagnose-processor and give me the exact error message from its output.",
+      "expected_output": "Calls diagnose-processor first for state, stats, connection health, and recommended actions, but explains that diagnose returns no error log or log lines. Directs the user to the Atlas UI processor Logs tab for the exact error, or to the DLQ collection for per-document errors.",
+      "files": [],
+      "expectations": [
+        "Calls diagnose-processor",
+        "Explains that diagnose-processor returns no error log",
+        "Directs the user to the Atlas UI Logs tab or the DLQ collection for the actual error"
+      ]
+    },
+    {
+      "id": 50,
+      "name": "get-networking-no-vpc-peering",
+      "prompt": "Use get-networking to list my VPC peerings.",
+      "expected_output": "Explains that get-networking lists project-level PrivateLink endpoints (and Atlas account details for a provider/region) but does not list VPC peerings. Says peerings are managed with accept-peering/reject-peering and removed with teardown resource='peering'. Offers the closest available alternative.",
+      "files": [],
+      "expectations": [
+        "States that get-networking lists PrivateLink endpoints",
+        "States that get-networking does not list VPC peerings",
+        "Mentions accept-peering/reject-peering or teardown for peerings"
+      ]
+    },
+    {
+      "id": 51,
+      "name": "gcp-pubsub-sink",
+      "prompt": "Add a GCP Pub/Sub connection called 'events-pubsub' to my workspace and emit to a topic.",
+      "expected_output": "Uses connectionType 'GCPPubSub' with connectionConfig.gcp.serviceAccountId. Shows a $emit stage with topic, projectId, and region. Notes that Pub/Sub is sink-only and that private networking uses publicPrivateNetworking rather than networking.",
+      "files": [],
+      "expectations": [
+        "Uses connectionType 'GCPPubSub'",
+        "Supplies serviceAccountId under connectionConfig.gcp",
+        "Shows $emit with topic, projectId, and region",
+        "States that Pub/Sub is sink-only",
+        "Uses publicPrivateNetworking for private networking"
+      ]
+    },
+    {
+      "id": 52,
+      "name": "modify-from-failed",
+      "prompt": "My processor is FAILED. Do I have to delete and recreate it to change the pipeline?",
+      "expected_output": "Says no — modify-processor works in any state except STARTED, so CREATED, STOPPED, and FAILED are all modifiable. Recommends modify-processor with the corrected pipeline, then start-processor. Notes that resumeFromCheckpoint is a start parameter, not a modify one.",
+      "files": [],
+      "expectations": [
+        "States that FAILED processors can be modified (no delete/recreate needed)",
+        "States that modify-processor works in any state except STARTED",
+        "Uses modify-processor then start-processor",
+        "Notes that resumeFromCheckpoint is set on start, not modify"
+      ]
+    },
+    {
+      "id": 53,
+      "name": "start-tier-ceiling",
+      "prompt": "Restart processor 'orders-rollup' in workspace 'prod-streams' with tier SP50. The workspace's maxTierSize is SP30.",
+      "expected_output": "Explains that start-processor's tier cannot exceed the workspace's streamConfig.maxTierSize (SP30 here), so SP50 would be rejected. Offers to start at SP30, or to raise the workspace maxTierSize first if SP50 is genuinely required.",
+      "files": [],
+      "expectations": [
+        "States that the start tier cannot exceed the workspace maxTierSize",
+        "Identifies that SP50 exceeds the SP30 ceiling",
+        "Suggests starting at SP30 or raising maxTierSize first"
+      ]
+    },
+    {
+      "id": 54,
+      "name": "emit-to-atlas-timeseries",
+      "prompt": "Write incoming Kafka events into a time-series collection in Atlas.",
+      "expected_output": "Uses a $emit stage targeting the Atlas Cluster connection with db, coll, and timeseries.timeField. Explains that $emit can write to Atlas collections (including creating a time-series collection), and contrasts it with $merge, which is the choice when whenMatched/whenNotMatched semantics are needed.",
+      "files": [],
+      "expectations": [
+        "Uses $emit to write to the Atlas Cluster connection",
+        "Includes db and coll",
+        "Includes timeseries.timeField",
+        "Contrasts $emit with $merge's whenMatched/whenNotMatched semantics"
+      ]
+    },
+    {
+      "id": 55,
+      "name": "read-only-mode",
+      "prompt": "The MongoDB MCP server is running in read-only mode. Can I still create a workspace and processor with the streams tools?",
+      "expected_output": "Explains that read-only mode permits only read operations, so atlas-streams-discover works but atlas-streams-build, atlas-streams-manage, and atlas-streams-teardown all fail. Does not retry them. Gives the user the equivalent Atlas UI or Admin API steps for creating the workspace and processor.",
+      "files": [],
+      "expectations": [
+        "States that only atlas-streams-discover works in read-only mode",
+        "States that build, manage, and teardown are blocked",
+        "Does not retry the blocked tools",
+        "Offers the Atlas UI or Admin API alternative"
+      ]
+    },
+    {
+      "id": 56,
+      "name": "response-format-scope",
+      "prompt": "Call inspect-processor with responseFormat 'detailed' for processor 'orders-rollup'.",
+      "expected_output": "Explains that inspect-processor does not accept responseFormat — it applies only to the list actions and to inspect-workspace. Calls inspect-processor normally (it is already detailed) and optionally describe-processor for more detail.",
+      "files": [],
+      "expectations": [
+        "States that inspect-processor does not accept responseFormat",
+        "States that responseFormat applies to list actions and inspect-workspace",
+        "Calls inspect-processor without responseFormat"
       ]
     }
   ]
