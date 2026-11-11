@@ -139,7 +139,7 @@ Each assertion includes:
 - **05-create-simple-kafka-to-mongo.json** - Basic pipeline structure, pre-validation workflow
 - **06-create-windowed-aggregation.json** - Window configuration, partitionIdleTimeout requirement
 - **13-create-https-enrichment.json** - HTTPS enrichment, onError: dlq requirement
-- **15-create-lambda-integration.json** - Lambda sink, execution: async requirement
+- **15-create-lambda-integration.json** - Lambda sink, async sink must omit `as`
 - **20-create-s3-sink.json** - Field name validation (path not prefix)
 
 ### Debugging & Validation (3 tests)
@@ -234,7 +234,7 @@ Use assertions as a checklist when manually validating agent responses:
 
 ## Coverage
 
-**12 of 42 tests** have detailed metadata files covering:
+**12 of 56 tests** have detailed metadata files covering:
 - All pipeline construction patterns (Kafka→Mongo, windowed, HTTPS, Lambda, S3)
 - All critical field name validations
 - All common debugging scenarios

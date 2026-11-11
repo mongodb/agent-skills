@@ -78,7 +78,7 @@
   "common_mistakes": [
     {
       "mistake": "Setting `as` with execution='async'",
-      "error": "The API returns an error; `as` is only valid for sync non-sink stages",
+      "error": "The API returns an error; `as` is not allowed with async execution and is required for sync non-sink stages",
       "fix": "Omit `as` for an async terminal sink; include it only for sync mid-pipeline enrichment"
     },
     {

@@ -9,7 +9,7 @@
       "files": [],
       "expectations": [
         "Calls atlas-streams-build with resource 'workspace'",
-        "Uses workspaceName 'dev-streams'",
+        "Uses workspaceName 'dev-streams' or a timestamped variant such as 'dev-streams-test-<timestamp>'",
         "Sets cloudProvider 'AWS' and region 'VIRGINIA_USA' (not 'us-east-1')",
         "Sets tier 'SP10'",
         "Includes the Atlas project ID"
@@ -49,20 +49,20 @@
       "expectations": [
         "Calls atlas-streams-discover with action 'diagnose-processor'",
         "Passes workspaceName 'prod-streams' and resourceName 'user-aggregator'",
-        "Reports state, stats, and any errors from the diagnostic response"
+        "Reports state and stats from diagnose-processor, without claiming it returns an error log"
       ]
     },
     {
       "id": 5,
       "name": "create-simple-kafka-to-mongo",
       "prompt": "Create a processor that reads from Kafka topic 'orders' and writes to Atlas collection 'analytics.orders'",
-      "expected_output": "Validates connections first with list-connections and inspect-connection, then calls atlas-streams-build with resource='processor', pipeline with $source (Kafka connection + topic; auto_offset_reset under config if set), $merge (Atlas connection + db/collection), includes DLQ configuration",
+      "expected_output": "Validates connections first with list-connections and inspect-connection, then calls atlas-streams-build with resource='processor', pipeline with $source (Kafka connection + topic; auto_offset_reset under config if set), $merge (Atlas connection + db/collection), does not add a DLQ unless asked",
       "files": [],
       "expectations": [
         "Calls list-connections and inspect-connection for the referenced connections before creating the processor",
         "Builds a pipeline starting with $source for the Kafka connection and topic 'orders'",
         "Ends the pipeline with $merge into database 'analytics', collection 'orders'",
-        "Configures a DLQ",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)",
         "Calls atlas-streams-build with resource 'processor'",
         "Does not place `auto_offset_reset` at the top level of `$source`; if it is set, it is under `config`"
       ]
@@ -137,13 +137,13 @@
       "id": 11,
       "name": "create-changestream-to-kafka",
       "prompt": "Create a processor that monitors the 'users' collection for changes and emits them to Kafka topic 'user-changes'",
-      "expected_output": "Pipeline with $source (Atlas cluster connection, database, collection, config.fullDocument), $emit (Kafka connection, topic; key/keyFormat under config if set), DLQ configured",
+      "expected_output": "Pipeline with $source (Atlas cluster connection, database, collection, config.fullDocument), $emit (Kafka connection, topic; key/keyFormat under config if set), does not add a DLQ unless asked",
       "files": [],
       "expectations": [
         "Uses an Atlas Cluster $source with the database and collection for 'users'",
         "Includes `fullDocument: 'updateLookup'` inside `$source.config` (not at the top level of `$source`)",
         "Emits to the Kafka topic 'user-changes' with $emit",
-        "Configures a DLQ",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)",
         "Does not place `$emit` `key` or `keyFormat` at the top level; if a message key is set, both are under `config`"
       ]
     },
@@ -257,13 +257,13 @@
       "id": 20,
       "name": "create-s3-sink",
       "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
-      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection (with bucket, path, and config.outputFormat; optionally compression), DLQ configured",
+      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection (with bucket, path, and config.outputFormat; optionally compression), does not add a DLQ unless asked",
       "files": [],
       "expectations": [
         "Uses a Kafka $source for topic 'logs'",
         "Emits to S3 with the connection, bucket, and path field (not prefix)",
         "Includes `config.outputFormat` with a string value (basicJson/canonicalJson/relaxedJson; not a top-level `format` field or an object) and optionally compression",
-        "Configures a DLQ and mentions AWS IAM role registration"
+        "Does not add a DLQ unless the user asks, and mentions AWS IAM role registration"
       ]
     },
     {
@@ -378,13 +378,13 @@
       "id": 29,
       "name": "kinesis-source-and-sink",
       "prompt": "Create a processor that reads from the Kinesis stream 'clicks' and writes to the Kinesis stream 'clicks-out', using user_id as the partition key.",
-      "expected_output": "Creates or validates an AWS Kinesis connection (connectionType AWSKinesisDataStreams) and builds a processor whose $source uses the 'stream' field (not streamName or topic) and config.consumerARN, and whose $emit uses 'stream' plus the required partitionKey (e.g. \"$user_id\"). Mentions the IAM role ARN / Cloud Provider Access prerequisite and Enhanced Fan-Out consumer registration, and configures a DLQ.",
+      "expected_output": "Creates or validates an AWS Kinesis connection (connectionType AWSKinesisDataStreams) and builds a processor whose $source uses the 'stream' field (not streamName or topic) and config.consumerARN, and whose $emit uses 'stream' plus the required partitionKey (e.g. \"$user_id\"). Mentions the IAM role ARN / Cloud Provider Access prerequisite and Enhanced Fan-Out consumer registration, and does not add a DLQ unless asked.",
       "expectations": [
         "Uses connectionType AWSKinesisDataStreams for the Kinesis connection",
         "Uses the 'stream' field (not 'streamName' or 'topic') in $source",
         "Includes partitionKey in the $emit stage",
         "Mentions the IAM role ARN / Cloud Provider Access prerequisite",
-        "Configures a DLQ",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)",
         "Includes `config.consumerARN` (required for the Kinesis source)",
         "Notes that the Enhanced Fan-Out consumer must be registered before processor creation"
       ],
@@ -548,14 +548,14 @@
       "id": 41,
       "name": "lookup-enrichment",
       "prompt": "Enrich Kafka topic 'orders' with customer data from the 'customers' Atlas collection (matching orders.customer_id to customers._id), then write the enriched orders to 'analytics.enriched_orders'",
-      "expected_output": "Uses a Kafka $source for topic 'orders' with auto_offset_reset under config; adds $lookup against the Atlas Cluster connection joining customer_id to _id, optionally with parallelism; ends with $merge into analytics.enriched_orders; configures a DLQ",
+      "expected_output": "Uses a Kafka $source for topic 'orders' with auto_offset_reset under config; adds $lookup against the Atlas Cluster connection joining customer_id to _id, optionally with parallelism; ends with $merge into analytics.enriched_orders; does not add a DLQ unless asked",
       "files": [],
       "expectations": [
         "Does not place `auto_offset_reset` at the top level of `$source`; if it is set, it is under `config`",
         "Adds a `$lookup` against the Atlas Cluster connection",
         "Specifies the lookup join fields: `localField` 'customer_id', `foreignField` '_id', and an `as` output field",
         "Ends with `$merge` into database 'analytics', collection 'enriched_orders'",
-        "Configures a DLQ"
+        "Does not add a DLQ unless the user asks for one (this prompt does not)"
       ]
     },
     {
@@ -742,7 +742,7 @@
       "id": 56,
       "name": "response-format-scope",
       "prompt": "Call inspect-processor with responseFormat 'detailed' for processor 'orders-rollup'.",
-      "expected_output": "Explains that inspect-processor does not accept responseFormat — it applies only to the list actions and to inspect-workspace. Calls inspect-processor normally (it is already detailed) and optionally describe-processor for more detail.",
+      "expected_output": "Explains that inspect-processor does not accept responseFormat — it applies only to the list actions and to inspect-workspace. Calls inspect-processor normally (it is already detailed).",
       "files": [],
       "expectations": [
         "States that inspect-processor does not accept responseFormat",

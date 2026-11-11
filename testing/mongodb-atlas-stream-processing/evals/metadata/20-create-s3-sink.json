@@ -81,10 +81,6 @@
       "description": "$emit.config.outputFormat is specified"
     },
     {
-      "name": "dlq_configured",
-      "description": "dlq parameter provided"
-    },
-    {
       "name": "mentions_aws_prerequisites",
       "description": "Response mentions IAM role ARN must be registered via Atlas Cloud Provider Access",
       "critical": true

@@ -135,7 +135,7 @@ node testing/lint-item-echo.mjs          # answer-echo lint (advisory)
 
 Cases assume these connections exist when the harness has live Atlas access:
 
-- Workspace: `prod-streams` (used by cases 4, 19, 26, 42)
+- Workspace: `prod-streams` (used by cases 4, 19, 26, 42, 53)
 - Kafka: `events-kafka`, `kafka-prod`
 - Atlas Cluster: `atlas-main`, `sample_stream_solar`
 - HTTPS: for API enrichment
