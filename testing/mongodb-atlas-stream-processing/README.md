@@ -73,6 +73,10 @@ A case appears under every category it exercises, so a few IDs are cross-listed.
 - Tier sizing from the parallelism formula
 - Chained processors for multiple sinks (single-terminal-sink constraint)
 
+### Pipeline Variables (Tests 27-28)
+- `$$ROOT` is valid and can be used in `$addFields`, `$group`, or `$replaceRoot`
+- `$$NOW` remains unavailable; use a timestamp field from the source document instead
+
 ## Key Assertions Tested
 
 Each eval validates that the skill:

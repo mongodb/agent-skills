@@ -86,12 +86,12 @@
       "id": 7,
       "name": "debug-failed-processor",
       "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
-      "expected_output": "Calls diagnose-processor first, directs the user to the Atlas UI processor Logs tab for operational logs (the streams MCP tools have no get-logs action), analyzes error patterns, identifies root cause (e.g., connection issue, schema mismatch, OOM), provides specific fix steps",
+      "expected_output": "Calls diagnose-processor first, directs the user to the Atlas UI processor Logs tab for operational logs (the streams MCP tools have no get-logs action), analyzes available evidence, identifies a likely root cause when supported or states what evidence is needed, and provides specific fix steps",
       "files": [],
       "expectations": [
         "Calls diagnose-processor first",
         "Directs the user to the processor Logs tab in the Atlas UI for detailed operational logs (the streams MCP tools have no get-logs action)",
-        "Commits to a specific root cause based on the evidence rather than listing hypothetical causes",
+        "Identifies a likely root cause when supported by the evidence or states what evidence is needed rather than listing hypothetical causes",
         "Provides concrete, ordered fix steps"
       ]
     },

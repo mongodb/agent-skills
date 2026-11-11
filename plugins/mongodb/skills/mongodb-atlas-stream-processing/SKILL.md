@@ -258,7 +258,7 @@ A pipeline containing an S3 `$emit` stage is the exception: it cannot be modifie
    See [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table.
 3. Classify processor type before interpreting output volume (alert vs transformation vs filter).
 4. Provide concrete, ordered fix steps specific to the diagnosed root cause. Do NOT present a list of hypothetical scenarios.
-5. If detailed logs are needed, direct the user to the Atlas UI: **Atlas → Stream Processing → Workspace → Processor → Logs tab**.
+5. Always direct the user to the Atlas UI for detailed operational logs: **Atlas → Stream Processing → Workspace → Processor → Logs tab**.
 
 ### Chained processors (multi-sink pattern)
 **CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge`, `$emit`, `$iceberg`, `$https`, or `$externalFunction`). When users request multiple output destinations (e.g., "write to Atlas AND emit to Kafka"), you MUST acknowledge the single-sink constraint and propose chained processors using an intermediate destination. See [references/pipeline-patterns.md](references/pipeline-patterns.md) for the full pattern with examples.
