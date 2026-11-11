@@ -23,33 +23,36 @@ Always consult the official repo for the latest validated patterns before creati
 | `$tumblingWindow` | Fixed-size non-overlapping windows | Stateful |
 | `$hoppingWindow` | Fixed-size overlapping windows | Stateful |
 | `$sessionWindow` | Gap-based per-key windows | Stateful |
-| `$function` | JavaScript UDF (SP30+ recommended) | Custom Code |
+| `$function` | JavaScript UDF (requires the `enableFunctionExpression` flag, SP30+) | Custom Code |
 | `$group` | Aggregate (inside windows) | Stateful |
 | `$merge` | Write to Atlas collection | Output (exactly one, required, last) |
-| `$emit` | Write to Kafka, Kinesis, or S3 | Output (exactly one, required, last) |
+| `$emit` | Write to Kafka, Kinesis, S3, GCP Pub/Sub, or an Atlas collection | Output (exactly one, required, last) |
 | `$iceberg` | Write to Apache Iceberg tables on an S3 connection (SP10+) | Output (exactly one, required, last) |
 
 | Category | Stages | Rules |
 |----------|--------|-------|
 | **Source** (1, required) | `$source` | Must be first. One per pipeline. |
-| **Stateless Processing** | `$match`, `$project`, `$addFields`, `$unset`, `$unwind`, `$replaceRoot`, `$redact` | No state or memory overhead. Place `$match` first to reduce volume. |
-| **Enrichment** | `$lookup`, `$https`, `$externalFunction` (sync/async) | I/O-bound. `$lookup` and `$externalFunction` support `parallelism`; `$https` does not. `$https` and `$externalFunction` can be mid-pipeline enrichment OR terminal sink. For sinks: `$https` sends to webhooks/APIs; `$externalFunction` may be sync or async, and an async sink must omit `as`. |
+| **Stateless Processing** | `$match`, `$project`, `$addFields`, `$set`, `$unset`, `$unwind`, `$replaceRoot`, `$replaceWith`, `$redact` | No state or memory overhead. Place `$match` first to reduce volume. |
+| **Enrichment** | `$lookup`, `$https`, `$externalFunction` (sync/async) | I/O-bound. `$lookup` and blob/time-series `$emit` support `parallelism`; `$https` and `$externalFunction` do not. `$https` and `$externalFunction` can be mid-pipeline enrichment OR terminal sink. For sinks: `$https` sends to webhooks/APIs; `$externalFunction` may be sync or async, and `as` must be omitted whenever execution is async. |
 | **Validation** | `$validate` | Schema enforcement. Place early to catch bad data before expensive stages. |
 | **Stateful/Window** | `$tumblingWindow`, `$hoppingWindow`, `$sessionWindow` | Accumulates state in memory. Monitor `memoryUsageBytes`. |
-| **Custom Code** | `$function` | JavaScript UDFs. SP30+ recommended. |
+| **Custom Code** | `$function` | JavaScript UDFs. Requires the `enableFunctionExpression` feature flag (off by default); SP30+ enforced. |
 | **Output** (exactly one, required) | `$merge`, `$emit`, `$iceberg`, `$https`, `$externalFunction` (sync or async; async recommended for sink) | Must be last. Required for deployed processors. |
 
 ## Invalid Constructs
 
-**`$$ROOT` and `$$CURRENT`** — the ASP engine supports both (they reference the whole current document). MongoDB MCP Server versions through v3.2.2 reject any pipeline containing them when **creating a processor with `atlas-streams-build`** ("not available in streaming request"). If your server version does, use explicit field references, or deploy via `modify-processor` / `atlas api streams createStreamProcessor`, which do not run that validator.
+**`$$ROOT` and `$$CURRENT`** — the ASP engine supports both (they reference the whole current document). MongoDB MCP Server versions through at least v3.3.0 reject any pipeline containing them when **creating a processor with `atlas-streams-build`** ("not available in streaming request"). If your server version does, use explicit field references, or deploy via `modify-processor` / `atlas api streams createStreamProcessor`, which do not run that validator.
 
 Do NOT use these in streaming pipelines:
-- `$$NOW`, `$$CLUSTER_TIME`, `$$USER_ROLES`, `$SEARCH_META` — not available in stream processing
-- `$$ROOT`/`$$CURRENT` when creating via `atlas-streams-build` on MCP server versions through v3.2.2 — blocked by the validator (see above)
+- `$$NOW`, `$$CLUSTER_TIME`, `$$USER_ROLES` — never seeded in ASP; using them throws "Builtin variable ... is not available"
+- `$$SEARCH_META` — spelled with two `$$`; it does not throw, it silently evaluates to *missing* when unset. ASP has no `$search` stage, so guard with `$ifNull` or omit
+- `$where` and `$accumulator` — always rejected by the engine
+- `$$ROOT`/`$$CURRENT` when creating via `atlas-streams-build` on MCP server versions through at least v3.3.0 — blocked by the validator (see above)
+- `$function` unless the `enableFunctionExpression` feature flag is enabled (off by default)
 - HTTPS connections as `$source` — HTTPS is for `$https` enrichment or a terminal sink only
 - Kafka `$source` without `topic` — topic field is required
 - Pipelines without a sink — a terminal sink (`$merge`/`$emit`/`$iceberg`/`$https`/`$externalFunction`) is required for deployed processors (sinkless only works via `sp.process()`)
-- Lambda connections with `$emit` — Lambda uses `$externalFunction` (mid-pipeline or terminal sink; async recommended for sink and must omit `as`), not `$emit`
+- Lambda connections with `$emit` — Lambda uses `$externalFunction` (mid-pipeline or terminal sink), not `$emit`
 
 ## Source Patterns
 
@@ -96,10 +99,11 @@ With full document and pushdown pipeline:
 
 `stream` (required): Kinesis stream name. `config.initialPosition`: defaults to `LATEST`; also supports `TRIM_HORIZON` (oldest), `AT_TIMESTAMP` (requires `config.atTimestamp`), `AT_SEQUENCE_NUMBER`, and `AFTER_SEQUENCE_NUMBER`. `shardIdleTimeout`: unblocks windows when shards go idle (like Kafka `partitionIdleTimeout`). `config.consumerARN` (required): Enhanced Fan-Out consumer ARN; register the consumer (`aws kinesis register-stream-consumer`) before processor creation.
 
-### Inline Documents (ephemeral testing only)
+### Inline Documents (no external connection needed)
 ```json
 {"$source": {"documents": [{"device_id": "sensor-1", "temp": 72.5}]}}
 ```
+The fastest way to test a pipeline with zero external setup. Whether a **deployed** processor accepts an inline source depends on your Atlas deployment — confirm before promoting past local or `sp.process()` testing.
 
 ## Sink Patterns
 
@@ -136,6 +140,18 @@ Dynamic routing:
   "coll": {"$cond": {"if": {"$eq": ["$priority", "high"]}, "then": "alerts", "else": "events"}}
 }}}
 ```
+
+### $emit to Atlas (collections, including time-series)
+```json
+{"$emit": {"connectionName": "my-atlas", "db": "mydb", "coll": "events"}}
+```
+`$emit` writes directly to an Atlas Cluster connection, and can create a time-series collection by adding `"timeseries": {"timeField": "timestamp"}`. Use `$merge` when you need `on`/`whenMatched`/`whenNotMatched` merge semantics; use `$emit` for plain ingest.
+
+### $emit to GCP Pub/Sub
+```json
+{"$emit": {"connectionName": "my-pubsub", "topic": "events", "projectId": "my-project", "region": "us-central1"}}
+```
+Requires a `GCPPubSub` connection; `topic`, `projectId`, and `region` are all required.
 
 ### $emit to Kafka
 ```json
@@ -196,7 +212,7 @@ Fields: `connectionName` (required), `bucket` (required), `path` (required — k
   "path": "warehouse/events"
 }}
 ```
-Must be the last stage. Requires SP10+; `path` must not end with `/`; non-AWS workspaces also require `region`.
+Must be the last stage. Requires SP10+. `path` must not end with `/`; non-AWS workspaces also require `region`. `mode` defaults to `cdc` (change-data-capture semantics, reading `{ $meta: "stream.source.operationType" }`) — pass `mode` explicitly if you want plain inserts. `idFieldName` defaults to `_id`. An optional `catalog` selects `hadoop` (default) or `glue`. A dynamic `tableName` expression is allowed but forbids `partitionedBy`.
 
 ### $https as Sink (webhook/API)
 ```json
@@ -318,7 +334,7 @@ For sync mid-pipeline enrichment, include `as` to store the Lambda response. The
 
 **Mid-pipeline usage:**
 - `execution`: `sync` (waits for Lambda result, stores in `as` field) or `async` (non-blocking)
-- `as`: Field name to store Lambda response (required for `sync`, ignored for `async`)
+- `as`: Field name to store the Lambda response. Required for `sync`; **must be omitted whenever `execution: "async"`** — supplying it errors, sink or mid-pipeline.
 - `payload`: Optional inner pipeline to customize request body sent to Lambda
 - Use for enriching/transforming documents before downstream stages
 
@@ -338,7 +354,7 @@ For sync mid-pipeline enrichment, include `as` to store the Lambda response. The
 }}
 ```
 
-`validationAction`: `"discard"` (default) or `"dlq"` (recommended). `"error"` is not supported. Place early to catch bad data before expensive stages.
+`validationAction`: `"discard"` (default) or `"dlq"` (recommended). `"error"` is not supported. `validator` accepts **any match expression** — `$jsonSchema` is one convenient option, not a requirement (`{"$expr": ...}` works too). Place early to catch bad data before expensive stages.
 
 ### $function (JavaScript UDF)
 ```json
@@ -351,7 +367,7 @@ For sync mid-pipeline enrichment, include `as` to store the Lambda response. The
 }}
 ```
 
-**SP30+ tier recommended.** `body`: JavaScript function as string. `args`: array of field references. `lang`: always `"js"`.
+**Feature-flagged and SP30+ enforced.** `$function` is rejected unless the `enableFunctionExpression` feature flag is on — it is **off by default**, so confirm with the user (or the deployment's flags) before building a pipeline that depends on it. The engine also requires SP30 or higher and rejects a lower tier. `body`: JavaScript function as string. `args`: array of field references. `lang`: always `"js"`.
 
 ## Common Pipeline Patterns
 
@@ -440,7 +456,7 @@ DLQ documents include: original document, error message, stage info, timestamp.
 
 ## Chained Processors (Multi-Sink Pattern)
 
-**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). You CANNOT have both `$merge` and `$emit` as terminal stages. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
+**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge`, `$emit`, `$iceberg`, `$https`, or `$externalFunction`). You CANNOT have both `$merge` and `$emit` as terminal stages. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
 
 1. **Acknowledge** the single-sink constraint explicitly in your response
 2. **Propose chained processors**: Processor A reads source → enriches → writes to intermediate via `$merge` (Atlas) or `$emit` (Kafka). Processor B reads from that intermediate (change stream or Kafka topic) → emits to second destination. Kafka-as-intermediate is lower latency; Atlas-as-intermediate is simpler to inspect.

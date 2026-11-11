@@ -18,7 +18,7 @@ Every stage in a pipeline runs with default `parallelism: 1`. This base level is
 
 When you need higher throughput for specific stages, increase their parallelism beyond 1. **Only values > 1 count toward your tier's maximum.**
 
-Stages that support parallelism: `$source`, `$lookup`, `$merge`, `$emit`, and `$externalFunction`. `$https` does not have a `parallelism` field.
+Stages that support parallelism: `$lookup`, `$merge`, change-stream `$source.initialSync`, and `$emit` to S3/Azure Blob/time-series. Kafka and Kinesis `$emit`, `$https`, and `$externalFunction` have no `parallelism` field, and `$source` has none at the top level.
 
 ## Parallelism Calculation
 
@@ -86,7 +86,7 @@ When parallelism is all default (1), choose tier based on pipeline complexity:
 | `$group` aggregation | Medium | SP10 |
 | `$tumblingWindow` or `$hoppingWindow` | Medium-High | SP10-SP30 |
 | `$sessionWindow` | High | SP30 |
-| `$function` (JavaScript UDFs) | High | SP30+ |
+| `$function` (JavaScript UDFs; flag-gated) | High | SP30+ (enforced) |
 | Large window state (many unique keys) | Very High | SP30-SP50 |
 | Multiple windows or chained enrichment | Very High | SP50 |
 
@@ -130,7 +130,7 @@ Charges are **per-hour, calculated per-second**, only while the processor is run
 
 **Additional costs (separate from tier):**
 - Data transfer egress (varies by cloud provider and transfer type: intra-region, inter-region, internet)
-- VPC Peering (AWS and GCP)
+- Networking connectivity: AWS VPC Peering, AWS Transit Gateway, AWS PrivateLink, Azure PrivateLink, and GCP Private Service Connect (GCP does not use VPC peering for streams)
 - Private Link connectivity
 
 For current pricing: https://www.mongodb.com/docs/atlas/billing/stream-processing-costs/
