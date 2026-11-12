@@ -12,6 +12,7 @@ on:
       - "assets/**"
       - "plugins/**"
       - "tools/sync-plugin-skills.ts"
+      - "tools/validate-gemini-plugin.ts"
 
 permissions:
   contents: read
@@ -49,3 +50,6 @@ jobs:
             echo "Run 'node tools/sync-plugin-skills.ts' locally and commit the result."
             exit 1
           fi
+
+      - name: Validate Gemini plugin packages
+        run: node tools/validate-gemini-plugin.ts

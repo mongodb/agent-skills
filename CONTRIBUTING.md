@@ -13,6 +13,13 @@ This repo publishes two plugins from `plugins/`:
   - `.grok-plugin/plugin.json` — Grok (`oauth.clientId`)
   - `.github/plugin/plugin.json` — GitHub Copilot / VS Code (`oauth.clientId`, a CIMD URL)
   - On Codex it points at a connector via `.app.json`.
+  - `.gemini-plugin/plugin.json` — Gemini (`oauth.clientId` `google-gemini`)
+
+  Don't add a `.mcp.json` or `mcp.json` to `plugins/mongodb-atlas/`. Claude,
+  Cursor, Copilot, Grok, and Codex all load those files automatically, and
+  Copilot, Grok, and Codex apply them ahead of (or alongside) their own manifest,
+  so one client's OAuth client ID would leak into the others.
+  `tools/validate-gemini-plugin.ts` fails the build if either file appears.
 
   The pre-registered client IDs the Atlas auth server accepts are defined in the
   [`atlas-iam` OAuth client seed](https://github.com/10gen/atlas-iam/blob/main/system/oauth/cmd/server/seed/client/seed)
@@ -30,6 +37,7 @@ backs all of them:
 | Grok (xAI) | `mongodb`, `mongodb-atlas` | `.grok-plugin/marketplace.json` | `plugins/<name>/.grok-plugin/plugin.json` |
 | Copilot / VS Code | `mongodb-atlas` only | `.github/plugin/marketplace.json` | `plugins/<name>/.github/plugin/plugin.json` |
 | Antigravity | `mongodb`, `mongodb-atlas` | _(none — Google-curated only)_ | `plugins/<name>/.antigravity-plugin/plugin.json` |
+| Gemini | `mongodb-atlas` only | _(none — partner onboarding)_ | `plugins/<name>/.gemini-plugin/plugin.json` |
 
 The plugin format is shared across Grok, Copilot, VS Code, and Claude —
 Copilot/VS Code even accept `.claude-plugin/` files as a fallback, so the
@@ -58,8 +66,14 @@ node tools/sync-plugin-skills.ts
 
 (Node 24 — or any Node ≥ 22.18 — runs the TypeScript directly, no transpile step.)
 Commit the regenerated copies. CI (the `Plugin Skills Sync` workflow) fails if
-they drift. The repo-root `gemini-extension.json` remains the community Gemini
-extension; the Atlas plugin is not published on Gemini yet.
+they drift. The script also copies the root `LICENSE` into each plugin and
+rewrites the `skills` array in `.gemini-plugin/plugin.json`. The same workflow
+runs `node tools/validate-gemini-plugin.ts`, which checks the Gemini package
+rules (manifest fields, inline MCP server domain, no shared `.mcp.json`, skill
+name and description limits, required README/CHANGELOG/LICENSE, no `../` paths
+or symlinks). The repo-root
+`gemini-extension.json` remains the community Gemini CLI extension; the Atlas
+plugin is not published on Gemini yet.
 
 ## Pull requests
 
