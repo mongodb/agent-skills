@@ -2,7 +2,7 @@
 
 All notable changes to the `mongodb-atlas` plugin are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/). More detailed
-entries are are available on [GitHub releases](https://github.com/mongodb/agent-skills/releases),
+entries are available on [GitHub releases](https://github.com/mongodb/agent-skills/releases),
 including repository tooling and CI.
 
 The `mongodb-atlas` plugin was introduced in 1.2.1. Earlier versions shipped the
