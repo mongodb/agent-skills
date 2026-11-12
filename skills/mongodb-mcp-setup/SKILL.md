@@ -51,7 +51,14 @@ Carry this **client type** (Codex vs. shell-based) forward through every subsequ
 Check your own available tools for MongoDB MCP server tools such as `list-databases`, `find`, or `connect` (clients often prefix them with the server name, e.g. `mcp__mongodb__find`). 
 
 - **Tools present** → the server is installed. If you are running in Codex, record the server name as it appears in the tool identifiers for use in Step 5. Continue to Step 1.
-- **Tools absent** → the server isn't installed, it was added but the client hasn't been restarted, or it failed to start. Ask which, then:
+- **Tools absent** → work through these checks in order, and stop at the first one that gives a clear answer:
+  1. **Config entry.** Look for a `mongodb` MCP entry in the client's MCP configuration. If there isn't one and the MongoDB plugin isn't enabled, the server is not installed. Go to **Not installed** below.
+  2. **Bundled plugin.** If the MongoDB plugin is enabled, the server is bundled and can't be missing because it was never added. Go to **Failed to start** below.
+  3. **Client status.** If the client has a way to list MCP server status (for example, `/mcp` in Claude Code), check it. A server listed as failed means **Failed to start**. A server listed as connected, with no tools in this session, means **Needs restart**.
+  4. **Prerequisites.** Confirm that `node` and `npx` are available. If either is missing, that is the likely cause of **Failed to start**.
+
+  If the checks don't settle it, ask the user: "Did you add the MongoDB server to your client, and have you restarted the client since?" Use the answer to choose the branch below. 
+
   - **Added but not restarted**: fully quit and reopen the client, then return to this step.
   - **Installed via the MongoDB plugin and restarted**: the server is bundled, so don't send them to install it. It failed to start; check that Node.js and `npx` are available and see [https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md](https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md?utm_source=agent-skills).
   - **Not installed**: Fetch [https://www.mongodb.com/docs/mcp-server/get-started.md](https://www.mongodb.com/docs/mcp-server/get-started.md?utm_source=agent-skills), use only the section for the user's client (the page covers every client), and give the user those steps. Its install paths are the user's to run: plugin installs are slash commands, and `npx mongodb-mcp-server@latest setup` prompts for a connection string. Afterwards tell them to fully restart the client and run this skill again.
