@@ -5,6 +5,7 @@ license: Apache-2.0
 metadata:
   version: "1.0.0"
   user-invocable: "true"
+  labelText: "Build, operate, and debug Atlas Stream Processing pipelines."
 ---
 
 # MongoDB Atlas Streams

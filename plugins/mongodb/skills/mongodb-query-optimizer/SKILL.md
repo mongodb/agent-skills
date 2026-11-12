@@ -7,6 +7,7 @@ compatibility: >-
 license: Apache-2.0
 metadata:
   version: "1.0.0"
+  labelText: "Help with query optimization and indexing. Not for general query writing."
 ---
 
 # MongoDB Query Optimizer
