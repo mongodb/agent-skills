@@ -223,7 +223,7 @@ Proceed to Step 5 (Configure Credentials).
 
 **For shell-based clients** — store credentials in a dedicated `~/.mcp-env` file (not directly in the shell profile), then source it from the profile. This keeps credentials out of files that are often group/world readable by default and prevents accidentally committing them to git.
 
-**For Codex** — add to `~/.codex/config.toml` (macOS/Linux) or `%USERPROFILE%\.codex\config.toml` (Windows).
+**For Codex** — add to `~/.codex/config.toml` (macOS/Linux) or `%USERPROFILE%\.codex\config.toml` (Windows). The snippets below only take effect when a `[mcp_servers.mongodb]` entry with a `command` exists. If Step 0.5 recorded a different server name, use that name in place of `mongodb` in every `[mcp_servers.mongodb.env]` header.
 
 Show the user the appropriate snippet:
 
