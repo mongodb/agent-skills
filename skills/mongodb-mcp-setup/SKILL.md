@@ -56,7 +56,6 @@ Check your own available tools for MongoDB MCP server tools such as `list-databa
   - **Installed via the MongoDB plugin and restarted**: the server is bundled, so don't send them to install it. It failed to start; check that Node.js and `npx` are available and see [https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md](https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md?utm_source=agent-skills).
   - **Not installed**: Fetch [https://www.mongodb.com/docs/mcp-server/get-started.md](https://www.mongodb.com/docs/mcp-server/get-started.md?utm_source=agent-skills), use only the section for the user's client (the page covers every client), and give the user those steps. Its install paths are the user's to run: plugin installs are slash commands, and `npx mongodb-mcp-server@latest setup` prompts for a connection string. Afterwards tell them to fully restart the client and run this skill again.
 
-**Codex**: the `[mcp_servers.mongodb.env]` snippets in Step 5 only take effect when a `[mcp_servers.mongodb]` entry with a `command` exists. If the server is registered under another name, use that name in the snippet.
 
 ## Step 1: Check Existing Configuration
 
