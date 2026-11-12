@@ -50,7 +50,7 @@ Carry this **client type** (Codex vs. shell-based) forward through every subsequ
 
 Check your own available tools for MongoDB MCP server tools such as `list-databases`, `find`, or `connect` (clients often prefix them with the server name, e.g. `mcp__mongodb__find`). 
 
-- **Tools present** → the server is installed. Continue to Step 1.
+- **Tools present** → the server is installed. If you are running in Codex, record the server name as it appears in the tool identifiers for use in Step 5. Continue to Step 1.
 - **Tools absent** → the server isn't installed, it was added but the client hasn't been restarted, or it failed to start. Ask which, then:
   - **Added but not restarted**: fully quit and reopen the client, then return to this step.
   - **Installed via the MongoDB plugin and restarted**: the server is bundled, so don't send them to install it. It failed to start; check that Node.js and `npx` are available and see [https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md](https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md?utm_source=agent-skills).
