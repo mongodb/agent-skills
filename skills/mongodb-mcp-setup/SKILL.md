@@ -59,8 +59,8 @@ Check your own available tools for MongoDB MCP server tools such as `list-databa
 
   If the checks don't settle it, ask the user: "Did you add the MongoDB server to your client, and have you restarted the client since?" Use the answer to choose the branch below. 
 
-  - **Added but not restarted**: fully quit and reopen the client, then return to this step.
-  - **Installed via the MongoDB plugin and restarted**: the server is bundled, so don't send them to install it. It failed to start; check that Node.js and `npx` are available and see [https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md](https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md?utm_source=agent-skills).
+  - **Needs restart**: fully quit and reopen the client, then return to this step. Don't reinstall, because that can create a duplicate entry.
+  - **Failed to start**: the server is installed but not running. Check that Node.js and `npx` are available, then see [https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md](https://www.mongodb.com/docs/mcp-server/local-mcp/configuration/troubleshooting.md?utm_source=agent-skills). If the plugin is bundled, don't send the user to install it.
   - **Not installed**: Fetch [https://www.mongodb.com/docs/mcp-server/get-started.md](https://www.mongodb.com/docs/mcp-server/get-started.md?utm_source=agent-skills), use only the section for the user's client (the page covers every client), and give the user those steps. Its install paths are the user's to run: plugin installs are slash commands, and `npx mongodb-mcp-server@latest setup` prompts for a connection string. Afterwards tell them to fully restart the client and run this skill again.
 
 
