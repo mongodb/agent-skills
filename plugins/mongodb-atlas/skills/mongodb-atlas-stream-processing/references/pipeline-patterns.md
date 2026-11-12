@@ -40,7 +40,7 @@ Always consult the official repo for the latest validated patterns before creati
 ## Invalid Constructs
 
 Do NOT use these in streaming pipelines:
-- `$$NOW`, `$$ROOT`, `$$CURRENT` — not available in stream processing
+- `$$NOW`, `$$CURRENT` — not available in stream processing
 - HTTPS connections as `$source` — HTTPS is for `$https` enrichment only
 - Kafka `$source` without `topic` — topic field is required
 - Pipelines without a sink — `$merge`/`$emit` required for deployed processors (sinkless only works via `sp.process()`)
@@ -268,7 +268,7 @@ Unlike mid-pipeline usage (where `execution: "sync"` is allowed for enrichment),
 }}
 ```
 
-`onError`: `dlq` (recommended), `discard`, `fail`. Store auth in connection settings, not pipeline. Place `$https` after windows to batch requests.
+`onError`: `dlq` (recommended), `ignore`, `fail`. Store auth in connection settings, not pipeline. Place `$https` after windows to batch requests.
 
 ### $lookup
 ```json
