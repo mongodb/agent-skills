@@ -140,7 +140,7 @@ This is a partial list. If unsure, inspect an existing workspace with `atlas-str
 
 All fields above are required. The tool will prompt the user for username/password via elicitation if not provided.
 
-Through the MCP tool, `authentication.mechanism` accepts `PLAIN`, `SCRAM-256`, `SCRAM-512`, `OAUTHBEARER`, or `AWS_MSK_IAM`, and `security.protocol` accepts `SASL_SSL`, `SASL_PLAINTEXT`, or `SSL`. The Admin API also supports mTLS (`mechanism: "NONE"` with certificate material), richer OIDC fields, a `plaintext` protocol, and `security.brokerPublicCertificate`; the MCP tool's schema rejects those values, so configure them through the Admin API or Atlas UI instead.
+Through the MCP tool, `authentication.mechanism` accepts `PLAIN`, `SCRAM-256`, `SCRAM-512`, `OAUTHBEARER`, or `AWS_MSK_IAM`, and `security.protocol` accepts `SASL_SSL`, `SASL_PLAINTEXT`, or `SSL`. Those two fields are closed enums, so values outside them — mTLS's `mechanism: "NONE"` and a `plaintext` protocol — are rejected and need the Admin API or Atlas UI. Every other field under `authentication` and `security` is passed through untouched, so `security.brokerPublicCertificate` and additional OIDC fields **can** be set with the MCP tool. The tool also requires `bootstrapServers`, `authentication.mechanism`, `security.protocol`, and a username/password for every mechanism except `AWS_MSK_IAM`.
 
 For Amazon MSK IAM auth, use `mechanism: "AWS_MSK_IAM"` with `authentication: { aws: { roleArn: "<arn>" } }` — do not send a username/password.
 
