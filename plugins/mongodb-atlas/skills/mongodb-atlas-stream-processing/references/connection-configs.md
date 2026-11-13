@@ -196,7 +196,7 @@ Required IAM policy permissions: `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`
   }
 }
 ```
-**IMPORTANT:** HTTPS connections are for `$https` enrichment stages ONLY. They are NOT valid data sources — do not use them in `$source`.
+**IMPORTANT:** HTTPS connections are for `$https` stages only: enrichment stages or a terminal `$https` sink. They are NOT valid data sources — do not use them in `$source`.
 
 Store all API authentication in the connection config headers, not in the processor pipeline.
 
