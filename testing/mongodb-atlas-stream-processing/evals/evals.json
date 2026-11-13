@@ -493,7 +493,7 @@
       "id": 37,
       "name": "function-udf-tier",
       "prompt": "I want to run a small JavaScript function over each temperature reading to convert Celsius to Fahrenheit. How do I do that in a stream processor?",
-      "expected_output": "Uses the $function expression with lang 'js', body, and args inside $addFields (or $project). Notes that $function is gated behind the enableFunctionExpression feature flag (off by default) and requires SP30 or higher (enforced), and that the processor still needs a valid $source and terminal sink.",
+      "expected_output": "Uses the $function expression with lang 'js', body, and args inside $addFields (or $project). Notes that $function is gated behind the enableFunctionExpression feature flag (off by default) and requires SP30 or higher, and that the processor still needs a valid $source and terminal sink.",
       "expectations": [
         "Shows a $function expression with lang 'js'",
         "Includes the function body and an args array referencing the field",
@@ -641,11 +641,11 @@
       "id": 48,
       "name": "function-feature-flag",
       "prompt": "Build me a processor that uses $function to normalize a string field.",
-      "expected_output": "Notes that $function is gated behind the enableFunctionExpression feature flag, which is off by default, so it may be rejected. States that SP30 or higher is enforced. Offers a non-$function alternative (e.g. $toLower/$trim or $regexMatch expressions) in case the flag is unavailable.",
+      "expected_output": "Notes that $function is gated behind the enableFunctionExpression feature flag, which is off by default, so it may be rejected. States that SP30 or higher is required. Offers a non-$function alternative (e.g. $toLower/$trim or $regexMatch expressions) in case the flag is unavailable.",
       "files": [],
       "expectations": [
         "Mentions the enableFunctionExpression feature flag and that it is off by default",
-        "States that SP30 or higher is required and enforced",
+        "States that SP30 or higher is required",
         "Offers an alternative that does not need $function"
       ]
     },

@@ -36,7 +36,7 @@ Always consult the official repo for the latest validated patterns before creati
 | **Enrichment** | `$lookup`, `$https`, `$externalFunction` (sync/async) | I/O-bound. `$lookup` and blob/time-series `$emit` support `parallelism`; `$https` and `$externalFunction` do not. `$https` and `$externalFunction` can be mid-pipeline enrichment OR terminal sink. For sinks: `$https` sends to webhooks/APIs; `$externalFunction` may be sync or async, and `as` must be omitted whenever execution is async. |
 | **Validation** | `$validate` | Schema enforcement. Place early to catch bad data before expensive stages. |
 | **Stateful/Window** | `$tumblingWindow`, `$hoppingWindow`, `$sessionWindow` | Accumulates state in memory. Monitor `memoryUsageBytes`. |
-| **Custom Code** | `$function` | JavaScript UDFs. Requires the `enableFunctionExpression` feature flag (off by default); SP30+ enforced. |
+| **Custom Code** | `$function` | JavaScript UDFs. Requires the `enableFunctionExpression` feature flag (off by default); SP30+ minimum. |
 | **Output** (exactly one, required) | `$merge`, `$emit`, `$iceberg`, `$https`, `$externalFunction` (sync or async; async recommended for sink) | Must be last. Required for deployed processors. |
 
 ## Invalid Constructs
@@ -367,7 +367,7 @@ For sync mid-pipeline enrichment, include `as` to store the Lambda response. The
 }}
 ```
 
-**Feature-flagged and SP30+ enforced.** `$function` is rejected unless the `enableFunctionExpression` feature flag is on — it is **off by default**, so confirm with the user (or the deployment's flags) before building a pipeline that depends on it. The engine also requires SP30 or higher and rejects a lower tier. `body`: JavaScript function as string. `args`: array of field references. `lang`: always `"js"`.
+**Feature-flagged, with an SP30 minimum.** `$function` is rejected unless the `enableFunctionExpression` feature flag is on — it is **off by default**, so confirm with the user (or the deployment's flags) before building a pipeline that depends on it. A pipeline that uses it needs SP30 or higher; a lower tier is rejected. `body`: JavaScript function as string. `args`: array of field references. `lang`: always `"js"`.
 
 ## Common Pipeline Patterns
 
