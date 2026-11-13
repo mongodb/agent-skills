@@ -244,13 +244,13 @@
       "id": 19,
       "name": "billing-warning-before-start",
       "prompt": "Start processor 'analytics-pipeline' in workspace 'prod-streams'",
-      "expected_output": "Warns about billing costs before starting, mentions per-second charging until the processor is stopped, waits for user confirmation, then calls atlas-streams-manage with action='start-processor'",
+      "expected_output": "Warns about billing costs before starting, mentions per-second charging until the processor is stopped, and waits for user confirmation before calling atlas-streams-manage with action='start-processor'. If no confirmation is available in the conversation, it stops after the warning.",
       "files": [],
       "expectations": [
         "Warns about billing before starting the processor",
         "Mentions per-second or per-hour charging while running / that start-processor begins billing",
         "Confirms the user intends to incur charges or has billing configured",
-        "Then calls atlas-streams-manage with action 'start-processor'"
+        "Calls atlas-streams-manage with action 'start-processor' only once the user has confirmed; without a confirmation in the conversation, does not call it yet"
       ]
     },
     {
