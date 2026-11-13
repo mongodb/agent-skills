@@ -408,7 +408,7 @@
     {
       "id": 31,
       "name": "validate-stage-dlq",
-      "prompt": "Add schema validation to my processor so documents missing device_id are rejected instead of crashing the processor.",
+      "prompt": "Add schema validation to my processor so documents missing device_id are rejected instead of crashing the processor. Use a $jsonSchema validator, and route the rejected documents to a DLQ.",
       "expected_output": "Adds a $validate stage with a $jsonSchema validator requiring device_id and validationAction 'dlq' (only 'discard' or 'dlq' are valid; 'error' is not supported). Places validation early, before expensive stages, and ensures a DLQ is configured to receive rejected documents.",
       "expectations": [
         "Shows a $validate stage with a $jsonSchema validator requiring device_id",
