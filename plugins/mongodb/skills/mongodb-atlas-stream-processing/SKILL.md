@@ -175,7 +175,7 @@ See [references/pipeline-patterns.md](references/pipeline-patterns.md) for stage
 
 **DLQ:** include one only when the user explicitly asks, or when an `$https`/`$externalFunction` stage relies on its default `onError: "dlq"` and so needs a destination. Do not add a DLQ silently.
 
-**Autoscaling:** `{enabled: boolean, minTier, maxTier}`. `maxTier` cannot exceed the workspace `maxTierSize`. On modify, omitting `autoscaling` preserves it and `{enabled: false}` disables it; the tool's schema does not accept `null`, so send `enabled: false` rather than null. Setting it on create is a no-op.
+**Autoscaling:** `{enabled: boolean, minTier, maxTier}`. `maxTier` cannot exceed the workspace `maxTierSize`. On create, `autoscaling` is forwarded to the processor's `options`, so set it there when the user asks for it — omitted means disabled at creation, and `minTier`/`maxTier` default to the workspace bounds. On modify, omitting `autoscaling` preserves it and `{enabled: false}` disables it; the tool's schema does not accept a `null` object, so send `enabled: false` rather than null.
 
 **Effective tier:** `inspect-processor` reports both the baseline `tier` and the read-only `effectiveTier`. A `tier` change takes effect at the next `start-processor`, not immediately.
 
