@@ -15,4 +15,5 @@ These skills come bundled with the plugin and activate automatically when releva
 - **`mongodb-query-optimizer`** — Diagnoses slow queries and recommends indexes to fix them.
 - **`mongodb-schema-design`** — Applies MongoDB schema design patterns and steers you clear of common anti-patterns, whether modeling from scratch or migrating from SQL.
 - **`mongodb-search-and-ai`** — Helps build Atlas Search (full-text), Vector Search (semantic), and hybrid search implementations.
+- **`mongodb-vercel-deployment`** — Configures and troubleshoots MongoDB Atlas on Vercel: Marketplace integration defaults, network access, server-only environment variables, and runtime compatibility.
 - **`mongodb-atlas-stream-processing`** — Manages Atlas Stream Processing workspaces, connections, and processors for streaming workloads.

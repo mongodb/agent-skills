@@ -3,7 +3,7 @@ name: mongodb-connection
 description: Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill when working/updating/reviewing on functions that instantiate or configure a MongoDB client (eg, when calling `connect()`), configuring connection pools, troubleshooting connection errors (ECONNREFUSED, timeouts, pool exhaustion), optimizing performance issues related to connections. This includes scenarios like building serverless functions with MongoDB, creating API endpoints that use MongoDB, optimizing high-traffic MongoDB applications, creating long-running tasks and concurrency, or debugging connection-related failures.
 license: Apache-2.0
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # MongoDB Connection Optimizer
@@ -87,6 +87,8 @@ Total potential connections = instances × (maxPoolSize + 2) × replica set memb
 | `maxIdleTimeMS` | 10-30s | Release unused connections more quickly |
 | `connectTimeoutMS` | >0 | Set to a value greater than the longest network latency you have to a member of the set |
 | `socketTimeoutMS` | >0 | Use socketTimeoutMS to ensure that sockets are always closed |
+
+**On Vercel (Functions, Fluid compute):** these defaults do not apply as-is, because one instance serves concurrent requests and is suspended when idle. Read `references/vercel-client-lifecycle.md` for the client lifecycle, and `references/vercel-fluid-compute.md` for `attachDatabasePool`. For first-deployment failures (works locally but fails on Vercel, Atlas network access, environment scopes), use the `mongodb-vercel-deployment` skill.
 
 ##### Scenario: Traditional Long-Running Servers (OLTP Workload)
 
