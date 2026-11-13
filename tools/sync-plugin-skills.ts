@@ -42,7 +42,7 @@ type PluginsConfig = Record<string, { skills: SkillSelection }>;
 //   { exclude: [...] }  -> all except the listed skills
 const PLUGINS: PluginsConfig = {
   mongodb: { skills: "all" },
-  "mongodb-atlas": { skills: { exclude: ["mongodb-mcp-setup"] } },
+  "mongodb-atlas": { skills: { exclude: ["mongodb-mcp-setup", "mongodb-self-managed-audit"] } },
 };
 
 const SKILLS_SRC = "skills";
