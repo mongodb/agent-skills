@@ -272,7 +272,7 @@ Sink only — `$emit` supplies `topic`, `projectId`, and `region` on the stage. 
 }
 ```
 - `connectionType` MUST be `"SchemaRegistry"` (not `"Kafka"` or `"Https"`)
-- `provider` is required; the supported value is `"CONFLUENT"`
+- `provider` is optional and defaults to `"CONFLUENT"`, the only supported value
 - `schemaRegistryUrls` is an **array** (not a string). The tool auto-wraps a string into an array if needed.
 - `schemaRegistryAuthentication.type`: `"USER_INFO"` (explicit credentials) or `"SASL_INHERIT"` (inherit from Kafka connection)
 - Tool elicitation will collect sensitive fields (password) — don't ask the user for these directly
