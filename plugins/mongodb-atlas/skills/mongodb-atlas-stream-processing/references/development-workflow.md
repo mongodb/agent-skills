@@ -11,7 +11,7 @@ Understanding stage categories helps compose valid pipelines. Stages must appear
 | **Enrichment** | `$lookup`, `$https`, `$externalFunction` (sync/async) | I/O-bound. `$lookup` supports `parallelism`; `$https` and `$externalFunction` do not. Place `$https` after windows to batch. |
 | **Stateful/Window** | `$tumblingWindow`, `$hoppingWindow`, `$sessionWindow` | Accumulates state in memory. Monitor `memoryUsageBytes`. |
 | **Validation** | `$validate` | Schema enforcement. Use `validationAction: "discard"` (default) or `"dlq"`; `"error"` is not supported. Place early to catch bad data. |
-| **Custom Code** | `$function` | JavaScript UDFs. Requires the `enableFunctionExpression` feature flag (off by default); SP30+ enforced. |
+| **Custom Code** | `$function` | JavaScript UDFs. Requires the `enableFunctionExpression` feature flag (off by default); SP30+ minimum. |
 | **Output** (exactly one, required for deployed) | `$merge`, `$emit`, `$iceberg`, `$https`, `$externalFunction` (sync or async; async recommended for sink) | Must be last. Required for persistent processors. Sinkless = ephemeral only. |
 
 **Key ordering principle:** Place `$match` as early as possible (reduces volume for all downstream stages). Place `$project` after `$match` (reduces document size). Place `$https` after windows (batches API calls).

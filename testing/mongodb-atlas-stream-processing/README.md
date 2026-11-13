@@ -37,7 +37,7 @@ A case appears under every category it exercises, so a few IDs are cross-listed.
 - AWS Lambda `$externalFunction` (async sink, sync/async enrichment)
 - S3 `$emit` with `path`, format, and compression
 - Kinesis source/sink with `stream` and `partitionKey`
-- JavaScript UDFs (`$function`, flag-gated, SP30+ enforced)
+- JavaScript UDFs (`$function`, flag-gated, SP30+ minimum)
 - Async `$externalFunction` must omit `as`
 - All five terminal sink stages
 - `$emit` to Atlas collections, including time-series

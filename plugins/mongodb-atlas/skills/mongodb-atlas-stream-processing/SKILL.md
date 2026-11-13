@@ -269,7 +269,7 @@ See [references/development-workflow.md](references/development-workflow.md) for
 
 ## Tier Sizing & Performance
 
-**Tier guidance:** the engine and control plane **enforce** a per-pipeline minimum tier. `$function` (JavaScript UDF) and `$sessionWindow` require **SP30 or higher**; starting below it is rejected with "current tier is below the minimum tier required by this pipeline", and the same check runs on modify. `$tumblingWindow`/`$hoppingWindow` usually fit SP10–SP30; very large window state may need SP50. `$function` also needs the `enableFunctionExpression` feature flag, which is off by default.
+**Tier guidance:** the control plane **enforces** the minimum tier the engine reports for a pipeline. Starting below that minimum is rejected with "current tier is below the minimum tier required by this pipeline", and the same check runs on modify, including against the autoscaling `minTier`. `$function` (JavaScript UDF) and `$sessionWindow` pipelines require **SP30 or higher**; do not start one below SP30. `$tumblingWindow`/`$hoppingWindow` usually fit SP10–SP30; very large window state may need SP50. `$function` also needs the `enableFunctionExpression` feature flag, which is off by default.
 
 See [references/sizing-and-parallelism.md](references/sizing-and-parallelism.md) for tier specifications, parallelism formulas, complexity scoring, and performance optimization strategies.
 
