@@ -16,3 +16,4 @@ These skills come bundled with the plugin and activate automatically when releva
 - **`mongodb-schema-design`** — Applies MongoDB schema design patterns and steers you clear of common anti-patterns, whether modeling from scratch or migrating from SQL.
 - **`mongodb-search-and-ai`** — Helps build Atlas Search (full-text), Vector Search (semantic), and hybrid search implementations.
 - **`mongodb-atlas-stream-processing`** — Manages Atlas Stream Processing workspaces, connections, and processors for streaming workloads.
+- **`mongodb-self-managed-audit`** — Audits a self-managed Enterprise Advanced 7.0, 8.0, 8.3 or 9.0 deployment on Linux against the MongoDB production notes and reports each check as PASS, WARN, FAIL or UNKNOWN.
