@@ -71,7 +71,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 
 **Field mapping** — always fill `projectId`, `workspaceName`, then by action:
 
-- `"start-processor"` → `resourceName`. Optional: `tier` (cannot exceed the workspace `streamConfig.maxTierSize`), `resumeFromCheckpoint`, `startAtOperationTime` (BSON timestamp or dateTime to resume from a specific point), `autoscaling`
+- `"start-processor"` → `resourceName`. Optional: `tier` (cannot exceed the workspace `streamConfig.maxTierSize`), `resumeFromCheckpoint`, `startAtOperationTime` (an **ISO 8601 string** to resume from a specific point — the tool accepts only a string, so a BSON `Timestamp` object fails validation), `autoscaling`
 - `"stop-processor"` → `resourceName`
 - `"modify-processor"` → `resourceName`. At least one of: `pipeline`, `dlq`, `newName`, `tier`, `autoscaling`. `resumeFromCheckpoint` is **not** a modify parameter — set it on `start-processor`
 - `"update-workspace"` → `newRegion` or `newTier` (Admin API field: `streamConfig.tier`; SPM uses `tier`)
