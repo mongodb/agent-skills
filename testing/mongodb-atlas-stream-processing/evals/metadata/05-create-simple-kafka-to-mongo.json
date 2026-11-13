@@ -95,11 +95,6 @@
       "name": "merge_has_db_and_collection",
       "description": "$merge.into.db='analytics' and $merge.into.coll='orders'",
       "critical": true
-    },
-    {
-      "name": "dlq_configured",
-      "description": "dlq parameter provided with connectionName, db, and coll fields",
-      "critical": true
     }
   ],
   "expected_pipeline": [
@@ -122,7 +117,6 @@
   "success_criteria": {
     "operation_succeeds": "Processor creation returns success (not 400 or 409)",
     "processor_accessible": "Processor is accessible via inspect-processor",
-    "pipeline_structure_valid": "Pipeline has $source first and $merge last",
-    "dlq_configured": "DLQ parameter was provided in processor creation"
+    "pipeline_structure_valid": "Pipeline has $source first and $merge last"
   }
 }

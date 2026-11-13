@@ -46,7 +46,7 @@
     },
     {
       "name": "provider_aws",
-      "description": "privateLinkProvider='AWS'"
+      "description": "privateLinkConfig.provider='AWS'"
     },
     {
       "name": "vendor_confluent",
