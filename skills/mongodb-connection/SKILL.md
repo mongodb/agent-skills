@@ -4,6 +4,7 @@ description: Optimize MongoDB client connection configuration (pools, timeouts, 
 license: Apache-2.0
 metadata:
   version: "1.0.0"
+  labelText: "Optimize MongoDB client connections. Configure pools or troubleshoot connection issues."
 ---
 
 # MongoDB Connection Optimizer

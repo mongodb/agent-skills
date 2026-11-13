@@ -4,6 +4,7 @@ description: MongoDB schema design patterns and anti-patterns. Use when designin
 license: Apache-2.0
 metadata:
   version: "1.0.0"
+  labelText: "Design better data models. Get help with schema best-practices, tuning for your use case, and avoiding antipatterns."
 ---
 
 # MongoDB Schema Design

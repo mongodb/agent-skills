@@ -5,6 +5,7 @@ description: |
 license: Apache-2.0
 metadata:
   version: "1.0.0"
+  labelText: "Add, optimize, or troubleshoot Atlas search or vector search. Understand the optimal approach to search and build effective indexes and queries."
 ---
 
 # MongoDB Search and AI Recommendations Skill
