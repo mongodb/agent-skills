@@ -151,7 +151,7 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 **Step 4: Add windowing or enrichment** (if needed)
 
 **Step 5: Add error handling**
-- Configure DLQ: `{"dlq": {"connectionName": "my-sink", "db": "streams_dlq", "coll": "failed_docs"}}`
+- Add a DLQ only if the user asks for one, or when an `onError: "dlq"` stage needs a destination: `{"dlq": {"connectionName": "my-sink", "db": "streams_dlq", "coll": "failed_docs"}}`
 - Add `$ifNull` for optional enrichment fields
 - Set `onError: "dlq"` on `$https` stages
 
@@ -294,7 +294,7 @@ Before creating a processor, verify:
 - [ ] HTTPS connections are only used in `$https` enrichment or sink stages, not in `$source`
 - [ ] DLQ is configured if the user asked for one, or if an `onError: "dlq"` stage needs a destination (do not add one silently)
 - [ ] `$https` stages use `onError: "dlq"` (not `"fail"`)
-- [ ] `$externalFunction` stages use `onError: "dlq"` and `execution` is explicitly set
+- [ ] `$externalFunction` stages omit `as` when `execution: "async"`; `execution` and `onError` are set only when they differ from the defaults (`sync`, `dlq`)
 - [ ] API auth is stored in connection settings, not hardcoded in the pipeline
 
 ## Post-Deploy Verification Workflow
