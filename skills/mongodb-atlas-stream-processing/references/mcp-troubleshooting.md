@@ -25,8 +25,8 @@ If you cannot configure the MCP server immediately, you have limited alternative
 ### Option 1: Atlas CLI (Read-Only)
 Use Atlas CLI API commands for exploration only:
 ```bash
-atlas api streams listStreamWorkspaces --projectId <project-id>
-atlas api streams getStreamWorkspace --workspaceName <workspace-name> --projectId <project-id>
+atlas api streams listStreamWorkspaces --groupId <project-id>
+atlas api streams getStreamWorkspace --tenantName <workspace-name> --groupId <project-id>
 ```
 
 **Limitations:**
@@ -39,17 +39,16 @@ Use `sp.process()` in mongosh for ephemeral pipeline testing:
 ```javascript
 sp.process([
   { $source: { connectionName: "sample_stream_solar" } },
-  { $match: { temperature: { $gt: 50 } } },
-  { $limit: 10 }
+  { $match: { temperature: { $gt: 50 } } }
 ])
 ```
 
 **Limitations:**
-- Ephemeral only (no deployed processors)
-- No billing (runs locally)
-- Cannot test production connections
+- Ephemeral only — the processor is not persisted; connect mongosh to the workspace and results print in-session
+- No deployed processor to bill
+- Cannot exercise the MCP validation/diagnostics workflow
 - Limited to simple pipeline validation
 
 ## Recommended Action
 
-**For full Atlas Stream Processing capabilities, configure the MongoDB MCP Server with streams preview features enabled.** The fallback options above provide minimal functionality and are not suitable for production workflows.
+**For full Atlas Stream Processing capabilities, configure the MongoDB MCP Server with the streams tools enabled and Atlas API credentials set.** The fallback options above provide minimal functionality and are not suitable for production workflows.

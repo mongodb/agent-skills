@@ -11,7 +11,7 @@
     },
     {
       "name": "search_query_validates_field_names",
-      "description": "Search query validates S3 $emit field names (path, format, compression)",
+      "description": "Search query validates S3 $emit field names (path, config.outputFormat, compression)",
       "critical": true
     },
     {

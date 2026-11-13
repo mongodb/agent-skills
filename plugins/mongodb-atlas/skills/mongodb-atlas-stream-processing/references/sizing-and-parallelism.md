@@ -18,10 +18,7 @@ Every stage in a pipeline runs with default `parallelism: 1`. This base level is
 
 When you need higher throughput for specific stages, increase their parallelism beyond 1. **Only values > 1 count toward your tier's maximum.**
 
-Stages that commonly benefit from parallelism:
-- `$merge` — concurrent writes to Atlas
-- `$lookup` — concurrent reads for enrichment
-- `$https` — concurrent API calls
+Stages that support parallelism: `$lookup`, `$merge`, change-stream `$source.initialSync`, and `$emit` to S3/Azure Blob/time-series. Kafka and Kinesis `$emit`, `$https`, and `$externalFunction` have no `parallelism` field, and `$source` has none at the top level.
 
 ## Parallelism Calculation
 
@@ -61,7 +58,7 @@ Total = 3 + 3 = 6 → SP10 (max 8)
 **Complex pipeline:**
 ```
 $source:    parallelism = 1  (does not count)
-$https:     parallelism = 6  (counts as 5)
+$lookup:    parallelism = 6  (counts as 5)
 $merge:     parallelism = 8  (counts as 7)
 
 Total = 5 + 7 = 12 → SP30 (max 16)
@@ -88,8 +85,8 @@ When parallelism is all default (1), choose tier based on pipeline complexity:
 | `$lookup` or `$https` enrichment | Medium | SP10 |
 | `$group` aggregation | Medium | SP10 |
 | `$tumblingWindow` or `$hoppingWindow` | Medium-High | SP10-SP30 |
-| `$sessionWindow` | High | SP30 |
-| `$function` (JavaScript UDFs) | High | SP30+ |
+| `$sessionWindow` | High | SP30 minimum |
+| `$function` (JavaScript UDFs; flag-gated) | High | SP30+ minimum |
 | Large window state (many unique keys) | Very High | SP30-SP50 |
 | Multiple windows or chained enrichment | Very High | SP50 |
 
@@ -116,7 +113,9 @@ For automated tier recommendation, score the pipeline:
 - 41-60: SP30
 - 61+: SP50
 
-**Tier selection:** the parallelism calculation sets the minimum tier. Use the complexity score only to decide whether to add headroom (usually one tier up); do not go below the parallelism-derived tier.
+**Stage minimums override the mapping:** a pipeline with `$sessionWindow` or `$function` starts at SP30 no matter what the score says, so never recommend below it for those stages.
+
+**Tier selection:** the parallelism calculation sets the **minimum** tier. Take the higher of that and any stage minimum (`$sessionWindow` and `$function` both require SP30), then use the complexity score only to decide whether to add headroom (usually one tier up). Do not go below the resulting floor, and treat the complexity score as an internal heuristic — official MongoDB guidance publishes only the cumulative-parallelism ceiling.
 
 ## Billing
 
@@ -133,7 +132,7 @@ Charges are **per-hour, calculated per-second**, only while the processor is run
 
 **Additional costs (separate from tier):**
 - Data transfer egress (varies by cloud provider and transfer type: intra-region, inter-region, internet)
-- VPC Peering (AWS and GCP)
+- Networking connectivity: AWS VPC Peering, AWS Transit Gateway, AWS PrivateLink, Azure PrivateLink, and GCP Private Service Connect (GCP does not use VPC peering for streams)
 - Private Link connectivity
 
 For current pricing: https://www.mongodb.com/docs/atlas/billing/stream-processing-costs/
@@ -144,8 +143,8 @@ For current pricing: https://www.mongodb.com/docs/atlas/billing/stream-processin
 
 1. Score the pipeline using the complexity heuristic above
 2. Calculate parallelism needs using the formula
-3. Take the higher recommendation
-4. Start with that tier (or one tier lower for cost savings during testing)
+3. Use the higher of the parallelism-derived tier and any stage minimum (`$sessionWindow`/`$function` → SP30); consult the complexity score only for headroom
+4. Start with that tier (or one tier lower for cost savings during testing, but never below a stage minimum)
 
 ### Phase 2: Validation
 

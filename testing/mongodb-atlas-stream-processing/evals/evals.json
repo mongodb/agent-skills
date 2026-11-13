@@ -6,196 +6,749 @@
       "name": "create-workspace-basic",
       "prompt": "Create a new Atlas Stream Processing workspace called 'dev-streams' in AWS us-east-1 with an SP10 tier",
       "expected_output": "Calls atlas-streams-build with resource='workspace', workspaceName='dev-streams', cloudProvider='AWS', region='VIRGINIA_USA', tier='SP10'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-build with resource 'workspace'",
+        "Uses workspaceName 'dev-streams' or a timestamped variant such as 'dev-streams-test-<timestamp>'",
+        "Sets cloudProvider 'AWS' and region 'VIRGINIA_USA' (not 'us-east-1')",
+        "Sets tier 'SP10'",
+        "Includes the Atlas project ID"
+      ]
     },
     {
       "id": 2,
       "name": "add-kafka-connection",
       "prompt": "Add a Kafka connection named 'events-kafka' to my 'production-streams' workspace",
       "expected_output": "Calls atlas-streams-build with resource='connection', connectionType='Kafka', connectionName='events-kafka', allows MCP elicitation for bootstrap servers",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-build with resource 'connection'",
+        "Uses connectionName 'events-kafka', connectionType 'Kafka', and workspaceName 'production-streams'",
+        "Lets MCP elicitation collect bootstrap servers and credentials instead of asking the user to paste secrets",
+        "Provides connectionConfig with bootstrapServers as a comma-separated string"
+      ]
     },
     {
       "id": 3,
       "name": "list-workspaces",
       "prompt": "Show me all my stream processing workspaces",
       "expected_output": "Calls atlas-streams-discover with action='list-workspaces'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-discover with action 'list-workspaces'",
+        "Resolves the Atlas project ID (calls atlas-list-projects or asks the user) before listing workspaces",
+        "Does not use a build, manage, or teardown tool for a read operation"
+      ]
     },
     {
       "id": 4,
       "name": "inspect-processor-health",
       "prompt": "Check the health of processor 'user-aggregator' in workspace 'prod-streams'",
       "expected_output": "Calls atlas-streams-discover with action='diagnose-processor', workspaceName='prod-streams', resourceName='user-aggregator'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-discover with action 'diagnose-processor'",
+        "Passes workspaceName 'prod-streams' and resourceName 'user-aggregator'",
+        "Reports state and stats from diagnose-processor, without claiming it returns an error log"
+      ]
     },
     {
       "id": 5,
       "name": "create-simple-kafka-to-mongo",
       "prompt": "Create a processor that reads from Kafka topic 'orders' and writes to Atlas collection 'analytics.orders'",
-      "expected_output": "Validates connections first with list-connections and inspect-connection, then calls atlas-streams-build with resource='processor', pipeline with $source (Kafka connection + topic), $merge (Atlas connection + db/collection), includes DLQ configuration",
-      "files": []
+      "expected_output": "Validates connections first with list-connections and inspect-connection, then calls atlas-streams-build with resource='processor', pipeline with $source (Kafka connection + topic; auto_offset_reset under config if set), $merge (Atlas connection + db/collection), does not add a DLQ unless asked",
+      "files": [],
+      "expectations": [
+        "Calls list-connections and inspect-connection for the referenced connections before creating the processor",
+        "Builds a pipeline starting with $source for the Kafka connection and topic 'orders'",
+        "Ends the pipeline with $merge into database 'analytics', collection 'orders'",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)",
+        "Calls atlas-streams-build with resource 'processor'",
+        "Does not place `auto_offset_reset` at the top level of `$source`; if it is set, it is under `config`"
+      ]
     },
     {
       "id": 6,
       "name": "create-windowed-aggregation",
       "prompt": "Build a processor that counts events per user_id in 5-minute windows from Kafka topic 'events' and writes to 'metrics.user_activity'",
-      "expected_output": "Pipeline with $source (Kafka + topic), tumbling window (size: 5, unit: minute, pipeline with $group by user_id and $count), $merge with Atlas connection, includes partitionIdleTimeout in Kafka $source",
-      "files": []
+      "expected_output": "Pipeline with $source (Kafka + topic; auto_offset_reset under config if set), tumbling window (size: 5, unit: minute, pipeline with $group by user_id and $count), $merge with Atlas connection, includes partitionIdleTimeout in Kafka $source",
+      "files": [],
+      "expectations": [
+        "Uses a Kafka $source for topic 'events' with partitionIdleTimeout set",
+        "Uses $tumblingWindow with interval size 5 and unit 'minute'",
+        "Groups by user_id and counts events inside the window pipeline",
+        "Ends with $merge into 'metrics.user_activity'",
+        "Validates the referenced connections before building the processor",
+        "Does not place `auto_offset_reset` at the top level of `$source`; if it is set, it is under `config`"
+      ]
     },
     {
       "id": 7,
       "name": "debug-failed-processor",
       "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
-      "expected_output": "Calls diagnose-processor first, analyzes the available evidence, identifies a likely root cause or states what evidence is needed, and provides specific fix steps.",
-      "files": []
+      "expected_output": "Calls diagnose-processor first, directs the user to the Atlas UI processor Logs tab for operational logs (the streams MCP tools have no get-logs action), analyzes available evidence, identifies a likely root cause when supported or states what evidence is needed, and provides specific fix steps",
+      "files": [],
+      "expectations": [
+        "Calls diagnose-processor first",
+        "Directs the user to the processor Logs tab in the Atlas UI for detailed operational logs (the streams MCP tools have no get-logs action)",
+        "Identifies a likely root cause when supported by the evidence or states what evidence is needed rather than listing hypothetical causes",
+        "Provides concrete, ordered fix steps"
+      ]
     },
     {
       "id": 8,
       "name": "debug-zero-output-windowed",
       "prompt": "My windowed Kafka processor has been running for an hour but produced no output. State is STARTED and connections are healthy",
       "expected_output": "Identifies idle Kafka partitions issue, recommends adding partitionIdleTimeout to Kafka $source configuration, provides specific syntax",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Identifies idle Kafka partitions as the reason the window is not closing",
+        "Recommends adding partitionIdleTimeout to the Kafka $source",
+        "Shows concrete syntax such as {\"size\": 30, \"unit\": \"second\"}",
+        "Does not blame data volume or filters without evidence"
+      ]
     },
     {
       "id": 9,
       "name": "stop-processor",
       "prompt": "Stop the processor named 'test-processor' in workspace 'dev-streams'",
       "expected_output": "Calls atlas-streams-manage with action='stop-processor', workspaceName='dev-streams', resourceName='test-processor'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-manage with action 'stop-processor'",
+        "Passes workspaceName 'dev-streams' and resourceName 'test-processor'",
+        "Mentions that stopping ends billing"
+      ]
     },
     {
       "id": 10,
       "name": "modify-processor-pipeline",
       "prompt": "Change the pipeline for 'data-transformer' to add a $match stage filtering active=true",
-      "expected_output": "Stops processor first with stop-processor, then calls modify-processor with updated pipeline including $match stage, then offers to restart",
-      "files": []
+      "expected_output": "Checks the processor's current state, stops it first only if it is STARTED, then calls modify-processor with updated pipeline including $match stage, then offers to restart",
+      "files": [],
+      "expectations": [
+        "Does not call stop-processor first unless the processor is STARTED",
+        "Then calls modify-processor with a pipeline that includes a $match on active=true",
+        "Offers or performs a restart after the modification",
+        "Does not attempt to modify a STARTED processor"
+      ]
     },
     {
       "id": 11,
       "name": "create-changestream-to-kafka",
       "prompt": "Create a processor that monitors the 'users' collection for changes and emits them to Kafka topic 'user-changes'",
-      "expected_output": "Pipeline with $source (Atlas cluster connection, database, collection, changestream config), $emit (Kafka connection, topic), DLQ configured",
-      "files": []
+      "expected_output": "Pipeline with $source (Atlas cluster connection, database, collection, config.fullDocument), $emit (Kafka connection, topic; key/keyFormat under config if set), does not add a DLQ unless asked",
+      "files": [],
+      "expectations": [
+        "Uses an Atlas Cluster $source with the database and collection for 'users'",
+        "Includes `fullDocument: 'updateLookup'` inside `$source.config` (not at the top level of `$source`)",
+        "Emits to the Kafka topic 'user-changes' with $emit",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)",
+        "Does not place `$emit` `key` or `keyFormat` at the top level; if a message key is set, both are under `config`"
+      ]
     },
     {
       "id": 12,
       "name": "tier-sizing-complex-pipeline",
       "prompt": "I need to process Kafka data with a $lookup (parallelism 3), tumbling window, and $merge (parallelism 4). What tier should I use?",
-      "expected_output": "Calculates parallelism needs: (3-1) + (4-1) = 5 excess parallelism, recommends SP10 (max 8 parallelism), explains calculation",
-      "files": []
+      "expected_output": "Calculates parallelism needs: (3-1) + (4-1) = 5 excess parallelism, recommends SP10 as the minimum (max 8 parallelism), optionally notes higher tiers as headroom, explains calculation",
+      "files": [],
+      "expectations": [
+        "Applies the formula summing (parallelism - 1) for stages with parallelism greater than 1",
+        "Computes 5 excess parallelism: (3-1) + (4-1)",
+        "Recommends SP10 as the parallelism-derived minimum (max parallelism 8); may note SP30/SP50 as headroom",
+        "Shows the calculation"
+      ]
     },
     {
       "id": 13,
       "name": "create-https-enrichment",
-      "prompt": "Build a processor that reads from Kafka 'transactions', enriches with an external API call, and writes to 'enriched.transactions'",
-      "expected_output": "Pipeline with $source (Kafka), $https stage with HTTPS connection (onError: 'dlq', execution mode), $merge (Atlas), full DLQ configuration",
-      "files": []
+      "prompt": "Build a processor that reads from Kafka 'transactions', enriches with an external API call, and writes to the Atlas collection 'enriched.transactions'",
+      "expected_output": "Pipeline with $source (Kafka), $https stage with HTTPS connection (onError: 'dlq', method, as), $merge into the Atlas collection 'enriched.transactions', full DLQ configuration",
+      "files": [],
+      "expectations": [
+        "Uses a Kafka $source for topic 'transactions'",
+        "Adds a $https stage with the HTTPS connection, path, method, an 'as' field, and onError 'dlq'",
+        "Ends with $merge into 'enriched.transactions'",
+        "Configures a DLQ and keeps API auth in the connection config, not the pipeline"
+      ]
     },
     {
       "id": 14,
       "name": "validate-connections-before-deploy",
       "prompt": "I want to create a processor using connections 'kafka-prod' and 'atlas-main'. Can you verify they're ready?",
       "expected_output": "Calls list-connections first, then inspect-connection for each named connection, checks state=READY, verifies connection types match intended usage, presents summary before proceeding",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls list-connections first",
+        "Calls inspect-connection for both 'kafka-prod' and 'atlas-main'",
+        "Verifies each connection state is READY",
+        "Verifies connection types match the intended source/sink/enrichment usage",
+        "Presents a connection summary before proceeding"
+      ]
     },
     {
       "id": 15,
       "name": "create-lambda-integration",
       "prompt": "Set up a processor that sends Kafka events to AWS Lambda function for processing asynchronously",
-      "expected_output": "Pipeline with $source (Kafka), $externalFunction with AWSLambda connection (execution: 'async', onError: 'dlq'), proper async sink configuration",
-      "files": []
+      "expected_output": "Pipeline with $source (Kafka), $externalFunction with AWSLambda connection (execution: 'async', onError: 'dlq', no `as` on the async sink), proper async sink configuration",
+      "files": [],
+      "expectations": [
+        "Uses a Kafka $source",
+        "Uses $externalFunction with an AWSLambda connection, functionName, execution 'async', and onError 'dlq'",
+        "Does not use $emit to invoke Lambda",
+        "Mentions the IAM role / Cloud Provider Access prerequisite",
+        "When the `$externalFunction` stage is shown as JSON, it does not include an `as` field (async terminal sink)"
+      ]
     },
     {
       "id": 16,
       "name": "delete-workspace-safely",
       "prompt": "Delete workspace 'old-test-workspace'",
       "expected_output": "Calls inspect-workspace first to count connections and processors, presents summary to user (e.g., '2 connections, 3 processors will be deleted'), asks for confirmation before calling teardown",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls inspect-workspace before deleting",
+        "Presents the number of connections and processors that will be removed",
+        "Asks for explicit confirmation",
+        "Only calls atlas-streams-teardown with resource 'workspace' after confirmation",
+        "Does not delete the workspace without confirmation"
+      ]
     },
     {
       "id": 17,
-      "name": "get-operational-logs",
+      "name": "operational-logs-ui",
       "prompt": "Show me the operational logs for processor 'fraud-detector' in workspace 'security-streams'",
-      "expected_output": "Directs the user to the Atlas UI: Atlas → Stream Processing → Workspace 'security-streams' → Processor 'fraud-detector' → Logs tab",
-      "files": []
+      "expected_output": "Explains that the streams MCP tools expose no log-retrieval action, so detailed operational logs are viewed in the Atlas UI. Calls atlas-streams-discover with action 'diagnose-processor' (and optionally 'inspect-processor') for workspace 'security-streams' and processor 'fraud-detector' to surface state, stats, and connection health — noting that diagnose returns no error log — then directs the user to Atlas -> Stream Processing -> the workspace -> the processor -> Logs tab.",
+      "files": [],
+      "expectations": [
+        "States that the streams MCP tools have no log-retrieval (get-logs) action",
+        "Calls diagnose-processor or inspect-processor with workspaceName 'security-streams' and resourceName 'fraud-detector'",
+        "Directs the user to the Atlas UI processor Logs tab with the correct navigation path",
+        "Optionally suggests checking the DLQ or output collection for error evidence"
+      ]
     },
     {
       "id": 18,
       "name": "region-format-validation",
       "prompt": "Create a workspace in GCP us-central1",
       "expected_output": "Uses correct Atlas region format 'US_CENTRAL1' for GCP (not 'us-central1'), cloudProvider='GCP'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Uses cloudProvider 'GCP'",
+        "Uses region 'US_CENTRAL1', not the raw cloud name 'us-central1'",
+        "Explains that an incorrect region format causes a dataProcessRegion error"
+      ]
     },
     {
       "id": 19,
       "name": "billing-warning-before-start",
       "prompt": "Start processor 'analytics-pipeline' in workspace 'prod-streams'",
-      "expected_output": "Warns about billing costs before starting, mentions per-second charging until the processor is stopped, waits for user confirmation, then calls atlas-streams-manage with action='start-processor'",
-      "files": []
+      "expected_output": "Warns about billing costs before starting, mentions per-second charging until the processor is stopped, and waits for user confirmation before calling atlas-streams-manage with action='start-processor'. If no confirmation is available in the conversation, it stops after the warning.",
+      "files": [],
+      "expectations": [
+        "Warns about billing before starting the processor",
+        "Mentions per-second or per-hour charging while running / that start-processor begins billing",
+        "Confirms the user intends to incur charges or has billing configured",
+        "Calls atlas-streams-manage with action 'start-processor' only once the user has confirmed; without a confirmation in the conversation, does not call it yet"
+      ]
     },
     {
       "id": 20,
       "name": "create-s3-sink",
       "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
-      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection using path (not prefix) and config.outputFormat (not a top-level format), optionally config.compression, DLQ configured",
-      "files": []
+      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection (with bucket, path, and config.outputFormat; optionally compression), does not add a DLQ unless asked",
+      "files": [],
+      "expectations": [
+        "Uses a Kafka $source for topic 'logs'",
+        "Emits to S3 with the connection, bucket, and path field (not prefix)",
+        "Includes `config.outputFormat` with a string value (basicJson/canonicalJson/relaxedJson; not a top-level `format` field or an object) and optionally compression",
+        "Does not add a DLQ unless the user asks, and mentions AWS IAM role registration"
+      ]
     },
     {
       "id": 21,
       "name": "search-knowledge-before-processor",
       "prompt": "Create a processor that emits to S3",
-      "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, format, compression) before building processor, references ASP_example repo if needed",
-      "files": []
+      "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, config.outputFormat, compression) before building processor, references ASP_example repo if needed",
+      "files": [],
+      "expectations": [
+        "Calls search-knowledge before building the processor",
+        "Queries for the S3 $emit field names, especially path vs prefix",
+        "Does not guess field names"
+      ]
     },
     {
       "id": 22,
       "name": "classify-processor-output",
       "prompt": "My anomaly detection processor has zero output. Is this a problem?",
       "expected_output": "Classifies processor as alert/anomaly type, explains zero output is NORMAL and healthy for this pattern, differentiates from data transformation processors",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Classifies the processor as alert/anomaly detection",
+        "Explains that zero output is expected and healthy for this processor type",
+        "Contrasts this with transformation processors, where zero output is a red flag",
+        "Suggests verifying with a known anomalous or test event rather than immediately debugging"
+      ]
     },
     {
       "id": 23,
       "name": "handle-402-billing-error",
       "prompt": "I got a 402 error when starting my processor",
       "expected_output": "Explains no payment method configured, directs to Atlas → Organization → Billing, offers sp.process() in mongosh as free alternative, does NOT retry the start command",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Explains that a 402 means billing is not configured / no payment method",
+        "Directs the user to Atlas Organization Billing to add a payment method",
+        "Offers sp.process() in mongosh as a free prototyping alternative",
+        "Explicitly does not retry the start command"
+      ]
     },
     {
       "id": 24,
       "name": "multi-connection-setup",
       "prompt": "Set up workspace 'multi-source' with both Kafka and Atlas cluster connections",
       "expected_output": "Creates workspace first, then calls atlas-streams-build twice (once for Kafka connection, once for Cluster connection), validates each connection after creation",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Creates the workspace first",
+        "Calls atlas-streams-build for a Kafka connection and a Cluster connection in 'multi-source'",
+        "Validates each connection after creation with list-connections/inspect-connection"
+      ]
     },
     {
       "id": 25,
       "name": "chained-processors",
       "prompt": "How do I chain two processors together?",
-      "expected_output": "Explains processor A writes to Atlas collection via $merge, processor B reads from that collection via change stream $source, provides example pipeline snippets for both",
-      "files": []
+      "expected_output": "Explains processor A writes to Atlas collection via $merge, processor B reads from that collection via change stream $source, provides example pipeline snippets for both; if $emit is used, key/keyFormat are under config",
+      "files": [],
+      "expectations": [
+        "States that a pipeline can have only one terminal sink",
+        "Describes processor A writing to an intermediate Atlas collection ($merge) or Kafka topic ($emit)",
+        "Describes processor B reading the intermediate via a change stream $source or Kafka $source",
+        "Provides example pipeline snippets for both processors",
+        "Notes the trade-off between Atlas (simpler to inspect) and Kafka (lower latency) intermediates",
+        "Does not place `$emit` `key` or `keyFormat` at the top level; if message keys are set, both are under `config`"
+      ]
     },
     {
       "id": 26,
       "name": "create-privatelink-kafka-aws",
       "prompt": "Set up a PrivateLink connection for Confluent Kafka on AWS in workspace 'prod-streams'",
-      "expected_output": "Calls atlas-streams-build with resource='privatelink', privateLinkConfig.provider='AWS', vendor='CONFLUENT', and dnsDomain/dnsSubDomain; then references the PrivateLink ID in the Kafka connection's networking.access config",
-      "files": []
+      "expected_output": "Calls atlas-streams-build with resource='privatelink', privateLinkConfig includes provider='AWS', vendor='CONFLUENT', dnsDomain, dnsSubDomain (array), serviceEndpointId, region; then references the returned PrivateLink ID in the Kafka connection's networking.access config",
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-build with resource 'privatelink' and omits workspaceName",
+        "Sets `privateLinkConfig.provider` 'AWS' and `privateLinkConfig.vendor` 'CONFLUENT'",
+        "Includes `dnsSubDomain` (as an array) and `dnsDomain` in `privateLinkConfig`, or notes that for Confluent Enterprise `dnsDomain` may be set later via PATCH",
+        "References the returned PrivateLink ID in the Kafka connection's networking.access as type PRIVATE_LINK with connectionId",
+        "Notes that networking configuration is immutable after connection creation",
+        "Includes `serviceEndpointId` and `region` in `privateLinkConfig` (placeholder values acceptable)"
+      ]
     },
     {
       "id": 27,
       "name": "root-variable-allowed",
       "prompt": "In my stream processor I want to keep the entire incoming event under a field called 'raw' and add a processing note. Can I use $$ROOT for that? Show me the stage.",
       "expected_output": "Confirms that the ASP engine supports $$ROOT and that it can be used in $addFields (also $group and $replaceRoot). Shows a stage such as {\"$addFields\": {\"raw\": \"$$ROOT\", \"note\": \"...\"}}. If the MCP server version rejects $$ROOT when creating via atlas-streams-build, notes that limitation or provides an equivalent MCP-safe alternative; otherwise uses $$ROOT directly. Does not claim the ASP engine does not support $$ROOT and does not substitute $$NOW.",
+      "expectations": [
+        "Confirms that the ASP engine supports $$ROOT",
+        "Shows $$ROOT used in $addFields to preserve the incoming document",
+        "Notes that MCP server versions through at least v3.3.0 reject $$ROOT on atlas-streams-build, or offers an equivalent MCP-safe alternative",
+        "Does NOT state that the ASP engine does not support $$ROOT",
+        "Does NOT use $$NOW as a substitute"
+      ],
       "files": []
     },
     {
       "id": 28,
+      "name": "current-variable-supported",
+      "prompt": "Can I reference the current document with $$CURRENT inside a stream processor pipeline?",
+      "expected_output": "Confirms that the ASP engine supports $$CURRENT and that it references the current document, similarly to $$ROOT. Notes that the current MongoDB MCP Server rejects $$CURRENT (\"not available in streaming request\"), so for MCP deployment use explicit field references; deploy via the Atlas CLI/Admin API if it is required. Also notes that $$NOW is unavailable and event time should come from the document or the `$meta: \"stream.source.ts\"` expression.",
+      "expectations": [
+        "Confirms that the ASP engine supports $$CURRENT",
+        "Explains that $$CURRENT references the current document, similarly to $$ROOT",
+        "Notes that MCP server versions through at least v3.3.0 reject $$CURRENT on atlas-streams-build, or offers an equivalent MCP-safe alternative",
+        "Does NOT state that the ASP engine does not support $$CURRENT",
+        "Optionally notes that $$NOW is unavailable and event time should come from the document or the `$meta: \"stream.source.ts\"` expression"
+      ],
+      "files": []
+    },
+    {
+      "id": 29,
+      "name": "kinesis-source-and-sink",
+      "prompt": "Create a processor that reads from the Kinesis stream 'clicks' and writes to the Kinesis stream 'clicks-out', using user_id as the partition key.",
+      "expected_output": "Creates or validates an AWS Kinesis connection (connectionType AWSKinesisDataStreams) and builds a processor whose $source uses the 'stream' field (not streamName or topic) and config.consumerARN, and whose $emit uses 'stream' plus the required partitionKey (e.g. \"$user_id\"). Mentions the IAM role ARN / Cloud Provider Access prerequisite and Enhanced Fan-Out consumer registration, and does not add a DLQ unless asked.",
+      "expectations": [
+        "Uses connectionType AWSKinesisDataStreams for the Kinesis connection",
+        "Uses the 'stream' field (not 'streamName' or 'topic') in $source",
+        "Includes partitionKey in the $emit stage",
+        "Mentions the IAM role ARN / Cloud Provider Access prerequisite",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)",
+        "Includes `config.consumerARN` (required for the Kinesis source)",
+        "Notes that the Enhanced Fan-Out consumer must be registered before processor creation"
+      ],
+      "files": []
+    },
+    {
+      "id": 30,
+      "name": "schema-registry-avro-emit",
+      "prompt": "I need to emit Avro-encoded messages to the Kafka topic 'orders-out' using my existing schema registry connection. Show me the $emit configuration.",
+      "expected_output": "Shows a $emit to the Kafka connection with a schemaRegistry block referencing the SchemaRegistry connection, valueSchema.type 'avro' in lowercase, and an explicit valueSchema.schema (required even when autoRegisterSchemas is true). Mentions subjectNameStrategy, that SchemaRegistry is a distinct connection type, and schema registration/compatibility for the existing topic.",
+      "expectations": [
+        "Shows a $emit stage with a schemaRegistry connectionName",
+        "Uses valueSchema.type 'avro' in lowercase",
+        "Includes an explicit valueSchema.schema even if autoRegisterSchemas is true",
+        "Identifies SchemaRegistry as a distinct connection type",
+        "Mentions subjectNameStrategy or autoRegisterSchemas",
+        "Mentions registering the schema or verifying subject compatibility before emitting to the existing topic"
+      ],
+      "files": []
+    },
+    {
+      "id": 31,
+      "name": "validate-stage-dlq",
+      "prompt": "Add schema validation to my processor so documents missing device_id are rejected instead of crashing the processor. Use a $jsonSchema validator, and route the rejected documents to a DLQ.",
+      "expected_output": "Adds a $validate stage with a $jsonSchema validator requiring device_id and validationAction 'dlq' (only 'discard' or 'dlq' are valid; 'error' is not supported). Places validation early, before expensive stages, and ensures a DLQ is configured to receive rejected documents.",
+      "expectations": [
+        "Shows a $validate stage with a $jsonSchema validator requiring device_id",
+        "Sets validationAction to 'dlq' rather than 'error'",
+        "Does not use `validationAction: 'error'`; states that only `discard` (default) and `dlq` are supported",
+        "Places $validate early and configures a DLQ"
+      ],
+      "files": []
+    },
+    {
+      "id": 32,
+      "name": "session-window",
+      "prompt": "Group user click events into sessions that end after 5 minutes of inactivity, and write one summary document per session to Atlas.",
+      "expected_output": "Uses $sessionWindow with gap {size: 5, unit: 'minute'} and partitionBy set to the user identifier, with a $group inside the window pipeline to summarize actions. Writes to Atlas with $merge. Recommends SP30 (session windows are high complexity) and, for a Kafka source, partitionIdleTimeout.",
+      "expectations": [
+        "Uses $sessionWindow with a 5-minute gap",
+        "Sets `partitionBy` to the user identifier (not `key`)",
+        "Includes a $group inside the window pipeline",
+        "Ends with $merge to an Atlas collection",
+        "Recommends SP30 or notes session windows require a high-complexity tier"
+      ],
+      "files": []
+    },
+    {
+      "id": 33,
+      "name": "hopping-window-late-data",
+      "prompt": "I need a 5-minute window that recomputes every minute, and it must tolerate events arriving up to 30 seconds late.",
+      "expected_output": "Uses $hoppingWindow with interval size 5 unit 'minute', hopSize size 1 unit 'minute', and allowedLateness size 30 unit 'second'. Includes a $group inside the window pipeline and a terminal $merge or $emit. Optionally mentions boundary eventTime/processingTime.",
+      "expectations": [
+        "Uses $hoppingWindow with interval 5 minutes",
+        "Sets hopSize to 1 minute",
+        "Sets allowedLateness to 30 seconds",
+        "Includes a $group inside the window pipeline",
+        "Includes a terminal $merge or $emit",
+        "Does not use a `boundaryType` field; if a boundary is specified, `boundary` is a top-level field of the window stage (not inside `interval`)"
+      ],
+      "files": []
+    },
+    {
+      "id": 34,
+      "name": "checkpoint-resume-constraints",
+      "prompt": "My processor has been running with a 5-minute tumbling window. I want to change it to a 10-minute window. Can I just modify the pipeline?",
+      "expected_output": "Explains that the processor must be stopped before modify-processor. With resumeFromCheckpoint true (default), changing window type or interval, removing windows, and modifying $source are not allowed. To make the change, restart/resume with resumeFromCheckpoint: false, warning that this drops all window state and restarts from the beginning. Order: stop, modify, start.",
+      "expectations": [
+        "States the processor must be stopped before modify-processor",
+        "Explains that changing the window interval is blocked while resumeFromCheckpoint is true",
+        "Recommends resumeFromCheckpoint: false to make the change",
+        "Warns that resumeFromCheckpoint: false drops window state / restarts from the beginning",
+        "Gives the stop, modify, start sequence"
+      ],
+      "files": []
+    },
+    {
+      "id": 35,
+      "name": "update-connection-networking-immutable",
+      "prompt": "My Kafka connection 'events-kafka' needs PrivateLink added. Can you update the existing connection to use it?",
+      "expected_output": "Explains that networking config (PrivateLink/VPC peering) is immutable after connection creation, so the connection must be deleted and recreated with the new networking.access config. Notes PrivateLink is created first as a project-level resource with atlas-streams-build resource 'privatelink', then referenced by connectionId. Warns that deleting a connection is blocked while a running processor references it.",
+      "expectations": [
+        "States that networking configuration cannot be modified after connection creation",
+        "Recommends deleting and recreating the connection with PrivateLink networking config",
+        "Describes creating the project-level PrivateLink first (resource 'privatelink')",
+        "References the PrivateLink ID via networking.access.connectionId",
+        "Warns that a connection referenced by a running processor cannot be deleted"
+      ],
+      "files": []
+    },
+    {
+      "id": 36,
+      "name": "mcp-tools-unavailable",
+      "prompt": "The Atlas Streams MCP tools aren't showing up in my client. What should I check?",
+      "expected_output": "Verifies the MongoDB MCP Server is connected and configured with Atlas API credentials (apiClientId/apiClientSecret), and that all four tools are available: atlas-streams-discover, atlas-streams-build, atlas-streams-manage, atlas-streams-teardown. Offers limited fallbacks: Atlas CLI for read-only exploration and sp.process() in mongosh for ephemeral pipeline testing, and recommends configuring the MCP server for full functionality.",
+      "expectations": [
+        "Checks that the MongoDB MCP Server is connected with Atlas API credentials",
+        "Names the four streams tools that should be available",
+        "Offers Atlas CLI read-only exploration as a fallback",
+        "Offers sp.process() in mongosh for ephemeral testing",
+        "Recommends configuring the MCP server for full capabilities"
+      ],
+      "files": []
+    },
+    {
+      "id": 37,
+      "name": "function-udf-tier",
+      "prompt": "I want to run a small JavaScript function over each temperature reading to convert Celsius to Fahrenheit. How do I do that in a stream processor?",
+      "expected_output": "Uses the $function expression with lang 'js', body, and args inside $addFields (or $project). Notes that $function is gated behind the enableFunctionExpression feature flag (off by default) and requires SP30 or higher, and that the processor still needs a valid $source and terminal sink.",
+      "expectations": [
+        "Shows a $function expression with lang 'js'",
+        "Includes the function body and an args array referencing the field",
+        "Places it in a stage such as $addFields",
+        "States that $function requires SP30 or higher",
+        "Mentions that $function needs the enableFunctionExpression feature flag, which is off by default",
+        "Keeps a valid $source and terminal sink"
+      ],
+      "files": []
+    },
+    {
+      "id": 38,
+      "name": "https-not-valid-source",
+      "prompt": "I have an HTTPS API that returns events. Can I use that HTTPS connection directly as the $source of a stream processor?",
+      "expected_output": "Explains that an HTTPS connection cannot be a $source; it is only valid for $https enrichment or as a terminal $https sink. Suggests ingesting the data through a supported source (Kafka, Atlas change stream, Kinesis, or sample) and using $https mid-pipeline for enrichment, or having the API publish to Kafka.",
+      "expectations": [
+        "States that HTTPS connections cannot be used as $source",
+        "Explains HTTPS is valid for $https enrichment or as a terminal sink",
+        "Names supported source types such as Kafka, Atlas change streams, or Kinesis",
+        "Suggests an alternative ingestion path"
+      ],
+      "files": []
+    },
+    {
+      "id": 39,
+      "name": "change-stream-full-document",
+      "prompt": "My change stream processor only receives the changed fields, not the full document. How can I get the full document in the pipeline?",
+      "expected_output": "Adds fullDocument 'updateLookup' inside $source.config so the full current document is included. Mentions fullDocumentBeforeChange 'whenAvailable' inside $source.config when the pre-image is needed, and keeps a valid terminal sink.",
+      "expectations": [
+        "Recommends `fullDocument: 'updateLookup'` inside `$source.config` (not at the top level of `$source`)",
+        "Explains that this returns the full current document rather than only changed fields",
+        "Optionally mentions `fullDocumentBeforeChange: 'whenAvailable'` inside `$source.config` for pre-images",
+        "Keeps a valid terminal sink such as $merge"
+      ],
+      "files": []
+    },
+    {
+      "id": 40,
+      "name": "update-workspace-tier",
+      "prompt": "My processor on an SP10 workspace keeps running out of memory. Can I change the workspace to a larger tier?",
+      "expected_output": "Explains the two knobs: update the workspace tier with atlas-streams-manage action 'update-workspace' (newTier), or stop the processor and start it again with a tier override. Recommends checking memoryUsageBytes from diagnose-processor first, warns that start-processor begins billing, and notes stopped processors retain state for 45 days.",
+      "expectations": [
+        "Uses atlas-streams-manage with action 'update-workspace' and a newTier",
+        "Mentions the alternative of stopping the processor and starting it with a tier override",
+        "Recommends checking memoryUsageBytes via diagnose-processor before resizing",
+        "Warns about billing when starting the processor",
+        "Does not suggest deleting and recreating the workspace"
+      ],
+      "files": []
+    },
+    {
+      "id": 41,
+      "name": "lookup-enrichment",
+      "prompt": "Enrich Kafka topic 'orders' with customer data from the 'customers' Atlas collection (matching orders.customer_id to customers._id), then write the enriched orders to 'analytics.enriched_orders'",
+      "expected_output": "Uses a Kafka $source for topic 'orders' with auto_offset_reset under config; adds $lookup against the Atlas Cluster connection joining customer_id to _id, optionally with parallelism; ends with $merge into analytics.enriched_orders; does not add a DLQ unless asked",
+      "files": [],
+      "expectations": [
+        "Does not place `auto_offset_reset` at the top level of `$source`; if it is set, it is under `config`",
+        "Adds a `$lookup` against the Atlas Cluster connection",
+        "Specifies the lookup join fields: `localField` 'customer_id', `foreignField` '_id', and an `as` output field",
+        "Ends with `$merge` into database 'analytics', collection 'enriched_orders'",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)"
+      ]
+    },
+    {
+      "id": 42,
+      "name": "rotate-kafka-credentials",
+      "prompt": "Rotate the password on my existing Kafka connection 'events-kafka' in workspace 'prod-streams'",
+      "expected_output": "Calls atlas-streams-manage action 'update-connection' with resourceName 'events-kafka' and the new password in connectionConfig; does not delete/recreate for an auth-only change; notes networking is immutable; verifies with inspect-connection",
+      "files": [],
+      "expectations": [
+        "Calls `atlas-streams-manage` with action `update-connection`",
+        "Passes `workspaceName` 'prod-streams' and `resourceName` 'events-kafka'",
+        "Updates the authentication/password in `connectionConfig`",
+        "Does not delete and recreate the connection for an auth-only change",
+        "Notes that networking configuration cannot be changed by this update",
+        "Verifies the connection with `inspect-connection` after the update, or offers to"
+      ]
+    },
+    {
+      "id": 43,
       "name": "now-variable-invalid",
       "prompt": "Can I add the current processing time to each document with $$NOW inside a stream processor pipeline?",
       "expected_output": "Explains that $$NOW is not available in Atlas Stream Processing and must not be used. Recommends using the source record timestamp for event time — either a timestamp field in the document or {\"$meta\": \"stream.source.ts\"}. Does not claim $$NOW is supported.",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Explains that $$NOW is not available in Atlas Stream Processing",
+        "Does not use $$NOW in the pipeline",
+        "Recommends a source timestamp field or {\"$meta\": \"stream.source.ts\"} for event time",
+        "Does not claim $$NOW is supported"
+      ]
+    },
+    {
+      "id": 44,
+      "name": "parallelism-stage-support",
+      "prompt": "I want more throughput from my $externalFunction Lambda stage. Can I set parallelism: 4 on it?",
+      "expected_output": "Explains that $externalFunction has no parallelism field, so setting it is not valid. Says parallelism is available on $lookup, $merge, change-stream $source.initialSync, and $emit to S3/Azure Blob/time-series only — not on Kafka/Kinesis $emit, $https, or $externalFunction. Suggests other levers (tier, batching, concurrency inside Lambda) instead.",
+      "files": [],
+      "expectations": [
+        "States that $externalFunction does not support a parallelism field",
+        "Lists the stages that do support parallelism: $lookup, $merge, change-stream initialSync, and $emit to S3/Azure Blob/time-series",
+        "Does not claim parallelism works on $externalFunction, $https, or top-level $source",
+        "Suggests an alternative way to raise throughput"
+      ]
+    },
+    {
+      "id": 45,
+      "name": "async-external-function-as",
+      "prompt": "My pipeline ends with an async Lambda sink: {\"$externalFunction\": {\"connectionName\": \"my-lambda\", \"functionName\": \"fn\", \"execution\": \"async\", \"as\": \"result\"}}. Is that correct?",
+      "expected_output": "Says no — `as` must be omitted whenever execution is async, and supplying it errors. Explains that `as` stores a response and only applies to sync stages; an async stage is fire-and-forget. Corrects the stage by removing `as`.",
+      "files": [],
+      "expectations": [
+        "Identifies that `as` with execution 'async' is invalid",
+        "States that `as` must be omitted whenever execution is 'async' (sink or mid-pipeline)",
+        "Explains that `as` is used to store the response of a sync stage",
+        "Corrects the stage by removing `as`"
+      ]
+    },
+    {
+      "id": 46,
+      "name": "search-meta-variable",
+      "prompt": "How do I read $$SEARCH_META in a stream processor pipeline?",
+      "expected_output": "Explains that $$SEARCH_META is spelled with two dollar signs, and that unlike the other unavailable variables it does not throw — when unset it evaluates to missing. Notes that ASP has no $search stage, so it is effectively always missing, and recommends guarding it with $ifNull or omitting it.",
+      "files": [],
+      "expectations": [
+        "Uses the two-dollar spelling $$SEARCH_META",
+        "States that it evaluates to missing rather than throwing an error",
+        "Explains that ASP has no $search stage",
+        "Recommends guarding with $ifNull or omitting it"
+      ]
+    },
+    {
+      "id": 47,
+      "name": "terminal-sink-list",
+      "prompt": "Which stages can be the final stage of a stream processor pipeline?",
+      "expected_output": "Lists all five terminal stages: $merge, $emit, $iceberg, $https, and $externalFunction. States that exactly one is required for a deployed processor and that no stage may follow it. Mentions that $externalFunction must be async or sync with the matching `as` rule.",
+      "files": [],
+      "expectations": [
+        "Lists $merge, $emit, $iceberg, $https, and $externalFunction as terminal stages",
+        "States that exactly one terminal sink is allowed",
+        "States that no stage may follow the terminal sink"
+      ]
+    },
+    {
+      "id": 48,
+      "name": "function-feature-flag",
+      "prompt": "Build me a processor that uses $function to normalize a string field.",
+      "expected_output": "Notes that $function is gated behind the enableFunctionExpression feature flag, which is off by default, so it may be rejected. States that SP30 or higher is required. Offers a non-$function alternative (e.g. $toLower/$trim or $regexMatch expressions) in case the flag is unavailable.",
+      "files": [],
+      "expectations": [
+        "Mentions the enableFunctionExpression feature flag and that it is off by default",
+        "States that SP30 or higher is required",
+        "Offers an alternative that does not need $function"
+      ]
+    },
+    {
+      "id": 49,
+      "name": "diagnose-no-error-log",
+      "prompt": "My processor is in FAILED state. Run diagnose-processor and give me the exact error message from its output.",
+      "expected_output": "Calls diagnose-processor first for state, stats, connection health, and recommended actions, but explains that diagnose returns no error log or log lines. Directs the user to the Atlas UI processor Logs tab for the exact error, or to the DLQ collection for per-document errors.",
+      "files": [],
+      "expectations": [
+        "Calls diagnose-processor",
+        "Explains that diagnose-processor returns no error log",
+        "Directs the user to the Atlas UI Logs tab or the DLQ collection for the actual error"
+      ]
+    },
+    {
+      "id": 50,
+      "name": "get-networking-no-vpc-peering",
+      "prompt": "Use get-networking to list my VPC peerings.",
+      "expected_output": "Explains that get-networking lists project-level PrivateLink endpoints (and Atlas account details for a provider/region) but does not list VPC peerings. Says peerings are managed with accept-peering/reject-peering and removed with teardown resource='peering'. Offers the closest available alternative.",
+      "files": [],
+      "expectations": [
+        "States that get-networking lists PrivateLink endpoints",
+        "States that get-networking does not list VPC peerings",
+        "Mentions accept-peering/reject-peering or teardown for peerings"
+      ]
+    },
+    {
+      "id": 51,
+      "name": "gcp-pubsub-sink",
+      "prompt": "Add a GCP Pub/Sub connection called 'events-pubsub' to my workspace and emit to a topic.",
+      "expected_output": "Uses connectionType 'GCPPubSub' with connectionConfig.gcp.serviceAccountId. Shows a $emit stage with topic, projectId, and region. Notes that Pub/Sub is sink-only and that private networking uses publicPrivateNetworking rather than networking.",
+      "files": [],
+      "expectations": [
+        "Uses connectionType 'GCPPubSub'",
+        "Supplies serviceAccountId under connectionConfig.gcp",
+        "Shows $emit with topic, projectId, and region",
+        "States that Pub/Sub is sink-only",
+        "Uses publicPrivateNetworking for private networking"
+      ]
+    },
+    {
+      "id": 52,
+      "name": "modify-from-failed",
+      "prompt": "My processor is FAILED. Do I have to delete and recreate it to change the pipeline?",
+      "expected_output": "Says no — modify-processor works in any state except STARTED, so CREATED, STOPPED, and FAILED are all modifiable. Recommends modify-processor with the corrected pipeline, then start-processor. Notes that resumeFromCheckpoint is a start parameter, not a modify one.",
+      "files": [],
+      "expectations": [
+        "States that FAILED processors can be modified (no delete/recreate needed)",
+        "States that modify-processor works in any state except STARTED",
+        "Uses modify-processor then start-processor",
+        "Notes that resumeFromCheckpoint is set on start, not modify"
+      ]
+    },
+    {
+      "id": 53,
+      "name": "start-tier-ceiling",
+      "prompt": "Restart processor 'orders-rollup' in workspace 'prod-streams' with tier SP50. The workspace's maxTierSize is SP30.",
+      "expected_output": "Explains that start-processor's tier cannot exceed the workspace's streamConfig.maxTierSize (SP30 here), so SP50 would be rejected. Offers to start at SP30, or to raise the workspace maxTierSize first if SP50 is genuinely required.",
+      "files": [],
+      "expectations": [
+        "States that the start tier cannot exceed the workspace maxTierSize",
+        "Identifies that SP50 exceeds the SP30 ceiling",
+        "Suggests starting at SP30 or raising maxTierSize first"
+      ]
+    },
+    {
+      "id": 54,
+      "name": "emit-to-atlas-timeseries",
+      "prompt": "Write incoming Kafka events into a time-series collection in Atlas.",
+      "expected_output": "Uses a $emit stage targeting the Atlas Cluster connection with db, coll, and timeseries.timeField. Explains that $emit can write to Atlas collections (including creating a time-series collection), and contrasts it with $merge, which is the choice when whenMatched/whenNotMatched semantics are needed.",
+      "files": [],
+      "expectations": [
+        "Uses $emit to write to the Atlas Cluster connection",
+        "Includes db and coll",
+        "Includes timeseries.timeField",
+        "Contrasts $emit with $merge's whenMatched/whenNotMatched semantics"
+      ]
+    },
+    {
+      "id": 55,
+      "name": "read-only-mode",
+      "prompt": "The MongoDB MCP server is running in read-only mode. Can I still create a workspace and processor with the streams tools?",
+      "expected_output": "Explains that read-only mode permits only read operations, so atlas-streams-discover works but atlas-streams-build, atlas-streams-manage, and atlas-streams-teardown all fail. Does not retry them. Gives the user the equivalent Atlas UI or Admin API steps for creating the workspace and processor.",
+      "files": [],
+      "expectations": [
+        "States that only atlas-streams-discover works in read-only mode",
+        "States that build, manage, and teardown are blocked",
+        "Does not retry the blocked tools",
+        "Offers the Atlas UI or Admin API alternative"
+      ]
+    },
+    {
+      "id": 56,
+      "name": "response-format-scope",
+      "prompt": "Call inspect-processor with responseFormat 'detailed' for processor 'orders-rollup'.",
+      "expected_output": "Explains that responseFormat applies only to the list actions and to inspect-workspace, and that inspect-processor accepts it but ignores it. Calls inspect-processor normally (it is already detailed).",
+      "files": [],
+      "expectations": [
+        "States that inspect-processor accepts responseFormat but ignores it",
+        "States that responseFormat applies to list actions and inspect-workspace",
+        "Calls inspect-processor without responseFormat"
+      ]
     }
   ]
 }

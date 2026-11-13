@@ -46,7 +46,7 @@
     },
     {
       "name": "provider_aws",
-      "description": "privateLinkProvider='AWS'"
+      "description": "privateLinkConfig.provider='AWS'"
     },
     {
       "name": "vendor_confluent",
@@ -60,6 +60,14 @@
     {
       "name": "has_dns_subdomain",
       "description": "privateLinkConfig includes dnsSubDomain (array)"
+    },
+    {
+      "name": "has_service_endpoint_id",
+      "description": "privateLinkConfig includes serviceEndpointId (placeholder values acceptable)"
+    },
+    {
+      "name": "has_region",
+      "description": "privateLinkConfig includes region (placeholder values acceptable)"
     },
     {
       "name": "explains_two_step_process",

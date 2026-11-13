@@ -130,22 +130,25 @@ Each assertion includes:
 
 ## Priority Tests with Metadata
 
-### Pipeline Construction (5 tests)
+### Workspace, Region & Connections (3 tests)
 - **01-create-workspace-basic.json** - Region mapping validation (us-east-1 → VIRGINIA_USA)
+- **14-validate-connections-before-deploy.json** - Pre-deployment connection validation
+- **18-region-format-validation.json** - GCP region format (US_CENTRAL1 not us-central1)
+
+### Pipeline Construction (5 tests)
 - **05-create-simple-kafka-to-mongo.json** - Basic pipeline structure, pre-validation workflow
 - **06-create-windowed-aggregation.json** - Window configuration, partitionIdleTimeout requirement
 - **13-create-https-enrichment.json** - HTTPS enrichment, onError: dlq requirement
-- **15-create-lambda-integration.json** - Lambda sink, execution: async requirement
+- **15-create-lambda-integration.json** - Lambda sink, async sink must omit `as`
 - **20-create-s3-sink.json** - Field name validation (path not prefix)
 
 ### Debugging & Validation (3 tests)
-- **07-debug-failed-processor.json** - Debugging workflow (diagnose → logs → root cause)
+- **07-debug-failed-processor.json** - Debugging workflow (diagnose → Atlas UI logs → root cause)
 - **08-debug-zero-output-windowed.json** - Idle partition detection and fix
-- **14-validate-connections-before-deploy.json** - Pre-deployment connection validation
 - **21-search-knowledge-before-processor.json** - Knowledge search requirement
 
-### Configuration (1 test)
-- **18-region-format-validation.json** - GCP region format (US_CENTRAL1 not us-central1)
+### PrivateLink (1 test)
+- **26-create-privatelink-kafka-aws.json** - PrivateLink provider/vendor fields and two-step connection setup
 
 ## Critical Assertions Explained
 
@@ -166,8 +169,8 @@ Using wrong field names causes processor creation to fail with cryptic errors.
 ### onError: 'dlq' Requirement
 **Why critical:** Using `onError: 'fail'` for `$https` or `$externalFunction` stages causes processor crashes on any API error. Production processors must use `onError: 'dlq'` for graceful error handling.
 
-### Lambda execution: 'async' for Sinks
-**Why critical:** When `$externalFunction` is the terminal sink stage, `execution` MUST be `'async'`. Using `'sync'` causes configuration validation errors. Mid-pipeline enrichment can use either `'sync'` or `'async'`.
+### Lambda execution and `as` for `$externalFunction`
+**Why critical:** A terminal `$externalFunction` sink may use `execution: 'sync'` or `'async'`; `'async'` is recommended for fire-and-forget. `as` is required only for sync mid-pipeline enrichment and must be omitted for async — setting `as` with `execution: 'async'` returns an error.
 
 ## Test Execution Example
 
@@ -231,7 +234,7 @@ Use assertions as a checklist when manually validating agent responses:
 
 ## Coverage
 
-**10 of 25 tests** have detailed metadata files covering:
+**12 of 56 tests** have detailed metadata files covering:
 - All pipeline construction patterns (Kafka→Mongo, windowed, HTTPS, Lambda, S3)
 - All critical field name validations
 - All common debugging scenarios
@@ -256,6 +259,7 @@ Tests that create new resources:
 - **06-create-windowed-aggregation** - Creates processor with unique name
 - **18-region-format-validation** - Creates workspace with unique name
 - **20-create-s3-sink** - Creates processor with unique name
+- **26-create-privatelink-kafka-aws** - Creates a project-level PrivateLink with a unique name
 
 **Approach:** Append timestamp to all resource names
 
