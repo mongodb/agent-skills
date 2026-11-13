@@ -92,4 +92,4 @@ for (const idx of db.orders.getIndexes()) {
 // Compare index key prefixes — if {a:1} exists alongside {a:1,b:1}, the former is redundant
 ```
 
-Reference: [Remove Unnecessary Indexes](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/unnecessary-indexes/)
+Reference: [Remove Unnecessary Indexes](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/unnecessary-indexes/?utm_source=agent-skills)

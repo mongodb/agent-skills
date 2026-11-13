@@ -187,4 +187,4 @@ if (bucketCount > 0 && stats.count) {
 }
 ```
 
-Reference: [Time Series Collections](https://mongodb.com/docs/manual/core/timeseries-collections/)
+Reference: [Time Series Collections](https://mongodb.com/docs/manual/core/timeseries-collections/?utm_source=agent-skills)

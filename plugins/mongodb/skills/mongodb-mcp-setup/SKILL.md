@@ -135,7 +135,7 @@ If the user chooses Option B:
 
 Direct the user to create a MongoDB Atlas Service Account:
 
-**Full documentation**: https://www.mongodb.com/docs/mcp-server/prerequisites/
+**Full documentation**: https://www.mongodb.com/docs/mcp-server/prerequisites/?utm_source=agent-skills
 
 Walk them through the key steps:
 

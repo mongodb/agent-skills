@@ -69,4 +69,4 @@ Find lookup-heavy aggregations. See how often lookups hit the same collection. H
 For Atlas M10+ use $queryStats. See [Query Stats](references/source-query-stats.md) and [Slow query logs](references/source-slow-query-logs.md)
 Use codebase if available, ask the user.
 
-Reference: [Reduce $lookup Operations](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-lookup-operations/)
+Reference: [Reduce $lookup Operations](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-lookup-operations/?utm_source=agent-skills)

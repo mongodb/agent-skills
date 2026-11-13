@@ -156,4 +156,4 @@ db.books.stats().indexSizes
 // Large multikey index suggests outliers are bloating it
 ```
 
-Reference: [Outlier Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/group-data/outlier-pattern/)
+Reference: [Outlier Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/group-data/outlier-pattern/?utm_source=agent-skills)

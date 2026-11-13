@@ -1,6 +1,9 @@
 # Skill evaluation/benchmark workspaces
 *-workspace/
 
+# Output of testing/<skill>/run-trigger-eval.ts, regenerated on every run
+testing/*/trigger-eval-results.json
+
 # User-specific Claude settings
 .claude/settings.local.json
 .score_cache/
