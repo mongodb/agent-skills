@@ -52,7 +52,7 @@ A case appears under every category it exercises, so a few IDs are cross-listed.
 
 ### Lifecycle & Safety (9, 10, 16, 19, 23, 34, 40, 52, 53, 55)
 - Stopping processors
-- Stop → modify → start, including the `resumeFromCheckpoint` window constraints
+- Modify in any state except STARTED, stopping first only when the processor is running, including the `resumeFromCheckpoint` window constraints
 - Modifying from FAILED without delete/recreate
 - Start-tier ceiling against the workspace `maxTierSize`
 - Read-only MCP mode blocks build/manage/teardown
@@ -82,7 +82,7 @@ A case appears under every category it exercises, so a few IDs are cross-listed.
 Each eval validates that the skill:
 
 1. **Calls correct MCP tools** — `atlas-streams-discover`, `atlas-streams-build`, `atlas-streams-manage`, or `atlas-streams-teardown`
-2. **Sequences operations correctly** — e.g., validates connections before creating processors, stops before modifying
+2. **Sequences operations correctly** — e.g., validates connections before creating processors, and stops only when the processor is running before modifying
 3. **Includes safety checks** — billing warnings, destructive-action confirmation, input validation
 4. **Provides actionable guidance** — root-cause identification, specific fix steps, correct field names
 5. **References authoritative sources** — `search-knowledge`, the `ASP_example` repo
