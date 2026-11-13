@@ -123,7 +123,7 @@ After running `diagnose-processor`, match the symptoms to these patterns:
 | **DLQ count increasing** | Per-document processing errors | Use MongoDB `find` on DLQ collection to inspect failed documents and error messages |
 
 **When providing fix steps:**
-- Commit to a specific root cause based on the evidence
+- Name the most likely root cause the evidence supports, or state what evidence is needed
 - Do NOT present a list of hypothetical scenarios
 - Provide concrete, ordered steps (e.g., "stop → modify pipeline to add partitionIdleTimeout → restart with resumeFromCheckpoint: false")
 

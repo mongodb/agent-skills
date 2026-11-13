@@ -22,7 +22,7 @@
     },
     {
       "step": "verify_root_cause_identified",
-      "expected": "Agent provides specific diagnosis (not list of hypotheticals)",
+      "expected": "Agent names the most likely cause the available evidence supports, or states what evidence (e.g. the Logs tab) is needed — no list of hypotheticals",
       "critical": true
     }
   ],
@@ -56,12 +56,12 @@
     },
     {
       "name": "identifies_specific_root_cause",
-      "description": "Response identifies THE primary issue (not a list of hypothetical scenarios)",
+      "description": "Response names the most likely cause the evidence supports, or states what evidence is needed (not a list of hypothetical scenarios)",
       "critical": true
     },
     {
       "name": "matches_diagnostic_pattern",
-      "description": "Root cause matches one of the diagnostic patterns (Error 419, connection issue, OOM, etc.)"
+      "description": "Any cause named matches one of the diagnostic patterns (Error 419, connection issue, OOM, etc.)"
     },
     {
       "name": "provides_ordered_fix_steps",
@@ -70,7 +70,7 @@
     },
     {
       "name": "does_not_present_hypothetical_list",
-      "description": "Does NOT say 'it could be X, Y, or Z' - commits to specific diagnosis",
+      "description": "Does NOT say 'it could be X, Y, or Z' - either names a likely cause or asks for the evidence needed",
       "critical": true
     }
   ],
