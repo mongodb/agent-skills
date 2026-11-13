@@ -298,8 +298,8 @@ Via the MCP tool, PrivateLink vendors are: AWS `CONFLUENT`/`MSK`/`S3`/`KINESIS`/
 | AZURE | EVENTHUB | provider, vendor, region, dnsDomain, serviceEndpointId (full Azure Resource ID) |
 | AZURE | CONFLUENT | provider, vendor, region, dnsDomain, azureResourceIds |
 | GCP | CONFLUENT | provider, vendor, region, dnsDomain, gcpServiceAttachmentUris |
-| GCP | PUBSUB | provider, vendor, region (required), gcpServiceAttachmentUris |
-| AWS/GCP/AZURE | GENERIC (default) | provider (`AWS`/`GCP`/`AZURE`), vendor, region, serviceEndpointId |
+| GCP | PUBSUB | provider, vendor, region (required) — omit `dnsDomain` (Atlas derives it), `serviceEndpointId`, and `gcpServiceAttachmentUris` |
+| GCP/AZURE | GENERIC (default) | provider (`GCP`/`AZURE`), vendor, region, serviceEndpointId. AWS rejects vendor `GENERIC`; name a specific AWS vendor. |
 
 **Step 2: Reference in connection networking config:**
 ```json
