@@ -258,7 +258,7 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 | 404 on workspace | Doesn't exist or misspelled | `discover` → `list-workspaces` |
 | 409 on create | Name already exists | Inspect existing resource or pick new name |
 | 402 error on start | No billing configured | Do NOT retry. Add payment method in Atlas → Billing. Use `sp.process()` in mongosh as free alternative |
-| "processor must be stopped" | Tried to modify running processor | `manage` → `stop-processor` first |
+| "processor must be stopped" | Tried to modify a STARTED processor | `manage` → `stop-processor` first; CREATED, STOPPED, and FAILED need no stop |
 | bootstrapServers format | Passed as array instead of string | Use comma-separated string: `"broker1:9092,broker2:9092"` |
 | "must choose at least one role" | Cluster connection without `dbRoleToExecute` | Defaults to `readWriteAnyDatabase` — or specify custom role |
 | "No cluster named X" | Cluster doesn't exist in project | `atlas-list-clusters` to verify |

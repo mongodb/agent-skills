@@ -124,10 +124,10 @@
       "id": 10,
       "name": "modify-processor-pipeline",
       "prompt": "Change the pipeline for 'data-transformer' to add a $match stage filtering active=true",
-      "expected_output": "Stops processor first with stop-processor, then calls modify-processor with updated pipeline including $match stage, then offers to restart",
+      "expected_output": "Checks the processor's current state, stops it first only if it is STARTED, then calls modify-processor with updated pipeline including $match stage, then offers to restart",
       "files": [],
       "expectations": [
-        "Stops the processor first with stop-processor",
+        "Does not call stop-processor first unless the processor is STARTED",
         "Then calls modify-processor with a pipeline that includes a $match on active=true",
         "Offers or performs a restart after the modification",
         "Does not attempt to modify a STARTED processor"
