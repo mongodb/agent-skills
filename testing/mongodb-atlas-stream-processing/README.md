@@ -105,7 +105,7 @@ Each eval validates that the skill:
 ### Debugging Workflow
 1. Call `diagnose-processor` first
 2. Direct the user to the Atlas UI processor Logs tab (the MCP tools have no log-retrieval action)
-3. Commit to a specific root cause
+3. Name the most likely root cause the evidence supports, or state what evidence is needed
 4. Provide ordered fix steps
 
 ### Billing Awareness

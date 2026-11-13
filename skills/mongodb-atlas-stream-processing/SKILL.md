@@ -248,16 +248,16 @@ A pipeline containing an S3 `$emit` stage is the exception: it cannot be modifie
 
 **Debug a failing processor:**
 1. `atlas-streams-discover` → `diagnose-processor` — one-shot health report. Always call this first.
-2. **Commit to a specific root cause.** Match symptoms to diagnostic patterns:
+2. **Name the most likely root cause.** Match symptoms to diagnostic patterns:
    - **Error 419 + "no partitions found"** → Kafka topic doesn't exist or is misspelled
    - **State: FAILED + multiple restarts** → connection-level error (bypasses DLQ), check connection config
    - **State: STARTED + zero output + windowed pipeline** → likely idle Kafka partitions blocking window closure; add `partitionIdleTimeout` to Kafka `$source` (e.g., `{"size": 30, "unit": "second"}`)
    - **State: STARTED + zero output + non-windowed** → check if source has data; inspect Kafka offset lag
    - **High memoryUsageBytes approaching tier limit** → OOM risk; recommend higher tier
    - **DLQ count increasing** → per-document errors; use MongoDB `find` on DLQ collection
-   See [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table.
+   See [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table. If `diagnose-processor` yields nothing decisive, say which evidence you need (usually the Logs tab or the DLQ collection) rather than guessing.
 3. Classify processor type before interpreting output volume (alert vs transformation vs filter).
-4. Provide concrete, ordered fix steps specific to the diagnosed root cause. Do NOT present a list of hypothetical scenarios.
+4. Provide concrete, ordered fix steps for the cause you named — or, when the evidence is inconclusive, the steps to gather it. Do NOT present a list of hypothetical scenarios.
 5. Always direct the user to the Atlas UI for detailed operational logs: **Atlas → Stream Processing → Workspace → Processor → Logs tab**.
 
 ### Chained processors (multi-sink pattern)
