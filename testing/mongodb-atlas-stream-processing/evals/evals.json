@@ -742,10 +742,10 @@
       "id": 56,
       "name": "response-format-scope",
       "prompt": "Call inspect-processor with responseFormat 'detailed' for processor 'orders-rollup'.",
-      "expected_output": "Explains that inspect-processor does not accept responseFormat — it applies only to the list actions and to inspect-workspace. Calls inspect-processor normally (it is already detailed).",
+      "expected_output": "Explains that responseFormat applies only to the list actions and to inspect-workspace, and that inspect-processor accepts it but ignores it. Calls inspect-processor normally (it is already detailed).",
       "files": [],
       "expectations": [
-        "States that inspect-processor does not accept responseFormat",
+        "States that inspect-processor accepts responseFormat but ignores it",
         "States that responseFormat applies to list actions and inspect-workspace",
         "Calls inspect-processor without responseFormat"
       ]

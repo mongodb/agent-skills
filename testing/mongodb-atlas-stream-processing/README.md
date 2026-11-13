@@ -67,7 +67,7 @@ A case appears under every category it exercises, so a few IDs are cross-listed.
 - Zero-output windowed pipelines (idle partitions)
 - Processor type classification (alert vs transformation)
 - MCP servers/tools unavailable fallback
-- `responseFormat` scope (list actions + `inspect-workspace` only)
+- `responseFormat` applies to list actions and `inspect-workspace`; the other inspect and diagnose actions accept but ignore it
 
 ### Sizing & Architecture (12, 25)
 - Tier sizing from the parallelism formula
