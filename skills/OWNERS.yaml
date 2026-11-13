@@ -70,6 +70,12 @@ skills:
     last_reviewed: 2026-03-25
     review_cadence_days: 90
 
+  - name: mongodb-application-and-db-security
+    dris:
+      - asysdev
+    last_reviewed: 2026-11-02
+    review_cadence_days: 90
+
   - name: mongodb-qe-size-estimation
     dris:
       - nvillahermosa-mdb
