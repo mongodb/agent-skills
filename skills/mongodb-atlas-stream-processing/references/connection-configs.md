@@ -11,7 +11,7 @@ Know what each connection type can do before creating pipelines:
 | **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
 | **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
 | **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
-| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path`, `format`, `compression` |
+| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config` |
 | **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
 | **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
