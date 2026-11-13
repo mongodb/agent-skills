@@ -41,7 +41,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 | `get-networking` | Project-level PrivateLink endpoints. Optional: `cloudProvider` + `region` to get Atlas account details for PrivateLink setup. **It does not list VPC peerings** — peerings are only accepted/rejected (`manage`) or torn down (`teardown`) |
 
 **Pagination** (all list actions): `limit` (1-100, default 20), `pageNum` (default 1).
-**Response format**: `responseFormat` applies only to the list actions (`"concise"` default) and to `inspect-workspace` (`"detailed"` default). `inspect-connection`, `inspect-processor`, and `diagnose-processor` do not accept it.
+**Response format**: `responseFormat` applies only to the list actions (`"concise"` default) and to `inspect-workspace` (`"detailed"` default). `inspect-connection`, `inspect-processor`, and `diagnose-processor` are always detailed: the field is accepted but ignored, not rejected.
 **Parameter naming:** `inspect-processor`, `inspect-connection`, and `diagnose-processor` take `resourceName` (not `processorName` or `connectionName`). `workspaceName` is required for all actions except `list-workspaces` and `get-networking`.
 
 ### atlas-streams-build — ALL create operations
