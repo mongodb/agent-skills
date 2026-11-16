@@ -100,30 +100,11 @@ Key quickstarts:
 
 ## Pipeline Rules & Warnings
 
-**`$$ROOT` is supported** — use it in `$addFields`, `$group`, or `$replaceRoot` when you need the whole document.
+ASP supports `$$ROOT` for the whole document. `$$CURRENT` aliases it until a stage rebinds it, so prefer `$$ROOT`. Some MCP server versions reject both through `atlas-streams-build`; if yours does, use explicit fields or deploy through `modify-processor`/the Admin API. `$$NOW`, `$$CLUSTER_TIME`, and `$$USER_ROLES` are unavailable; `$$SEARCH_META` evaluates to missing. `$where` and `$accumulator` are rejected. `$function` is disabled on most deployments by default; ask MongoDB support to enable it, or use an alternative expression.
 
-**Invalid constructs** — these are NOT valid in streaming pipelines:
-- **`$$NOW`**, **`$$CURRENT`** — NOT available in stream processing. NEVER use these. For event time, use `{"$meta": "stream.source.ts"}` (the source record timestamp) or a timestamp field from the event payload.
-- **HTTPS connections as `$source`** — HTTPS is for `$https` enrichment or sink only, NOT as a data source
-- **Kafka `$source` without `topic`** — topic field is required
-- **Pipelines without a sink** — terminal stage (`$merge`, `$emit`, `$https`, or `$externalFunction` async) required for deployed processors (sinkless only works via `sp.process()`)
-- **Lambda as `$emit` target** — Lambda uses `$externalFunction` (mid-pipeline enrichment), not `$emit`
-- **`$validate` with `validationAction: "error"`** — crashes processor; use `"dlq"` instead
+Use supported sources and sinks: HTTPS is not a `$source`, Kafka sources need `topic`, Lambda uses `$externalFunction`, and deployed pipelines need exactly one terminal sink. `$validate` supports only `"discard"` or `"dlq"`.
 
-**Required fields by stage:**
-- **`$source` (change stream)**: include `fullDocument: "updateLookup"` to get the full document content
-- **`$source` (Kinesis)**: use `stream` (NOT `streamName` or `topic`)
-- **`$emit` (Kinesis)**: MUST include `partitionKey`
-- **`$emit` (S3)**: use `path` (NOT `prefix`)
-- **`$https`**: must include `connectionName`, `path`, `method`, `as`, `onError: "dlq"`
-- **`$externalFunction`**: must include `connectionName`, `functionName`, `execution`, `as`, `onError: "dlq"`
-- **`$validate`**: must include `validator` with `$jsonSchema` and `validationAction: "dlq"`
-- **`$lookup`**: include `parallelism` setting (e.g., `parallelism: 2`) for concurrent I/O
-- **AWS connections** (S3, Kinesis, Lambda): IAM role ARN must be registered via Atlas Cloud Provider Access first. Always confirm this with user. See [references/connection-configs.md](references/connection-configs.md) for details.
-
-See [references/pipeline-patterns.md](references/pipeline-patterns.md) for stage field examples with JSON syntax.
-
-**SchemaRegistry connection:** `connectionType` must be `"SchemaRegistry"` (not `"Kafka"`). Schema type values are case-sensitive (use lowercase `avro`, not `AVRO`). See [references/connection-configs.md](references/connection-configs.md#schemaregistry) for required fields and auth types.
+For stage fields and connection requirements—including change-stream `fullDocument`, Kinesis `stream`/`partitionKey`, S3 `path`, `$externalFunction` sync/async `as`, `$validate`, and `$lookup` parallelism—see [references/pipeline-patterns.md](references/pipeline-patterns.md). Confirm AWS IAM roles are registered through Atlas Cloud Provider Access before creating connections. For SchemaRegistry, use its distinct connection type and lowercase schema types; see [references/connection-configs.md](references/connection-configs.md).
 
 ## MCP Tool Behaviors
 
