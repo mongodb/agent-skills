@@ -133,7 +133,7 @@ For source/sink support, networking, and connection configuration by type, see [
 3. `atlas-streams-build` → `resource: "connection"` (for each source/sink/enrichment)
 4. **Validate connections:** `atlas-streams-discover` → `list-connections` + `inspect-connection` for each — verify names match targets, present summary to user
 5. Call `search-knowledge` to validate field names. Fetch relevant examples from https://github.com/mongodb/ASP_example
-6. `atlas-streams-build` → `resource: "processor"` (with DLQ configured)
+6. `atlas-streams-build` → `resource: "processor"` (add a DLQ only if requested or needed by a stage's default error handling)
 7. `atlas-streams-manage` → `start-processor` (warn about billing)
 
 ### Workflow Patterns
@@ -147,26 +147,19 @@ See [references/development-workflow.md](references/development-workflow.md) for
 5. Add error handling / DLQ configuration
 
 **Modify a processor pipeline:**
-1. `atlas-streams-manage` → `action: "stop-processor"` — **processor MUST be stopped first**
+1. `atlas-streams-manage` → `action: "stop-processor"` — only needed when the processor is STARTED; CREATED, STOPPED, and FAILED can be modified directly
 2. `atlas-streams-manage` → `action: "modify-processor"` — provide new pipeline
 3. `atlas-streams-manage` → `action: "start-processor"` — restart
 
+A pipeline containing an S3 `$emit` stage is the exception: it cannot be modified at all. Export the pipeline, warn that deleting discards checkpoints and window state, confirm with the user, then delete and recreate the processor.
+
 **Debug a failing processor:**
 1. `atlas-streams-discover` → `diagnose-processor` — one-shot health report. Always call this first.
-2. **Commit to a specific root cause.** Match symptoms to diagnostic patterns:
-   - **Error 419 + "no partitions found"** → Kafka topic doesn't exist or is misspelled
-   - **State: FAILED + multiple restarts** → connection-level error (bypasses DLQ), check connection config
-   - **State: STARTED + zero output + windowed pipeline** → likely idle Kafka partitions blocking window closure; add `partitionIdleTimeout` to Kafka `$source` (e.g., `{"size": 30, "unit": "second"}`)
-   - **State: STARTED + zero output + non-windowed** → check if source has data; inspect Kafka offset lag
-   - **High memoryUsageBytes approaching tier limit** → OOM risk; recommend higher tier
-   - **DLQ count increasing** → per-document errors; use MongoDB `find` on DLQ collection
-   See [references/output-diagnostics.md](references/output-diagnostics.md) for the full pattern table.
-3. Classify processor type before interpreting output volume (alert vs transformation vs filter).
-4. Provide concrete, ordered fix steps specific to the diagnosed root cause. Do NOT present a list of hypothetical scenarios.
-5. Always direct the user to the Atlas UI for detailed operational logs: **Atlas → Stream Processing → Workspace → Processor → Logs tab**.
+2. Identify the likely cause from evidence; if inconclusive, state what evidence is needed rather than guessing.
+3. Use [references/output-diagnostics.md](references/output-diagnostics.md) to interpret symptoms, then give ordered fix or evidence-gathering steps. Detailed operational logs are in the Atlas UI processor Logs tab; `diagnose-processor` returns no error log.
 
 ### Chained processors (multi-sink pattern)
-**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). When users request multiple output destinations (e.g., "write to Atlas AND emit to Kafka"), you MUST acknowledge the single-sink constraint and propose chained processors using an intermediate destination. See [references/pipeline-patterns.md](references/pipeline-patterns.md) for the full pattern with examples.
+**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge`, `$emit`, `$iceberg`, `$https`, or `$externalFunction`). When users request multiple output destinations (e.g., "write to Atlas AND emit to Kafka"), you MUST acknowledge the single-sink constraint and propose chained processors using an intermediate destination. See [references/pipeline-patterns.md](references/pipeline-patterns.md) for the full pattern with examples.
 
 ## Pre-Deploy & Post-Deploy Checklists
 
