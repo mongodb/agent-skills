@@ -6,7 +6,14 @@
       "name": "create-workspace-basic",
       "prompt": "Create a new Atlas Stream Processing workspace called 'dev-streams' in AWS us-east-1 with an SP10 tier",
       "expected_output": "Calls atlas-streams-build with resource='workspace', workspaceName='dev-streams', cloudProvider='AWS', region='VIRGINIA_USA', tier='SP10'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-build with resource 'workspace'",
+        "Uses workspaceName 'dev-streams' or a timestamped variant such as 'dev-streams-test-<timestamp>'",
+        "Sets cloudProvider 'AWS' and region 'VIRGINIA_USA' (not 'us-east-1')",
+        "Sets tier 'SP10'",
+        "Includes the Atlas project ID"
+      ]
     },
     {
       "id": 2,
@@ -20,7 +27,12 @@
       "name": "list-workspaces",
       "prompt": "Show me all my stream processing workspaces",
       "expected_output": "Calls atlas-streams-discover with action='list-workspaces'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-discover with action 'list-workspaces'",
+        "Resolves the Atlas project ID (calls atlas-list-projects or asks the user) before listing workspaces",
+        "Does not use a build, manage, or teardown tool for a read operation"
+      ]
     },
     {
       "id": 4,
@@ -97,7 +109,14 @@
       "name": "validate-connections-before-deploy",
       "prompt": "I want to create a processor using connections 'kafka-prod' and 'atlas-main'. Can you verify they're ready?",
       "expected_output": "Calls list-connections first, then inspect-connection for each named connection, checks state=READY, verifies connection types match intended usage, presents summary before proceeding",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls list-connections first",
+        "Calls inspect-connection for both 'kafka-prod' and 'atlas-main'",
+        "Verifies each connection state is READY",
+        "Verifies connection types match the intended source/sink/enrichment usage",
+        "Presents a connection summary before proceeding"
+      ]
     },
     {
       "id": 15,
@@ -111,7 +130,14 @@
       "name": "delete-workspace-safely",
       "prompt": "Delete workspace 'old-test-workspace'",
       "expected_output": "Calls inspect-workspace first to count connections and processors, presents summary to user (e.g., '2 connections, 3 processors will be deleted'), asks for confirmation before calling teardown",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls inspect-workspace before deleting",
+        "Presents the number of connections and processors that will be removed",
+        "Asks for explicit confirmation",
+        "Only calls atlas-streams-teardown with resource 'workspace' after confirmation",
+        "Does not delete the workspace without confirmation"
+      ]
     },
     {
       "id": 17,
@@ -125,7 +151,12 @@
       "name": "region-format-validation",
       "prompt": "Create a workspace in GCP us-central1",
       "expected_output": "Uses correct Atlas region format 'US_CENTRAL1' for GCP (not 'us-central1'), cloudProvider='GCP'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Uses cloudProvider 'GCP'",
+        "Uses region 'US_CENTRAL1', not the raw cloud name 'us-central1'",
+        "Explains that an incorrect region format causes a dataProcessRegion error"
+      ]
     },
     {
       "id": 19,
@@ -145,8 +176,13 @@
       "id": 21,
       "name": "search-knowledge-before-processor",
       "prompt": "Create a processor that emits to S3",
-      "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, format, compression) before building processor, references ASP_example repo if needed",
-      "files": []
+      "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, config.outputFormat, compression) before building processor, references ASP_example repo if needed",
+      "files": [],
+      "expectations": [
+        "Calls search-knowledge before building the processor",
+        "Queries for the S3 $emit field names, especially path vs prefix",
+        "Does not guess field names"
+      ]
     },
     {
       "id": 22,
@@ -196,6 +232,98 @@
       "prompt": "Can I add the current processing time to each document with $$NOW inside a stream processor pipeline?",
       "expected_output": "Explains that $$NOW is not available in Atlas Stream Processing and must not be used. Recommends using the source record timestamp for event time — either a timestamp field in the document or {\"$meta\": \"stream.source.ts\"}. Does not claim $$NOW is supported.",
       "files": []
+    },
+    {
+      "id": 34,
+      "name": "checkpoint-resume-constraints",
+      "prompt": "My processor has been running with a 5-minute tumbling window. I want to change it to a 10-minute window. Can I just modify the pipeline?",
+      "expected_output": "Explains that the processor must be stopped before modify-processor. With resumeFromCheckpoint true (default), changing window type or interval, removing windows, and modifying $source are not allowed. To make the change, restart/resume with resumeFromCheckpoint: false, warning that this drops all window state and restarts from the beginning. Order: stop, modify, start.",
+      "expectations": [
+        "States the processor must be stopped before modify-processor",
+        "Explains that changing the window interval is blocked while resumeFromCheckpoint is true",
+        "Recommends resumeFromCheckpoint: false to make the change",
+        "Warns that resumeFromCheckpoint: false drops window state / restarts from the beginning",
+        "Gives the stop, modify, start sequence"
+      ],
+      "files": []
+    },
+    {
+      "id": 36,
+      "name": "mcp-tools-unavailable",
+      "prompt": "The Atlas Streams MCP tools aren't showing up in my client. What should I check?",
+      "expected_output": "Verifies the MongoDB MCP Server is connected and configured with Atlas API credentials (apiClientId/apiClientSecret), and that all four tools are available: atlas-streams-discover, atlas-streams-build, atlas-streams-manage, atlas-streams-teardown. Offers limited fallbacks: Atlas CLI for read-only exploration and sp.process() in mongosh for ephemeral pipeline testing, and recommends configuring the MCP server for full functionality.",
+      "expectations": [
+        "Checks that the MongoDB MCP Server is connected with Atlas API credentials",
+        "Names the four streams tools that should be available",
+        "Offers Atlas CLI read-only exploration as a fallback",
+        "Offers sp.process() in mongosh for ephemeral testing",
+        "Recommends configuring the MCP server for full capabilities"
+      ],
+      "files": []
+    },
+    {
+      "id": 40,
+      "name": "update-workspace-tier",
+      "prompt": "My processor on an SP10 workspace keeps running out of memory. Can I change the workspace to a larger tier?",
+      "expected_output": "Explains the two knobs: update the workspace tier with atlas-streams-manage action 'update-workspace' (newTier), or stop the processor and start it again with a tier override. Recommends checking memoryUsageBytes from diagnose-processor first, warns that start-processor begins billing, and notes stopped processors retain state for 45 days.",
+      "expectations": [
+        "Uses atlas-streams-manage with action 'update-workspace' and a newTier",
+        "Mentions the alternative of stopping the processor and starting it with a tier override",
+        "Recommends checking memoryUsageBytes via diagnose-processor before resizing",
+        "Warns about billing when starting the processor",
+        "Does not suggest deleting and recreating the workspace"
+      ],
+      "files": []
+    },
+    {
+      "id": 52,
+      "name": "modify-from-failed",
+      "prompt": "My processor is FAILED. Do I have to delete and recreate it to change the pipeline?",
+      "expected_output": "Says no — modify-processor works in any state except STARTED, so CREATED, STOPPED, and FAILED are all modifiable. Recommends modify-processor with the corrected pipeline, then start-processor. Notes that resumeFromCheckpoint is a start parameter, not a modify one.",
+      "files": [],
+      "expectations": [
+        "States that FAILED processors can be modified (no delete/recreate needed)",
+        "States that modify-processor works in any state except STARTED",
+        "Uses modify-processor then start-processor",
+        "Notes that resumeFromCheckpoint is set on start, not modify"
+      ]
+    },
+    {
+      "id": 53,
+      "name": "start-tier-ceiling",
+      "prompt": "Restart processor 'orders-rollup' in workspace 'prod-streams' with tier SP50. The workspace's maxTierSize is SP30.",
+      "expected_output": "Explains that start-processor's tier cannot exceed the workspace's streamConfig.maxTierSize (SP30 here), so SP50 would be rejected. Offers to start at SP30, or to raise the workspace maxTierSize first if SP50 is genuinely required.",
+      "files": [],
+      "expectations": [
+        "States that the start tier cannot exceed the workspace maxTierSize",
+        "Identifies that SP50 exceeds the SP30 ceiling",
+        "Suggests starting at SP30 or raising maxTierSize first"
+      ]
+    },
+    {
+      "id": 55,
+      "name": "read-only-mode",
+      "prompt": "The MongoDB MCP server is running in read-only mode. Can I still create a workspace and processor with the streams tools?",
+      "expected_output": "Explains that read-only mode permits only read operations, so atlas-streams-discover works but atlas-streams-build, atlas-streams-manage, and atlas-streams-teardown all fail. Does not retry them. Gives the user the equivalent Atlas UI or Admin API steps for creating the workspace and processor.",
+      "files": [],
+      "expectations": [
+        "States that only atlas-streams-discover works in read-only mode",
+        "States that build, manage, and teardown are blocked",
+        "Does not retry the blocked tools",
+        "Offers the Atlas UI or Admin API alternative"
+      ]
+    },
+    {
+      "id": 56,
+      "name": "response-format-scope",
+      "prompt": "Call inspect-processor with responseFormat 'detailed' for processor 'orders-rollup'.",
+      "expected_output": "Explains that responseFormat applies only to the list actions and to inspect-workspace, and that inspect-processor accepts it but ignores it. Calls inspect-processor normally (it is already detailed).",
+      "files": [],
+      "expectations": [
+        "States that inspect-processor accepts responseFormat but ignores it",
+        "States that responseFormat applies to list actions and inspect-workspace",
+        "Calls inspect-processor without responseFormat"
+      ]
     }
   ]
 }
