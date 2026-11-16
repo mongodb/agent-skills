@@ -134,8 +134,14 @@
       "id": 12,
       "name": "tier-sizing-complex-pipeline",
       "prompt": "I need to process Kafka data with a $lookup (parallelism 3), tumbling window, and $merge (parallelism 4). What tier should I use?",
-      "expected_output": "Calculates parallelism needs: (3-1) + (4-1) = 5 excess parallelism, recommends SP10 (max 8 parallelism), explains calculation",
-      "files": []
+      "expected_output": "Calculates parallelism needs: (3-1) + (4-1) = 5 excess parallelism, recommends SP10 as the minimum (max 8 parallelism), optionally notes higher tiers as headroom, explains calculation",
+      "files": [],
+      "expectations": [
+        "Applies the formula summing (parallelism - 1) for stages with parallelism greater than 1",
+        "Computes 5 excess parallelism: (3-1) + (4-1)",
+        "Recommends SP10 as the parallelism-derived minimum (max parallelism 8); may note SP30/SP50 as headroom",
+        "Shows the calculation"
+      ]
     },
     {
       "id": 13,
@@ -384,6 +390,20 @@
       "files": []
     },
     {
+      "id": 32,
+      "name": "session-window",
+      "prompt": "Group user click events into sessions that end after 5 minutes of inactivity, and write one summary document per session to Atlas.",
+      "expected_output": "Uses $sessionWindow with gap {size: 5, unit: 'minute'} and partitionBy set to the user identifier, with a $group inside the window pipeline to summarize actions. Writes to Atlas with $merge. Recommends SP30 (session windows are high complexity) and, for a Kafka source, partitionIdleTimeout.",
+      "expectations": [
+        "Uses $sessionWindow with a 5-minute gap",
+        "Sets `partitionBy` to the user identifier (not `key`)",
+        "Includes a $group inside the window pipeline",
+        "Ends with $merge to an Atlas collection",
+        "Recommends SP30 or notes session windows are high complexity"
+      ],
+      "files": []
+    },
+    {
       "id": 33,
       "name": "hopping-window-late-data",
       "prompt": "I need a 5-minute window that recomputes every minute, and it must tolerate events arriving up to 30 seconds late.",
@@ -437,6 +457,21 @@
         "Offers Atlas CLI read-only exploration as a fallback",
         "Offers sp.process() in mongosh for ephemeral testing",
         "Recommends configuring the MCP server for full capabilities"
+      ],
+      "files": []
+    },
+    {
+      "id": 37,
+      "name": "function-udf-tier",
+      "prompt": "I want to run a small JavaScript function over each temperature reading to convert Celsius to Fahrenheit. How do I do that in a stream processor?",
+      "expected_output": "Uses the $function expression with lang 'js', body, and args inside $addFields (or $project). Notes that $function is disabled on most deployments by default and is best sized at SP30, and that the processor still needs a valid $source and terminal sink.",
+      "expectations": [
+        "Shows a $function expression with lang 'js'",
+        "Includes the function body and an args array referencing the field",
+        "Places it in a stage such as $addFields",
+        "Recommends SP30 or notes $function is high complexity",
+        "Mentions that $function is disabled on most deployments by default",
+        "Keeps a valid $source and terminal sink"
       ],
       "files": []
     },
@@ -571,6 +606,18 @@
         "Lists $merge, $emit, $iceberg, $https, and $externalFunction as terminal stages",
         "States that exactly one terminal sink is allowed",
         "States that no stage may follow the terminal sink"
+      ]
+    },
+    {
+      "id": 48,
+      "name": "function-feature-flag",
+      "prompt": "Build me a processor that uses $function to normalize a string field.",
+      "expected_output": "Notes that $function is disabled on most deployments by default, so it may be rejected. Recommends SP30. Offers a non-$function alternative (e.g. $toLower/$trim or $regexMatch expressions) in case the flag is unavailable.",
+      "files": [],
+      "expectations": [
+        "Mentions that $function is disabled on most deployments by default",
+        "Recommends SP30",
+        "Offers an alternative that does not need $function"
       ]
     },
     {
