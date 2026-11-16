@@ -5,7 +5,7 @@ description: >
   Do NOT use for collections that use Client-Side Field Level Encryption (CSFLE) instead of QE.
 license: Apache-2.0
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   labelText: "Estimate the storage and memory impact of encrypting fields in QE-enabled collections."
 ---
 
