@@ -20,6 +20,8 @@ The 4 tools: `atlas-streams-discover`, `atlas-streams-build`, `atlas-streams-man
 
 **All operations require an Atlas project ID.** If unknown, call `atlas-list-projects` first to find your project ID.
 
+**Read-only mode:** if the MCP server runs with `--readOnly`, only `atlas-streams-discover` works. `build`, `manage`, and `teardown` all fail — do not retry them; explain the restriction and give the user the equivalent Atlas UI or Admin API steps.
+
 ## If MCP tools are unavailable
 
 If the MongoDB MCP Server is not connected or the streams tools are missing, see [references/mcp-troubleshooting.md](references/mcp-troubleshooting.md) for diagnostic steps and fallback options.
@@ -35,59 +37,34 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 | `inspect-connection` | Check connection state, config, health |
 | `list-processors` | See all processors in a workspace |
 | `inspect-processor` | Check processor state, pipeline, config |
-| `diagnose-processor` | Full health report: state, stats, errors |
-| `get-networking` | PrivateLink and VPC peering details. Optional: `cloudProvider` + `region` to get Atlas account details for PrivateLink setup |
+| `diagnose-processor` | Full health report: state, autoscaling, stats, health warning, DLQ config, pipeline, connection health, recommended actions. **It returns no error log or log lines** — for actual errors use the Atlas UI Logs tab or read the DLQ collection |
+| `get-networking` | Project-level PrivateLink endpoints. Optional: `cloudProvider` + `region` to get Atlas account details for PrivateLink setup. **It does not list VPC peerings** — peerings are only accepted/rejected (`manage`) or torn down (`teardown`) |
 
 **Pagination** (all list actions): `limit` (1-100, default 20), `pageNum` (default 1).
-**Response format**: `responseFormat` — `"concise"` (default for list actions) or `"detailed"` (default for inspect/diagnose).
-**Parameter naming:** `inspect-processor`, `inspect-connection`, and `diagnose-processor` take `resourceName` (not `processorName` or `connectionName`).
+**Response format**: `responseFormat` applies only to the list actions (`"concise"` default) and to `inspect-workspace` (`"detailed"` default). `inspect-connection`, `inspect-processor`, and `diagnose-processor` are always detailed: the field is accepted but ignored, not rejected.
+**Parameter naming:** `inspect-processor`, `inspect-connection`, and `diagnose-processor` take `resourceName` (not `processorName` or `connectionName`). `workspaceName` is required for all actions except `list-workspaces` and `get-networking`.
 
 ### atlas-streams-build — ALL create operations
 | Resource | Key parameters |
 |----------|---------------|
 | `workspace` | `cloudProvider`, `region`, `tier` (default SP10), `includeSampleData` |
-| `connection` | `connectionName`, `connectionType` (Kafka/Cluster/S3/Https/Kinesis/Lambda/SchemaRegistry/Sample), `connectionConfig` |
-| `processor` | `processorName`, `pipeline` (must start with `$source`, end with `$merge`/`$emit`), `dlq`, `autoStart` |
+| `connection` | `connectionName`, `connectionType` (exact values: `Kafka`/`Cluster`/`S3`/`Https`/`AWSKinesisDataStreams`/`AWSLambda`/`SchemaRegistry`/`Sample`/`GCPPubSub`), `connectionConfig` |
+| `processor` | `processorName`, `pipeline` (must start with `$source`, end with a sink stage: `$merge`/`$emit`/`$iceberg`/`$https`/`$externalFunction`), `dlq` (only when the user asks for one), `autoStart`, `processorTier`, `autoscaling` |
 | `privatelink` | `privateLinkConfig` (project-level, not tied to a specific workspace) |
 
-**Field mapping — only fill fields for the selected resource type:**
-
-- **resource = "workspace":** Fill: `projectId`, `workspaceName`, `cloudProvider`, `region`, `tier`, `includeSampleData`. Leave empty: all connection and processor fields.
-- **resource = "connection":** Fill: `projectId`, `workspaceName`, `connectionName`, `connectionType`, `connectionConfig`. Leave empty: all workspace and processor fields. (See [references/connection-configs.md](references/connection-configs.md) for type-specific schemas.)
-- **resource = "processor":** Fill: `projectId`, `workspaceName`, `processorName`, `pipeline`, `dlq` (recommended), `autoStart` (optional). Leave empty: all workspace and connection fields. (See [references/pipeline-patterns.md](references/pipeline-patterns.md) for pipeline examples.)
-- **resource = "privatelink":** Fill: `projectId`, `privateLinkConfig`. Note: PrivateLink is **project-level**, not workspace-level. `workspaceName` is not required — omit it. Leave empty: all connection and processor fields.
+**Field mapping:** Set `projectId` and only the fields for the selected resource: workspace (`workspaceName`, `cloudProvider`, `region`, `tier`); connection (`workspaceName`, `connectionName`, `connectionType`, `connectionConfig`); processor (`workspaceName`, `processorName`, `pipeline`, optional `dlq`, `autoStart`, `processorTier`, `autoscaling`); PrivateLink (`privateLinkConfig`, project-level; omit `workspaceName`). See the references for schemas and pipeline requirements.
 
 ### atlas-streams-manage — ALL update/state operations
 | Action | Notes |
 |--------|-------|
-| `start-processor` | Begins billing. Optional `tier` override, `resumeFromCheckpoint` |
+| `start-processor` | Begins billing. Optional `tier` override (bounded by the workspace `streamConfig.maxTierSize`), `resumeFromCheckpoint` (a **start** parameter, not a modify one), `autoscaling` |
 | `stop-processor` | Stops billing. Retains state 45 days |
-| `modify-processor` | Processor must be stopped first. Change pipeline, DLQ, or name |
-| `update-workspace` | Change tier or region |
-| `update-connection` | Update config (networking is immutable — must delete and recreate) |
+| `modify-processor` | Works in any state **except** STARTED — CREATED, STOPPED, and FAILED are all modifiable. Change pipeline, DLQ, name, tier, or autoscaling. **Exception:** a pipeline containing an S3 `$emit` stage cannot be modified at all — export the pipeline, warn that deletion discards checkpoints and window state, confirm with the user, then delete and recreate it |
+| `update-workspace` | Change tier or region (`newTier` maps to Admin API `streamConfig.tier`). A region change requires the workspace to have **zero processors**; warn that deleting them discards checkpoints and window state, export the pipelines, and confirm with the user before deleting |
+| `update-connection` | Update config. Auth/credentials are updatable; networking, connection **type**, and **region** are immutable — delete and recreate |
 | `accept-peering` / `reject-peering` | VPC peering management |
 
-**Field mapping** — always fill `projectId`, `workspaceName`, then by action:
-
-- `"start-processor"` → `resourceName`. Optional: `tier`, `resumeFromCheckpoint`, `startAtOperationTime` (ISO 8601 timestamp to resume from a specific point)
-- `"stop-processor"` → `resourceName`
-- `"modify-processor"` → `resourceName`. At least one of: `pipeline`, `dlq`, `newName`
-- `"update-workspace"` → `newRegion` or `newTier`
-- `"update-connection"` → `resourceName`, `connectionConfig`. **Exception: networking config (e.g., PrivateLink) cannot be modified after creation** — delete and recreate.
-- `"accept-peering"` → `peeringId`, `requesterAccountId`, `requesterVpcId`
-- `"reject-peering"` → `peeringId`
-
-**State pre-checks:**
-- `start-processor` → errors if processor is already STARTED
-- `stop-processor` → no-ops if already STOPPED or CREATED (not an error)
-- `modify-processor` → errors if processor is STARTED (must stop first)
-
-**Processor states:** `CREATED` → `STARTED` (via start) → `STOPPED` (via stop). Can also enter `FAILED` on runtime errors. Modify requires STOPPED or CREATED state.
-
-**Teardown safety checks:**
-- **Processor deletion** → auto-stops before deleting (no need to stop manually first)
-- **Connection deletion** → blocks if any running processor references it. Stop/delete referencing processors first.
-- **Workspace deletion** → See detailed workflow below (lines 108-111).
+**Field mapping:** Always set `projectId`, `workspaceName`, and `resourceName` where applicable. `start-processor` accepts optional `tier`, `resumeFromCheckpoint`, ISO 8601 `startAtOperationTime`, and `autoscaling`; the tier cannot exceed workspace `maxTierSize`. `modify-processor` requires at least one of `pipeline`, `dlq`, `newName`, `tier`, or `autoscaling`; `resumeFromCheckpoint` belongs to start, not modify. `update-workspace` takes `newRegion` or `newTier`. `update-connection` takes `resourceName` and `connectionConfig`: credentials can be updated, but networking, connection type, and region are immutable. Peering actions take `peeringId`; accepting also needs requester account and VPC IDs.
 
 ### atlas-streams-teardown — ALL delete operations
 | Resource | Safety behavior |
@@ -97,11 +74,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 | `workspace` | Cascading delete of all connections and processors |
 | `privatelink` / `peering` | Remove networking resources |
 
-**Field mapping** — always fill `projectId`, `resource`, then:
-
-- `resource: "workspace"` → `workspaceName`
-- `resource: "connection"` or `"processor"` → `workspaceName`, `resourceName`
-- `resource: "privatelink"` or `"peering"` → `resourceName` (the ID). These are project-level resources, not tied to a specific workspace.
+**Field mapping:** Always set `projectId` and `resource`; use `workspaceName` for workspaces, connections, and processors, and `resourceName` for connections, processors, PrivateLinks, and peerings. PrivateLinks and peerings are project-level.
 
 **Before deleting a workspace**, inspect it first:
 1. `atlas-streams-discover` → `inspect-workspace` — get connection/processor counts
@@ -119,7 +92,7 @@ Also fetch examples from the official ASP examples repo when building non-trivia
 Key quickstarts:
 | Quickstart | Pattern |
 |-----------|---------|
-| `00_hello_world.json` | Inline `$source.documents` with `$match` (zero infra, ephemeral) |
+| `00_hello_world.json` | Inline `$source.documents` with `$match` (no external connection needed) |
 | `01_changestream_basic.json` | Change stream → tumbling window → `$merge` to Atlas |
 | `03_kafka_to_mongo.json` | Kafka source → tumbling window rollup → `$merge` to Atlas |
 | `04_mongo_to_mongo.json` | Chained processors: rollup → archive to separate collection |
@@ -156,26 +129,20 @@ See [references/pipeline-patterns.md](references/pipeline-patterns.md) for stage
 
 **Elicitation:** When creating connections, the build tool auto-collects missing sensitive fields (passwords, bootstrap servers) via MCP elicitation. Do NOT ask the user for these — let the tool collect them.
 
-**Auto-normalization:**
-- `bootstrapServers` array → auto-converted to comma-separated string
-- `schemaRegistryUrls` string → auto-wrapped in array
-- `dbRoleToExecute` → defaults to `{role: "readWriteAnyDatabase", type: "BUILT_IN"}` for Cluster connections
+The tool normalizes `bootstrapServers` arrays, `schemaRegistryUrls` strings, and Cluster `dbRoleToExecute`; Lambda and GCP Pub/Sub networking uses `publicPrivateNetworking`.
 
-**Workspace creation:** `includeSampleData` defaults to `true`, which auto-creates the `sample_stream_solar` connection.
+**Pipeline validation at build time** (`atlas-streams-build` only):
+- The **first stage must be `$source`**, and pipelines containing `$$NOW`, `$$ROOT`, or `$$CURRENT` are rejected. (`$$CLUSTER_TIME` and `$$USER_ROLES` are not in this validator — the engine rejects them when the processor starts.)
+- Every referenced connection — including the DLQ connection — is checked to exist. If the connection listing itself fails, the check is skipped silently.
+- **The terminal-sink check is not performed by MCP** — starting with `$source` and ending with exactly one sink is an API/engine requirement, so validate it yourself before calling the tool.
 
-**Region naming:** The `region` field uses Atlas-specific names that differ by cloud provider. Using the wrong format returns a cryptic `dataProcessRegion` error.
+**DLQ:** Do not add one unless requested or needed by a stage's default `onError: "dlq"`.
 
-| Provider | Cloud Region | Streams `region` Value |
-|----------|-------------|----------------------|
-| **AWS** | us-east-1 | `VIRGINIA_USA` |
-| **AWS** | us-east-2 | `OHIO_USA` |
-| **AWS** | eu-west-1 | `DUBLIN_IRL` |
-| **GCP** | us-central1 | `US_CENTRAL1` |
-| **GCP** | europe-west1 | `EUROPE_WEST1` |
-| **Azure** | eastus | `eastus` |
-| **Azure** | westeurope | `westeurope` |
+On create, autoscaling is passed in processor `options`; on modify, omission preserves it and `{enabled: false}` disables it.
 
-See [references/connection-configs.md](references/connection-configs.md) for the full region mapping table. If unsure, inspect an existing workspace with `atlas-streams-discover` → `inspect-workspace` and check `dataProcessRegion.region`.
+See [references/sizing-and-parallelism.md](references/sizing-and-parallelism.md) for autoscaling and tier behavior. `includeSampleData` defaults to `true`. Regions use Atlas-specific names; see the mapping in [references/connection-configs.md](references/connection-configs.md).
+
+For source/sink support, networking, and connection configuration by type, see [references/connection-configs.md](references/connection-configs.md). Remember: Kafka uses `$emit`, not `$merge`; async `$externalFunction` stages must omit `as`.
 
 ## Connection Capabilities — Source/Sink Reference
 
