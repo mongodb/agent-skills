@@ -10,8 +10,10 @@
 // the same skills/ folder by convention).
 //
 // This script is idempotent: it fully regenerates each plugin's skills/ and
-// assets/ directories from the canonical sources. CI runs it and fails if the
-// committed copies drift from what this script produces.
+// assets/ directories and LICENSE from the canonical sources, and rewrites the
+// `skills` array of .gemini-plugin/plugin.json (Gemini lists each SKILL.md
+// explicitly). CI runs it and fails if the committed copies drift from what
+// this script produces.
 //
 // Runs directly on Node >= 23.6 (e.g. Node 24): `node tools/sync-plugin-skills.ts`.
 // Uses only erasable TypeScript syntax (type annotations), so Node strips the
@@ -22,9 +24,11 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { basename, join } from "node:path";
 
@@ -43,7 +47,9 @@ const PLUGINS: PluginsConfig = {
 
 const SKILLS_SRC = "skills";
 const ASSETS_SRC = "assets";
+const LICENSE_SRC = "LICENSE";
 const PLUGINS_DIR = "plugins";
+const GEMINI_MANIFEST = join(".gemini-plugin", "plugin.json");
 
 // Never copy these into the published plugin copies.
 const EXCLUDE_NAMES = new Set([".score_cache", ".DS_Store"]);
@@ -115,6 +121,19 @@ for (const [plugin, cfg] of Object.entries(PLUGINS)) {
     rmSync(destAssets, { recursive: true, force: true });
     mkdirSync(destAssets, { recursive: true });
     cpSync(ASSETS_SRC, destAssets, { recursive: true, filter: copyFilter });
+  }
+
+  if (existsSync(LICENSE_SRC)) {
+    cpSync(LICENSE_SRC, join(pluginDir, LICENSE_SRC));
+  }
+
+  const geminiManifest = join(pluginDir, GEMINI_MANIFEST);
+  if (existsSync(geminiManifest)) {
+    const manifest = JSON.parse(readFileSync(geminiManifest, "utf8"));
+    manifest.skills = selected.map(
+      (skill) => `./${SKILLS_SRC}/${skill}/SKILL.md`,
+    );
+    writeFileSync(geminiManifest, `${JSON.stringify(manifest, null, 2)}\n`);
   }
 
   console.log(`[${plugin}] synced ${selected.length} skills: ${selected.join(", ")}`);
