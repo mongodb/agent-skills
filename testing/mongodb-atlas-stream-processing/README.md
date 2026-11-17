@@ -42,6 +42,10 @@ This test suite validates that the skill correctly handles Atlas Stream Processi
 - Multi-connection workspace setup
 - Chained processor patterns
 
+### Pipeline Variables (Tests 27-28)
+- `$$ROOT` is valid and can be used in `$addFields`, `$group`, or `$replaceRoot`
+- `$$NOW` remains unavailable; use a timestamp field from the source document instead
+
 ## Key Assertions Tested
 
 Each eval validates that the skill:

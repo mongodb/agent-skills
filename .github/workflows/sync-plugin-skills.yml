@@ -10,6 +10,7 @@ on:
     paths:
       - "skills/**"
       - "assets/**"
+      - "LICENSE"
       - "plugins/**"
       - "tools/sync-plugin-skills.ts"
 
