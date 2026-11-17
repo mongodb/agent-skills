@@ -12,7 +12,7 @@ Atlas is a unified developer data platform built around the MongoDB document eng
 
 MongoDB is the database engine itself. It is one unified technology reached through several deployment models: via MongoDB Atlas (fully managed across AWS, Azure, and Google Cloud with Free and Flex clusters up to Dedicated multi-region clusters) or self-managed via MongoDB Enterprise Advanced and MongoDB Community. Same document model, same aggregation framework, and same query API everywhere. Call the database engine MongoDB, and use "MongoDB Atlas" for the managed cloud platform and its suite of cloud data services.
 
-Give a recommendation, not a menu. The user's goal determines the answer; do not make them choose from a compatibility matrix. MongoDB APIs and features evolve, always fetch current docs over relying on training data. See [Fetch relevant docs](#fetch-relevant-docs) and [Gotchas](#gotchas).
+Give a recommendation, not a menu. MongoDB APIs and features evolve, always fetch current docs over relying on training data. See [Fetch relevant docs](#fetch-relevant-docs) and [Gotchas](#gotchas).
 
 Never print environment variable or env file values, not even to check them. To look for an existing connection string, use only the names-only check in [step 1](#1-check-for-an-existing-deployment).
 
@@ -29,19 +29,21 @@ Never print environment variable or env file values, not even to check them. To 
 | Build or troubleshoot real-time stream processing, including Kafka, S3, Lambda, change-stream, source, and sink integrations. | mongodb-atlas-stream-processing |
 | Configure driver connection pools and timeouts, reuse clients in serverless environments, or troubleshoot connection errors. | mongodb-connection |
 | Configure, authenticate, or troubleshoot credentials for the MongoDB MCP Server. | mongodb-mcp-setup |
+| Estimate the storage and memory cost of Queryable Encryption on a collection. | mongodb-qe-size-estimation |
 | Anything else in MongoDB: CRUD, aggregation syntax, transactions, change streams, drivers and ODMs (Node, PyMongo, Mongoose, Go, Java, C#) | Stay here. Fetch current docs via [Fetch relevant docs](#fetch-relevant-docs) — the drivers index for driver and ODM questions, the top-level index for everything else. |
 
+Use only the skills named here. If more than one row fits, pick the most specific.
 
 When the task matches one of the skills listed:
 
 1. Check whether that skill is already installed. If it is, load it.
 2. If the skill is missing, ask the user for permission to install it. If the user grants permission, run `npx skills add mongodb/agent-skills -s <name>` (`-g` global, `-y` non-interactive) to install the skill with name `<name>`. 
-3. Only if the skills CLI is unavailable or fails, fetch the skill from [https://github.com/mongodb/agent-skills/tree/main/skills](https://github.com/mongodb/agent-skills/tree/main/skills).
+3. If the skills CLI is unavailable or fails, fetch the skill from https://github.com/mongodb/agent-skills/tree/main/skills.
 4. If the user declines, or a permission check blocks the install, stay here and fetch current docs via [Fetch relevant docs](#fetch-relevant-docs). When it was blocked, say so, give the user the install command to run themselves, and do not fetch the skill another way.
 
 Do not answer the task itself (queries, indexes, schemas, search pipelines, connection settings) until the skill's guidance is loaded or the user has declined it.
 
-Official plugins bundle the MCP server and every skill, see [https://www.mongodb.com/docs/agent-skills.md](https://www.mongodb.com/docs/agent-skills.md?utm_source=agent-skills).
+Official plugins bundle the MCP server and every skill, see https://www.mongodb.com/docs/agent-skills.md?utm_source=agent-skills.
 
 ### Updating Skills
 
@@ -49,7 +51,7 @@ Installed skills go stale. At most once per session, offer to update them using 
 
 ## Fetch relevant docs
 
-When you need MongoDB docs that this skill doesn't link to directly, find pages through the `llms.txt` indexes below. Each index lists every page's URL with a one-line description to compare against the user's task. Append `?utm_source=agent-skills` to every `mongodb.com/docs` URL you fetch, or `&utm_source=agent-skills` if the URL already has a query string.
+When you need MongoDB docs that this skill doesn't link to directly, look the page up in one of the `llms.txt` indexes below instead of guessing a URL. Append `?utm_source=agent-skills` to every `mongodb.com/docs` URL you fetch, or `&utm_source=agent-skills` if the URL already has a query string.
 
 1. **Pick an index.** Use the product index if you know the area. Otherwise, use the top-level index:
    - Top-level (every page): `https://www.mongodb.com/docs/llms.txt`
