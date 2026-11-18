@@ -22,8 +22,7 @@ Use only the skills named here. Follow every row that matches part of the task; 
 
 | The user wants to… | Go to |
 | --- | --- |
-| Get a database, or doesn't have one yet | [Recommend a deployment](#recommend-a-deployment) |
-| Choose between Atlas, local, and self-managed deployments | Step 2 of [Recommend a deployment](#2-recommend-deployment-by-goal); run step 1 before setting anything up |
+| Get a database, or choose between Atlas, local, and self-managed deployments | [Recommend a deployment](#recommend-a-deployment) |
 | Model application data: choose document shapes, decide when to embed or reference, migrate relational data, avoid unbounded arrays, enforce validation, or model time-series data. | mongodb-schema-design |
 | Describe a question in plain English and get a safe, read-only MongoDB find query or aggregation pipeline. | mongodb-natural-language-querying |
 | Diagnose or improve a slow query, select or validate indexes, interpret explain() output, or use Atlas Performance Advisor recommendations. | mongodb-query-optimizer |
