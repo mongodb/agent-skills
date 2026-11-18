@@ -3,7 +3,8 @@
 // directory so docs traffic from skills can be attributed.
 //
 // Skipped on purpose:
-//   - llms.txt URLs: the docs server returns 404 when they carry a query string.
+//   - llms.txt URLs: the front-door skill tells agents to add the parameter
+//     when they fetch an index, and tagging them in place would cost tokens.
 //   - Link labels like `[https://...](https://...)`: only the target is tagged.
 //   - Other hosts (cloud.mongodb.com, dochub.mongodb.org, third parties).
 //
@@ -15,9 +16,10 @@
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PARAM = "utm_source=agent-skills";
-const ROOT = new URL("../skills/", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../skills/", import.meta.url));
 const URL_RE = /(?<!\[)https?:\/\/(?:www\.)?mongodb\.com\/[^\s)\]>"'`]*/g;
 
 function tag(url: string): string {
