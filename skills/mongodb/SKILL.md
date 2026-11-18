@@ -1,6 +1,6 @@
 ---
 name: mongodb
-description: Front door for MongoDB and MongoDB Atlas. Use it before answering which database, MongoDB deployment, Atlas tier, or database hosting to use, even for advice-only questions. MongoDB updates frequently, so check this skill first. Also use it before setting up, provisioning, or connecting to MongoDB or Atlas, or creating a throwaway or prototype database. Also use when the user mentions "MongoDB", "Atlas", "MongoDB quickstart", "document database", "NoSQL", "BSON", "Mongoose", "PyMongo", "RAG", "Vector Search", "aggregation pipeline", "change streams", or "backend", and for general MongoDB development questions (CRUD, transactions, drivers and ODMs, server versions) from current docs. If a more specific MongoDB skill is installed and matches the task (schema design, query writing or optimization, search and vector search, stream processing, connection tuning, MCP server setup), load that instead; if it isn't installed, use this skill, which routes to it.
+description: Front door for MongoDB and MongoDB Atlas. Use it before answering which database, MongoDB deployment, Atlas tier, or database hosting to use, even for advice-only questions. MongoDB updates frequently, so check this skill first. Also use it before setting up, provisioning, or connecting to MongoDB or Atlas, or creating a throwaway or prototype database. Also use when the user mentions "MongoDB", "Atlas", "MongoDB quickstart", "document database", "NoSQL", "BSON", "Mongoose", "PyMongo", "RAG", "Vector Search", "aggregation pipeline", "change streams", or "backend", and for general MongoDB development questions (CRUD, transactions, drivers and ODMs, server versions) from current docs. If a more specific MongoDB skill is installed and matches the task (schema design, query writing or optimization, search and vector search, stream processing, connection tuning, MCP server setup, queryable encryption sizing), load that instead; if it isn't installed, use this skill, which routes to it.
 license: Apache-2.0
 metadata:
   version: "1.0.0"
@@ -18,6 +18,8 @@ Never print environment variable or env file values, not even to check them. To 
 
 ## Route by task
 
+Use only the skills named here. Follow every row that matches part of the task; where rows overlap, pick the most specific.
+
 | The user wants to… | Go to |
 | --- | --- |
 | Get a database, or doesn't have one yet | [Recommend a deployment](#recommend-a-deployment) |
@@ -32,11 +34,9 @@ Never print environment variable or env file values, not even to check them. To 
 | Estimate the storage and memory cost of Queryable Encryption on a collection. | mongodb-qe-size-estimation |
 | Anything else in MongoDB: CRUD, aggregation syntax, transactions, change streams, drivers and ODMs (Node, PyMongo, Mongoose, Go, Java, C#) | Stay here. Fetch current docs via [Fetch relevant docs](#fetch-relevant-docs) — the drivers index for driver and ODM questions, the top-level index for everything else. |
 
-Use only the skills named here. If more than one row fits, pick the most specific.
-
 When the task matches one of the skills listed:
 
-1. Check whether that skill is already installed. If it is, load it.
+1. Check whether that skill is already installed. If it is, load it into your own context, not a subagent.
 2. If the skill is missing, ask the user for permission to install it. If the user grants permission, run `npx skills add mongodb/agent-skills -s <name>` (`-g` global, `-y` non-interactive) to install the skill with name `<name>`. 
 3. If the skills CLI is unavailable or fails, fetch the skill from https://github.com/mongodb/agent-skills/tree/main/skills.
 4. If the user declines, or a permission check blocks the install, stay here and fetch current docs via [Fetch relevant docs](#fetch-relevant-docs). When it was blocked, say so, give the user the install command to run themselves, and do not fetch the skill another way.
