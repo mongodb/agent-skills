@@ -33,9 +33,9 @@ Use only the skills named here. Follow every row that matches part of the task; 
 | Estimate the storage and memory cost of Queryable Encryption on a collection. | `mongodb-qe-size-estimation` skill |
 | Anything else in MongoDB: CRUD, aggregation syntax, transactions, change streams, drivers and ODMs (Node, PyMongo, Mongoose, Go, Java, C#) | Answer from current docs via [Fetch relevant docs](#fetch-relevant-docs) |
 
-When the task matches one of the skills listed:
+When the task matches one of the skills listed, load it into your own context, not a subagent:
 
-1. If the skill is available, load it into your own context, not a subagent, and go to step 5.
+1. If the skill is available, load it and go to step 5.
 2. Ask the user for permission to install it, and wait.
    - **Yes**: Run `npx skills add mongodb/agent-skills -s <name> -y` (add `-g` for a global install). If the skill is now available, load it and go to step 5. If a permission check blocked the command, say so, give the user the command to run themselves, and go to step 4. Otherwise, go to step 3.
    - **No**: Go to step 4.
