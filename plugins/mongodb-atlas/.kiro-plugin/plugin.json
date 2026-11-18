@@ -18,14 +18,5 @@
     "database",
     "mcp",
     "vector-search"
-  ],
-  "skills": "./skills/",
-  "mcpServers": {
-    "mongodb": {
-      "url": "https://mcp.mongodb.com",
-      "oauth": {
-        "clientId": "aws-kiro"
-      }
-    }
-  }
+  ]
 }

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mongodb": {
+      "url": "https://mcp.mongodb.com",
+      "oauth": {
+        "clientId": "aws-kiro"
+      }
+    }
+  }
+}
