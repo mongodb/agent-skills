@@ -217,6 +217,80 @@
         "Does not present reimaging or an Ubuntu kernel package upgrade as the fix, since the 7.0.0 label stays; may note that a kernel labelled 7.0.14 or later would also clear the guard",
         "Does not quote internal Slack or ticket discussion; cites SERVER-125742 and SERVER-131779 only"
       ]
+    },
+    {
+      "id": 13,
+      "name": "8025-kernel-6192-roll-forward-not-a-fix",
+      "_note": "Reviewer case (PR #70): on 8.0.21-8.0.29 a kernel in 6.19-7.0.13 must not be answered with 'move to kernel 7.0.14'. Both columns are ge_619. Raw command output, like eval 3.",
+      "prompt": "Rocky 9 on Graviton, MongoDB Enterprise 8.0.25. The kernel team pushed 6.19.2 to this replica set member last night and mongod won't start. The production notes say kernels 6.19 through 7.0.13 are affected and 7.0.14 resolves it, so the plan is to roll the host forward to 7.0.14 in tonight's window. Evidence attached. Is that the right fix?",
+      "files": [
+        "assets/host-output-8025-kernel-6192.txt"
+      ],
+      "expected_output": "Says rolling forward to kernel 7.0.14 will not fix it: 8.0.21 through 8.0.29 exit during startup on any kernel 6.19 or later, 7.0.14 included, so the documented 7.0.14 resolution does not apply to this release. Reads the 12257600 and 12257601 log entries as mongod's deliberate startup guard for this release, not a broken kernel. Gives the working remedies: boot the previous 5.14 kernel, which grubby shows is still installed (below 6.19); or upgrade MongoDB to 8.0.30 or later (or 8.3.9 or later, or 9.0) and run it on kernel 7.0.14 or later, since 8.0.30 on 6.19.2 still exits. Does not describe this as the 8.0.0 to 8.0.20 data-corruption band: 8.0.25 refuses to start. Presents the change for approval and a one-member-at-a-time window.",
+      "expectations": [
+        "States that rolling forward to kernel 7.0.14 does NOT fix mongod 8.0.25",
+        "Explains that 8.0.21 through 8.0.29 exit during startup on any kernel 6.19 or later, 7.0.14 included",
+        "Offers booting a kernel below 6.19 (for example the installed 5.14 kernel) as a working remedy",
+        "When it recommends a MongoDB upgrade, pairs it with kernel 7.0.14 or later or a kernel below 6.19, because 8.0.30 and later still exit on 6.19.2. An answer that says a MongoDB upgrade alone fixes this host on 6.19.2 does not satisfy this.",
+        "Reads the log entries as mongod's deliberate startup guard for this MongoDB release, not as a defective or failed kernel",
+        "Does not describe the failure as the 8.0.0-8.0.20 crash or data-corruption risk; 8.0.25 refuses to start"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "selinux-js-omitted-nested-tls-old-script",
+      "_note": "Reviewer cases (PR #70): javascriptEnabled omitted under Enforcing defaults to true; nested net.tls.mode was missed by the old line-matching check. The attached check-security.sh output is real output of the pre-fix scripts.",
+      "prompt": "Security asked me to close out two items from our October audit of a MongoDB Enterprise 8.0.30 replica set member on Rocky 9 with SELinux Enforcing. The audit flagged TLS as not configured, which I think is wrong because we require TLS, and it passed the SELinux JavaScript check, so we planned to leave that alone. The current config, getenforce, the version and the October output are attached. Can I close the TLS item, and is there anything to do on JavaScript?",
+      "files": [
+        "assets/host-output-80-selinux-js-nested-tls.txt"
+      ],
+      "expected_output": "Confirms the TLS warning is a false positive: net.tls.mode is requireTLS in the nested net: tls: block, so TLS is required and the item can be closed; the October check matched lines rather than the scoped key. Overturns the JavaScript PASS: security.javascriptEnabled is not set, it defaults to true, and under SELinux any operation that needs server-side JavaScript segfaults mongod. Recommends setting security.javascriptEnabled: false, or starting mongod with --noscripting, after confirming the application does not use server-side JavaScript, applied one member at a time. Recommends re-running the current scripts rather than relying on the October output. The encryption-at-rest WARN is a recommendation for regulated environments, not a blocker.",
+      "expectations": [
+        "Confirms the TLS finding is a false positive because net.tls.mode is requireTLS in the nested net.tls block, and says the TLS item can be closed",
+        "Overturns the selinux-javascript PASS, stating that javascriptEnabled is not set and defaults to true",
+        "States that under SELinux Enforcing, operations that need server-side JavaScript segfault mongod",
+        "Recommends security.javascriptEnabled: false (or --noscripting), conditioned on confirming the application does not rely on server-side JavaScript",
+        "Does not treat the October output as settled evidence for either item, and recommends re-checking with the current scripts",
+        "Does not tell the user to configure TLS or change the net.tls settings"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "70-ubuntu2404-root-run-dbpath",
+      "_note": "Reviewer cases (PR #70): dbPath access is tested as the service user, not the auditing user; OS support is version-specific (7.0 is not listed for Ubuntu 24.04). Real output of the fixed scripts, filtered by the grep shown in each command.",
+      "prompt": "We moved a MongoDB Enterprise 7.0.21 replica set member onto a new Ubuntu 24.04 Graviton host (24.04 is LTS, so it should be fine) and restored the data from backup into /var/lib/mongodb. mongod fails with permission denied on the data directory. I ran your checks with sudo and they say dbpath-permissions FAIL, but as root I can write to that directory fine, so the script looks wrong to me. Output attached. What's actually wrong?",
+      "files": [
+        "assets/host-output-70-ubuntu2404-dbpath-root.txt"
+      ],
+      "expected_output": "The script is right: it tests access as the MongoDB service user, mongodb on Ubuntu, not as root, and root bypasses the permission check. The restore left /var/lib/mongodb owned root:root with mode 750, so mongodb cannot traverse it. Fix: chown -R mongodb:mongodb /var/lib/mongodb and confirm the parent directories are traversable, then start mongod. Separately, MongoDB Enterprise 7.0 is not supported on Ubuntu 24.04: the support matrix lists 24.04 for 8.x and 9.x only, LTS or not. Supported paths are 7.0 on Ubuntu 22.04, or upgrading to 8.0 on 24.04. Kernel 6.8 carries no kernel finding for 7.0. Changes are presented for approval.",
+      "expectations": [
+        "Explains that the dbpath check is correct because it tests access as the mongodb service user, and that root can write to the directory regardless of its ownership or mode",
+        "Identifies the root:root ownership with mode 750 left by the restore as the cause of the permission-denied startup failure",
+        "Gives the fix as chown -R mongodb:mongodb /var/lib/mongodb, using the mongodb account rather than mongod",
+        "States that MongoDB 7.0 is not supported on Ubuntu 24.04, even though 24.04 is an LTS release",
+        "Offers a supported path: 7.0 on Ubuntu 22.04, or upgrading to MongoDB 8.0 on Ubuntu 24.04",
+        "Does not raise a kernel 6.19 finding for this host, since 7.0 is unaffected and kernel 6.8 is below 6.19"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "8025-run-as-8030-unprivileged-incomplete",
+      "_note": "Reviewer cases (PR #70): the version-match check compares the patch; failed reads are UNKNOWN; a category that exits non-zero is recorded as UNKNOWN. Real output of the fixed scripts from an unprivileged run.",
+      "prompt": "Maintenance window on a Rocky 9 Graviton host: the platform team patched it to kernel 7.0.14 and rebooted, and mongod is still stopped. Before we start it I ran the audit as my own login with --version 8.0.30, since that's what our build standard says we run. Kernel and TCMalloc both pass. Can we start mongod and close the window? Output attached.",
+      "files": [
+        "assets/host-output-8025-run-as-8030-unprivileged.txt"
+      ],
+      "expected_output": "Do not start mongod or close the window yet. The run was scored as 8.0.30, but the installed binary is 8.0.25 (mongod-version-match WARN), so the kernel and TCMalloc PASS lines do not apply. On 8.0.25, mongod exits during startup on any kernel 6.19 or later, 7.0.14 included, so starting it will fail. Remedy: upgrade MongoDB to 8.0.30 or later, which the build standard already calls for, before starting it; or boot a kernel below 6.19. Re-run the audit with the installed version. The run is incomplete: the Network category did not run (check-network.sh is missing, exit status 127), so recopy the scripts. The config could not be read, so authorization, TLS, the WiredTiger cache and JavaScript under SELinux Enforcing are UNKNOWN; javascriptEnabled defaults to true, which matters under Enforcing. dbPath access is UNKNOWN for the mongod user. Re-run with sudo. Real findings to fix: vm.swappiness 60 and no time daemon (FAIL), THP defrag and max_ptes_none (WARN), and the missing limits file.",
+      "expectations": [
+        "Says not to start mongod, or not to close the window, on this evidence",
+        "Identifies that the run was scored against 8.0.30 while 8.0.25 is installed, so the kernel and TCMalloc PASS lines do not apply",
+        "States that MongoDB 8.0.25 exits during startup on kernel 7.0.14 (any kernel 6.19 or later), so starting mongod as installed will fail",
+        "Gives the remedy as upgrading MongoDB to 8.0.30 or later before starting, or booting a kernel below 6.19, not a further kernel upgrade",
+        "Treats the Network category as not run (check-network.sh missing, exit status 127) rather than as passed, and asks for the scripts to be recopied and re-run",
+        "Treats the config-dependent checks (authorization, TLS, WiredTiger cache, JavaScript under SELinux) as UNKNOWN because the config could not be read, not as passed, and asks for a re-run with sudo",
+        "Reports the vm.swappiness 60 and missing time daemon FAILs",
+        "Asks for the re-run to use the installed MongoDB version (8.0.25, or the new version after an upgrade) rather than 8.0.30"
+      ]
     }
   ]
 }

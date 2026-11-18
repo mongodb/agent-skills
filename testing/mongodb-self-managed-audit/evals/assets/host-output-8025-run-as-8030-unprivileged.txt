@@ -1,0 +1,185 @@
+$ ls scripts/
+check-clock.sh check-kernel.sh check-mongod.sh check-numa.sh check-platform.sh check-security.sh check-storage.sh check-tcmalloc.sh check-thp.sh check-ulimits.sh check-wiredtiger.sh lib-conf.sh lib-version.sh run-all-checks.sh 
+
+$ bash scripts/run-all-checks.sh --version 8.0.30
+============================================================
+ Self-Managed Deployments Checks
+ Host:    mongo-prod-07.internal.example
+ Date:    2026-11-18 19:57:59
+ Kernel:  7.0.14-1.el9.aarch64
+ Version: MongoDB 8.0.30
+============================================================
+
+--- Platform & OS ---
+=== Platform & OS Check ===
+[INFO] os: Rocky Linux 9.9
+[INFO] kernel: 7.0.14-1.el9.aarch64
+[INFO] architecture: aarch64
+[PASS] kernel-version: 7.0.14-1.el9.aarch64 is outside the documented kernel restrictions for 8.0.30
+[PASS] cpu-arm64: ARMv8.2-A+ features detected
+[PASS] kernel-minimum: 7.0.14-1.el9.aarch64 meets the 2.6.36 minimum
+[PASS] cpu-cores: 10 cores available (minimum 2 real cores per mongod or mongos)
+[PASS] os-supported: Rocky Linux 9.9 (aarch64) is listed for MongoDB Enterprise 8.0.30 (support matrix as read 2026-11-18)
+
+--- Kernel & System Parameters ---
+=== Kernel & System Parameters Check ===
+[FAIL] vm.swappiness: 60 (recommended: 1 — high swappiness causes severe MongoDB performance degradation)
+       Fix: echo 'vm.swappiness=1' >> /etc/sysctl.conf && sysctl -p
+[WARN] vm.dirty_ratio: 20 (recommended: 10-15; a higher value may delay flushing and cause write stalls. Informational guidance, no MongoDB public reference)
+       Fix: echo 'vm.dirty_ratio=15' >> /etc/sysctl.conf && sysctl -p
+[WARN] vm.dirty_background_ratio: 10 (recommended: 3-5; informational guidance, no MongoDB public reference)
+       Fix: echo 'vm.dirty_background_ratio=5' >> /etc/sysctl.conf && sysctl -p
+[PASS] kernel.pid_max: 4194304
+[PASS] fs.file-max: 801526
+[WARN] kernel.threads-max: 62960 (recommended: >= 64000)
+       Fix: echo 'kernel.threads-max=64000' >> /etc/sysctl.conf && sysctl -p
+[PASS] vm.max_map_count: 262144
+[PASS] net.core.somaxconn: 4096
+[WARN] net.ipv4.tcp_keepalive_time: 7200 seconds (recommended: 120; the 7200 default leaves stale connections)
+       Fix: echo 'net.ipv4.tcp_keepalive_time=120' >> /etc/sysctl.conf && sysctl -p
+[INFO] vm.force_cgroup_v2_swappiness: not present on this kernel
+[PASS] vm.zone_reclaim_mode: 0 (correct for NUMA systems)
+[INFO] fs.file-nr: 664 open / 801526 max
+
+--- NUMA Configuration ---
+=== NUMA Check ===
+[INFO] numa-topology: single NUMA node (node0 only); no NUMA tuning required
+
+--- Transparent Huge Pages ---
+=== Transparent Huge Pages (THP) Check ===
+[INFO] thp-version: scoring against MongoDB 8.0 and later expectations
+[INFO] thp-enabled-raw: [always] madvise never
+[PASS] thp-enabled: THP is 'always', as MongoDB 8.0 and later require
+[WARN] thp-defrag: defrag is 'madvise'; MongoDB 8.0 and later expect 'defer+madvise'
+       Fix: echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag
+[WARN] thp-max-ptes-none: khugepaged max_ptes_none is 511; MongoDB 8.0 and later expect 0
+       Fix: echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none
+[PASS] thp-overcommit: vm.overcommit_memory is 1, as MongoDB 8.0 and later require
+[WARN] thp-persistent: no persistence mechanism detected; THP settings reset on reboot
+       Fix: persist these across reboot with a systemd unit ordered before
+       mongod, a tuned profile, or the host build image. Whichever you use,
+       it must set:
+         echo always > /sys/kernel/mm/transparent_hugepage/enabled
+         echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag
+         echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none
+         echo 1 > /proc/sys/vm/overcommit_memory
+
+--- Filesystem & Storage ---
+[UNKNOWN] dbpath-source: /etc/mongod.conf is not readable, so storage.dbPath is unknown; checking the packaged default /var/lib/mongo. Re-run with sudo or pass --dbpath.
+[INFO] dbpath: Using /var/lib/mongo
+=== Storage & Filesystem Check ===
+[INFO] filesystem-type: ext4 on /var/lib/mongo
+[PASS] filesystem-type: ext4 is supported (XFS preferred for new deployments)
+[UNKNOWN] dbpath-permissions: access for the MongoDB service user mongod (from account) cannot be tested from this unprivileged run; /var/lib/mongo is mongod:mongod 755. Re-run with sudo.
+[PASS] mount-noatime: noatime is set on /var/lib/mongo mount
+[INFO] block-device: /dev/loop
+[INFO] storage-engine: Configured engine: wiredTiger
+[PASS] disk-space: 1% used on /var/lib/mongo (38G available)
+
+--- Ulimits ---
+=== Ulimits Check ===
+[WARN] ulimits-source: mongod not running — checking system-level limits
+[PASS] ulimit-open-files: soft=1048576 hard=1048576 (recommended >= 64000)
+[PASS] ulimit-processes: soft=unlimited hard=unlimited (recommended >= 64000)
+[PASS] ulimit-file-size: unlimited
+[PASS] ulimit-cpu-time: unlimited
+[PASS] ulimit-resident-set: unlimited
+[WARN] limits-file: No mongod-specific limits file found in /etc/security/limits.d/
+       Fix: Create /etc/security/limits.d/99-mongodb.conf with:
+         mongod soft nofile 64000
+         mongod hard nofile 64000
+         mongod soft nproc 64000
+         mongod hard nproc 64000
+         mongod soft memlock unlimited
+         mongod hard memlock unlimited
+
+--- Network ---
+bash: /home/opsadmin/audit/scripts/check-network.sh: No such file or directory
+[UNKNOWN] check-incomplete: check-network.sh exited with status 127 before completing; results for Network are incomplete. Re-run it on its own to see the error.
+
+--- Clock Synchronization ---
+=== Clock Synchronization Check ===
+[INFO] clock-now: 2026-11-18 19:57:59 UTC
+[FAIL] clock-daemon: no time daemon detected (chronyd, ntpd, or systemd-timesyncd)
+       Production notes require NTP on all hosts, and sharded clusters depend on it
+       Fix: install and enable chrony, then systemctl enable --now chronyd
+[INFO] clock-timezone: unknown; keep this consistent across every cluster member
+[INFO] clock-drift-parameter: mongod caps tolerated drift with maxAcceptableLogicalClockDriftSecs; drift beyond it breaks communication between components
+
+--- MongoDB Process & Config ---
+=== MongoDB Process Check ===
+[WARN] mongod-running: mongod is not running — checking config files only
+[INFO] mongod-version: 8.0.25
+[PASS] mongod-version-support: 8.0.25 is a supported version (7.0, 8.0, 8.3 or 9.0)
+[WARN] mongod-version-match: installed mongod is 8.0.25 but the audit was run with --version 8.0.30; patch-specific results, including the kernel verdict, were scored against the wrong release
+       Fix: re-run with --version 8.0.25
+[UNKNOWN] mongod-config: /etc/mongod.conf exists but is not readable by this run; the config checks were not run. Re-run with sudo.
+
+--- WiredTiger Configuration ---
+=== WiredTiger Check ===
+[INFO] system-ram: 7.6 GB total RAM
+[INFO] wiredtiger-cache-recommended: ~3.325 GB (default is max(50% of (RAM - 1GB), 0.256GB))
+[UNKNOWN] wiredtiger-config: /etc/mongod.conf exists but is not readable by this run; cacheSizeGB, cacheSizePct and the block compressor were not checked. Re-run with sudo.
+
+--- Security ---
+=== Security Check ===
+[PASS] cpu-aes-ni: AES-NI is available, which the encrypted storage engine benefits from
+[INFO] selinux-status: Enforcing
+[PASS] selinux: SELinux is Enforcing
+[UNKNOWN] security-config: /etc/mongod.conf exists but is not readable by this run; authorization, TLS, cluster auth, audit and encryption settings were not checked. Re-run with sudo.
+[PASS] config-permissions: /etc/mongod.conf has secure permissions (600)
+[UNKNOWN] selinux-javascript: SELinux is Enforcing and the config could not be read (/etc/mongod.conf); javascriptEnabled defaults to true, which makes server-side JavaScript operations segfault mongod. Re-run with sudo or set MONGO_CONF_FILE.
+[INFO] selinux-paths: SELinux needs explicit configuration only when dbPath, logPath, or the port differ from the packaged defaults
+
+--- TCMalloc (8.0 and later) ---
+=== TCMalloc Check (MongoDB 8.0 and later) ===
+[INFO] tcmalloc-arch: aarch64 uses updated TCMalloc in MongoDB 8.0
+[PASS] tcmalloc-percpu-kernel: kernel 7.0.14-1.el9.aarch64 meets the 4.18 minimum for per-CPU caches
+[INFO] tcmalloc-percpu-runtime: confirm in serverStatus that tcmalloc.usingPerCPUCaches is true and tcmalloc.tcmalloc.cpu_free is greater than 0; the scripts cannot read these (UNKNOWN without a live server)
+[INFO] tcmalloc-decommit: tcmallocAggressiveMemoryDecommit is deprecated in MongoDB 8.0; do not tune it. To release memory to the OS, see tcmallocEnableBackgroundThread.
+[PASS] tcmalloc-kernel619: Kernel 7.0.14-1.el9.aarch64 is outside the documented kernel restrictions for 8.0.30
+[INFO] tcmalloc-linked: TCMalloc appears statically compiled into mongod (normal for 8.0)
+[INFO] tcmalloc-summary: Updated TCMalloc (8.0 and later default). See tuning guide:
+       https://www.mongodb.com/docs/manual/administration/tcmalloc-performance/
+
+============================================================
+ SUMMARY
+============================================================
+ PASS:  26
+ WARN:  11
+ FAIL:  2
+ UNKNOWN: 7
+
+FAILURES (must fix before production):
+  FAIL: vm.swappiness: 60 (recommended: 1 — high swappiness causes severe MongoDB performance degradation)
+  FAIL: clock-daemon: no time daemon detected (chronyd, ntpd, or systemd-timesyncd)
+
+WARNINGS (fix before high-load production use):
+  WARN: vm.dirty_ratio: 20 (recommended: 10-15; a higher value may delay flushing and cause write stalls. Informational guidance, no MongoDB public reference)
+  WARN: vm.dirty_background_ratio: 10 (recommended: 3-5; informational guidance, no MongoDB public reference)
+  WARN: kernel.threads-max: 62960 (recommended: >= 64000)
+  WARN: net.ipv4.tcp_keepalive_time: 7200 seconds (recommended: 120; the 7200 default leaves stale connections)
+  WARN: thp-defrag: defrag is 'madvise'; MongoDB 8.0 and later expect 'defer+madvise'
+  WARN: thp-max-ptes-none: khugepaged max_ptes_none is 511; MongoDB 8.0 and later expect 0
+  WARN: thp-persistent: no persistence mechanism detected; THP settings reset on reboot
+  WARN: ulimits-source: mongod not running — checking system-level limits
+  WARN: limits-file: No mongod-specific limits file found in /etc/security/limits.d/
+  WARN: mongod-running: mongod is not running — checking config files only
+  WARN: mongod-version-match: installed mongod is 8.0.25 but the audit was run with --version 8.0.30; patch-specific results, including the kernel verdict, were scored against the wrong release
+
+UNKNOWN (not verified by this run; each line carries the reason):
+  UNKNOWN: dbpath-source: /etc/mongod.conf is not readable, so storage.dbPath is unknown; checking the packaged default /var/lib/mongo. Re-run with sudo or pass --dbpath.
+  UNKNOWN: dbpath-permissions: access for the MongoDB service user mongod (from account) cannot be tested from this unprivileged run; /var/lib/mongo is mongod:mongod 755. Re-run with sudo.
+  UNKNOWN: check-incomplete: check-network.sh exited with status 127 before completing; results for Network are incomplete. Re-run it on its own to see the error.
+  UNKNOWN: mongod-config: /etc/mongod.conf exists but is not readable by this run; the config checks were not run. Re-run with sudo.
+  UNKNOWN: wiredtiger-config: /etc/mongod.conf exists but is not readable by this run; cacheSizeGB, cacheSizePct and the block compressor were not checked. Re-run with sudo.
+  UNKNOWN: security-config: /etc/mongod.conf exists but is not readable by this run; authorization, TLS, cluster auth, audit and encryption settings were not checked. Re-run with sudo.
+  UNKNOWN: selinux-javascript: SELinux is Enforcing and the config could not be read (/etc/mongod.conf); javascriptEnabled defaults to true, which makes server-side JavaScript operations segfault mongod. Re-run with sudo or set MONGO_CONF_FILE.
+
+  An UNKNOWN is not a pass. Establish these on the host, with sufficient
+  privilege, before treating the audit as complete.
+
+Found 2 failure(s). Resolve all FAILs before deploying to production.
+
+Reference: https://www.mongodb.com/docs/manual/administration/production-notes/
+============================================================

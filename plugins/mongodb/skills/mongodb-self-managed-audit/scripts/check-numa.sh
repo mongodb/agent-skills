@@ -27,13 +27,28 @@ INTERLEAVE_RE='numactl.*(--interleave[= ]all|-i[ =]?all)'
 echo "=== NUMA Check ==="
 
 # --- Detect NUMA ---
+# Only a readable topology that shows one node proves there is nothing to tune.
+# A missing or unreadable node directory is a failed read and reports UNKNOWN.
+if [ ! -d "$NODE_DIR" ]; then
+  echo "$UNKNOWN numa-topology: $NODE_DIR is not present, so the NUMA layout could not be read. Inside a container this is the node's topology; re-check on the host. On a kernel built without NUMA support there is nothing to tune."
+  exit 0
+fi
+if ! ls "$NODE_DIR" >/dev/null 2>&1; then
+  echo "$UNKNOWN numa-topology: $NODE_DIR could not be read by this run; re-check with sudo or on the host"
+  exit 0
+fi
+
 NUMA_NODES=0
 for node in "$NODE_DIR"/node[0-9]*; do
   [ -d "$node" ] && NUMA_NODES=$((NUMA_NODES + 1))
 done
 
-if [ "$NUMA_NODES" -le 1 ]; then
-  echo "$INFO numa-topology: Single NUMA node or NUMA not present — no NUMA tuning required"
+if [ "$NUMA_NODES" -eq 0 ]; then
+  echo "$UNKNOWN numa-topology: $NODE_DIR lists no node entries, so the NUMA layout could not be established; re-check on the host"
+  exit 0
+fi
+if [ "$NUMA_NODES" -eq 1 ]; then
+  echo "$INFO numa-topology: single NUMA node (node0 only); no NUMA tuning required"
   exit 0
 fi
 
@@ -167,3 +182,7 @@ if command -v numactl &>/dev/null; then
   echo "$INFO numa-hardware:"
   numactl --hardware 2>/dev/null | head -20 || true
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

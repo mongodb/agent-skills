@@ -10,14 +10,18 @@ and telling apart findings that are real, not applicable, or unknown.
 
 ```
 evals/
-  evals.json    12 eval cases (prompt, fixture files, expected_output, expectations)
+  evals.json    16 eval cases (prompt, fixture files, expected_output, expectations)
   assets/       host check output and config fixtures attached to the prompts
 ```
 
 Each case attaches one fixture from `assets/`. Most fixtures are output from the
-skill's `scripts/run-all-checks.sh`. Evals 3 and 4 use raw command output instead
-(`uname`, `rpm`, `systemctl`, `mongod.log`, `mongod.conf`, `free`, cgroup limits,
-`getenforce`). Grading is done per assertion against the `expectations` list.
+skill's `scripts/run-all-checks.sh`. Evals 3, 4 and 13 use raw command output instead
+(`uname`, `rpm`, `systemctl`, `grubby`, `mongod.log`, `mongod.conf`, `free`, cgroup
+limits, `getenforce`). Evals 14 to 16 are real output of the scripts, generated in
+Rocky 9 and Ubuntu 24.04 containers with the kernel string, SELinux mode and mongod
+binary faked; eval 14 deliberately shows the pre-fix `check-security.sh`, and evals
+15 and 16 show the fixed scripts. Grading is done per assertion against the
+`expectations` list.
 
 ## Cases
 
@@ -35,32 +39,59 @@ skill's `scripts/run-all-checks.sh`. Evals 3 and 4 use raw command output instea
 | 10 | 70-host-built-from-80-golden-image | 7.0.21, RHEL 9.4, run with `--version 8.0` | Inverse of eval 1. A golden image tuned for 8.0 passes an 8.0-scored run, but on 7.0 THP `always` and defrag `defer+madvise` are FAILs, `max_ptes_none` and `overcommit_memory` do not apply, and the tuned profile reasserts the wrong values on boot. The version-mismatch WARN invalidates the run. | 8 |
 | 11 | 80-ppc64le-thp-always | 8.0.4, RHEL 9, ppc64le | THP on ppc64le and s390x. The legacy TCMalloc applies at every version and THP is expected disabled, so `always` is a FAIL even where the x86_64 rule passes it. | 5 |
 | 12 | 8034-ubuntu-kernel-labelled-700 | 8.0.34, Ubuntu 24.04, kernel 7.0.0-1011-gcp | Ubuntu labels the fixed kernel 7.0.0. 8.0.30 to 8.0.34 still exit; the fix is 8.0.35 or 8.3.14. No release date stated. | 5 |
+| 13 | 8025-kernel-6192-roll-forward-not-a-fix | 8.0.25, Rocky 9 arm64, kernel 6.19.2 | Reviewer case. The team plans to roll forward to 7.0.14, which does not help 8.0.21 to 8.0.29. The working remedies are a kernel below 6.19 (the old 5.14 kernel is still installed), or a MongoDB upgrade paired with kernel 7.0.14+, since 8.0.30 on 6.19.2 still exits. Not the corruption band. | 6 |
+| 14 | selinux-js-omitted-nested-tls-old-script | 8.0.30, Rocky 9, SELinux Enforcing | Reviewer case. An old audit run flagged TLS as missing (the config nests `net.tls.mode: requireTLS`) and passed JavaScript under Enforcing (`javascriptEnabled` is unset, so it defaults to true). Model must close the TLS item and overturn the JavaScript PASS. | 6 |
+| 15 | 70-ubuntu2404-root-run-dbpath | 7.0.21, Ubuntu 24.04 arm64, run as root | Reviewer case. The user thinks the dbPath FAIL is wrong because root can write the directory. The check tests the `mongodb` service user; the restore left `root:root 750`. Also, 7.0 is not supported on Ubuntu 24.04 despite LTS. | 6 |
+| 16 | 8025-run-as-8030-unprivileged-incomplete | 8.0.25 installed, run as `--version 8.0.30`, Rocky 9 arm64, kernel 7.0.14, unprivileged | Reviewer case. The kernel PASS was scored against the wrong patch; 8.0.25 will not start on 7.0.14. The config was unreadable (UNKNOWN, not PASS) and the Network category did not run (exit 127). Do not start mongod or close the window. | 8 |
 
-Total: 12 cases, 78 assertions.
+Total: 16 cases, 104 assertions.
 
 ## Results
 
-Run on 2026-11-13 against the skill at commit `c64ba13`. Each case was answered once
-with the skill and once without it.
+Latest run: 2026-11-18, on the skill with the PR #70 review fixes applied (nine
+reviewer comments: kernel remedy, JavaScript default under SELinux, nested TLS,
+dbPath access as the service user, failed reads as UNKNOWN, OS support matrix,
+incomplete categories, patch-level version match, `labelText`). All 16 cases were
+answered once with the skill and once without it.
 
 | # | Case | With skill | Without skill | Delta |
 | --- | --- | --- | --- | --- |
 | 1 | thp-inversion-80-never-is-fail | 7/7 | 6/7 | +1 |
-| 2 | thp-inversion-70-never-is-pass | 4/5 | 3/5 | +1 |
-| 3 | kernel-7014-not-a-remedy-on-8025 | 6/6 | 2/6 | +4 |
-| 4 | wiredtiger-cache-both-set-and-selinux-js | 4/4 | 1/4 | +3 |
+| 2 | thp-inversion-70-never-is-pass | 5/5 | 3/5 | +2 |
+| 3 | kernel-7014-not-a-remedy-on-8025 | 6/6 | 3/6 | +3 |
+| 4 | wiredtiger-cache-both-set-and-selinux-js | 3/4 | 1/4 | +2 |
 | 5 | 90-inherits-80-expectations | 4/4 | 3/4 | +1 |
 | 6 | container-node-scoping-unknown | 4/5 | 5/5 | -1 |
-| 7 | broad-coverage-all-categories | 11/11 | 5/11 | +6 |
-| 8 | amazonlinux-thp-madvise-selinux-permissive | 8/10 | 7/10 | +1 |
-| 9 | 60-out-of-scope-rescored-as-70 | 6/8 | 6/8 | 0 |
-| 10 | 70-host-built-from-80-golden-image | 8/8 | 6/8 | +2 |
-| 11 | 80-ppc64le-thp-always | 5/5 | 0/5 | +5 |
-| 12 | 8034-ubuntu-kernel-labelled-700 | 5/5 | 3/5 | +2 |
-| | Total | 72/78 (92%) | 47/78 (60%) | +25 |
+| 7 | broad-coverage-all-categories | 9/11 | 5/11 | +4 |
+| 8 | amazonlinux-thp-madvise-selinux-permissive | 8/10 | 6/10 | +2 |
+| 9 | 60-out-of-scope-rescored-as-70 | 4/8 | 7/8 | -3 |
+| 10 | 70-host-built-from-80-golden-image | 8/8 | 7/8 | +1 |
+| 11 | 80-ppc64le-thp-always | 5/5 | 2/5 | +3 |
+| 12 | 8034-ubuntu-kernel-labelled-700 | 5/5 | 4/5 | +1 |
+| 13 | 8025-kernel-6192-roll-forward-not-a-fix | 5/6 | 4/6 | +1 |
+| 14 | selinux-js-omitted-nested-tls-old-script | 6/6 | 5/6 | +1 |
+| 15 | 70-ubuntu2404-root-run-dbpath | 6/6 | 5/6 | +1 |
+| 16 | 8025-run-as-8030-unprivileged-incomplete | 8/8 | 5/8 | +3 |
+| | Total | 93/104 (89%) | 71/104 (68%) | +22 |
 
 Leaving out eval 6, which does not discriminate (see the design notes), the scores
-are 68/73 with the skill and 42/73 without.
+are 89/99 with the skill and 66/99 without. The four new reviewer cases (13 to 16)
+score 25/26 with the skill and 19/26 without.
+
+### Run history
+
+| Run | Skill version | Cases | With skill | Without skill | Delta |
+| --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | just before `c64ba13` | 12 | 75/78 | not run | n/a |
+| 2026-11-13 | `c64ba13` | 12 | 72/78 | 47/78 | +25 |
+| 2026-11-18 | PR #70 review fixes | 16 | 93/104 | 71/104 | +22 |
+| 2026-11-18, evals 1 to 12 only | PR #70 review fixes | 12 | 68/78 | 52/78 | +16 |
+
+The 2026-10-22 run re-answered only cases 5 and 7 after a fix, so it mixes two skill
+versions. On the same 12 cases the delta moved from +25 to +16 between 2026-11-13 and
+2026-11-18. The skill text those cases depend on did not change, so most of that
+movement is run-to-run variance in a single sample per arm, in both the answers and
+the grading.
 
 ### Method
 
@@ -70,7 +101,9 @@ are 68/73 with the skill and 42/73 without.
 - With the skill, the agent read `SKILL.md` and followed it, opening references and
   scripts as the skill directs. It did not run the scripts.
 - Without the skill, the agent answered from its own knowledge. It could not read any
-  skill file or use the Skill tool.
+  skill file or use the Skill tool. Each agent's tool calls were checked afterwards:
+  no baseline agent opened a skill file, and no agent in either arm opened the answer
+  key.
 - An Opus 5.5 grader scored every assertion PASS or FAIL against `expectations`, using
   `expected_output` for intent and the fixture when an assertion depends on the
   evidence. Partial, implied or hedged coverage is a FAIL. A "Does not ..." assertion
@@ -80,21 +113,30 @@ are 68/73 with the skill and 42/73 without.
 
 ### Reading the numbers
 
-- The largest gaps are on version-specific facts: the kernel 6.19 guard (evals 3 and
-  12), THP on ppc64le (eval 11, 0/5 without the skill), `cacheSizePct` read as a
-  percentage (eval 4), and full-category coverage (eval 7).
-- With-skill failures in this run: eval 2 does not say that `max_ptes_none` and
-  `overcommit_memory` are not applicable on 7.0. Eval 6 hedges on `bind_ip`. Eval 8
-  misses madvise as the middle state, and does not make `javascriptEnabled` a check
-  before moving to Enforcing. Eval 9 hedges the 6.0 end-of-life date and gives no
-  one-major-at-a-time upgrade path.
-- One run per arm, so expect a few points of noise. A with-skill-only run on
-  2026-10-22, just before `c64ba13`, scored 75/78 and failed on different cases. Only
-  eval 2 and the eval 9 upgrade path failed both times.
+- Without the skill, answers miss the version-specific facts: the kernel 6.19 guard
+  and its remedy (evals 3, 13 and 16), THP on ppc64le (eval 11), the `cacheSizePct`
+  percentage reading and the JavaScript segfault under SELinux (evals 4, 8 and 14),
+  and full-category coverage (eval 7). In eval 16 the baseline would not say whether
+  8.0.25 starts on kernel 7.0.14.
+- With-skill failures in this run: eval 4 still lists `cacheSizePct` as its own FAIL.
+  Eval 6 does not say which settings can be changed from inside the container. Eval 7
+  misses that the absent dbPath is expected before install, and that NUMA does not
+  apply on a single node. Eval 8 misses madvise as the middle state and the
+  already-unlimited nproc. Eval 9 offers a risk-acceptance path, gives no
+  one-major-at-a-time upgrade path, does not point to the lifecycle page, and shows a
+  per-area scorecard. Eval 13 says "only a MongoDB upgrade clears it" before pairing
+  the upgrade with kernel 7.0.14.
+- Eval 9 is the one case where the baseline scored higher. Across the three runs the
+  with-skill answer has missed the one-major-at-a-time upgrade path every time, which
+  points at the 6.0 stop rule in `SKILL.md`: it says to upgrade to a covered release,
+  but not one major at a time, and it does not rule out a risk-acceptance path.
 - One eval 12 assertion ("Does not quote internal Slack or ticket discussion; cites
-  SERVER-125742 and SERVER-131779 only") can be read two ways. The grader failed the
-  baseline on it because the answer cited neither ticket. Read as a ban on internal
-  quotes only, the baseline scores 48/78 and the delta is +24.
+  SERVER-125742 and SERVER-131779 only") can be read two ways. On 2026-11-13 the
+  grader failed the baseline on it for citing neither ticket; on 2026-11-18 it passed
+  the same behaviour. Splitting it into two assertions would remove the ambiguity.
+- In two answers the skill was correct where the key is silent: eval 5 flags that the
+  support matrix lists Ubuntu 26.04 only from 9.0.4, and eval 11 notes that RHEL 9 on
+  ppc64le is listed only from 8.0.7. Neither was scored against the answer.
 
 ## Coverage by theme
 
@@ -102,11 +144,16 @@ are 68/73 with the skill and 42/73 without.
 | --- | --- |
 | THP guidance flip at 8.0 (`never` before 8.0, `always` from 8.0) | 1, 2, 5, 8, 10 |
 | THP disabled on legacy-TCMalloc architectures (ppc64le, s390x) | 11 |
-| Kernel 6.19 TCMalloc startup guard and which releases carry the narrowed version | 1, 2, 3, 5, 7, 8, 12 |
+| Kernel 6.19 TCMalloc startup guard and which releases carry the narrowed version | 1, 2, 3, 5, 7, 8, 12, 13, 16 |
 | Ubuntu `7.0.0-NNN` kernel label and the 8.0.35 / 8.3.14 fix | 12 |
 | WiredTiger cache sizing (mutually exclusive settings, ceiling, above-default, cgroup limit) | 4, 8 |
-| SELinux and server-side JavaScript | 4, 8 |
-| UNKNOWN vs WARN vs not applicable | 4, 6, 7 |
+| SELinux and server-side JavaScript (including the `javascriptEnabled` default) | 4, 8, 14, 16 |
+| TLS mode read from the nested `net.tls` key | 14 |
+| dbPath access as the service user, not the auditing user | 15, 16 |
+| Version-specific OS support matrix | 15 |
+| Installed version vs `--version`, patch included | 10, 16 |
+| UNKNOWN vs WARN vs not applicable (failed reads, incomplete categories) | 4, 6, 7, 16 |
+| Overruling earlier script output that is wrong | 1, 10, 14 |
 | Container and Kubernetes scoping | 6 |
 | Version prerequisites (unsupported version, `--version` mismatch with the installed binary) | 9, 10 |
 | Full-category sweep (ulimits, network, kernel, storage, clock, NUMA) | 7, 8 |
@@ -121,11 +168,18 @@ are 68/73 with the skill and 42/73 without.
   verdict for the wrong reason. For example, "do not reimage" only passes if the model
   blames the MongoDB release rather than the kernel.
 - Eval 6 is a coverage case restored from iteration 1. It does not discriminate: both
-  arms scored 5/5 in iteration 1, and in the 2026-11-13 run the baseline scored 5/5
-  and the skill 4/5. It stays because it is the only test of the container edge case.
+  arms scored 5/5 in iteration 1, and in the 2026-11-13 and 2026-11-18 runs the
+  baseline scored 5/5 and the skill 4/5. It stays because it is the only test of the container edge case.
   Discount it when reading the delta.
 - The fixtures for evals 7 and 8 are real output from live hosts, redacted only for
   hostnames and NIC names. They cover distro paths that the synthetic fixtures do not.
+- Evals 13 to 16 come from the PR #70 review: each one reproduces a reviewer-reported
+  script defect as a user scenario, so the model has to reach the right answer
+  whether the script output is right (15, 16) or wrong (14), or absent (13).
+- Two older fixtures sit on platforms the Enterprise support matrix does not list for
+  their release: eval 5 runs 9.0.1 on Ubuntu 26.04 (listed from 9.0.4), and eval 11
+  runs 8.0.4 on RHEL 9 ppc64le (listed from 8.0.7). No assertion covers either; an
+  answer that flags them is correct.
 - `assets/host-output-kernel-619.txt` is not referenced by any case in `evals.json`.
 
 ## Reproducing

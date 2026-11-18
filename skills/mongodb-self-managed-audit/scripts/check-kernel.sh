@@ -200,3 +200,7 @@ FD_MAX=$(cat /proc/sys/fs/file-nr 2>/dev/null | awk '{print $3}')
 if [ -n "$CURRENT_FD" ]; then
   echo "$INFO fs.file-nr: $CURRENT_FD open / $FD_MAX max"
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

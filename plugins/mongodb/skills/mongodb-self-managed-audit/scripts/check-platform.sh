@@ -16,10 +16,15 @@ INFO="[INFO]"
 echo "=== Platform & OS Check ==="
 
 # --- OS detection ---
-if [ -f /etc/os-release ]; then
-  . /etc/os-release
+# MONGO_OS_RELEASE is a test seam only; never set it on a real audit.
+OS_RELEASE_FILE="${MONGO_OS_RELEASE:-/etc/os-release}"
+OS_ID=""
+if [ -r "$OS_RELEASE_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$OS_RELEASE_FILE"
   OS_NAME="$NAME"
   OS_VERSION="$VERSION_ID"
+  OS_ID="$ID"
 else
   OS_NAME=$(uname -s)
   OS_VERSION="unknown"
@@ -50,15 +55,19 @@ case "$(kernel_tcmalloc_status "$KERNEL")" in
     esac
     ;;
   ge_619)
-    echo "$FAIL kernel-version: Kernel $KERNEL is not compliant with MongoDB documented guidance for $MONGO_REL; mongod exits during startup on any kernel 6.19 or later, so a kernel upgrade is not a remedy on this release. Move to MongoDB 8.0.30 or later or 8.3.9 or later (8.0.35 or later, 8.3.14 or later on Ubuntu), or a kernel below 6.19. (SERVER-125742)"
+    echo "$FAIL kernel-version: Kernel $KERNEL is not compliant with MongoDB documented guidance for $MONGO_REL; mongod exits during startup on any kernel 6.19 or later, including 7.0.14 and above, so a kernel upgrade alone is not a remedy on this release. Either run a kernel below 6.19, or upgrade MongoDB to 8.0.30 or later or 8.3.9 or later (8.0.35 or later, 8.3.14 or later on Ubuntu) and run it on kernel 7.0.14 or later. (SERVER-125742)"
     ;;
   ubuntu_needs_upgrade)
     echo "$FAIL kernel-version: Kernel $KERNEL is Ubuntu's label for a kernel that carries the rseq fix, but mongod $MONGO_REL compares the version literally and exits during startup. Fixed in MongoDB 8.0.35 and 8.3.14 (SERVER-131779). Upgrading the Ubuntu kernel package does not help while it keeps the 7.0.0 label; a kernel labelled 7.0.14 or later would also clear the guard. (SERVER-125742)"
     ;;
   *)
     echo "$PASS kernel-version: $KERNEL is outside the documented kernel restrictions for $MONGO_REL"
+    KERNEL_OK=1
     ;;
 esac
+if [ -z "${KERNEL_OK:-}" ] && [ -z "$MONGO_VERSION_PATCH" ] && [ "$MONGO_VERSION" != "7.0" ]; then
+  echo "       Note: no patch version was supplied, so the strictest band for $MONGO_VERSION was applied. Re-run with the full version that mongod --version reports for the exact verdict; on 8.0.0 through 8.0.20 this kernel range also carries a data-corruption risk."
+fi
 
 # --- Architecture check ---
 case "$ARCH" in
@@ -124,22 +133,40 @@ if echo "$OS_NAME" | grep -qi oracle; then
 fi
 
 # --- Supported OS check ---
-SUPPORTED=0
-for pattern in "Amazon Linux" "Red Hat" "Rocky" "AlmaLinux" "Oracle" "CentOS" "Ubuntu" "Debian" "SLES" "SUSE" "Windows"; do
-  if echo "$OS_NAME" | grep -qi "$pattern"; then
-    SUPPORTED=1
-    break
-  fi
-done
-
-if [ "$SUPPORTED" -eq 1 ]; then
-  echo "$PASS os-supported: $OS_NAME appears to be in the MongoDB supported OS list"
-else
-  echo "$WARN os-supported: $OS_NAME may not be in the MongoDB supported OS list. Verify at https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-matrix"
-fi
+# Version-specific: the Enterprise matrix lists each OS release and
+# architecture per MongoDB series, so a recognized distro name is not enough.
+UNKNOWN="[UNKNOWN]"
+MATRIX_URL="https://www.mongodb.com/docs/enterprise-platform-support/"
+PLATFORM_LABEL="$OS_NAME $OS_VERSION ($ARCH)"
+{ read -r OS_STATUS; read -r OS_MIN; } < <(platform_support_status "$OS_ID" "$OS_VERSION" "$ARCH")
+case "$OS_STATUS" in
+  supported)
+    echo "$PASS os-supported: $PLATFORM_LABEL is listed for MongoDB Enterprise $MONGO_REL (support matrix as read $MONGO_PLATFORM_MATRIX_READ)" ;;
+  unsupported)
+    if [ -n "${OS_MIN:-}" ]; then
+      echo "$FAIL os-supported: $PLATFORM_LABEL is listed for MongoDB Enterprise only from $OS_MIN; $MONGO_REL is not supported on it"
+      echo "       Fix: upgrade MongoDB to $OS_MIN or later, or move to a platform listed for $MONGO_REL. See $MATRIX_URL"
+    else
+      echo "$FAIL os-supported: $PLATFORM_LABEL is not supported for MongoDB Enterprise $MONGO_VERSION (support matrix as read $MONGO_PLATFORM_MATRIX_READ)"
+      echo "       Fix: move to a platform listed for $MONGO_VERSION, or to a MongoDB release listed for this platform. See $MATRIX_URL"
+    fi ;;
+  needs_patch)
+    echo "$UNKNOWN os-supported: $PLATFORM_LABEL is listed for MongoDB Enterprise only from $OS_MIN; no patch version was supplied, so support for $MONGO_REL cannot be confirmed. Re-run with the full version." ;;
+  unlisted_release)
+    echo "$WARN os-supported: $OS_NAME is a MongoDB platform, but release $OS_VERSION on $ARCH has no row in the Enterprise support matrix as read $MONGO_PLATFORM_MATRIX_READ"
+    echo "       Fix: confirm the release at $MATRIX_URL, or move to a listed release" ;;
+  unlisted_distro)
+    echo "$WARN os-supported: $OS_NAME is not in the MongoDB Enterprise support matrix. Verify at $MATRIX_URL" ;;
+  *)
+    echo "$UNKNOWN os-supported: OS release or MongoDB version not resolved (os=${OS_ID:-unknown} ${OS_VERSION:-unknown}, mongodb=$MONGO_VERSION); support could not be checked" ;;
+esac
 
 # --- Virtualization info ---
 if command -v systemd-detect-virt &>/dev/null; then
   VIRT=$(systemd-detect-virt 2>/dev/null || echo "none")
   echo "$INFO virtualization: $VIRT"
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

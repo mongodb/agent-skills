@@ -6,12 +6,15 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib-version.sh
 . "$SCRIPT_DIR/lib-version.sh"
+# shellcheck source=lib-conf.sh
+. "$SCRIPT_DIR/lib-conf.sh"
 mongo_parse_args "$@" || exit 1
 
 PASS="[PASS]"
 WARN="[WARN]"
 FAIL="[FAIL]"
 INFO="[INFO]"
+UNKNOWN="[UNKNOWN]"
 
 echo "=== MongoDB Process Check ==="
 
@@ -38,9 +41,19 @@ if command -v mongod &>/dev/null; then
 
   # --- Cross-check the installed binary against the audited version ---
   # A mismatch means the whole report is scored against the wrong expectations.
+  # The kernel verdict bands on the patch (8.0.30, 8.0.35, 8.3.9, 8.3.14), so
+  # when the audit was given a patch, the patch has to match as well.
   if [ "$MONGO_VERSION" != "unknown" ] && [ -n "$MONGO_VER" ]; then
     DETECTED_MM="$(echo "$MONGO_VER" | cut -d. -f1-2)"
-    if [ "$DETECTED_MM" != "$MONGO_VERSION" ]; then
+    AUDITED_REL="$MONGO_VERSION${MONGO_VERSION_PATCH:+.$MONGO_VERSION_PATCH}"
+    if [ "$DETECTED_MM" = "$MONGO_VERSION" ] && [ -n "$MONGO_VERSION_PATCH" ] \
+       && [ "$MONGO_VER" != "$AUDITED_REL" ]; then
+      echo "$WARN mongod-version-match: installed mongod is $MONGO_VER but the audit was run with --version $AUDITED_REL; patch-specific results, including the kernel verdict, were scored against the wrong release"
+      echo "       Fix: re-run with --version $MONGO_VER"
+    elif [ "$DETECTED_MM" = "$MONGO_VERSION" ] && [ -z "$MONGO_VERSION_PATCH" ]; then
+      echo "$PASS mongod-version-match: installed mongod $MONGO_VER matches the audited series $MONGO_VERSION"
+      echo "       Note: the audit was run without a patch version, so the kernel verdict took the strictest band; re-run with --version $MONGO_VER for the exact verdict"
+    elif [ "$DETECTED_MM" != "$MONGO_VERSION" ]; then
       echo "$WARN mongod-version-match: installed mongod is $MONGO_VER but the audit was run with --version $MONGO_VERSION"
       case " $MONGO_SUPPORTED_VERSIONS " in
         *" $DETECTED_MM "*)
@@ -49,7 +62,7 @@ if command -v mongod &>/dev/null; then
           echo "       Fix: $DETECTED_MM is not covered by this checklist ($MONGO_SUPPORTED_VERSIONS); results scored against $MONGO_VERSION do not apply. Upgrade to a covered release, then re-run with the matching --version" ;;
       esac
     else
-      echo "$PASS mongod-version-match: installed mongod $MONGO_VER matches the audited version $MONGO_VERSION"
+      echo "$PASS mongod-version-match: installed mongod $MONGO_VER matches the audited version $AUDITED_REL"
     fi
   fi
 fi
@@ -66,16 +79,12 @@ if [ -n "$MONGOD_PID" ]; then
 fi
 
 # --- Config file detection ---
-CONF_FILE=""
-for path in /etc/mongod.conf /etc/mongodb.conf /etc/mongod/mongod.conf; do
-  if [ -f "$path" ]; then
-    CONF_FILE="$path"
-    break
-  fi
-done
+conf_detect
 
-if [ -z "$CONF_FILE" ]; then
-  echo "$WARN mongod-config: No mongod.conf found in standard locations"
+if [ "$CONF_STATE" = "missing" ]; then
+  echo "$WARN mongod-config: No mongod.conf found in standard locations (set MONGO_CONF_FILE for a custom path)"
+elif [ "$CONF_STATE" = "unreadable" ]; then
+  echo "$UNKNOWN mongod-config: $CONF_FILE exists but is not readable by this run; the config checks were not run. Re-run with sudo."
 else
   echo "$INFO mongod-config: Using $CONF_FILE"
 
@@ -104,16 +113,19 @@ else
   fi
 
   # --- SSL/TLS ---
-  TLS_MODE=$(get_conf "mode" | head -1)  # net.tls.mode
-  NET_SSL=$(grep -E "ssl|tls" "$CONF_FILE" 2>/dev/null | head -5)
-  if echo "$NET_SSL" | grep -qiE 'requireSSL|requireTLS'; then
-    echo "$PASS mongod-tls: TLS/SSL is required"
-  elif echo "$NET_SSL" | grep -qiE 'allowSSL|allowTLS|preferSSL|preferTLS'; then
-    echo "$WARN mongod-tls: TLS/SSL mode allows unencrypted connections — use requireSSL/requireTLS in production"
-  else
-    echo "$WARN mongod-tls: TLS/SSL does not appear to be configured"
-    echo "       Fix: Configure net.tls.mode: requireTLS in $CONF_FILE"
-  fi
+  # Scoped read of net.tls.mode (net.ssl.mode on older configs), so the nested
+  # net: -> tls: -> mode: layout is recognized.
+  TLS_MODE=$(conf_get net.tls.mode)
+  [ -n "$TLS_MODE" ] || TLS_MODE=$(conf_get net.ssl.mode)
+  case "$TLS_MODE" in
+    requireTLS|requireSSL)
+      echo "$PASS mongod-tls: net.tls.mode is $TLS_MODE" ;;
+    allowTLS|preferTLS|allowSSL|preferSSL)
+      echo "$WARN mongod-tls: net.tls.mode is $TLS_MODE, which accepts unencrypted connections; use requireTLS in production" ;;
+    *)
+      echo "$WARN mongod-tls: TLS is not configured (net.tls.mode is ${TLS_MODE:-not set})"
+      echo "       Fix: Configure net.tls.mode: requireTLS in $CONF_FILE" ;;
+  esac
 
   # --- logAppend ---
   LOG_APPEND=$(get_conf "logAppend")
@@ -133,7 +145,7 @@ else
   fi
 
   # --- JavaScript engine ---
-  JS_ENABLED=$(grep -E 'javascriptEnabled' "$CONF_FILE" 2>/dev/null | awk -F': ' '{print $2}' | tr -d ' ')
+  JS_ENABLED=$(conf_get security.javascriptEnabled)
   if [ "$JS_ENABLED" = "false" ]; then
     echo "$PASS mongod-javascript: javascriptEnabled is false (recommended if server-side JS not needed)"
   elif [ "$JS_ENABLED" = "true" ]; then
@@ -164,3 +176,7 @@ else
     echo "$WARN mongod-audit: Audit logging (Enterprise feature) not detected in $CONF_FILE"
   fi
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

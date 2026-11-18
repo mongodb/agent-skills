@@ -158,3 +158,7 @@ for iface in $(ls /sys/class/net/ | grep -v lo); do
     fi
   fi
 done
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

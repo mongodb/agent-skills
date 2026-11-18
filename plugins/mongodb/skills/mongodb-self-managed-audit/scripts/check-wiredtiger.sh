@@ -2,6 +2,10 @@
 # check-wiredtiger.sh
 # Validates WiredTiger storage engine configuration
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib-conf.sh
+. "$SCRIPT_DIR/lib-conf.sh"
+
 PASS="[PASS]"
 WARN="[WARN]"
 FAIL="[FAIL]"
@@ -11,13 +15,7 @@ UNKNOWN="[UNKNOWN]"
 echo "=== WiredTiger Check ==="
 
 # --- Detect config ---
-CONF_FILE=""
-for path in /etc/mongod.conf /etc/mongodb.conf /etc/mongod/mongod.conf; do
-  if [ -f "$path" ]; then
-    CONF_FILE="$path"
-    break
-  fi
-done
+conf_detect
 
 # --- RAM available ---
 TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
@@ -56,7 +54,15 @@ fi
 # Documented rule: avoid increasing the cache above its default (v7.0
 # Configuration File Options). An unset value is the default, so it passes.
 # Decimal GB values are compared with bc; one status is emitted per check.
-if [ -n "$CONF_FILE" ]; then
+# An unreadable config is not evidence that the cache settings are unset, so it
+# reports UNKNOWN rather than the default-cache PASS.
+if [ "$CONF_STATE" = "unreadable" ]; then
+  echo "$UNKNOWN wiredtiger-config: $CONF_FILE exists but is not readable by this run; cacheSizeGB, cacheSizePct and the block compressor were not checked. Re-run with sudo."
+elif [ "$CONF_STATE" = "missing" ]; then
+  echo "$INFO wiredtiger-config: no mongod.conf found in the standard locations; config-based cache checks skipped (set MONGO_CONF_FILE for a custom path)"
+fi
+
+if [ "$CONF_STATE" = "readable" ]; then
   CACHE_SIZE=$(grep -E 'cacheSizeGB' "$CONF_FILE" 2>/dev/null | awk -F': ' '{print $2}' | tr -d ' ' | head -1)
   if [ -n "$CACHE_SIZE" ]; then
     ABOVE_DEFAULT=$(echo "$CACHE_SIZE > ${DEFAULT_CACHE_GB:-0}" | bc 2>/dev/null)
@@ -135,9 +141,15 @@ if [ -n "$MONGOD_PID" ]; then
 fi
 
 # --- Checkpoint interval ---
-CHECKPOINT=$(grep -E 'checkpointDelaySecs\|checkpoint' "$CONF_FILE" 2>/dev/null | grep -v '#' | head -3)
-if [ -n "$CHECKPOINT" ]; then
-  echo "$INFO wiredtiger-checkpoint: $CHECKPOINT"
-else
-  echo "$INFO wiredtiger-checkpoint: Using default 60-second checkpoint interval"
+if [ "$CONF_STATE" = "readable" ]; then
+  CHECKPOINT=$(grep -E 'checkpointDelaySecs|checkpoint' "$CONF_FILE" 2>/dev/null | grep -v '#' | head -3)
+  if [ -n "$CHECKPOINT" ]; then
+    echo "$INFO wiredtiger-checkpoint: $CHECKPOINT"
+  else
+    echo "$INFO wiredtiger-checkpoint: Using default 60-second checkpoint interval"
+  fi
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

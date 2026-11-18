@@ -72,7 +72,15 @@ run_check() {
   fi
 
   echo "--- $label ---"
-  OUTPUT=$(bash "$SCRIPT_DIR/$script" --version "$MONGO_REL" 2>&1)
+  # Capture the exit status as well as the text. A category that exits
+  # non-zero did not finish, so whatever it printed is incomplete; record that
+  # as UNKNOWN so the summary can never read as a clean pass.
+  local status=0
+  OUTPUT=$(bash "$SCRIPT_DIR/$script" --version "$MONGO_REL" 2>&1) || status=$?
+  if [ "$status" -ne 0 ]; then
+    OUTPUT="$OUTPUT
+[UNKNOWN] check-incomplete: $script exited with status $status before completing; results for $label are incomplete. Re-run it on its own to see the error."
+  fi
   echo "$OUTPUT"
   echo ""
 

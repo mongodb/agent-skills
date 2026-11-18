@@ -37,10 +37,39 @@ later, since it is the 9.0 manual.
 | Kernel 6.19 through 7.0.13 | Not affected | FAIL | Affects 8.0 and later only, not 7.0. Severity and remedy depend on the maintenance release; see "Kernel restriction, by maintenance release". |
 | Minimum kernel | 2.6.36 | 2.6.36 | XFS needs 2.6.25; ext4 needs 2.6.28; RHEL/CentOS needs 2.6.18-194 |
 | Oracle Linux kernel | RHCK only | RHCK only | UEK is not supported |
-| Ubuntu 24.04 | Not supported | Supported | The 9.0 notes list only "Ubuntu LTS"; confirm a specific LTS in the platform support matrix |
+| OS release support | Per matrix | Per matrix | Scored per OS release, architecture and MongoDB series from the Enterprise support matrix; see "Enterprise support matrix" below. Ubuntu 24.04 is not supported on 7.0. |
 | CPU cores | 2 real cores | 2 real cores | Per mongod or mongos instance |
 | AES-NI | Recommended | Recommended | Material advantage for the encrypted storage engine (Enterprise) |
 | Endianness | Little-endian | Little-endian | Server requires x86/x86_64 little-endian; client libraries accept either |
+
+### Enterprise support matrix
+
+Source: "Supported Platforms for MongoDB Enterprise", Linux table
+(https://www.mongodb.com/docs/enterprise-platform-support/), read 2026-11-18.
+`scripts/lib-version.sh` carries the table as data in `MONGO_PLATFORM_MATRIX`
+and scores it in `platform_support_status`. The page lists support by series
+(9.x, 8.x, 7.x), with a minimum patch in a few cells, and applies to the OS
+release present when MongoDB was installed.
+
+| Verdict | When |
+|---|---|
+| PASS | The OS release and architecture are listed for this series, and any minimum patch is met |
+| FAIL | The row exists but not for this series, or the release is below the cell's minimum patch |
+| UNKNOWN | The cell has a minimum patch and the run was given no patch, or the OS release or MongoDB version is not resolved |
+| WARN | The distro is on the page but this release or architecture has no row (for example a non-LTS Ubuntu), or the distro is not on the page |
+
+Rows that change a verdict most often:
+
+- Ubuntu 24.04: 8.x and 9.x only. 7.0 on Ubuntu 24.04 is a FAIL.
+- Ubuntu 26.04: 9.0.4 or later only. Ubuntu 20.04: 7.x and 8.x, not 9.x.
+- RHEL, Rocky and AlmaLinux 9 on ppc64le and s390x: 8.x from 8.0.7. On s390x,
+  7.x from 7.0.20; on ppc64le, no 7.x.
+- RHEL 10 on ppc64le and s390x, Debian 13 and SLES 16: 9.x only.
+- Amazon Linux 2, Debian 11, SLES 12 and RHEL or Oracle Linux 7: 7.x only.
+- Oracle Linux is listed on x86_64 only, and only with the Red Hat Compatible
+  Kernel.
+
+Re-read the page before changing a row; the matrix moves with each release.
 
 ### Kernel restriction, by maintenance release
 
@@ -70,7 +99,10 @@ Four consequences that change a remediation:
   audit.
 - On 8.0.21 through 8.0.29 and 8.3.0 through 8.3.8, upgrading the kernel is not
   a remedy. Those releases exit on any kernel 6.19 or later, 7.0.14 included.
-  Only a MongoDB upgrade clears it.
+  On kernel 7.0.14 or later only a MongoDB upgrade clears it. On kernel 6.19
+  through 7.0.13 the options are a kernel below 6.19, or a MongoDB upgrade
+  (8.0.30+ or 8.3.9+) together with kernel 7.0.14 or later. The scripts report
+  both columns as `ge_619`, so the remedy never reads "move to kernel 7.0.14".
 - On 8.0.0 through 8.0.20 the failure is worse than a refusal to start: mongod
   runs, then crashes, with potential corruption. Treat it as a data-loss risk,
   not an availability one.
@@ -170,7 +202,7 @@ THP there. On those architectures, 8.0 and later expect `enabled=never` and
 | I/O scheduler, spinning disk | `mq-deadline` | WARN otherwise |
 | `atime` | Off on the volume holding data files | WARN if missing |
 | AV and EDR exclusions | dbPath and logPath excluded | WARN when unconfirmed |
-| dbPath permissions | mongod owns the path, read and write | FAIL otherwise |
+| dbPath permissions | The MongoDB service user can read, write and traverse the path | Tested as the service user, not as the user running the audit. The user comes from the running mongod, then the mongod unit's `User=`, then the `mongod` or `mongodb` account; `MONGO_SERVICE_USER` overrides it. A root run tests with `runuser` (or `sudo -u`). FAIL when that user lacks access; UNKNOWN when it cannot be tested (an unprivileged run as another user, or no service user yet) |
 | Storage engine files match configuration | Match | FAIL on mismatch; engine data files cannot be mixed |
 | Component separation | Separate devices for data, journal, logs, indexes | INFO. Indexes via `storage.wiredTiger.engineConfig.directoryForIndexes`. |
 | Media | SSD recommended where economical | INFO |
@@ -218,14 +250,15 @@ THP there. On those architectures, 8.0 and later expect `enabled=never` and
 |---|---|---|
 | mongod running | Yes | When stopped, the scripts fall back to config files; findings remain valid |
 | mongod version | 7.0.x, 8.0.x, 8.3.x or 9.0.x | FAIL on an end-of-life release |
+| Installed version vs `--version` | Same release, patch included | WARN on a series mismatch, and on a patch mismatch when the audit was given a patch, because the kernel verdict bands on the patch. A bare major.minor passes with a note to re-run with the installed patch |
 | Authorization | `security.authorization` enabled | FAIL when disabled |
 | `bind_ip` | Not `0.0.0.0` unless deliberate | WARN when listening on all interfaces |
 | `storage.dbPath` | Contains only the configured engine's files | FAIL on mismatch |
 | `logAppend` | true | WARN if false |
 | `systemLog.destination` | file or syslog | WARN if absent |
 | `operationProfiling.mode` | slowOp or all | INFO |
-| `security.javascriptEnabled` | false where unused | FAIL when true under SELinux Enforcing, which segfaults mongod |
-| TLS mode | requireTLS or allowTLS | WARN when disabled |
+| `security.javascriptEnabled` | false where unused | Defaults to true, so an omitted setting counts as enabled. Under SELinux Enforcing it is a FAIL unless set to false or mongod runs with `--noscripting`; see Security |
+| TLS mode | requireTLS | Read from the scoped `net.tls.mode` key (`net.ssl.mode` on older configs), so the nested `net:` / `tls:` / `mode:` layout is recognized. WARN for allowTLS or preferTLS, which accept unencrypted connections, and for disabled or not set |
 
 ## WiredTiger
 
@@ -262,11 +295,30 @@ only `GLIBC_TUNABLES`.
 | Check | Expected | Status rule |
 |---|---|---|
 | SELinux and AppArmor | Enforcing recommended | Configure explicitly only when dbPath, logPath, or the port differ from packaged defaults |
-| Server-side JavaScript under SELinux | Disabled | FAIL when enabled under Enforcing, which causes segfaults |
+| Server-side JavaScript under SELinux | Disabled | Under SELinux, any operation that needs server-side JavaScript segfaults mongod. `security.javascriptEnabled` defaults to true, so omitted counts as enabled: FAIL under Enforcing unless it is false or mongod runs with `--noscripting`. UNKNOWN when the config cannot be read |
 | mongod process owner | Not root | FAIL when running as root |
 | Keyfile or x.509 for replication | Configured | FAIL when a replica set has no internal auth |
 | Audit logging (Enterprise) | Configured | WARN when absent |
 | FIPS mode | Enabled where required | INFO |
+
+## Failed reads and incomplete runs
+
+A value the run could not read is UNKNOWN with the reason, never a default
+PASS and never a finding scored against an empty value.
+
+| Situation | Reported as |
+|---|---|
+| `mongod.conf` exists but is not readable | UNKNOWN for the config-based checks (WiredTiger cache, security settings, mongod config, dbPath source), not the default-cache PASS |
+| No `mongod.conf` in the standard locations | WARN in the process check, UNKNOWN for the security config checks; set `MONGO_CONF_FILE` for a custom path |
+| THP `enabled`, `defrag` or `max_ptes_none` present but empty or unreadable | UNKNOWN, not FAIL or WARN |
+| `/sys/devices/system/node` missing, unreadable, or listing no nodes | UNKNOWN. Only a readable topology with a single node reports "no NUMA tuning required" |
+| A category script exits non-zero | `run-all-checks.sh` adds `[UNKNOWN] check-incomplete` with the exit status, and the summary cannot read as a clean pass |
+
+The config file is found from `MONGO_CONF_FILE` when set, then the `--config`
+or `-f` path of a running mongod, then `/etc/mongod.conf`, `/etc/mongodb.conf`
+and `/etc/mongod/mongod.conf`. Keys are read by their full YAML path
+(`scripts/lib-conf.sh`), so a key with the same name in another section is not
+mistaken for it.
 
 ## Virtual and Cloud Environments
 

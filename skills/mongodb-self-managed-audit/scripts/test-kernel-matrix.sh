@@ -18,11 +18,17 @@
 #   MongoDB            kernel <6.19   6.19-7.0.13                  7.0.14+/7.1.0+
 #   7.0 (all)          ok             ok                           ok
 #   8.0.0 - 8.0.20     ok             do_not_use (corruption)      ok
-#   8.0.21 - 8.0.29    ok             bad_range                    ge_619
-#   8.3.0 - 8.3.8      ok             bad_range                    ge_619
+#   8.0.21 - 8.0.29    ok             ge_619                       ge_619
+#   8.3.0 - 8.3.8      ok             ge_619                       ge_619
 #   8.0.30-34 8.3.9-13 ok             bad_range                    ok, except Ubuntu
 #                                                                  kernels labelled 7.0.0
 #   8.0.35+ 8.3.14+ 9.0 ok            bad_range                    ok
+#
+# ge_619 in the 6.19-7.0.13 column matters: those releases also exit on 7.0.14
+# and later, so the remedy offered there must be a MongoDB upgrade (or a kernel
+# below 6.19), never "move to kernel 7.0.14". bad_range is reserved for the
+# narrowed-guard releases, where 7.0.14 does clear the guard. An unresolved
+# 8.0 or 8.3 patch takes ge_619 in that range as the strictest remedy.
 #
 # The distro (default rhel) and the /proc/version_signature upstream version
 # (default none) are pinned per case so a run on an Ubuntu CI host cannot
@@ -72,7 +78,9 @@ assert_status 8.0.20 6.19.0                      do_not_use
 assert_status 8.0.20 7.1.0                       ok
 
 section "8.0.21-8.0.29: blocked at 6.19 and up; a kernel upgrade is no remedy"
-assert_status 8.0.21 6.19.2                      bad_range
+assert_status 8.0.21 6.19.2                      ge_619
+assert_status 8.0.25 6.19.2                      ge_619
+assert_status 8.0.29 7.0.13                      ge_619
 assert_status 8.0.21 7.0.14                      ge_619
 assert_status 8.0.29 7.1.3                       ge_619
 assert_status 8.0.29 5.14.0                      ok
@@ -84,7 +92,8 @@ assert_status 8.0.45 7.1.3                       ok
 
 section "8.3.0-8.3.8 blocked above 6.19; 8.3.9+ bounded"
 assert_status 8.3.0  7.0.14                      ge_619
-assert_status 8.3.8  6.19.2                      bad_range
+assert_status 8.3.8  6.19.2                      ge_619
+assert_status 8.3.0  6.19.0                      ge_619
 assert_status 8.3.9  7.0.14                      ok
 assert_status 8.3.9  6.19.2                      bad_range
 
@@ -96,6 +105,8 @@ section "no patch supplied: strictest verdict the band could carry"
 assert_status 8.0    7.0.14                      ge_619
 assert_status 8.3    7.0.14                      ge_619
 assert_status 8.0    5.14.0                      ok
+assert_status 8.0    6.19.2                      ge_619
+assert_status 8.3    7.0.13                      ge_619
 
 section "real distro kernel strings parse correctly"
 assert_status 8.0.4  5.14.0-427.13.1.el9_4.x86_64 ok
@@ -125,6 +136,7 @@ assert_status 8.0.35 7.0.0-1011-gcp               bad_range            ubuntu
 assert_status 8.0.34 7.0.0-1011-gcp               bad_range            ubuntu 7.0.13
 assert_status 8.0.34 7.0.0-1011-gcp               bad_range
 assert_status 8.0.34 6.19.2-1-generic             bad_range            ubuntu 6.19.2
+assert_status 8.0.25 7.0.0-28-generic             ge_619               ubuntu
 
 printf '\n=== %d passed, %d failed ===\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

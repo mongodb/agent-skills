@@ -105,19 +105,23 @@ case "$(kernel_tcmalloc_status "$KERNEL")" in
     esac
     ;;
   ge_619)
-    echo "$FAIL tcmalloc-kernel619: Kernel $KERNEL is not compliant with MongoDB documented guidance for $MONGO_REL; this release exits during startup on any kernel 6.19 or later, including 7.0.14 and above, so only a MongoDB upgrade clears it: 8.0.30 or later or 8.3.9 or later (8.0.35 or later, 8.3.14 or later on Ubuntu). (SERVER-125742)"
+    echo "$FAIL tcmalloc-kernel619: Kernel $KERNEL is not compliant with MongoDB documented guidance for $MONGO_REL; this release exits during startup on any kernel 6.19 or later, including 7.0.14 and above, so a kernel upgrade alone does not clear it. Either run a kernel below 6.19, or upgrade MongoDB to 8.0.30 or later or 8.3.9 or later (8.0.35 or later, 8.3.14 or later on Ubuntu) and run it on kernel 7.0.14 or later. (SERVER-125742)"
     ;;
   ubuntu_needs_upgrade)
     echo "$FAIL tcmalloc-kernel619: Kernel $KERNEL is Ubuntu's label for a kernel that carries the rseq fix, but mongod $MONGO_REL compares the version literally and exits during startup. Fixed in MongoDB 8.0.35 and 8.3.14 (SERVER-131779). Upgrading the Ubuntu kernel package does not help while it keeps the 7.0.0 label; a kernel labelled 7.0.14 or later would also clear the guard. (SERVER-125742)"
     ;;
   *)
     echo "$PASS tcmalloc-kernel619: Kernel $KERNEL is outside the documented kernel restrictions for $MONGO_REL"
+    KERNEL_OK=1
     ;;
 esac
+if [ -z "${KERNEL_OK:-}" ] && [ -z "$MONGO_VERSION_PATCH" ]; then
+  echo "       Note: no patch version was supplied, so the strictest band for $MONGO_VERSION was applied. Re-run with the full version that mongod --version reports for the exact verdict."
+fi
 
 # --- Check mongod binary links ---
 if command -v mongod &>/dev/null; then
-  MONGOD_BIN=$(which mongod)
+  MONGOD_BIN=$(command -v mongod)
   LINKED_TCMALLOC=$(ldd "$MONGOD_BIN" 2>/dev/null | grep -i tcmalloc || true)
   if [ -n "$LINKED_TCMALLOC" ]; then
     echo "$INFO tcmalloc-linked: $LINKED_TCMALLOC"
@@ -133,3 +137,7 @@ else
   echo "$INFO tcmalloc-summary: Updated TCMalloc (8.0 and later default). See tuning guide:"
   echo "       https://www.mongodb.com/docs/manual/administration/tcmalloc-performance/"
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

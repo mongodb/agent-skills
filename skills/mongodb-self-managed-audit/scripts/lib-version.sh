@@ -10,6 +10,8 @@
 #   kernel_in_bad_tcmalloc_range     the documented 6.19.0 - 7.0.13 kernel range test
 #   kernel_tcmalloc_status           version-aware verdict:
 #                                    ok|do_not_use|bad_range|ge_619|ubuntu_needs_upgrade
+#   platform_support_status          Enterprise support matrix verdict for an
+#                                    OS release and architecture
 #
 # Exports MONGO_VERSION (e.g. 8.3, or "unknown"), MONGO_VERSION_MAJOR,
 # MONGO_VERSION_MINOR and MONGO_VERSION_NUM (major*1000+minor).
@@ -194,8 +196,11 @@ kernel_in_bad_tcmalloc_range() {
 #   ok                  no restriction for this release and kernel
 #   do_not_use          data-loss risk: runs, then crashes, may corrupt
 #   bad_range           mongod refuses to start, kernel 7.0.14+ clears it
-#   ge_619              mongod refuses to start on any kernel >= 6.19; upgrading
-#                       the kernel is not a remedy, only a MongoDB upgrade is
+#   ge_619              mongod refuses to start on any kernel >= 6.19, in the
+#                       6.19 - 7.0.13 range and above it; upgrading the kernel
+#                       is not a remedy. Either run a kernel below 6.19, or
+#                       upgrade MongoDB (8.0.30+ / 8.3.9+) and run 7.0.14+.
+#                       Also returned for an unresolved 8.0 or 8.3 patch.
 #   ubuntu_needs_upgrade  Ubuntu kernel labelled 7.0.0-NNN on a release that
 #                       predates the Ubuntu-aware guard; only a MongoDB upgrade
 #                       to 8.0.35+ or 8.3.14+ clears it
@@ -281,10 +286,14 @@ kernel_tcmalloc_status() {
   if [ "$num" -lt "$KERNEL_TCMALLOC_LOW" ]; then echo "ok"; return 0; fi
 
   if [ "$num" -le "$KERNEL_TCMALLOC_HIGH" ]; then
-    # Inside 6.19 - 7.0.13: every affected band is blocked here.
+    # Inside 6.19 - 7.0.13: every affected band is blocked here. Only the
+    # narrowed-guard bands are cleared by moving to kernel 7.0.14+; the
+    # "always" band exits there too, so its remedy is a MongoDB upgrade. An
+    # unresolved patch takes the strictest remedy for the same reason.
     case "$band" in
-      corrupt) echo "do_not_use"; return 1 ;;
-      *)       echo "bad_range";  return 1 ;;
+      corrupt)        echo "do_not_use"; return 1 ;;
+      always|unknown) echo "ge_619";     return 1 ;;
+      *)              echo "bad_range";  return 1 ;;
     esac
   fi
 
@@ -295,5 +304,124 @@ kernel_tcmalloc_status() {
       if [ "$ubuntu_label" -eq 1 ]; then echo "ubuntu_needs_upgrade"; return 1; fi
       echo "ok"; return 0 ;;
     *) echo "ok"; return 0 ;;
+  esac
+}
+
+# --- Enterprise platform support matrix ---------------------------------------
+# Transcribed from "Supported Platforms for MongoDB Enterprise", Linux table
+# (https://www.mongodb.com/docs/enterprise-platform-support/), read 2026-11-18.
+# One row per platform and architecture; the three cells are the 9.x, 8.x and
+# 7.x columns. Y = supported, - = not supported, a version such as 8.0.7 = that
+# release or later within the series. The page applies the matrix to the OS
+# version present at install time. Re-read the page before changing a row.
+#
+#   family  release  arch     9.x    8.x    7.x
+MONGO_PLATFORM_MATRIX="
+amzn    2023     x86_64   Y      Y      Y
+amzn    2023     arm64    Y      Y      Y
+amzn    2        x86_64   -      -      Y
+amzn    2        arm64    -      -      Y
+debian  13       x86_64   Y      -      -
+debian  12       x86_64   Y      Y      Y
+debian  11       x86_64   -      -      Y
+rhel    10       x86_64   Y      Y      Y
+rhel    10       arm64    Y      Y      Y
+rhel    10       ppc64le  Y      -      -
+rhel    10       s390x    Y      -      -
+rhel    9        x86_64   Y      Y      Y
+rhel    9        arm64    Y      Y      Y
+rhel    9        ppc64le  Y      8.0.7  -
+rhel    9        s390x    Y      8.0.7  7.0.20
+rhel    8        x86_64   Y      Y      Y
+rhel    8        arm64    Y      Y      Y
+rhel    8        ppc64le  Y      Y      Y
+rhel    8        s390x    Y      Y      Y
+rhel    7        x86_64   -      -      Y
+ol      10       x86_64   Y      Y      Y
+ol      9        x86_64   Y      Y      Y
+ol      8        x86_64   Y      Y      Y
+ol      7        x86_64   -      -      Y
+sles    16       x86_64   Y      -      -
+sles    15       x86_64   Y      Y      Y
+sles    12       x86_64   -      -      Y
+ubuntu  26.04    x86_64   9.0.4  -      -
+ubuntu  26.04    arm64    9.0.4  -      -
+ubuntu  24.04    x86_64   Y      Y      -
+ubuntu  24.04    arm64    Y      Y      -
+ubuntu  22.04    x86_64   Y      Y      Y
+ubuntu  22.04    arm64    Y      Y      Y
+ubuntu  20.04    x86_64   -      Y      Y
+ubuntu  20.04    arm64    -      Y      Y
+"
+MONGO_PLATFORM_MATRIX_READ="2026-11-18"
+
+# Map an os-release ID and VERSION_ID to the matrix family and release.
+# Rocky and AlmaLinux are listed with RHEL on the page; Oracle Linux only on
+# x86_64. Echoes "family release", or nothing for a distro the page omits.
+platform_family_release() {
+  local id="$1" ver="$2"
+  case "$id" in
+    rhel|rocky|almalinux) echo "rhel ${ver%%.*}" ;;
+    ol)                   echo "ol ${ver%%.*}" ;;
+    amzn)                 echo "amzn ${ver%%.*}" ;;
+    debian)               echo "debian ${ver%%.*}" ;;
+    sles|sled)            echo "sles ${ver%%.*}" ;;
+    ubuntu)               echo "ubuntu $ver" ;;
+    *)                    echo "" ;;
+  esac
+}
+
+# platform_support_status <os-id> <version-id> <arch>
+# Uses the resolved MONGO_VERSION and MONGO_VERSION_PATCH. Echoes one of:
+#   supported        listed for this series (and patch minimum met)
+#   unsupported      the platform row exists but not for this release
+#   needs_patch      listed only from a minimum patch the run cannot confirm
+#   unlisted_release a known distro, but this release or arch has no row
+#   unlisted_distro  the distro is not on the page
+#   unknown          MongoDB version or OS release not resolved
+# A second line carries the minimum version when one applies.
+platform_support_status() {
+  local id="$1" ver="$2" arch="$3" fr family release col cell
+  local r_family r_release r_arch c9 c8 c7 min_maj min_min min_pat rest
+
+  case "$arch" in aarch64) arch="arm64" ;; esac
+  if [ "$MONGO_VERSION" = "unknown" ] || [ -z "$id" ] || [ -z "$ver" ]; then
+    echo "unknown"; return 0
+  fi
+  fr=$(platform_family_release "$id" "$ver")
+  if [ -z "$fr" ]; then echo "unlisted_distro"; return 0; fi
+  family="${fr% *}"; release="${fr#* }"
+
+  case "$MONGO_VERSION_MAJOR" in
+    9) col=1 ;; 8) col=2 ;; 7) col=3 ;; *) echo "unknown"; return 0 ;;
+  esac
+
+  cell=""
+  while read -r r_family r_release r_arch c9 c8 c7; do
+    [ -n "$r_family" ] || continue
+    if [ "$r_family" = "$family" ] && [ "$r_release" = "$release" ] && [ "$r_arch" = "$arch" ]; then
+      case "$col" in 1) cell="$c9" ;; 2) cell="$c8" ;; 3) cell="$c7" ;; esac
+      break
+    fi
+  done <<< "$MONGO_PLATFORM_MATRIX"
+
+  case "$cell" in
+    "")  echo "unlisted_release" ;;
+    Y)   echo "supported" ;;
+    -)   echo "unsupported" ;;
+    *)
+      min_maj="${cell%%.*}"; rest="${cell#*.}"; min_min="${rest%%.*}"; min_pat="${rest#*.}"
+      if [ "$MONGO_VERSION_NUM" -gt $(( min_maj * 1000 + min_min )) ]; then
+        echo "supported"
+      elif [ "$MONGO_VERSION_NUM" -lt $(( min_maj * 1000 + min_min )) ]; then
+        echo "unsupported"; echo "$cell"
+      elif [ -z "$MONGO_VERSION_PATCH" ]; then
+        echo "needs_patch"; echo "$cell"
+      elif [ "$MONGO_VERSION_PATCH" -ge "$min_pat" ]; then
+        echo "supported"
+      else
+        echo "unsupported"; echo "$cell"
+      fi
+      ;;
   esac
 }

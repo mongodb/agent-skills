@@ -3,10 +3,15 @@
 # Validates filesystem type, I/O scheduler, readahead, and dbPath configuration
 # Usage: bash check-storage.sh [--dbpath /var/lib/mongo]
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib-conf.sh
+. "$SCRIPT_DIR/lib-conf.sh"
+
 PASS="[PASS]"
 WARN="[WARN]"
 FAIL="[FAIL]"
 INFO="[INFO]"
+UNKNOWN="[UNKNOWN]"
 
 DBPATH="${MONGO_DBPATH:-}"
 
@@ -16,16 +21,22 @@ if [ -z "$DBPATH" ]; then
 fi
 
 # Try mongod.conf
+conf_detect
 if [ -z "$DBPATH" ]; then
-  for conf in /etc/mongod.conf /etc/mongodb.conf /etc/mongod/mongod.conf; do
-    if [ -f "$conf" ]; then
-      DBPATH=$(grep -E '^\s*dbPath' "$conf" | awk -F': ' '{print $2}' | tr -d ' ' | head -1)
-      break
-    fi
-  done
+  DBPATH=$(conf_get storage.dbPath)
 fi
 
-DBPATH="${DBPATH:-/var/lib/mongo}"
+if [ -z "$DBPATH" ]; then
+  # Packaged default: /var/lib/mongodb on Debian and Ubuntu, /var/lib/mongo elsewhere.
+  DISTRO_ID=$( . /etc/os-release 2>/dev/null; echo "${ID:-}" )
+  case "$DISTRO_ID" in
+    ubuntu|debian) DBPATH="/var/lib/mongodb" ;;
+    *)             DBPATH="/var/lib/mongo" ;;
+  esac
+  if [ "$CONF_STATE" = "unreadable" ]; then
+    echo "$UNKNOWN dbpath-source: $CONF_FILE is not readable, so storage.dbPath is unknown; checking the packaged default $DBPATH. Re-run with sudo or pass --dbpath."
+  fi
+fi
 echo "$INFO dbpath: Using $DBPATH"
 
 echo "=== Storage & Filesystem Check ==="
@@ -65,14 +76,58 @@ else
 fi
 
 # --- dbPath permissions ---
+# The question is whether the MongoDB service user can use dbPath, not whether
+# the user running the audit can. Resolve the service user from the running
+# process, then the mongod systemd unit, then the packaged account (mongod on
+# RHEL-family and SUSE, mongodb on Debian and Ubuntu).
+service_user() {
+  local pid u
+  # MONGO_SERVICE_USER names a custom service account explicitly.
+  if [ -n "${MONGO_SERVICE_USER:-}" ]; then echo "$MONGO_SERVICE_USER MONGO_SERVICE_USER"; return; fi
+  pid=$(pgrep -x mongod 2>/dev/null | head -1)
+  if [ -n "$pid" ]; then
+    u=$(ps -o user= -p "$pid" 2>/dev/null | tr -d ' ')
+    [ -n "$u" ] && { echo "$u running"; return; }
+  fi
+  u=$(systemctl show -p User --value mongod 2>/dev/null)
+  [ -n "$u" ] && { echo "$u systemd"; return; }
+  for u in mongod mongodb; do
+    id "$u" >/dev/null 2>&1 && { echo "$u account"; return; }
+  done
+}
+
+# Run test(1) as another user. Needs root; echoes nothing if no tool is usable.
+test_as() {
+  local user="$1"; shift
+  if command -v runuser >/dev/null 2>&1; then
+    runuser -u "$user" -- test "$@" 2>/dev/null && echo yes || echo no
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo -n -u "$user" test "$@" 2>/dev/null && echo yes || echo no
+  fi
+}
+
 if [ -d "$DBPATH" ]; then
-  MONGOD_USER=$(ps -eo user,args | grep '[m]ongod' | awk '{print $1}' | head -1)
-  MONGOD_USER="${MONGOD_USER:-mongod}"
-  if [ -r "$DBPATH" ] && [ -w "$DBPATH" ]; then
-    echo "$PASS dbpath-permissions: $DBPATH is readable and writable"
+  read -r MONGOD_USER USER_SOURCE <<< "$(service_user)"
+  OWNER=$(stat -c '%U:%G %a' "$DBPATH" 2>/dev/null)
+  if [ -z "$MONGOD_USER" ]; then
+    echo "$UNKNOWN dbpath-permissions: the MongoDB service user could not be determined (mongod not running, no mongod unit, no mongod or mongodb account); $DBPATH is ${OWNER:-of unknown ownership}. Re-check after installation."
   else
-    echo "$FAIL dbpath-permissions: $DBPATH is not readable/writable by current user. Ensure mongod user owns it."
-    echo "       Fix: chown -R mongod:mongod $DBPATH"
+    MONGOD_GROUP=$(id -gn "$MONGOD_USER" 2>/dev/null || echo "$MONGOD_USER")
+    ACCESS=""
+    if [ "$(id -un)" = "$MONGOD_USER" ]; then
+      if [ -r "$DBPATH" ] && [ -w "$DBPATH" ] && [ -x "$DBPATH" ]; then ACCESS=yes; else ACCESS=no; fi
+    elif [ "$(id -u)" -eq 0 ]; then
+      ACCESS=$(test_as "$MONGOD_USER" -r "$DBPATH" -a -w "$DBPATH" -a -x "$DBPATH")
+    fi
+    case "$ACCESS" in
+      yes)
+        echo "$PASS dbpath-permissions: $DBPATH is readable, writable and traversable by the MongoDB service user $MONGOD_USER (from $USER_SOURCE; owner ${OWNER:-unknown})" ;;
+      no)
+        echo "$FAIL dbpath-permissions: the MongoDB service user $MONGOD_USER (from $USER_SOURCE) cannot read, write and traverse $DBPATH (owner ${OWNER:-unknown})"
+        echo "       Fix: chown -R $MONGOD_USER:$MONGOD_GROUP $DBPATH, and make sure every parent directory is traversable by $MONGOD_USER" ;;
+      *)
+        echo "$UNKNOWN dbpath-permissions: access for the MongoDB service user $MONGOD_USER (from $USER_SOURCE) cannot be tested from this unprivileged run; $DBPATH is ${OWNER:-of unknown ownership}. Re-run with sudo." ;;
+    esac
   fi
 fi
 
@@ -171,13 +226,7 @@ if [ -n "$BLOCK_NAME" ]; then
 fi
 
 # --- Storage engine consistency ---
-CONF_ENGINE=""
-for conf in /etc/mongod.conf /etc/mongodb.conf; do
-  if [ -f "$conf" ]; then
-    CONF_ENGINE=$(grep -E '^\s*engine' "$conf" | awk -F': ' '{print $2}' | tr -d ' ' | head -1)
-    break
-  fi
-done
+CONF_ENGINE=$(conf_get storage.engine)
 CONF_ENGINE="${CONF_ENGINE:-wiredTiger}"
 echo "$INFO storage-engine: Configured engine: $CONF_ENGINE"
 if [ "$CONF_ENGINE" != "wiredTiger" ]; then
@@ -196,3 +245,7 @@ if [ -n "$DISK_USE" ]; then
     echo "$PASS disk-space: $DISK_USE% used on $DBPATH ($DISK_AVAIL available)"
   fi
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

@@ -165,3 +165,7 @@ if systemctl is-active mongod &>/dev/null || systemctl status mongod &>/dev/null
     echo "$PASS systemd-LimitNOFILE: infinity"
   fi
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

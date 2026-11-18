@@ -62,3 +62,7 @@ TZ_NAME=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 
 echo "$INFO clock-timezone: ${TZ_NAME:-unknown}; keep this consistent across every cluster member"
 
 echo "$INFO clock-drift-parameter: mongod caps tolerated drift with maxAcceptableLogicalClockDriftSecs; drift beyond it breaks communication between components"
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

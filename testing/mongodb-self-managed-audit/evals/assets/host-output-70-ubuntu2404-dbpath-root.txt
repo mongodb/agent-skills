@@ -1,0 +1,37 @@
+$ cat /etc/os-release | grep -E '^(NAME|VERSION_ID)='
+NAME="Ubuntu"
+VERSION_ID="24.04"
+
+$ uname -rm
+6.8.0-1021-aws
+aarch64
+
+$ mongod --version | head -1
+db version v7.0.21
+
+$ id mongodb
+uid=999(mongodb) gid=999(mongodb) groups=999(mongodb)
+
+$ sudo ls -ld /var/lib/mongodb
+drwxr-x--- 3 root root 4096 Nov 18 19:56 /var/lib/mongodb
+
+$ sudo bash scripts/check-platform.sh --version 7.0.21 | grep -E 'os:|architecture|kernel-version|os-supported|Fix'
+[INFO] os: Ubuntu 24.04
+[INFO] architecture: aarch64
+[PASS] kernel-version: 6.8.0-1021-aws is outside the documented kernel restrictions for 7.0.21
+[FAIL] os-supported: Ubuntu 24.04 (aarch64) is not supported for MongoDB Enterprise 7.0 (support matrix as read 2026-11-18)
+       Fix: move to a platform listed for 7.0, or to a MongoDB release listed for this platform. See https://www.mongodb.com/docs/enterprise-platform-support/
+
+$ sudo bash scripts/check-storage.sh | grep -A1 -E 'dbpath'
+[INFO] dbpath: Using /var/lib/mongodb
+=== Storage & Filesystem Check ===
+--
+[FAIL] dbpath-permissions: the MongoDB service user mongodb (from account) cannot read, write and traverse /var/lib/mongodb (owner root:root 750)
+       Fix: chown -R mongodb:mongodb /var/lib/mongodb, and make sure every parent directory is traversable by mongodb
+
+$ sudo bash scripts/check-mongod.sh --version 7.0.21 | grep -E 'version|mongod-running'
+[WARN] mongod-running: mongod is not running — checking config files only
+[INFO] mongod-version: 7.0.21
+[PASS] mongod-version-support: 7.0.21 is a supported version (7.0, 8.0, 8.3 or 9.0)
+[PASS] mongod-version-match: installed mongod 7.0.21 matches the audited version 7.0.21
+

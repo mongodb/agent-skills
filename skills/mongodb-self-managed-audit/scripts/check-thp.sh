@@ -22,9 +22,11 @@ UNKNOWN="[UNKNOWN]"
 
 echo "=== Transparent Huge Pages (THP) Check ==="
 
-THP_ENABLED_PATH="/sys/kernel/mm/transparent_hugepage/enabled"
-THP_DEFRAG_PATH="/sys/kernel/mm/transparent_hugepage/defrag"
-THP_MAX_PTES_PATH="/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none"
+# THP_SYSFS_DIR is a test seam only; never set it on a real audit.
+THP_DIR="${THP_SYSFS_DIR:-/sys/kernel/mm/transparent_hugepage}"
+THP_ENABLED_PATH="$THP_DIR/enabled"
+THP_DEFRAG_PATH="$THP_DIR/defrag"
+THP_MAX_PTES_PATH="$THP_DIR/khugepaged/max_ptes_none"
 
 # Extract the bracketed active value, e.g. "always madvise [never]" -> "never"
 active_value() {
@@ -50,11 +52,15 @@ else
 fi
 
 # --- THP enabled ---
+# A file that exists but cannot be read, or has no bracketed value, is a failed
+# read: UNKNOWN, never a finding scored against an empty value.
 if [ -f "$THP_ENABLED_PATH" ]; then
   ACTIVE=$(active_value "$THP_ENABLED_PATH")
-  echo "$INFO thp-enabled-raw: $(cat "$THP_ENABLED_PATH")"
+  echo "$INFO thp-enabled-raw: $(cat "$THP_ENABLED_PATH" 2>/dev/null)"
 
-  if [ "$WANT_THP" = "on" ]; then
+  if [ -z "$ACTIVE" ]; then
+    echo "$UNKNOWN thp-enabled: $THP_ENABLED_PATH could not be read or has no active value; re-check on the host, with sudo if this run was unprivileged"
+  elif [ "$WANT_THP" = "on" ]; then
     case "$ACTIVE" in
       always)
         echo "$PASS thp-enabled: THP is 'always', as MongoDB 8.0 and later require" ;;
@@ -89,7 +95,9 @@ fi
 if [ -f "$THP_DEFRAG_PATH" ]; then
   DEFRAG_ACTIVE=$(active_value "$THP_DEFRAG_PATH")
 
-  if [ "$WANT_THP" = "on" ]; then
+  if [ -z "$DEFRAG_ACTIVE" ]; then
+    echo "$UNKNOWN thp-defrag: $THP_DEFRAG_PATH could not be read or has no active value; re-check on the host, with sudo if this run was unprivileged"
+  elif [ "$WANT_THP" = "on" ]; then
     if [ "$DEFRAG_ACTIVE" = "defer+madvise" ]; then
       echo "$PASS thp-defrag: defrag is 'defer+madvise', as MongoDB 8.0 and later require"
     else
@@ -112,7 +120,9 @@ fi
 if [ "$WANT_THP" = "on" ]; then
   if [ -f "$THP_MAX_PTES_PATH" ]; then
     MAX_PTES=$(cat "$THP_MAX_PTES_PATH" 2>/dev/null)
-    if [ "$MAX_PTES" = "0" ]; then
+    if [ -z "$MAX_PTES" ]; then
+      echo "$UNKNOWN thp-max-ptes-none: $THP_MAX_PTES_PATH could not be read; re-check on the host, with sudo if this run was unprivileged"
+    elif [ "$MAX_PTES" = "0" ]; then
       echo "$PASS thp-max-ptes-none: khugepaged max_ptes_none is 0, as MongoDB 8.0 and later require"
     else
       echo "$WARN thp-max-ptes-none: khugepaged max_ptes_none is $MAX_PTES; MongoDB 8.0 and later expect 0"
@@ -174,3 +184,7 @@ if [ "$PERSISTENT" -eq 0 ]; then
     echo "         echo never > /sys/kernel/mm/transparent_hugepage/defrag"
   fi
 fi
+
+# Reaching the end means every check in this category ran. run-all-checks.sh
+# treats any other exit status as an incomplete category.
+exit 0

@@ -10,6 +10,7 @@ description: >
   Community Edition, non-Linux hosts, or general performance tuning.
 metadata:
   version: 1.0.0
+  labelText: Audit self-managed MongoDB Enterprise deployments for production readiness.
 license: Apache-2.0
 ---
 
@@ -90,7 +91,13 @@ over per-script runs.
   checks score against `8.0`, and the kernel rule uses the patch component.
 - Any other value is a hard error: the run exits non-zero with a usage line
   rather than degrading silently.
-- `--dbpath` overrides dbPath autodetection.
+- `--dbpath` overrides dbPath autodetection. `MONGO_CONF_FILE=<path>` points the
+  checks at a config file outside the standard locations, and
+  `MONGO_SERVICE_USER=<user>` names a custom service account for the dbPath
+  access test.
+- Pass the full installed version (as `mongod --version` reports it). The
+  kernel and OS support verdicts depend on the patch, and a bare major.minor
+  takes the strictest reading.
 - Checks gated by version use a minimum version. The 8.0-and-later checks skip
   automatically when `--version` is 7.0.
 
@@ -126,6 +133,12 @@ Run it after any edit to `scripts/lib-version.sh`. It asserts the full
 SERVER-125742 matrix, including the case the public docs contradict: on
 8.0.21 through 8.0.29, kernel 7.0.14 is not a remedy. Exit 0 means every band
 still scores correctly.
+
+`bash scripts/test-checks.sh` runs the check scripts against faked inputs on
+Linux: the kernel remedy text, JavaScript under SELinux, nested TLS, dbPath
+access as the service user, failed reads, the OS support matrix, incomplete
+categories and the installed-version match. Run it after editing any check
+script.
 
 Every script emits one line per check:
 
