@@ -23,15 +23,15 @@ Use only the skills named here. Follow every row that matches part of the task; 
 | The user wants to… | Go to |
 | --- | --- |
 | Get a database, or choose between Atlas, local, and self-managed deployments | [Recommend a deployment](#recommend-a-deployment) |
-| Model application data: choose document shapes, decide when to embed or reference, migrate relational data, avoid unbounded arrays, enforce validation, or model time-series data. | mongodb-schema-design |
-| Describe a question in plain English and get a safe, read-only MongoDB find query or aggregation pipeline. | mongodb-natural-language-querying |
-| Diagnose or improve a slow query, select or validate indexes, interpret explain() output, or use Atlas Performance Advisor recommendations. | mongodb-query-optimizer |
-| Build full-text, semantic/vector, or hybrid search, including: RAG, autocomplete, typo tolerance, fuzzy matching, and relevance tuning. | mongodb-search-and-ai |
-| Build or troubleshoot real-time stream processing, including Kafka, S3, Lambda, change-stream, source, and sink integrations. | mongodb-atlas-stream-processing |
-| Configure driver connection pools and timeouts, reuse clients in serverless environments, or troubleshoot connection errors. | mongodb-connection |
-| Configure, authenticate, or troubleshoot credentials for the MongoDB MCP Server. | mongodb-mcp-setup |
-| Estimate the storage and memory cost of Queryable Encryption on a collection. | mongodb-qe-size-estimation |
-| Anything else in MongoDB: CRUD, aggregation syntax, transactions, change streams, drivers and ODMs (Node, PyMongo, Mongoose, Go, Java, C#) | Stay here. Fetch current docs via [Fetch relevant docs](#fetch-relevant-docs) — the drivers index for driver and ODM questions, the top-level index for everything else. |
+| Model application data: choose document shapes, decide when to embed or reference, migrate relational data, avoid unbounded arrays, enforce validation, or model time-series data. | `mongodb-schema-design` skill |
+| Describe a question in plain English and get a safe, read-only MongoDB find query or aggregation pipeline. | `mongodb-natural-language-querying` skill |
+| Diagnose or improve a slow query, select or validate indexes, interpret explain() output, or use Atlas Performance Advisor recommendations. | `mongodb-query-optimizer` skill |
+| Build full-text, semantic/vector, or hybrid search, including: RAG, autocomplete, typo tolerance, fuzzy matching, and relevance tuning. | `mongodb-search-and-ai` skill |
+| Build or troubleshoot real-time stream processing, including Kafka, S3, Lambda, change-stream, source, and sink integrations. | `mongodb-atlas-stream-processing` skill |
+| Configure driver connection pools and timeouts, reuse clients in serverless environments, or troubleshoot connection errors. | `mongodb-connection` skill |
+| Configure, authenticate, or troubleshoot credentials for the MongoDB MCP Server. | `mongodb-mcp-setup` skill |
+| Estimate the storage and memory cost of Queryable Encryption on a collection. | `mongodb-qe-size-estimation` skill |
+| Anything else in MongoDB: CRUD, aggregation syntax, transactions, change streams, drivers and ODMs (Node, PyMongo, Mongoose, Go, Java, C#) | Answer from current docs via [Fetch relevant docs](#fetch-relevant-docs) |
 
 When the task matches one of the skills listed:
 
