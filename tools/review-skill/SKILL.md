@@ -35,7 +35,10 @@ cat ~/.config/skill-validator/review-state.yaml 2>/dev/null
 > 2. **Re-run prerequisite checks**
 > 3. **Change environment** — switch between full and structural-only
 
-Option 1: read `llm_scoring` from the file and skip to Step 2.
+Option 1: run `skill-validator --version` first. If the command fails or the
+version does not include `-grove`, the grove-platform fork is not the active
+installation: tell the user and continue below as if they chose option 2.
+Otherwise read `llm_scoring` from the file and skip to Step 2.
 Options 2-3: continue below.
 
 **If no state file exists**, or the user chose to re-check/change, ask:
@@ -60,9 +63,9 @@ If not found, search common locations (`/usr/local/bin`, `/opt/homebrew/bin`,
 `~/go/bin`). If found but not on PATH, tell the user. If not found anywhere,
 follow [references/install-skill-validator.md](references/install-skill-validator.md).
 
-If `--version` is not at least v1.5.1, help the user upgrade with
-`brew upgrade skill-validator` or
-`go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest`.
+If `--version` does not include `-grove` (the grove-platform fork this repo
+uses), help the user install the fork by following
+[references/install-skill-validator.md](references/install-skill-validator.md).
 
 Do NOT proceed until this succeeds.
 

@@ -4,10 +4,14 @@ on:
   pull_request:
     paths:
       - "skills/**"
+      - ".github/workflows/validate-skills.yml"
+      - ".github/scripts/validate-skills.sh"
 
 permissions:
   contents: read
 
+# TODO: Move validator installation and both validation steps into a reusable
+# workflow (`workflow_call`) in `grove-platform/skill-validator`
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -17,14 +21,28 @@ jobs:
           # Full history is needed so git diff can compare against the base branch
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
-
       - name: Install skill-validator
-        run: go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest
+        # Uses the grove-platform fork, which adds MongoDB-specific checks
+        # (e.g. metadata.labelText) and --allow-token-warnings. The fork keeps
+        # the upstream Go module path, so it cannot be installed with
+        # `go install`; download the release binary instead.
+        #
+        # The version is pinned so a stricter validator release cannot fail
+        # unrelated open PRs. To upgrade, bump SKILL_VALIDATOR_VERSION in the
+        # same PR that fixes any skills the new release flags.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SKILL_VALIDATOR_VERSION: v1.8.0-grove.1
+        run: |
+          install_dir="$RUNNER_TEMP/skill-validator"
+          mkdir -p "$install_dir"
+          gh release download "$SKILL_VALIDATOR_VERSION" --repo grove-platform/skill-validator \
+            --pattern '*_linux_amd64.tar.gz' --pattern '*_checksums.txt' \
+            --dir "$install_dir"
+          (cd "$install_dir" && sha256sum --check --ignore-missing ./*_checksums.txt)
+          tar -xzf "$install_dir"/*_linux_amd64.tar.gz -C "$install_dir" skill-validator
+          echo "$install_dir" >> "$GITHUB_PATH"
+          "$install_dir/skill-validator" --version
 
       - name: Validate changed skills
         env:
@@ -36,5 +54,5 @@ jobs:
       - name: Validate all skills
         run: |
           echo "## All Skills" >> "$GITHUB_STEP_SUMMARY"
-          skill-validator check --strict --emit-annotations -o markdown skills/ \
+          skill-validator check --strict --allow-token-warnings --emit-annotations -o markdown skills/ \
             2>&1 | tee >(grep -v '^::' >> "$GITHUB_STEP_SUMMARY")

@@ -64,7 +64,9 @@ for skill in "${changed_skills[@]}"; do
   # We use process substitution to:
   # 1. Send all output (including ::error commands) to stdout for GitHub Actions
   # 2. Filter out ::error/::warning/::notice lines before writing to the summary
-  skill-validator check --strict --emit-annotations -o markdown "skills/$skill/" \
+  # --allow-token-warnings keeps token-budget warnings visible in the report and
+  # annotations without failing the check; hard token limits still fail.
+  skill-validator check --strict --allow-token-warnings --emit-annotations -o markdown "skills/$skill/" \
     > >(tee >(grep -v '^::' >> "${GITHUB_STEP_SUMMARY:-/dev/null}")) 2>&1 || FAILED=1
 done
 
