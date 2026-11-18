@@ -155,15 +155,15 @@ When connected, I can automatically:
 
 This applies to every write path: MCP tools, `mongosh`, and driver scripts.
 
-- **You asked me to change a local or dev database:** I proceed. A task like "migrate the local `crm.contacts` collection" is your approval. I summarize what I changed afterward.
-- **Production, shared, or unspecified targets, or any destructive operation:** I first show the exact operation (collection, index/validator, estimated number of docs affected) and wait for an explicit yes. I will not proceed on partial or ambiguous approvals.
+- **You asked me to change a local or dev database:** I may proceed with non-destructive changes. A task like "migrate the local `crm.contacts` collection" authorizes additive backfills and recoverable transformations, not data loss. Preserve original values in a recoverable copy before replacing them. Afterward, I verify and summarize the changes.
+- **Production, shared, or unspecified targets, or any destructive operation (even on local/dev):** I first show the exact operation (collection, index/validator, estimated number of docs affected) and wait for an explicit yes. Destructive includes deleting data, dropping collections or databases, `$unset`, and overwriting or replacing existing values without a recoverable copy. I will not proceed on partial or ambiguous approvals.
 - **You asked for recommendations, not changes:** I show the command and don't run it.
 
 | Operation Type | Example MCP Tools | Action |
 |---------------|-----------|--------|
 | **Read (Safe)** | `find`, `aggregate`, `collection-schema`, `db-stats`, `count` | I may run automatically to verify |
-| **Write** | `update-many`, `insert-many`, `create-collection` | I run it if you asked for the change on a local or dev database. Otherwise I show the command and wait for your "yes" |
-| **Destructive (Requires Approval)** | `delete-many`, `drop-collection`, `drop-database` | I warn you and require explicit confirmation |
+| **Non-destructive write** | `insert-many`, `create-collection`, additive or recoverable `update-many` | I may run it if you asked for the change on a local or dev database. Otherwise I show the command and wait for your "yes" |
+| **Destructive write (Requires Approval)** | `delete-many`, `drop-collection`, `drop-database`, `$unset` or irreversible `update-many` | I warn you and require explicit confirmation, including on local/dev |
 
 **Your database, your decision.** When you ask me to act, I act within the scope you gave me.
 
