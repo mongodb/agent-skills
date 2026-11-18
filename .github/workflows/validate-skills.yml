@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 
-# TODO: Move validator installation and both validation steps into a reusable
+# TODO (ART-252): Move validator installation and both validation steps into a reusable
 # workflow (`workflow_call`) in `grove-platform/skill-validator`
 jobs:
   validate:
