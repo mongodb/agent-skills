@@ -35,12 +35,13 @@ Use only the skills named here. Follow every row that matches part of the task; 
 
 When the task matches one of the skills listed:
 
-1. Check whether that skill is already installed. If it is, load it into your own context, not a subagent.
-2. If the skill is missing, ask the user for permission to install it. If the user grants permission, run `npx skills add mongodb/agent-skills -s <name>` (`-g` global, `-y` non-interactive) to install the skill with name `<name>`. 
-3. If the skills CLI is unavailable or fails, fetch the skill from https://github.com/mongodb/agent-skills/tree/main/skills.
-4. If the user declines, or a permission check blocks the install, stay here and fetch current docs via [Fetch relevant docs](#fetch-relevant-docs). When it was blocked, say so, give the user the install command to run themselves, and do not fetch the skill another way.
-
-Do not answer the task itself (queries, indexes, schemas, search pipelines, connection settings) until the skill's guidance is loaded or the user has declined it.
+1. If the skill is available, load it into your own context, not a subagent, and go to step 5.
+2. Ask the user for permission to install it, and wait.
+   - **Yes**: Run `npx skills add mongodb/agent-skills -s <name> -y` (add `-g` for a global install). If the skill is now available, load it and go to step 5. If a permission check blocked the command, say so, give the user the command to run themselves, and go to step 4. Otherwise, go to step 3.
+   - **No**: Go to step 4.
+3. Fetch `https://raw.githubusercontent.com/mongodb/agent-skills/main/skills/<name>/SKILL.md` and each `references/<file>` it says to read for this task from the same directory. If the `SKILL.md` fetch fails, go to step 4. Otherwise, go to step 5.
+4. Follow [Fetch relevant docs](#fetch-relevant-docs).
+5. Answer the user's task using both this skill and the loaded skill or the fetched docs.
 
 Official plugins bundle the MCP server and every skill, see https://www.mongodb.com/docs/agent-skills.md?utm_source=agent-skills.
 
