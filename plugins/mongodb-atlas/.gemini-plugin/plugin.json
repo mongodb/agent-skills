@@ -1,0 +1,39 @@
+{
+  "name": "mongodb-atlas",
+  "displayName": "MongoDB Atlas",
+  "version": "1.2.1",
+  "description": "Connect to MongoDB Atlas through the MongoDB-hosted Atlas MCP Server. Sign in with your Atlas account to explore databases and collections, run queries and aggregations, design schemas, optimize slow queries, build Atlas Search and Vector Search, and manage Atlas resources such as clusters, projects, database users, network access, and stream processing.",
+  "author": {
+    "name": "MongoDB",
+    "email": "agent-plugins@mongodb.com",
+    "url": "https://www.mongodb.com"
+  },
+  "repository": "https://github.com/mongodb/agent-skills",
+  "homepage": "https://www.mongodb.com/docs/mcp-server/get-started/",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mongodb",
+    "atlas",
+    "database",
+    "mcp",
+    "vector-search"
+  ],
+  "skills": [
+    "./skills/mongodb-atlas-stream-processing/SKILL.md",
+    "./skills/mongodb-connection/SKILL.md",
+    "./skills/mongodb-natural-language-querying/SKILL.md",
+    "./skills/mongodb-qe-size-estimation/SKILL.md",
+    "./skills/mongodb-query-optimizer/SKILL.md",
+    "./skills/mongodb-schema-design/SKILL.md",
+    "./skills/mongodb-search-and-ai/SKILL.md"
+  ],
+  "mcpServers": {
+    "mongodb-atlas": {
+      "type": "http",
+      "url": "https://mcp.mongodb.com/",
+      "oauth": {
+        "clientId": "google-gemini"
+      }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "fields": [
+    {
+      "path": "ssn",
+      "bsonType": "string",
+      "queries": { "queryType": "equality" }
+    },
+    {
+      "path": "name",
+      "bsonType": "string",
+      "queries": [
+        { "queryType": "prefix", "strMinQueryLength": 2, "strMaxQueryLength": 10 },
+        { "queryType": "suffix", "strMinQueryLength": 2, "strMaxQueryLength": 10 }
+      ]
+    },
+    {
+      "path": "email",
+      "bsonType": "string",
+      "queries": [
+        { "queryType": "equality" },
+        { "queryType": "prefix", "strMinQueryLength": 2, "strMaxQueryLength": 10 }
+      ]
+    },
+    {
+      "path": "bio",
+      "bsonType": "string",
+      "queries": [
+        { "queryType": "prefix", "strMinQueryLength": 2, "strMaxQueryLength": 10 },
+        { "queryType": "substring", "strMaxLength": 50, "strMinQueryLength": 3, "strMaxQueryLength": 6 }
+      ]
+    },
+    {
+      "path": "age",
+      "bsonType": "int",
+      "queries": [
+        { "queryType": "equality" },
+        { "queryType": "range", "min": 0, "max": 120 }
+      ]
+    },
+    {
+      "path": "note",
+      "bsonType": "string",
+      "queries": { "queryType": "range", "min": 0, "max": 100 }
+    },
+    {
+      "path": "meta",
+      "bsonType": "object",
+      "queries": { "queryType": "equality" }
+    },
+    {
+      "path": "count",
+      "bsonType": "int",
+      "queries": {
+        "queryType": "substring",
+        "strMaxLength": 50,
+        "strMinQueryLength": 3,
+        "strMaxQueryLength": 6
+      }
+    },
+    {
+      "path": "labels",
+      "bsonType": "string",
+      "queries": { 
+        "queryType": "substringPreview",
+        "strMaxLength": 20,
+        "strMinQueryLength": 2,  
+        "strMaxQueryLength": 6
+      }
+    }
+  ]
+}

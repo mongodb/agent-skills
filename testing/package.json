@@ -5,10 +5,10 @@
   "description": "Shared test tooling for agent-skills evals (schema validation of evals.json).",
   "scripts": {
     "validate:evals": "node validate-evals.mjs",
-    "test": "node --test validate-evals.test.mjs lint-item-echo.test.mjs"
+    "test": "node --test validate-evals.test.mjs lint-item-echo.test.mjs qa-eval-workflow.test.mjs"
   },
   "devDependencies": {
     "ajv": "^8.17.1",
-    "glob": "^11.0.0"
+    "glob": "^14.0.6"
   }
 }

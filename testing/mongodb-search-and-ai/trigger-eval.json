@@ -1,0 +1,114 @@
+[
+  {
+    "prompt": "I'm new to MongoDB search, where do I start?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "How does search work in MongoDB?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "What's the difference between Atlas Search and Vector Search?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Which search type should I use?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Can you walk me through setting up search on some sample data so I can learn how it works?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "I want to try vector search but I don't have any data yet",
+    "should_trigger": true
+  },
+  {
+    "prompt": "How does automated embedding work in Atlas?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Can you explain hybrid search?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Show me semantic search on the sample_mflix movies collection",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Build a full-text search index with fuzzy matching for my product catalog",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Create an autocomplete feature with typo tolerance for product names",
+    "should_trigger": true
+  },
+  {
+    "prompt": "How do I implement vector search for my RAG application?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "I need faceted search over my products with counts per category",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Find documents where 'machine learning' appears in title or description",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Combine keyword and semantic results with reciprocal rank fusion",
+    "should_trigger": true
+  },
+  {
+    "prompt": "My $search query returns no results even though the documents exist",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Find all users with age greater than 25",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Write me an aggregation pipeline that groups orders by month and calculates total revenue",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Convert this SQL to MongoDB: SELECT * FROM users WHERE age > 25",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Why is this query slow? db.orders.find({status: 'shipped', region: 'US'}).sort({date: -1})",
+    "should_trigger": false
+  },
+  {
+    "prompt": "What indexes should I create for db.users.find({email: 1}).sort({createdAt: -1})?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "Should I embed orders inside the customer document or use a separate collection?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "How do I connect to MongoDB from my Node.js application?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "My Node.js app keeps getting ECONNREFUSED when connecting to MongoDB Atlas. How do I fix my connection string?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "How do I set up a stream processor in Atlas to read from Kafka and write to my MongoDB collection?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "What's the difference between updateOne and replaceOne in MongoDB?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "How do I install and configure the MongoDB MCP server?",
+    "should_trigger": false
+  },
+  {
+    "prompt": "I'm new to MongoDB, how do I model a many-to-many relationship between students and courses?",
+    "should_trigger": false
+  }
+]

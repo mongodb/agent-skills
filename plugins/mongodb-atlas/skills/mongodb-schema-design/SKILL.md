@@ -3,7 +3,8 @@ name: mongodb-schema-design
 description: MongoDB schema design patterns and anti-patterns. Use when designing data models, reviewing schemas, migrating from SQL, migrating or cleaning up existing collections with inconsistent document shapes, deriving schema changes from workload data, or troubleshooting performance issues caused by schema problems. Triggers on "design schema", "embed vs reference", "MongoDB data model", "schema review", "schema drift", "inconsistent fields", "backfill", "migrate existing documents", "schema versioning", "access patterns", "$queryStats", "query stats", "slow query log", "unbounded arrays", "one-to-many", "tree structure", "16MB limit", "schema validation", "JSON Schema", "time series", "schema migration", "polymorphic", "TTL", "data lifecycle", "archive", "index explosion", "unnecessary indexes", "approximation pattern", "document versioning".
 license: Apache-2.0
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
+  labelText: "Design better data models. Get help with schema best-practices, tuning for your use case, and avoiding antipatterns."
 ---
 
 # MongoDB Schema Design

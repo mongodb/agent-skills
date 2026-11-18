@@ -7,7 +7,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "mongodb-mcp-server@<3"
+        "mongodb-mcp-server@<4"
       ],
       "env": {
         "MDB_MCP_CONNECTION_STRING": "${MDB_MCP_CONNECTION_STRING}",
