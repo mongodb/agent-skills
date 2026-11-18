@@ -36,9 +36,14 @@ jobs:
 
       - name: Check for drift
         run: |
-          if [ -n "$(git status --porcelain -- plugins/mongodb/skills plugins/mongodb/assets plugins/mongodb-atlas/skills plugins/mongodb-atlas/assets)" ]; then
-            echo ""
+          set -euo pipefail
+          generated=$(git status --porcelain -- plugins/mongodb/skills plugins/mongodb/assets plugins/mongodb-atlas/skills plugins/mongodb-atlas/assets)
+          mirrored=$(git status --porcelain -- plugins/mongodb/LICENSE plugins/mongodb-atlas/LICENSE plugins/mongodb-atlas/.gemini-plugin/plugin.json)
+          if [ -n "$generated" ]; then
             echo "::error::Plugin skill/asset copies are out of sync with the canonical sources."
             echo "Run 'node tools/sync-plugin-skills.ts' in this public repo and commit only generated copies."
-            exit 1
           fi
+          if [ -n "$mirrored" ]; then
+            echo "::error::Plugin licenses or Gemini manifest are out of sync. Repair them through the private authoring repo and mirror; do not include them in a public generation PR."
+          fi
+          [ -z "$generated" ] && [ -z "$mirrored" ]
