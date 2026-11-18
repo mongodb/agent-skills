@@ -1,0 +1,21 @@
+$ uname -r
+6.19.2-1.el9.x86_64
+$ bash scripts/run-all-checks.sh --version 7.0
+=== OS & Platform ===
+[PASS] distro: Rocky Linux 9.5
+[FAIL] kernel-version: Kernel 6.19.2-1.el9.x86_64 is INCOMPATIBLE with MongoDB (crash on startup). Affected range is 6.19 through 7.0.13; upgrade to kernel 7.0.14 or later.
+[PASS] arch: x86_64 little-endian
+[PASS] cpu-cores: 8 real cores
+
+=== Transparent Huge Pages ===
+[PASS] thp-enabled: /sys/kernel/mm/transparent_hugepage/enabled is always madvise [never]
+
+=== Ulimits ===
+[WARN] ulimit-nofile: open files limit is 32768, expected 64000 or more
+
+============================================================
+ SUMMARY
+============================================================
+ PASS:  4
+ WARN:  1
+ FAIL:  1

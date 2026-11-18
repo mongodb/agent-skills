@@ -1,0 +1,11 @@
+$ uname -r
+7.0.14-1.el9.x86_64
+$ rpm -q mongodb-enterprise-server
+mongodb-enterprise-server-8.0.25-1.el9.x86_64
+$ sudo systemctl status mongod
+   Active: activating (auto-restart) (Result: exit-code)
+  Process: 41122 ExecStart=/usr/bin/mongod --config /etc/mongod.conf (code=exited, status=1/FAILURE)
+
+$ sudo tail -4 /var/log/mongodb/mongod.log
+{"t":{"$date":"2026-09-15T18:22:41.007Z"},"s":"F","c":"CONTROL","id":12257600,"ctx":"main","msg":"Detected unsupported Linux kernel version","attr":{"kernelVersion":"7.0.14-1.el9.x86_64"}}
+{"t":{"$date":"2026-09-15T18:22:41.007Z"},"s":"F","c":"CONTROL","id":12257601,"ctx":"main","msg":"MongoDB is incompatible with this Linux kernel version and will now exit"}

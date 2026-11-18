@@ -75,3 +75,9 @@ skills:
       - nvillahermosa-mdb
     last_reviewed: 2026-09-25
     review_cadence_days: 90
+
+  - name: mongodb-self-managed-audit
+    dris:
+      - aktasch
+    last_reviewed: 2026-10-05
+    review_cadence_days: 90

@@ -1,0 +1,40 @@
+$ bash scripts/run-all-checks.sh --dbpath /var/lib/mongo
+============================================================
+ MongoDB Self-Managed Production Readiness Check
+============================================================
+
+=== OS & Platform ===
+[PASS] distro: Red Hat Enterprise Linux 9.4
+[PASS] kernel-version: 5.14.0-427.13.1.el9_4.x86_64 is outside the incompatible 6.19-7.0.13 range
+[PASS] arch: x86_64 little-endian
+[PASS] cpu-cores: 16 real cores
+[PASS] avx: AVX supported
+
+=== Transparent Huge Pages ===
+[PASS] thp-enabled: /sys/kernel/mm/transparent_hugepage/enabled is always madvise [never]
+[PASS] thp-defrag: /sys/kernel/mm/transparent_hugepage/defrag is always defer defer+madvise madvise [never]
+[INFO] thp-max-ptes-none: /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none is 511
+[INFO] thp-overcommit: /proc/sys/vm/overcommit_memory is 0
+[PASS] thp-persistent: tuned profile sets THP at boot
+
+=== Kernel & System ===
+[PASS] vm.swappiness: 1 (recommended: 1)
+[PASS] vm.zone_reclaim_mode: 0
+[PASS] kernel.pid_max: 4194304
+[PASS] fs.file-max: 9223372036854775807
+
+=== Ulimits ===
+[PASS] ulimit-nofile: open files limit is 64000
+[PASS] ulimit-nproc: processes limit is 64000
+
+=== MongoDB Process & Config ===
+[PASS] mongod-running: mongod is running as user mongod
+[PASS] mongod-version: 8.0.4
+[PASS] mongod-auth: security.authorization is enabled
+
+============================================================
+ SUMMARY
+============================================================
+ PASS:  17
+ WARN:  0
+ FAIL:  0
