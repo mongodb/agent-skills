@@ -88,4 +88,4 @@ db.addresses.aggregate([
 // If addresses always belong to customers, they should be embedded
 ```
 
-Reference: [Schema Design Process](https://mongodb.com/docs/manual/data-modeling/schema-design-process/)
+Reference: [Schema Design Process](https://mongodb.com/docs/manual/data-modeling/schema-design-process/?utm_source=agent-skills)

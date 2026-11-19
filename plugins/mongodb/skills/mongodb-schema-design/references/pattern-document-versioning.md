@@ -89,7 +89,7 @@ async function getPolicyAtVersion(policyId, version) {
 
 **Using Transactions for Atomicity:**
 
-The `updatePolicy` function writes to two collections (inserting a revision **and** updating the current document). It may or may not be prudent to wrap the call in a [multi-document transaction](https://mongodb.com/docs/manual/core/transactions/) to guarantee both writes succeed or fail together, depending on the use case:
+The `updatePolicy` function writes to two collections (inserting a revision **and** updating the current document). It may or may not be prudent to wrap the call in a [multi-document transaction](https://mongodb.com/docs/manual/core/transactions/?utm_source=agent-skills) to guarantee both writes succeed or fail together, depending on the use case:
 
 ```javascript
 const session = client.startSession()
@@ -163,4 +163,4 @@ db.currentPolicies.aggregate([
 // Finds documents where revision history has gaps
 ```
 
-Reference: [Keep a History of Document Versions](https://mongodb.com/docs/manual/data-modeling/design-patterns/data-versioning/document-versioning/)
+Reference: [Keep a History of Document Versions](https://mongodb.com/docs/manual/data-modeling/design-patterns/data-versioning/document-versioning/?utm_source=agent-skills)

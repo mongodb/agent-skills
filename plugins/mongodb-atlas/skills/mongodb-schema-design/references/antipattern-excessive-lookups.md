@@ -81,4 +81,4 @@ db.products.aggregate([
 
 Atlas Schema Suggestions flags: "Reduce $lookup operations"
 
-Reference: [Reduce Lookup Operations](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-lookup-operations/)
+Reference: [Reduce Lookup Operations](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/reduce-lookup-operations/?utm_source=agent-skills)
