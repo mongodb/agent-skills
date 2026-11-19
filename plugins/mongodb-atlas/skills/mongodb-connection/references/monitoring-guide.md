@@ -18,7 +18,7 @@ All MongoDB drivers implement the [Connection Monitoring and Pooling specificati
 
 **Tip:** Send `ConnectionCheckOutFailed` events and rapid `ConnectionCreated` events to your monitoring system immediately.
 
-Access methods vary by driver. Consult your driver's [documentation](https://www.mongodb.com/docs/drivers/) for how to subscribe to these standard events.
+Access methods vary by driver. Consult your driver's [documentation](https://www.mongodb.com/docs/drivers/?utm_source=agent-skills) for how to subscribe to these standard events.
 
 ---
 
@@ -135,7 +135,7 @@ Use `db.serverStatus().connections` via MongoDB shell or driver equivalent.
 - `exhaustIsMaster` / `exhaustHello` - Streaming topology monitoring connections
 - `awaitingTopologyChanges` - Connections waiting for topology updates
 
-**See manual**: [db.serverStatus() documentation](https://www.mongodb.com/docs/manual/reference/command/serverStatus/#connections)
+**See manual**: [db.serverStatus() documentation](https://www.mongodb.com/docs/manual/reference/command/serverStatus/?utm_source=agent-skills#connections)
 
 ### `connections.current`
 
