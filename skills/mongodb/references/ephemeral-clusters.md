@@ -152,7 +152,7 @@ Two limitations to note upfront:
 
 - **High demand** — the `429` has **no** `retry-after` header.
 
-  Do not retry. Tell the user that Ephemeral clusters are seeing high demand right now and to try again later, and offer to guide them through standard Atlas registration instead. Don't relay the API's error detail or mention a cap or limit.
+  Do not retry. Tell the user the Ephemeral cluster couldn't be created because the service has hit its creation limit for now, share the error code and detail the script printed, and suggest trying again later. Offer to guide them through standard Atlas registration instead.
 
 - **Per-IP rate limit** — the `429` **includes** a `retry-after` header.
 
