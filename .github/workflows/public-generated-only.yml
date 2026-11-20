@@ -1,0 +1,45 @@
+name: Public Generated Files Only
+
+# Run the path policy from the trusted public default branch. Do not check out
+# or execute PR content in this pull_request_target workflow.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  generated-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Limit public PRs to generated plugin copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$CHANGED_FILES" -gt 3000 ]; then
+            echo "::error::PR exceeds the GitHub changed-files API limit. Split it before review."
+            exit 1
+          fi
+          gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files" --paginate \
+            --jq '.[] | {filename, status, previous_filename}' > "$RUNNER_TEMP/changed-files.jsonl"
+          # Count file records, not paths: a rename contributes two paths but
+          # only one record to the pull request's changed_files count.
+          if ! jq -se --argjson expected "$CHANGED_FILES" \
+            'length == $expected and all(.[]; (.filename | type) == "string" and (.status != "renamed" or (.previous_filename | type) == "string"))' \
+            "$RUNNER_TEMP/changed-files.jsonl" > /dev/null; then
+            echo "::error::Could not inspect every changed file and rename source."
+            exit 1
+          fi
+          bad=0
+          while IFS= read -r -d '' file; do
+            case "$file" in
+              plugins/mongodb/skills/*|plugins/mongodb/assets/*|plugins/mongodb-atlas/skills/*|plugins/mongodb-atlas/assets/*) ;;
+              *) printf '::error::Public PR changes a private-authored path: %q\n' "$file"; bad=1 ;;
+            esac
+          done < <(jq -srj '.[] | (.filename, (if .status == "renamed" then .previous_filename else empty end)) | ., "\u0000"' "$RUNNER_TEMP/changed-files.jsonl")
+          [ "$bad" -eq 0 ]
