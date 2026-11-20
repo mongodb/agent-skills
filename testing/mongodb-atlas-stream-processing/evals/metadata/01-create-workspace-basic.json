@@ -40,7 +40,7 @@
     },
     {
       "name": "workspace_name_correct",
-      "description": "workspaceName='dev-streams'"
+      "description": "workspaceName is 'dev-streams' (or a timestamped variant such as 'dev-streams-test-{timestamp}')"
     },
     {
       "name": "cloud_provider_aws",
