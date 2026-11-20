@@ -96,14 +96,25 @@
       "name": "stop-processor",
       "prompt": "Stop the processor named 'test-processor' in workspace 'dev-streams'",
       "expected_output": "Calls atlas-streams-manage with action='stop-processor', workspaceName='dev-streams', resourceName='test-processor'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-manage with action 'stop-processor'",
+        "Passes workspaceName 'dev-streams' and resourceName 'test-processor'",
+        "Mentions that stopping ends billing"
+      ]
     },
     {
       "id": 10,
       "name": "modify-processor-pipeline",
       "prompt": "Change the pipeline for 'data-transformer' to add a $match stage filtering active=true",
-      "expected_output": "Stops processor first with stop-processor, then calls modify-processor with updated pipeline including $match stage, then offers to restart",
-      "files": []
+      "expected_output": "Checks the processor's current state, stops it first only if it is STARTED, then calls modify-processor with updated pipeline including $match stage, then offers to restart",
+      "files": [],
+      "expectations": [
+        "Does not call stop-processor first unless the processor is STARTED",
+        "Then calls modify-processor with a pipeline that includes a $match on active=true",
+        "Offers or performs a restart after the modification",
+        "Does not attempt to modify a STARTED processor"
+      ]
     },
     {
       "id": 11,
@@ -204,8 +215,14 @@
       "id": 19,
       "name": "billing-warning-before-start",
       "prompt": "Start processor 'analytics-pipeline' in workspace 'prod-streams'",
-      "expected_output": "Warns about billing costs before starting, mentions per-second charging until the processor is stopped, waits for user confirmation, then calls atlas-streams-manage with action='start-processor'",
-      "files": []
+      "expected_output": "Warns about billing costs before starting, mentions per-second charging until the processor is stopped, and waits for user confirmation before calling atlas-streams-manage with action='start-processor'. If no confirmation is available in the conversation, it stops after the warning.",
+      "files": [],
+      "expectations": [
+        "Warns about billing before starting the processor",
+        "Mentions per-second or per-hour charging while running / that start-processor begins billing",
+        "Confirms the user intends to incur charges or has billing configured",
+        "Calls atlas-streams-manage with action 'start-processor' only once the user has confirmed; without a confirmation in the conversation, does not call it yet"
+      ]
     },
     {
       "id": 20,
@@ -244,7 +261,13 @@
       "name": "handle-402-billing-error",
       "prompt": "I got a 402 error when starting my processor",
       "expected_output": "Explains no payment method configured, directs to Atlas → Organization → Billing, offers sp.process() in mongosh as free alternative, does NOT retry the start command",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Explains that a 402 means billing is not configured / no payment method",
+        "Directs the user to Atlas Organization Billing to add a payment method",
+        "Offers sp.process() in mongosh as a free prototyping alternative",
+        "Explicitly does not retry the start command"
+      ]
     },
     {
       "id": 24,
