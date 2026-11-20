@@ -45,7 +45,12 @@
       "name": "inspect-processor-health",
       "prompt": "Check the health of processor 'user-aggregator' in workspace 'prod-streams'",
       "expected_output": "Calls atlas-streams-discover with action='diagnose-processor', workspaceName='prod-streams', resourceName='user-aggregator'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-discover with action 'diagnose-processor'",
+        "Passes workspaceName 'prod-streams' and resourceName 'user-aggregator'",
+        "Reports state and stats from diagnose-processor, without claiming it returns an error log"
+      ]
     },
     {
       "id": 5,
@@ -81,15 +86,27 @@
       "id": 7,
       "name": "debug-failed-processor",
       "prompt": "My processor 'payment-handler' is in FAILED state. What's wrong?",
-      "expected_output": "Calls diagnose-processor first, analyzes the available evidence, identifies a likely root cause or states what evidence is needed, and provides specific fix steps.",
-      "files": []
+      "expected_output": "Calls diagnose-processor first, directs the user to the Atlas UI processor Logs tab for operational logs (the streams MCP tools have no get-logs action), analyzes available evidence, identifies a likely root cause when supported or states what evidence is needed, and provides specific fix steps",
+      "files": [],
+      "expectations": [
+        "Calls diagnose-processor first",
+        "Directs the user to the processor Logs tab in the Atlas UI for detailed operational logs (the streams MCP tools have no get-logs action)",
+        "Identifies a likely root cause when supported by the evidence or states what evidence is needed rather than listing hypothetical causes",
+        "Provides concrete, ordered fix steps"
+      ]
     },
     {
       "id": 8,
       "name": "debug-zero-output-windowed",
       "prompt": "My windowed Kafka processor has been running for an hour but produced no output. State is STARTED and connections are healthy",
       "expected_output": "Identifies idle Kafka partitions issue, recommends adding partitionIdleTimeout to Kafka $source configuration, provides specific syntax",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Identifies idle Kafka partitions as the reason the window is not closing",
+        "Recommends adding partitionIdleTimeout to the Kafka $source",
+        "Shows concrete syntax such as {\"size\": 30, \"unit\": \"second\"}",
+        "Does not blame data volume or filters without evidence"
+      ]
     },
     {
       "id": 9,
@@ -200,10 +217,16 @@
     },
     {
       "id": 17,
-      "name": "get-operational-logs",
+      "name": "operational-logs-ui",
       "prompt": "Show me the operational logs for processor 'fraud-detector' in workspace 'security-streams'",
-      "expected_output": "Directs the user to the Atlas UI: Atlas → Stream Processing → Workspace 'security-streams' → Processor 'fraud-detector' → Logs tab",
-      "files": []
+      "expected_output": "Explains that the streams MCP tools expose no log-retrieval action, so detailed operational logs are viewed in the Atlas UI. Calls atlas-streams-discover with action 'diagnose-processor' (and optionally 'inspect-processor') for workspace 'security-streams' and processor 'fraud-detector' to surface state, stats, and connection health — noting that diagnose returns no error log — then directs the user to Atlas -> Stream Processing -> the workspace -> the processor -> Logs tab.",
+      "files": [],
+      "expectations": [
+        "States that the streams MCP tools have no log-retrieval (get-logs) action",
+        "Calls diagnose-processor or inspect-processor with workspaceName 'security-streams' and resourceName 'fraud-detector'",
+        "Directs the user to the Atlas UI processor Logs tab with the correct navigation path",
+        "Optionally suggests checking the DLQ or output collection for error evidence"
+      ]
     },
     {
       "id": 18,
@@ -260,7 +283,13 @@
       "name": "classify-processor-output",
       "prompt": "My anomaly detection processor has zero output. Is this a problem?",
       "expected_output": "Classifies processor as alert/anomaly type, explains zero output is NORMAL and healthy for this pattern, differentiates from data transformation processors",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Classifies the processor as alert/anomaly detection",
+        "Explains that zero output is expected and healthy for this processor type",
+        "Contrasts this with transformation processors, where zero output is a red flag",
+        "Suggests verifying with a known anomalous or test event rather than immediately debugging"
+      ]
     },
     {
       "id": 23,
@@ -618,6 +647,18 @@
         "Mentions that $function is disabled on most deployments by default",
         "Recommends SP30",
         "Offers an alternative that does not need $function"
+      ]
+    },
+    {
+      "id": 49,
+      "name": "diagnose-no-error-log",
+      "prompt": "My processor is in FAILED state. Run diagnose-processor and give me the exact error message from its output.",
+      "expected_output": "Calls diagnose-processor first for state, stats, connection health, and recommended actions, but explains that diagnose returns no error log or log lines. Directs the user to the Atlas UI processor Logs tab for the exact error, or to the DLQ collection for per-document errors.",
+      "files": [],
+      "expectations": [
+        "Calls diagnose-processor",
+        "Explains that diagnose-processor returns no error log",
+        "Directs the user to the Atlas UI Logs tab or the DLQ collection for the actual error"
       ]
     },
     {
