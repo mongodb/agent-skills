@@ -168,6 +168,8 @@ See [references/development-workflow.md](references/development-workflow.md) for
 
 ## Tier Sizing & Performance
 
+**Tier guidance:** the control plane **enforces** the minimum tier the engine reports for a pipeline. Starting below that minimum is rejected with "current tier is below the minimum tier required by this pipeline", and the same check runs on modify, including against the autoscaling `minTier`. `$function` (JavaScript UDF) and `$sessionWindow` pipelines are best sized at **SP30** for headroom; the engine does not raise their minimum tier, so a lower tier is accepted. `$tumblingWindow`/`$hoppingWindow` usually fit SP10–SP30; very large window state may need SP50. `$function` is disabled on most deployments by default; ask MongoDB support to enable it.
+
 See [references/sizing-and-parallelism.md](references/sizing-and-parallelism.md) for tier specifications, parallelism formulas, complexity scoring, and performance optimization strategies.
 
 ## Troubleshooting
