@@ -7,7 +7,8 @@
 // community extension all read). Each plugin needs its own physical copy of the
 // skills it ships, because Claude/Cursor/Codex install the plugin from git and
 // resolve `skills: "./skills/"` relative to the plugin root (Antigravity reads
-// the same skills/ folder by convention).
+// the same skills/ folder by convention). Kiro installs from the .kiro-plugin
+// folder alone, so that folder gets its own copy too (SELF_CONTAINED_DIRS).
 //
 // This script is idempotent: it fully regenerates each plugin's skills/ and
 // assets/ directories and LICENSE from the canonical sources, and rewrites the
@@ -51,6 +52,10 @@ const ASSETS_SRC = "assets";
 const LICENSE_SRC = "LICENSE";
 const PLUGINS_DIR = "plugins";
 const GEMINI_MANIFEST = join(".gemini-plugin", "plugin.json");
+
+// Client subfolders that are installed on their own (the client downloads only
+// this folder), so they need their own copy of skills/.
+const SELF_CONTAINED_DIRS = [".kiro-plugin"];
 
 // Never copy these into the published plugin copies.
 const EXCLUDE_NAMES = new Set([".score_cache", ".DS_Store"]);
@@ -105,15 +110,23 @@ for (const [plugin, cfg] of Object.entries(PLUGINS)) {
 
   const selected = selectSkills(plugin, cfg.skills);
 
-  // Regenerate skills/
-  const destSkills = join(pluginDir, SKILLS_SRC);
-  rmSync(destSkills, { recursive: true, force: true });
-  mkdirSync(destSkills, { recursive: true });
-  for (const skill of selected) {
-    cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
-      recursive: true,
-      filter: copyFilter,
-    });
+  // Regenerate skills/ in the plugin root and in each client subfolder that
+  // must be self-contained (Kiro installs from the .kiro-plugin folder alone).
+  const destSkillsDirs = [join(pluginDir, SKILLS_SRC)];
+  for (const dir of SELF_CONTAINED_DIRS) {
+    if (existsSync(join(pluginDir, dir))) {
+      destSkillsDirs.push(join(pluginDir, dir, SKILLS_SRC));
+    }
+  }
+  for (const destSkills of destSkillsDirs) {
+    rmSync(destSkills, { recursive: true, force: true });
+    mkdirSync(destSkills, { recursive: true });
+    for (const skill of selected) {
+      cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
+        recursive: true,
+        filter: copyFilter,
+      });
+    }
   }
 
   // Regenerate assets/.
