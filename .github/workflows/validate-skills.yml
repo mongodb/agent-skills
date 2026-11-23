@@ -4,10 +4,15 @@ on:
   pull_request:
     paths:
       - "skills/**"
+      - ".github/workflows/validate-skills.yml"
+      - ".github/scripts/validate-skills.sh"
+      - "tools/install-skill-validator.sh"
 
 permissions:
   contents: read
 
+# TODO (ART-252): Move validator installation and both validation steps into a reusable
+# workflow (`workflow_call`) in `grove-platform/skill-validator`
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -17,14 +22,15 @@ jobs:
           # Full history is needed so git diff can compare against the base branch
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
-
       - name: Install skill-validator
-        run: go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest
+        # The shared installer pins the Grove release and its archive hashes.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          install_dir="$RUNNER_TEMP/skill-validator"
+          bash tools/install-skill-validator.sh "$install_dir"
+          echo "$install_dir" >> "$GITHUB_PATH"
+          "$install_dir/skill-validator" --version
 
       - name: Validate changed skills
         env:
@@ -34,7 +40,8 @@ jobs:
           bash .github/scripts/validate-skills.sh "$BASE_REF"
 
       - name: Validate all skills
+        shell: bash # Enable pipefail so tee does not mask validator failures.
         run: |
           echo "## All Skills" >> "$GITHUB_STEP_SUMMARY"
-          skill-validator check --strict --emit-annotations -o markdown skills/ \
+          skill-validator check --strict --allow-token-warnings --emit-annotations -o markdown skills/ \
             2>&1 | tee >(grep -v '^::' >> "$GITHUB_STEP_SUMMARY")

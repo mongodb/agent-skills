@@ -138,7 +138,6 @@ jobs:
           cache: false
 
       - name: Install skill-gate (pinned)
-        # Mirrors the existing `go install …skill-validator@…` step.
         if: steps.changed.outputs.count != '0'
         run: go install github.com/mongodb/skill-gate/cmd/skill-gate@v0.1.1
 

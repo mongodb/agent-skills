@@ -1,37 +1,36 @@
 # Installing skill-validator
 
-## Installation methods
+This repo uses the [grove-platform fork](https://github.com/grove-platform/skill-validator)
+of skill-validator, which adds MongoDB-specific checks. The upstream Homebrew
+formula and `go install github.com/agent-ecosystem/...` install the upstream
+tool, which does not include them.
 
-### Homebrew (recommended for macOS)
+## Install the release used by CI
 
-```bash
-brew tap agent-ecosystem/homebrew-tap
-brew install skill-validator
-```
-
-### From source (requires Go 1.25.5+)
-
-```bash
-go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest
-```
-
-Ensure `$GOPATH/bin` (usually `~/go/bin`) is on your PATH:
+From the root of `agent-skills`, with the GitHub CLI (`gh`) installed and
+authenticated, run:
 
 ```bash
-export PATH="$PATH:$(go env GOPATH)/bin"
+bash tools/install-skill-validator.sh && export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### From a pre-built binary
-
-```bash
-cp /path/to/skill-validator /usr/local/bin/ && chmod +x /usr/local/bin/skill-validator
-```
+The installer selects the macOS or Linux archive for your architecture (amd64 or
+arm64). It verifies the archive against the SHA-256 pin in this repo before
+extracting it. The default install directory is
+`~/.local/bin`; you can pass a different directory and put it first on your
+`PATH` instead.
 
 ## Verify installation
 
 ```bash
 skill-validator --version
+bash tools/install-skill-validator.sh --version
 ```
+
+Compare only the version tags: `skill-validator --version` prefixes its tag
+with `skill-validator version`, while the installer prints the bare tag. If
+the tags differ, check `command -v skill-validator` to see which installation
+is first on your `PATH`.
 
 ## Prerequisites for LLM scoring
 
