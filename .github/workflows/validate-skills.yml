@@ -6,6 +6,7 @@ on:
       - "skills/**"
       - ".github/workflows/validate-skills.yml"
       - ".github/scripts/validate-skills.sh"
+      - "tools/install-skill-validator.sh"
 
 permissions:
   contents: read
@@ -22,25 +23,12 @@ jobs:
           fetch-depth: 0
 
       - name: Install skill-validator
-        # Uses the grove-platform fork, which adds MongoDB-specific checks
-        # (e.g. metadata.labelText) and --allow-token-warnings. The fork keeps
-        # the upstream Go module path, so it cannot be installed with
-        # `go install`; download the release binary instead.
-        #
-        # The version is pinned so a stricter validator release cannot fail
-        # unrelated open PRs. To upgrade, bump SKILL_VALIDATOR_VERSION in the
-        # same PR that fixes any skills the new release flags.
+        # The shared installer pins the Grove release and its archive hashes.
         env:
           GH_TOKEN: ${{ github.token }}
-          SKILL_VALIDATOR_VERSION: v1.8.0-grove.1
         run: |
           install_dir="$RUNNER_TEMP/skill-validator"
-          mkdir -p "$install_dir"
-          gh release download "$SKILL_VALIDATOR_VERSION" --repo grove-platform/skill-validator \
-            --pattern '*_linux_amd64.tar.gz' --pattern '*_checksums.txt' \
-            --dir "$install_dir"
-          (cd "$install_dir" && sha256sum --check --ignore-missing ./*_checksums.txt)
-          tar -xzf "$install_dir"/*_linux_amd64.tar.gz -C "$install_dir" skill-validator
+          bash tools/install-skill-validator.sh "$install_dir"
           echo "$install_dir" >> "$GITHUB_PATH"
           "$install_dir/skill-validator" --version
 

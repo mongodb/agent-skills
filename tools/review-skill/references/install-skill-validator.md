@@ -5,40 +5,29 @@ of skill-validator, which adds MongoDB-specific checks. The upstream Homebrew
 formula and `go install github.com/agent-ecosystem/...` install the upstream
 tool, which does not include them.
 
-## Installation methods
+## Install the release used by CI
 
-### Release binary (recommended)
-
-Replace `darwin_arm64` with your platform (`darwin_amd64`, `linux_amd64`,
-`linux_arm64`):
+From the root of `agent-skills`, with the GitHub CLI (`gh`) installed and
+authenticated, run:
 
 ```bash
-gh release download --repo grove-platform/skill-validator --pattern '*_darwin_arm64.tar.gz' -O - | tar -xz skill-validator
-sudo install -m 0755 skill-validator /usr/local/bin/
+bash tools/install-skill-validator.sh && export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### From source (requires Go 1.25.5+)
-
-```bash
-git clone https://github.com/grove-platform/skill-validator.git
-cd skill-validator
-go install ./cmd/skill-validator
-```
-
-Ensure `$GOPATH/bin` (usually `~/go/bin`) is on your PATH:
-
-```bash
-export PATH="$PATH:$(go env GOPATH)/bin"
-```
+The installer selects the macOS or Linux archive for your architecture (amd64 or
+arm64), checks its SHA-256 against the pin in this repo before extracting it,
+and installs the binary to `~/.local/bin` by default. You can pass a different
+install directory and put that directory first on your `PATH` instead.
 
 ## Verify installation
 
 ```bash
 skill-validator --version
+bash tools/install-skill-validator.sh --version
 ```
 
-The version should include `-grove`. If it does not, an upstream installation
-earlier on your PATH is still being used.
+The versions should match. If they don't, check `command -v skill-validator` to
+see which installation is first on your `PATH`.
 
 ## Prerequisites for LLM scoring
 

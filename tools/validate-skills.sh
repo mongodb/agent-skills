@@ -19,20 +19,23 @@
 
 set -euo pipefail
 
-FORK_URL="https://github.com/grove-platform/skill-validator"
+# Resolve and cd to the repo root so relative paths always work,
+# regardless of where the script is invoked from.
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+  echo "Error: not inside a git repository."
+  exit 1
+}
+cd "$REPO_ROOT"
+
+expected_version="$(bash tools/install-skill-validator.sh --version)"
 
 print_install_help() {
   echo "This repo uses the grove-platform fork of skill-validator, which adds"
   echo "MongoDB-specific checks. The upstream Homebrew and 'go install' builds"
   echo "do not include them."
   echo ""
-  echo "Install the latest release (replace darwin_arm64 with your platform):"
-  echo "  gh release download --repo grove-platform/skill-validator --pattern '*_darwin_arm64.tar.gz' -O - | tar -xz skill-validator"
-  echo "  sudo install -m 0755 skill-validator /usr/local/bin/"
-  echo ""
-  echo "Or from source (requires Go 1.25.5+):"
-  echo "  git clone $FORK_URL.git && cd skill-validator"
-  echo "  go install ./cmd/skill-validator"
+  echo "From the repository root, install $expected_version (the version used by CI):"
+  echo '  bash tools/install-skill-validator.sh && export PATH="$HOME/.local/bin:$PATH"'
 }
 
 if ! command -v skill-validator &>/dev/null; then
@@ -42,24 +45,14 @@ if ! command -v skill-validator &>/dev/null; then
   exit 1
 fi
 
-# Fork releases carry a -grove version suffix. The flag check also catches a
-# fork build too old to support --allow-token-warnings, which would otherwise
-# fail with a usage error.
-if ! skill-validator --version 2>&1 | grep -q -- "-grove" ||
-  ! skill-validator check --help 2>&1 | grep -q -- "--allow-token-warnings"; then
-  echo "Error: the installed skill-validator ($(command -v skill-validator)) is not the grove-platform fork, or is out of date."
+if ! installed_version="$(skill-validator --version 2>&1)" ||
+  [[ "$installed_version" != "skill-validator version $expected_version" ]]; then
+  echo "Error: expected skill-validator $expected_version at $(command -v skill-validator)."
+  echo "Found: $installed_version"
   echo ""
   print_install_help
   exit 1
 fi
-
-# Resolve and cd to the repo root so relative paths always work,
-# regardless of where the script is invoked from.
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-  echo "Error: not inside a git repository."
-  exit 1
-}
-cd "$REPO_ROOT"
 
 SKILL_PATH="${1:-skills/}"
 
