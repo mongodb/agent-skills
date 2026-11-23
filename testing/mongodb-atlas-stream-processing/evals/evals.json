@@ -201,7 +201,7 @@
       "id": 29,
       "name": "create-iceberg-unity-catalog-connection",
       "prompt": "I want to write my change stream data to Iceberg tables registered in Databricks Unity Catalog. How do I set up the catalog connection in my Atlas Stream Processing workspace?",
-      "expected_output": "Creates a connection with connectionType \"DataCatalog\" (not Https or S3) using catalogProvider DATABRICKS_UNITY, a base HTTPS catalogUrl on *.cloud.databricks.com or *.azuredatabricks.net with no REST path, and databricks.authentication clientId/clientSecret. Lets the tool elicit the secret rather than asking the user for it. Explains the connection is referenced from $iceberg.catalog.connectionName.",
+      "expected_output": "Creates a connection with connectionType \"DataCatalog\" (not Https or S3) using catalogProvider DATABRICKS_UNITY, a base HTTPS catalogUrl on *.cloud.databricks.com or *.azuredatabricks.net with no REST path, and databricks.authentication clientId/clientSecret. Lets the tool elicit the secret rather than asking the user for it. Explains the connection is referenced from $iceberg.catalog.connectionName. Notes that a Unity catalog does not support cdc mode, so the $iceberg stage must set mode to insert.",
       "files": []
     },
     {

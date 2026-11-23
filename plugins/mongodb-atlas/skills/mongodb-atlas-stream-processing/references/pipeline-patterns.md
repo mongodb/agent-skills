@@ -189,11 +189,12 @@ Fields: `connectionName` (required), `bucket` (required), `path` (required — k
   "path": "warehouse/iceberg",
   "databaseName": "my_db",
   "tableName": {"$meta": "stream.source.ns.coll"},
-  "mode": "cdc",
+  "mode": "insert",
   "catalog": {"type": "unity", "connectionName": "my-unity", "warehouse": "my_unity_catalog"}
 }}
 ```
-Fields: `connectionName`, `path` (no trailing `/`), `databaseName`, `tableName` (string or expression) are required. `mode` is `cdc` or `insert`. `catalog` is optional.
+Fields: `connectionName`, `path` (no trailing `/`), `databaseName`, `tableName` (string or expression) are required. `mode` is `cdc` (default; applies inserts, updates and deletes from `stream.source.operationType`) or `insert` (appends every document as a new row, ignoring operation type). `catalog` is optional.
+- **Unity does not support `cdc` mode**. With `catalog.type: "unity"`, set `mode: "insert"`. Horizon, Hadoop and Glue support `cdc`.
 - **S3:** use `bucket`. `region` is required only when the workspace is not on AWS.
 - **Azure Blob Storage:** use `container` instead of `bucket`; `region` is not supported.
 
@@ -206,10 +207,20 @@ Fields: `connectionName`, `path` (no trailing `/`), `databaseName`, `tableName` 
 | `unity` | `connectionName`, `warehouse` | `connectionName` is a DataCatalog connection; `warehouse` is the Unity catalog name |
 | `horizon` | `connectionName`, `warehouse` | `connectionName` is a DataCatalog connection; `warehouse` is the Snowflake database |
 
+`warehouse` and `databaseName` together identify where the table is created:
+- **`unity`:** `warehouse` is the Unity catalog name; `databaseName` is the schema within that catalog.
+- **`horizon`:** `warehouse` is the Snowflake database; `databaseName` is the schema within that database.
+
+**Azure Blob Storage with a catalog:** `unity` and `horizon` work with an Azure Blob storage connection; `hadoop` is also available.
+- The connection's service principal needs Storage Blob Data Contributor on the container.
+- **Horizon:** create the Snowflake external volume on the Data Lake endpoint (`azure://<account>.dfs.core.windows.net/...`), not the Blob endpoint.
+- **Horizon:** Snowflake's Azure app needs Storage Blob Data Contributor on the container and Storage Blob Delegator on the storage account. The Horizon connection role needs USAGE on the database and schema and CREATE ICEBERG TABLE on the schema.
+
 Common mistakes:
 - ❌ `$emit` for Iceberg → use `$iceberg`
+- ❌ Unity catalog with `mode: "cdc"` (or omitting `mode`, which defaults to `cdc`) → set `mode: "insert"`
 - ❌ Omitting `warehouse` for `unity`/`horizon` → rejected
-- ❌ Adding `connectionName`/`warehouse` to `hadoop`/`glue` → type only
+- ❌ Adding `connectionName`/`warehouse` to `hadoop`/`glue` → rejected; use `type` alone
 - ❌ Pointing `$iceberg.connectionName` at the DataCatalog connection → it is the S3/Azure storage connection; the DataCatalog goes in `catalog.connectionName`
 
 Create the DataCatalog connection first (see [connection-configs.md](connection-configs.md#datacatalog)).
