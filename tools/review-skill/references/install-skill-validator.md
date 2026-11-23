@@ -15,9 +15,10 @@ bash tools/install-skill-validator.sh && export PATH="$HOME/.local/bin:$PATH"
 ```
 
 The installer selects the macOS or Linux archive for your architecture (amd64 or
-arm64), checks its SHA-256 against the pin in this repo before extracting it,
-and installs the binary to `~/.local/bin` by default. You can pass a different
-install directory and put that directory first on your `PATH` instead.
+arm64). It verifies the archive against the SHA-256 pin in this repo before
+extracting it. The default install directory is
+`~/.local/bin`; you can pass a different directory and put it first on your
+`PATH` instead.
 
 ## Verify installation
 
@@ -26,8 +27,10 @@ skill-validator --version
 bash tools/install-skill-validator.sh --version
 ```
 
-The versions should match. If they don't, check `command -v skill-validator` to
-see which installation is first on your `PATH`.
+Compare only the version tags: `skill-validator --version` prefixes its tag
+with `skill-validator version`, while the installer prints the bare tag. If
+the tags differ, check `command -v skill-validator` to see which installation
+is first on your `PATH`.
 
 ## Prerequisites for LLM scoring
 

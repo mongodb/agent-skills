@@ -40,6 +40,7 @@ jobs:
           bash .github/scripts/validate-skills.sh "$BASE_REF"
 
       - name: Validate all skills
+        shell: bash # Enable pipefail so tee does not mask validator failures.
         run: |
           echo "## All Skills" >> "$GITHUB_STEP_SUMMARY"
           skill-validator check --strict --allow-token-warnings --emit-annotations -o markdown skills/ \
