@@ -20,7 +20,13 @@
       "name": "add-kafka-connection",
       "prompt": "Add a Kafka connection named 'events-kafka' to my 'production-streams' workspace",
       "expected_output": "Calls atlas-streams-build with resource='connection', connectionType='Kafka', connectionName='events-kafka', allows MCP elicitation for bootstrap servers",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-build with resource 'connection'",
+        "Uses connectionName 'events-kafka', connectionType 'Kafka', and workspaceName 'production-streams'",
+        "Lets MCP elicitation collect bootstrap servers and credentials instead of asking the user to paste secrets",
+        "Provides connectionConfig with bootstrapServers as a comma-separated string"
+      ]
     },
     {
       "id": 3,
@@ -100,9 +106,15 @@
     {
       "id": 13,
       "name": "create-https-enrichment",
-      "prompt": "Build a processor that reads from Kafka 'transactions', enriches with an external API call, and writes to 'enriched.transactions'",
-      "expected_output": "Pipeline with $source (Kafka), $https stage with HTTPS connection (onError: 'dlq', execution mode), $merge (Atlas), full DLQ configuration",
-      "files": []
+      "prompt": "Build a processor that reads from Kafka 'transactions', enriches with an external API call, and writes to the Atlas collection 'enriched.transactions'",
+      "expected_output": "Pipeline with $source (Kafka), $https stage with HTTPS connection (onError: 'dlq', method, as), $merge into the Atlas collection 'enriched.transactions', full DLQ configuration",
+      "files": [],
+      "expectations": [
+        "Uses a Kafka $source for topic 'transactions'",
+        "Adds a $https stage with the HTTPS connection, path, method, an 'as' field, and onError 'dlq'",
+        "Ends with $merge into 'enriched.transactions'",
+        "Configures a DLQ and keeps API auth in the connection config, not the pipeline"
+      ]
     },
     {
       "id": 14,
@@ -122,8 +134,15 @@
       "id": 15,
       "name": "create-lambda-integration",
       "prompt": "Set up a processor that sends Kafka events to AWS Lambda function for processing asynchronously",
-      "expected_output": "Pipeline with $source (Kafka), $externalFunction with AWSLambda connection (execution: 'async', onError: 'dlq'), proper async sink configuration",
-      "files": []
+      "expected_output": "Pipeline with $source (Kafka), $externalFunction with AWSLambda connection (execution: 'async', onError: 'dlq', no `as` on the async sink), proper async sink configuration",
+      "files": [],
+      "expectations": [
+        "Uses a Kafka $source",
+        "Uses $externalFunction with an AWSLambda connection, functionName, execution 'async', and onError 'dlq'",
+        "Does not use $emit to invoke Lambda",
+        "Mentions the IAM role / Cloud Provider Access prerequisite",
+        "When the `$externalFunction` stage is shown as JSON, it does not include an `as` field (async terminal sink)"
+      ]
     },
     {
       "id": 16,
@@ -203,7 +222,12 @@
       "name": "multi-connection-setup",
       "prompt": "Set up workspace 'multi-source' with both Kafka and Atlas cluster connections",
       "expected_output": "Creates workspace first, then calls atlas-streams-build twice (once for Kafka connection, once for Cluster connection), validates each connection after creation",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Creates the workspace first",
+        "Calls atlas-streams-build for a Kafka connection and a Cluster connection in 'multi-source'",
+        "Validates each connection after creation with list-connections/inspect-connection"
+      ]
     },
     {
       "id": 25,
@@ -216,8 +240,16 @@
       "id": 26,
       "name": "create-privatelink-kafka-aws",
       "prompt": "Set up a PrivateLink connection for Confluent Kafka on AWS in workspace 'prod-streams'",
-      "expected_output": "Calls atlas-streams-build with resource='privatelink', privateLinkConfig.provider='AWS', vendor='CONFLUENT', and dnsDomain/dnsSubDomain; then references the PrivateLink ID in the Kafka connection's networking.access config",
-      "files": []
+      "expected_output": "Calls atlas-streams-build with resource='privatelink', privateLinkConfig includes provider='AWS', vendor='CONFLUENT', dnsDomain, dnsSubDomain (array), serviceEndpointId, region; then references the returned PrivateLink ID in the Kafka connection's networking.access config",
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-build with resource 'privatelink' and omits workspaceName",
+        "Sets `privateLinkConfig.provider` 'AWS' and `privateLinkConfig.vendor` 'CONFLUENT'",
+        "Includes `dnsSubDomain` (as an array) and `dnsDomain` in `privateLinkConfig`, or notes that for Confluent Enterprise `dnsDomain` may be set later via PATCH",
+        "References the returned PrivateLink ID in the Kafka connection's networking.access as type PRIVATE_LINK with connectionId",
+        "Notes that networking configuration is immutable after connection creation",
+        "Includes `serviceEndpointId` and `region` in `privateLinkConfig` (placeholder values acceptable)"
+      ]
     },
     {
       "id": 27,
@@ -234,6 +266,37 @@
       "files": []
     },
     {
+      "id": 29,
+      "name": "kinesis-source-and-sink",
+      "prompt": "Create a processor that reads from the Kinesis stream 'clicks' and writes to the Kinesis stream 'clicks-out', using user_id as the partition key.",
+      "expected_output": "Creates or validates an AWS Kinesis connection (connectionType AWSKinesisDataStreams) and builds a processor whose $source uses the 'stream' field (not streamName or topic) and config.consumerARN, and whose $emit uses 'stream' plus the required partitionKey (e.g. \"$user_id\"). Mentions the IAM role ARN / Cloud Provider Access prerequisite and Enhanced Fan-Out consumer registration, and does not add a DLQ unless asked.",
+      "expectations": [
+        "Uses connectionType AWSKinesisDataStreams for the Kinesis connection",
+        "Uses the 'stream' field (not 'streamName' or 'topic') in $source",
+        "Includes partitionKey in the $emit stage",
+        "Mentions the IAM role ARN / Cloud Provider Access prerequisite",
+        "Does not add a DLQ unless the user asks for one (this prompt does not)",
+        "Includes `config.consumerARN` (required for the Kinesis source)",
+        "Notes that the Enhanced Fan-Out consumer must be registered before processor creation"
+      ],
+      "files": []
+    },
+    {
+      "id": 30,
+      "name": "schema-registry-avro-emit",
+      "prompt": "I need to emit Avro-encoded messages to the Kafka topic 'orders-out' using my existing schema registry connection. Show me the $emit configuration.",
+      "expected_output": "Shows a $emit to the Kafka connection with a schemaRegistry block referencing the SchemaRegistry connection, valueSchema.type 'avro' in lowercase, and an explicit valueSchema.schema (required even when autoRegisterSchemas is true). Mentions subjectNameStrategy, that SchemaRegistry is a distinct connection type, and schema registration/compatibility for the existing topic.",
+      "expectations": [
+        "Shows a $emit stage with a schemaRegistry connectionName",
+        "Uses valueSchema.type 'avro' in lowercase",
+        "Includes an explicit valueSchema.schema even if autoRegisterSchemas is true",
+        "Identifies SchemaRegistry as a distinct connection type",
+        "Mentions subjectNameStrategy or autoRegisterSchemas",
+        "Mentions registering the schema or verifying subject compatibility before emitting to the existing topic"
+      ],
+      "files": []
+    },
+    {
       "id": 34,
       "name": "checkpoint-resume-constraints",
       "prompt": "My processor has been running with a 5-minute tumbling window. I want to change it to a 10-minute window. Can I just modify the pipeline?",
@@ -244,6 +307,20 @@
         "Recommends resumeFromCheckpoint: false to make the change",
         "Warns that resumeFromCheckpoint: false drops window state / restarts from the beginning",
         "Gives the stop, modify, start sequence"
+      ],
+      "files": []
+    },
+    {
+      "id": 35,
+      "name": "update-connection-networking-immutable",
+      "prompt": "My Kafka connection 'events-kafka' needs PrivateLink added. Can you update the existing connection to use it?",
+      "expected_output": "Explains that networking config (PrivateLink/VPC peering) is immutable after connection creation, so the connection must be deleted and recreated with the new networking.access config. Notes PrivateLink is created first as a project-level resource with atlas-streams-build resource 'privatelink', then referenced by connectionId. Warns that deleting a connection is blocked while a running processor references it.",
+      "expectations": [
+        "States that networking configuration cannot be modified after connection creation",
+        "Recommends deleting and recreating the connection with PrivateLink networking config",
+        "Describes creating the project-level PrivateLink first (resource 'privatelink')",
+        "References the PrivateLink ID via networking.access.connectionId",
+        "Warns that a connection referenced by a running processor cannot be deleted"
       ],
       "files": []
     },
@@ -274,6 +351,47 @@
         "Does not suggest deleting and recreating the workspace"
       ],
       "files": []
+    },
+    {
+      "id": 42,
+      "name": "rotate-kafka-credentials",
+      "prompt": "Rotate the password on my existing Kafka connection 'events-kafka' in workspace 'prod-streams'",
+      "expected_output": "Calls atlas-streams-manage action 'update-connection' with resourceName 'events-kafka' and the new password in connectionConfig; does not delete/recreate for an auth-only change; notes networking is immutable; verifies with inspect-connection",
+      "files": [],
+      "expectations": [
+        "Calls `atlas-streams-manage` with action `update-connection`",
+        "Passes `workspaceName` 'prod-streams' and `resourceName` 'events-kafka'",
+        "Updates the authentication/password in `connectionConfig`",
+        "Does not delete and recreate the connection for an auth-only change",
+        "Notes that networking configuration cannot be changed by this update",
+        "Verifies the connection with `inspect-connection` after the update, or offers to"
+      ]
+    },
+    {
+      "id": 50,
+      "name": "get-networking-no-vpc-peering",
+      "prompt": "Use get-networking to list my VPC peerings.",
+      "expected_output": "Explains that get-networking lists project-level PrivateLink endpoints (and Atlas account details for a provider/region) but does not list VPC peerings. Says peerings are managed with accept-peering/reject-peering and removed with teardown resource='peering'. Offers the closest available alternative.",
+      "files": [],
+      "expectations": [
+        "States that get-networking lists PrivateLink endpoints",
+        "States that get-networking does not list VPC peerings",
+        "Mentions accept-peering/reject-peering or teardown for peerings"
+      ]
+    },
+    {
+      "id": 51,
+      "name": "gcp-pubsub-sink",
+      "prompt": "Add a GCP Pub/Sub connection called 'events-pubsub' to my workspace and emit to a topic.",
+      "expected_output": "Uses connectionType 'GCPPubSub' with connectionConfig.gcp.serviceAccountId. Shows a $emit stage with topic, projectId, and region. Notes that Pub/Sub is sink-only and that private networking uses publicPrivateNetworking rather than networking.",
+      "files": [],
+      "expectations": [
+        "Uses connectionType 'GCPPubSub'",
+        "Supplies serviceAccountId under connectionConfig.gcp",
+        "Shows $emit with topic, projectId, and region",
+        "States that Pub/Sub is sink-only",
+        "Uses publicPrivateNetworking for private networking"
+      ]
     },
     {
       "id": 52,

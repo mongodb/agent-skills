@@ -148,28 +148,6 @@ See [references/sizing-and-parallelism.md](references/sizing-and-parallelism.md)
 
 For source/sink support, networking, and connection configuration by type, see [references/connection-configs.md](references/connection-configs.md). Remember: Kafka uses `$emit`, not `$merge`; async `$externalFunction` stages must omit `as`.
 
-## Connection Capabilities — Source/Sink Reference
-
-Know what each connection type can do before creating pipelines:
-
-| Connection Type | As Source ($source) | As Sink ($merge / $emit) | Mid-Pipeline | Notes |
-|-----------------|---------------------|--------------------------|--------------|-------|
-| **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
-| **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
-| **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
-| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config`. Supports AWS PrivateLink. |
-| **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
-| **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
-| **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
-| **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
-
-**Common connection usage mistakes to avoid:**
-- ❌ Using `$externalFunction` as sink with `execution: "sync"` → Must use `execution: "async"` for sink stage
-- ❌ Forgetting change streams exist → Atlas Cluster is a powerful source, not just a sink
-- ❌ Using `$merge` with Kafka → Use `$emit` for Kafka sinks
-
-See [references/connection-configs.md](references/connection-configs.md) for detailed connection configuration schemas by type.
-
 ## Core Workflows
 
 ### Setup from scratch
