@@ -169,18 +169,18 @@
       "id": 20,
       "name": "create-s3-sink",
       "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
-      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection using path (not prefix) and config.outputFormat (not a top-level format), optionally config.compression, DLQ configured",
+      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection using path (not prefix) and config.outputFormat (not a top-level format), optionally config.compression",
       "files": []
     },
     {
       "id": 21,
-      "name": "search-knowledge-before-processor",
+      "name": "docs-first-field-validation",
       "prompt": "Create a processor that emits to S3",
-      "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, config.outputFormat, compression) before building processor, references ASP_example repo if needed",
+      "expected_output": "Fetches the S3 $emit docs page (e.g. https://www.mongodb.com/docs/atlas/atlas-stream-processing/sp-agg-emit.md) or falls back to search-knowledge, then builds the pipeline with path and config.outputFormat",
       "files": [],
       "expectations": [
-        "Calls search-knowledge before building the processor",
-        "Queries for the S3 $emit field names, especially path vs prefix",
+        "Fetches the S3 $emit docs page (sp-agg-emit, .md) or calls search-knowledge before finalizing field names",
+        "Uses path and config.outputFormat for the S3 $emit, not prefix or a top-level format",
         "Does not guess field names"
       ]
     },
@@ -323,6 +323,58 @@
         "States that inspect-processor accepts responseFormat but ignores it",
         "States that responseFormat applies to list actions and inspect-workspace",
         "Calls inspect-processor without responseFormat"
+      ]
+    },
+    {
+      "id": 57,
+      "name": "docs-before-rejecting-stage",
+      "prompt": "Build me a processor that reads from my Kafka topic, runs each event through $vectorSearch against my Atlas cluster, and merges the results into a collection.",
+      "expected_output": "Checks the public Atlas Stream Processing docs for the $vectorSearch stage before deciding whether and how to use it, instead of rejecting or accepting it from memory or the skill's own text. Builds the pipeline according to what the docs say.",
+      "files": [],
+      "expectations": [
+        "Reads a public Atlas Stream Processing docs page for the stage, or uses search-knowledge, before composing the pipeline",
+        "Does not reject the stage before checking the docs",
+        "Bases the stage's fields on the docs page content",
+        "Ends the pipeline with exactly one terminal sink"
+      ]
+    },
+    {
+      "id": 59,
+      "name": "docs-currentdate-processing-time",
+      "prompt": "In my processor 'orders-rollup', add a processed_at field holding the current time on every document, just before the $merge.",
+      "expected_output": "Looks up how to get a processing timestamp in stream processing before composing the stage, then adds processed_at with the $currentDate expression (an empty object) inside $addFields. Does not use $$NOW and does not tell the user a processing-time field is unavailable.",
+      "files": [],
+      "expectations": [
+        "Looks up how to get the current time in stream processing (public docs page or search-knowledge) before composing the stage",
+        "Sets processed_at with the $currentDate expression given an empty object",
+        "Does not use $$NOW or $$CURRENT",
+        "Does not tell the user a processing-time field is unavailable, and does not leave it out"
+      ]
+    },
+    {
+      "id": 60,
+      "name": "docs-throttle-stage",
+      "prompt": "My processor 'orders-enrich' floods the partner API whenever it catches up after an outage. Limit what it sends downstream to 200 messages a second.",
+      "expected_output": "Looks up whether and how the processor can limit its own rate, then adds a $throttle stage with messagesPerSec set to 200 to the pipeline. Does not decline the request or push the limit onto the partner API.",
+      "files": [],
+      "expectations": [
+        "Looks up rate limiting in stream processing (public docs page or search-knowledge) before composing the stage",
+        "Adds a $throttle stage with messagesPerSec set to 200",
+        "Does not invent field names for the stage",
+        "Does not decline, or advise only a limit outside the processor"
+      ]
+    },
+    {
+      "id": 61,
+      "name": "docs-createuuid-expression",
+      "prompt": "Give every document in 'orders-rollup' a unique eventId before it is merged.",
+      "expected_output": "Looks up how to generate an identifier inside a stream processing pipeline, then sets eventId with the $createUUID expression given an empty object. Does not derive the id from source fields or ask the user to supply one.",
+      "files": [],
+      "expectations": [
+        "Looks up how to generate a unique value in stream processing (public docs page or search-knowledge) before composing the stage",
+        "Sets eventId with the $createUUID expression given an empty object",
+        "Does not build the id by concatenating source fields",
+        "Does not ask the user to supply the id"
       ]
     }
   ]

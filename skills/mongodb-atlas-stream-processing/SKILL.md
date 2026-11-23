@@ -59,7 +59,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 |--------|-------|
 | `start-processor` | Begins billing. Optional `tier` override (bounded by the workspace `streamConfig.maxTierSize`), `resumeFromCheckpoint` (a **start** parameter, not a modify one), `autoscaling` |
 | `stop-processor` | Stops billing. Retains state 45 days |
-| `modify-processor` | Works in any state **except** STARTED — CREATED, STOPPED, and FAILED are all modifiable. Change pipeline, DLQ, name, tier, or autoscaling. **Exception:** a pipeline containing an S3 `$emit` stage cannot be modified at all — export the pipeline, warn that deletion discards checkpoints and window state, confirm with the user, then delete and recreate it |
+| `modify-processor` | Works in any state **except** STARTED — CREATED, STOPPED, and FAILED are all modifiable. Change pipeline, DLQ, name, tier, or autoscaling. **Exception:** processors whose sink is an S3 `$emit` are reported as not modifiable (not stated in the public docs — verify before relying on it). If modify is rejected, export the pipeline, warn that deletion discards checkpoints and window state, confirm with the user, then delete and recreate |
 | `update-workspace` | Change tier or region (`newTier` maps to Admin API `streamConfig.tier`). A region change requires the workspace to have **zero processors**; warn that deleting them discards checkpoints and window state, export the pipelines, and confirm with the user before deleting |
 | `update-connection` | Update config. Auth/credentials are updatable; networking, connection **type**, and **region** are immutable — delete and recreate |
 | `accept-peering` / `reject-peering` | VPC peering management |
@@ -83,9 +83,10 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 
 ## CRITICAL: Validate Before Creating Processors
 
-**You MUST call `search-knowledge` before composing any processor pipeline.** This is not optional.
-- **Field validation:** Query with the sink/source type, e.g. "Atlas Stream Processing $emit S3 fields" or "Atlas Stream Processing Kafka $source configuration". This catches errors like `prefix` vs `path` for S3 `$emit`.
-- **Pattern examples:** Query with `dataSources: [{"name": "devcenter"}]` for working pipelines, e.g. "Atlas Stream Processing tumbling window example".
+**Look it up, don't recall it.** Before composing a pipeline, settle stage and field names from the stage's docs page, following the lookup rule in Pipeline Rules & Warnings. This catches errors like `prefix` vs `path` for S3 `$emit`.
+- **Pattern examples:** query `search-knowledge` with `dataSources: [{"name": "devcenter"}]` for working pipelines, e.g. "Atlas Stream Processing tumbling window example".
+
+**Without the MCP server** the `atlas-streams-*` tools do not exist; the pipeline rules, references, and docs links here still apply. Use them to compose and explain pipelines, and state which tool call the user would need to run.
 
 Also fetch examples from the official ASP examples repo when building non-trivial processors: **https://github.com/mongodb/ASP_example** (quickstarts, example processors, Terraform examples). Start with `example_processors/README.md` for the full pattern catalog.
 
@@ -100,10 +101,12 @@ Key quickstarts:
 
 ## Pipeline Rules & Warnings
 
+**Live docs win.** These rules can lag the product. Before rejecting, rewriting, or renaming a stage or operator, or using one this skill gives no example of, read its page in the public docs (append `.md` to any docs URL): [stages](https://www.mongodb.com/docs/atlas/atlas-stream-processing/stream-aggregation-stages.md), [operators](https://www.mongodb.com/docs/atlas/atlas-stream-processing/stream-aggregation-operators.md). Where the docs disagree with the rules below about names, fields, or whether something is supported, follow the docs. If you cannot fetch the page, call `search-knowledge` with the stage and field named, e.g. "sp-agg-emit S3 path config.outputFormat"; a result pointing at `github.com/mongodb/agent-skills` is this skill echoing itself from `main`, not confirmation. How to call the `atlas-streams-*` tools is decided by this skill.
+
 **`$$ROOT` is supported** — use it in `$addFields`, `$group`, or `$replaceRoot` when you need the whole document.
 
 **Invalid constructs** — these are NOT valid in streaming pipelines:
-- **`$$NOW`**, **`$$CURRENT`** — NOT available in stream processing. NEVER use these. For event time, use `{"$meta": "stream.source.ts"}` (the source record timestamp) or a timestamp field from the event payload.
+- **`$$NOW`**, **`$$CURRENT`** — NOT available in stream processing. NEVER use these. For the current processing time, use `{"$currentDate": {}}`; for event time, use `{"$meta": "stream.source.ts"}` (the source record timestamp) or a timestamp field from the event payload.
 - **HTTPS connections as `$source`** — HTTPS is for `$https` enrichment or sink only, NOT as a data source
 - **Kafka `$source` without `topic`** — topic field is required
 - **Pipelines without a sink** — terminal stage (`$merge`, `$emit`, `$https`, or `$externalFunction` async) required for deployed processors (sinkless only works via `sp.process()`)
@@ -173,7 +176,7 @@ See [references/connection-configs.md](references/connection-configs.md) for det
 2. `atlas-streams-build` → `resource: "workspace"` (region near data, SP10 for dev)
 3. `atlas-streams-build` → `resource: "connection"` (for each source/sink/enrichment)
 4. **Validate connections:** `atlas-streams-discover` → `list-connections` + `inspect-connection` for each — verify names match targets, present summary to user
-5. Call `search-knowledge` to validate field names. Fetch relevant examples from https://github.com/mongodb/ASP_example
+5. Check field names against the stage's docs page (fallback: `search-knowledge`). Fetch relevant examples from https://github.com/mongodb/ASP_example
 6. `atlas-streams-build` → `resource: "processor"` (with DLQ configured)
 7. `atlas-streams-manage` → `start-processor` (warn about billing)
 
