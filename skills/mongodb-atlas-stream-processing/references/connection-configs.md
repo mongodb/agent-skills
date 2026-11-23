@@ -2,6 +2,8 @@
 
 **Official examples repo**: https://github.com/mongodb/ASP_example — check quickstarts, example processors, and Terraform examples. Start with quickstarts.
 
+**Live docs**: [Manage Connections](https://www.mongodb.com/docs/atlas/atlas-stream-processing/manage-connection-registry.md) lists the supported integration types and their source/sink roles. Where it disagrees with the table below, follow it.
+
 ## Connection Capabilities — Source/Sink Reference
 
 Know what each connection type can do before creating pipelines:

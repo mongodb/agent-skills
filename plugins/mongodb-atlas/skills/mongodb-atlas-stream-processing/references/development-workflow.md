@@ -141,12 +141,12 @@ Modify pipeline (`stop` → `modify-processor` → `start`). Verify filtered out
 [
   {"$source": {"connectionName": "my-source"}},
   {"$match": {"status": "active"}},
-  {"$addFields": {"processed_at": "$$NOW_NOT_VALID"}},
+  {"$addFields": {"processed_at": {"$currentDate": {}}}},
   {"$project": {"userId": 1, "amount": 1, "processed_at": 1}},
   {"$merge": {"into": {"connectionName": "my-sink", "db": "test", "coll": "step3"}}}
 ]
 ```
-**Remember:** `$$NOW` is NOT valid in streaming. Use a field from the source document or omit.
+**Remember:** `$$NOW` is NOT valid in streaming. Use `{"$currentDate": {}}` for the processing time, or a field from the source document for event time.
 
 **Step 4: Add windowing or enrichment** (if needed)
 

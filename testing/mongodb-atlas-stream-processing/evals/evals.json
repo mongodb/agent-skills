@@ -6,7 +6,14 @@
       "name": "create-workspace-basic",
       "prompt": "Create a new Atlas Stream Processing workspace called 'dev-streams' in AWS us-east-1 with an SP10 tier",
       "expected_output": "Calls atlas-streams-build with resource='workspace', workspaceName='dev-streams', cloudProvider='AWS', region='VIRGINIA_USA', tier='SP10'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-build with resource 'workspace'",
+        "Uses workspaceName 'dev-streams' or a timestamped variant such as 'dev-streams-test-<timestamp>'",
+        "Sets cloudProvider 'AWS' and region 'VIRGINIA_USA' (not 'us-east-1')",
+        "Sets tier 'SP10'",
+        "Includes the Atlas project ID"
+      ]
     },
     {
       "id": 2,
@@ -20,7 +27,12 @@
       "name": "list-workspaces",
       "prompt": "Show me all my stream processing workspaces",
       "expected_output": "Calls atlas-streams-discover with action='list-workspaces'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls atlas-streams-discover with action 'list-workspaces'",
+        "Resolves the Atlas project ID (calls atlas-list-projects or asks the user) before listing workspaces",
+        "Does not use a build, manage, or teardown tool for a read operation"
+      ]
     },
     {
       "id": 4,
@@ -97,7 +109,14 @@
       "name": "validate-connections-before-deploy",
       "prompt": "I want to create a processor using connections 'kafka-prod' and 'atlas-main'. Can you verify they're ready?",
       "expected_output": "Calls list-connections first, then inspect-connection for each named connection, checks state=READY, verifies connection types match intended usage, presents summary before proceeding",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls list-connections first",
+        "Calls inspect-connection for both 'kafka-prod' and 'atlas-main'",
+        "Verifies each connection state is READY",
+        "Verifies connection types match the intended source/sink/enrichment usage",
+        "Presents a connection summary before proceeding"
+      ]
     },
     {
       "id": 15,
@@ -111,7 +130,14 @@
       "name": "delete-workspace-safely",
       "prompt": "Delete workspace 'old-test-workspace'",
       "expected_output": "Calls inspect-workspace first to count connections and processors, presents summary to user (e.g., '2 connections, 3 processors will be deleted'), asks for confirmation before calling teardown",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Calls inspect-workspace before deleting",
+        "Presents the number of connections and processors that will be removed",
+        "Asks for explicit confirmation",
+        "Only calls atlas-streams-teardown with resource 'workspace' after confirmation",
+        "Does not delete the workspace without confirmation"
+      ]
     },
     {
       "id": 17,
@@ -125,7 +151,12 @@
       "name": "region-format-validation",
       "prompt": "Create a workspace in GCP us-central1",
       "expected_output": "Uses correct Atlas region format 'US_CENTRAL1' for GCP (not 'us-central1'), cloudProvider='GCP'",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Uses cloudProvider 'GCP'",
+        "Uses region 'US_CENTRAL1', not the raw cloud name 'us-central1'",
+        "Explains that an incorrect region format causes a dataProcessRegion error"
+      ]
     },
     {
       "id": 19,
@@ -138,15 +169,20 @@
       "id": 20,
       "name": "create-s3-sink",
       "prompt": "Create a processor that reads from Kafka 'logs' and writes to S3 bucket 'company-logs'",
-      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection using path (not prefix) and config.outputFormat (not a top-level format), optionally config.compression, DLQ configured",
+      "expected_output": "Pipeline with $source (Kafka + topic), $emit to S3 connection using path (not prefix) and config.outputFormat (not a top-level format), optionally config.compression",
       "files": []
     },
     {
       "id": 21,
-      "name": "search-knowledge-before-processor",
+      "name": "docs-first-field-validation",
       "prompt": "Create a processor that emits to S3",
-      "expected_output": "Calls search-knowledge first to validate S3 $emit field names (path, format, compression) before building processor, references ASP_example repo if needed",
-      "files": []
+      "expected_output": "Fetches the S3 $emit docs page (e.g. https://www.mongodb.com/docs/atlas/atlas-stream-processing/sp-agg-emit.md) or falls back to search-knowledge, then builds the pipeline with path and config.outputFormat",
+      "files": [],
+      "expectations": [
+        "Fetches the S3 $emit docs page (sp-agg-emit, .md) or calls search-knowledge before finalizing field names",
+        "Uses path and config.outputFormat for the S3 $emit, not prefix or a top-level format",
+        "Does not guess field names"
+      ]
     },
     {
       "id": 22,
@@ -196,6 +232,150 @@
       "prompt": "Can I add the current processing time to each document with $$NOW inside a stream processor pipeline?",
       "expected_output": "Explains that $$NOW is not available in Atlas Stream Processing and must not be used. Recommends using the source record timestamp for event time — either a timestamp field in the document or {\"$meta\": \"stream.source.ts\"}. Does not claim $$NOW is supported.",
       "files": []
+    },
+    {
+      "id": 34,
+      "name": "checkpoint-resume-constraints",
+      "prompt": "My processor has been running with a 5-minute tumbling window. I want to change it to a 10-minute window. Can I just modify the pipeline?",
+      "expected_output": "Explains that the processor must be stopped before modify-processor. With resumeFromCheckpoint true (default), changing window type or interval, removing windows, and modifying $source are not allowed. To make the change, restart/resume with resumeFromCheckpoint: false, warning that this drops all window state and restarts from the beginning. Order: stop, modify, start.",
+      "expectations": [
+        "States the processor must be stopped before modify-processor",
+        "Explains that changing the window interval is blocked while resumeFromCheckpoint is true",
+        "Recommends resumeFromCheckpoint: false to make the change",
+        "Warns that resumeFromCheckpoint: false drops window state / restarts from the beginning",
+        "Gives the stop, modify, start sequence"
+      ],
+      "files": []
+    },
+    {
+      "id": 36,
+      "name": "mcp-tools-unavailable",
+      "prompt": "The Atlas Streams MCP tools aren't showing up in my client. What should I check?",
+      "expected_output": "Verifies the MongoDB MCP Server is connected and configured with Atlas API credentials (apiClientId/apiClientSecret), and that all four tools are available: atlas-streams-discover, atlas-streams-build, atlas-streams-manage, atlas-streams-teardown. Offers limited fallbacks: Atlas CLI for read-only exploration and sp.process() in mongosh for ephemeral pipeline testing, and recommends configuring the MCP server for full functionality.",
+      "expectations": [
+        "Checks that the MongoDB MCP Server is connected with Atlas API credentials",
+        "Names the four streams tools that should be available",
+        "Offers Atlas CLI read-only exploration as a fallback",
+        "Offers sp.process() in mongosh for ephemeral testing",
+        "Recommends configuring the MCP server for full capabilities"
+      ],
+      "files": []
+    },
+    {
+      "id": 40,
+      "name": "update-workspace-tier",
+      "prompt": "My processor on an SP10 workspace keeps running out of memory. Can I change the workspace to a larger tier?",
+      "expected_output": "Explains the two knobs: update the workspace tier with atlas-streams-manage action 'update-workspace' (newTier), or stop the processor and start it again with a tier override. Recommends checking memoryUsageBytes from diagnose-processor first, warns that start-processor begins billing, and notes stopped processors retain state for 45 days.",
+      "expectations": [
+        "Uses atlas-streams-manage with action 'update-workspace' and a newTier",
+        "Mentions the alternative of stopping the processor and starting it with a tier override",
+        "Recommends checking memoryUsageBytes via diagnose-processor before resizing",
+        "Warns about billing when starting the processor",
+        "Does not suggest deleting and recreating the workspace"
+      ],
+      "files": []
+    },
+    {
+      "id": 52,
+      "name": "modify-from-failed",
+      "prompt": "My processor is FAILED. Do I have to delete and recreate it to change the pipeline?",
+      "expected_output": "Says no — modify-processor works in any state except STARTED, so CREATED, STOPPED, and FAILED are all modifiable. Recommends modify-processor with the corrected pipeline, then start-processor. Notes that resumeFromCheckpoint is a start parameter, not a modify one.",
+      "files": [],
+      "expectations": [
+        "States that FAILED processors can be modified (no delete/recreate needed)",
+        "States that modify-processor works in any state except STARTED",
+        "Uses modify-processor then start-processor",
+        "Notes that resumeFromCheckpoint is set on start, not modify"
+      ]
+    },
+    {
+      "id": 53,
+      "name": "start-tier-ceiling",
+      "prompt": "Restart processor 'orders-rollup' in workspace 'prod-streams' with tier SP50. The workspace's maxTierSize is SP30.",
+      "expected_output": "Explains that start-processor's tier cannot exceed the workspace's streamConfig.maxTierSize (SP30 here), so SP50 would be rejected. Offers to start at SP30, or to raise the workspace maxTierSize first if SP50 is genuinely required.",
+      "files": [],
+      "expectations": [
+        "States that the start tier cannot exceed the workspace maxTierSize",
+        "Identifies that SP50 exceeds the SP30 ceiling",
+        "Suggests starting at SP30 or raising maxTierSize first"
+      ]
+    },
+    {
+      "id": 55,
+      "name": "read-only-mode",
+      "prompt": "The MongoDB MCP server is running in read-only mode. Can I still create a workspace and processor with the streams tools?",
+      "expected_output": "Explains that read-only mode permits only read operations, so atlas-streams-discover works but atlas-streams-build, atlas-streams-manage, and atlas-streams-teardown all fail. Does not retry them. Gives the user the equivalent Atlas UI or Admin API steps for creating the workspace and processor.",
+      "files": [],
+      "expectations": [
+        "States that only atlas-streams-discover works in read-only mode",
+        "States that build, manage, and teardown are blocked",
+        "Does not retry the blocked tools",
+        "Offers the Atlas UI or Admin API alternative"
+      ]
+    },
+    {
+      "id": 56,
+      "name": "response-format-scope",
+      "prompt": "Call inspect-processor with responseFormat 'detailed' for processor 'orders-rollup'.",
+      "expected_output": "Explains that responseFormat applies only to the list actions and to inspect-workspace, and that inspect-processor accepts it but ignores it. Calls inspect-processor normally (it is already detailed).",
+      "files": [],
+      "expectations": [
+        "States that inspect-processor accepts responseFormat but ignores it",
+        "States that responseFormat applies to list actions and inspect-workspace",
+        "Calls inspect-processor without responseFormat"
+      ]
+    },
+    {
+      "id": 57,
+      "name": "docs-before-rejecting-stage",
+      "prompt": "Build me a processor that reads from my Kafka topic, runs each event through $vectorSearch against my Atlas cluster, and merges the results into a collection.",
+      "expected_output": "Checks the public Atlas Stream Processing docs for the $vectorSearch stage before deciding whether and how to use it, instead of rejecting or accepting it from memory or the skill's own text. Builds the pipeline according to what the docs say.",
+      "files": [],
+      "expectations": [
+        "Reads a public Atlas Stream Processing docs page for the stage, or uses search-knowledge, before composing the pipeline",
+        "Does not reject the stage before checking the docs",
+        "Bases the stage's fields on the docs page content",
+        "Ends the pipeline with exactly one terminal sink"
+      ]
+    },
+    {
+      "id": 59,
+      "name": "docs-currentdate-processing-time",
+      "prompt": "In my processor 'orders-rollup', add a processed_at field holding the current time on every document, just before the $merge.",
+      "expected_output": "Looks up how to get a processing timestamp in stream processing before composing the stage, then adds processed_at with the $currentDate expression (an empty object) inside $addFields. Does not use $$NOW and does not tell the user a processing-time field is unavailable.",
+      "files": [],
+      "expectations": [
+        "Looks up how to get the current time in stream processing (public docs page or search-knowledge) before composing the stage",
+        "Sets processed_at with the $currentDate expression given an empty object",
+        "Does not use $$NOW or $$CURRENT",
+        "Does not tell the user a processing-time field is unavailable, and does not leave it out"
+      ]
+    },
+    {
+      "id": 60,
+      "name": "docs-throttle-stage",
+      "prompt": "My processor 'orders-enrich' floods the partner API whenever it catches up after an outage. Limit what it sends downstream to 200 messages a second.",
+      "expected_output": "Looks up whether and how the processor can limit its own rate, then adds a $throttle stage with messagesPerSec set to 200 to the pipeline. Does not decline the request or push the limit onto the partner API.",
+      "files": [],
+      "expectations": [
+        "Looks up rate limiting in stream processing (public docs page or search-knowledge) before composing the stage",
+        "Adds a $throttle stage with messagesPerSec set to 200",
+        "Does not invent field names for the stage",
+        "Does not decline, or advise only a limit outside the processor"
+      ]
+    },
+    {
+      "id": 61,
+      "name": "docs-createuuid-expression",
+      "prompt": "Give every document in 'orders-rollup' a unique eventId before it is merged.",
+      "expected_output": "Looks up how to generate an identifier inside a stream processing pipeline, then sets eventId with the $createUUID expression given an empty object. Does not derive the id from source fields or ask the user to supply one.",
+      "files": [],
+      "expectations": [
+        "Looks up how to generate a unique value in stream processing (public docs page or search-knowledge) before composing the stage",
+        "Sets eventId with the $createUUID expression given an empty object",
+        "Does not build the id by concatenating source fields",
+        "Does not ask the user to supply the id"
+      ]
     }
   ]
 }
