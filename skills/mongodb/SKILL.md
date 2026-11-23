@@ -4,6 +4,7 @@ description: Front door for MongoDB and MongoDB Atlas. Use it before answering w
 license: Apache-2.0
 metadata:
   version: "1.0.1"
+  labelText: "Choose, set up, or connect to MongoDB and MongoDB Atlas, and find the right skill for your task."
 ---
 
 # MongoDB

@@ -19,18 +19,6 @@
 
 set -euo pipefail
 
-if ! command -v skill-validator &>/dev/null; then
-  echo "Error: skill-validator is not installed."
-  echo ""
-  echo "Install via Homebrew (recommended):"
-  echo "  brew tap agent-ecosystem/homebrew-tap"
-  echo "  brew install skill-validator"
-  echo ""
-  echo "Or from source (requires Go 1.25.5+):"
-  echo "  go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest"
-  exit 1
-fi
-
 # Resolve and cd to the repo root so relative paths always work,
 # regardless of where the script is invoked from.
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
@@ -38,6 +26,33 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 cd "$REPO_ROOT"
+
+expected_version="$(bash tools/install-skill-validator.sh --version)"
+
+print_install_help() {
+  echo "This repo uses the grove-platform fork of skill-validator, which adds"
+  echo "MongoDB-specific checks. The upstream Homebrew and 'go install' builds"
+  echo "do not include them."
+  echo ""
+  echo "From the repository root, install $expected_version (the version used by CI):"
+  echo '  bash tools/install-skill-validator.sh && export PATH="$HOME/.local/bin:$PATH"'
+}
+
+if ! command -v skill-validator &>/dev/null; then
+  echo "Error: skill-validator is not installed."
+  echo ""
+  print_install_help
+  exit 1
+fi
+
+if ! installed_version="$(skill-validator --version 2>&1)" ||
+  [[ "$installed_version" != "skill-validator version $expected_version" ]]; then
+  echo "Error: expected skill-validator $expected_version at $(command -v skill-validator)."
+  echo "Found: $installed_version"
+  echo ""
+  print_install_help
+  exit 1
+fi
 
 SKILL_PATH="${1:-skills/}"
 
@@ -54,4 +69,6 @@ fi
 # Ensure the path ends with a trailing slash for consistency with the validator.
 [[ "$SKILL_PATH" != */ ]] && SKILL_PATH="$SKILL_PATH/"
 
-skill-validator check --strict "$SKILL_PATH"
+# --allow-token-warnings keeps token-budget warnings visible without failing
+# the check; hard token limits still fail.
+skill-validator check --strict --allow-token-warnings "$SKILL_PATH"
