@@ -10,6 +10,7 @@ compatibility: Requires skill-validator CLI and claude CLI for LLM scoring. LLM 
 metadata:
   author: mongodb
   version: "1.0"
+  labelText: "Review proposed Agent Skill for validity and quality"
 ---
 
 # Review Skill Workflow
