@@ -16,6 +16,7 @@ Know what each connection type can do before creating pipelines:
 | **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
 | **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
+| **AzureBlobStorage** | ❌ Not valid | ✅ $emit to containers; `$iceberg` (SP10+) | ❌ | Sink only - use `container` and `path`; private networking uses `publicPrivateNetworking` |
 | **DataCatalog** | ❌ Not valid | ❌ Not valid | ❌ | **Metadata only** - Unity or Horizon Iceberg catalog referenced by `$iceberg.catalog.connectionName` |
 
 **Common connection usage mistakes to avoid:**
@@ -71,7 +72,7 @@ See [development-workflow.md](development-workflow.md) "Pre-Deployment Connectio
 - HTTPS connections are for `$https` enrichment ONLY — they are NOT valid as `$source` data sources
 - Store API authentication in connection settings, never hardcode in processor pipelines
 - AWS connections (S3, Kinesis, Lambda) require IAM role ARN registered via Atlas Cloud Provider Access first
-- Supported `connectionType` values: `Kafka`, `Cluster`, `S3`, `Https`, `AWSKinesisDataStreams`, `AWSLambda`, `SchemaRegistry`, `DataCatalog`, `Sample`
+- Supported `connectionType` values: `Kafka`, `Cluster`, `S3`, `Https`, `AWSKinesisDataStreams`, `AWSLambda`, `SchemaRegistry`, `DataCatalog`, `AzureBlobStorage`, `Sample`
 
 ## AWS Cloud Provider Access Prerequisites
 
@@ -185,6 +186,20 @@ Optional: `clusterGroupId` (if cluster is in a different project — requires cr
 
 Required IAM policy permissions: `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`.
 
+### AzureBlobStorage
+```json
+{
+  "azure": {
+    "servicePrincipalId": "<service-principal-id>",
+    "storageAccountName": "mystorageaccount"
+  }
+}
+```
+- `servicePrincipalId` is the ID of an Azure service principal that **must already exist** and have access to the storage account (for `$iceberg`, Storage Blob Data Contributor on the container). The connection does not create it.
+- `storageAccountName` is 3-24 letters and numbers only; mixed case is lowercased automatically.
+- Sink only. Use it as the storage connection for `$emit` (`container`, `path`) or `$iceberg` (see [pipeline-patterns.md](pipeline-patterns.md#iceberg-to-s3-or-azure-blob)).
+- Private networking goes in `connectionConfig.publicPrivateNetworking`, not `networking`.
+
 ### Https
 ```json
 {
@@ -297,6 +312,7 @@ Iceberg catalog connection for `$iceberg` sinks. Pick one provider and supply on
 - Unity authenticates with a Databricks service principal (`clientId`/`clientSecret`). Horizon uses key-pair auth; `privateKey` must be an unencrypted PKCS#8 PEM starting `-----BEGIN PRIVATE KEY-----`
 - Tool elicitation collects missing fields and secrets — don't ask the user for `clientSecret` or `privateKey` directly
 - Secrets are never returned by Atlas or the tool. Never supply token credentials or call a private token endpoint
+- A DataCatalog connection holds catalog credentials only. The `$iceberg` sink still needs a separate storage connection (S3 or Azure Blob) for `$iceberg.connectionName`
 - Reference the connection from a processor via `$iceberg.catalog.connectionName` (see [pipeline-patterns.md](pipeline-patterns.md#iceberg-to-s3-or-azure-blob))
 
 ### Sample

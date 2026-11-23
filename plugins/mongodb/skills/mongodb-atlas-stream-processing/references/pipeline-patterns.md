@@ -26,6 +26,7 @@ Always consult the official repo for the latest validated patterns before creati
 | `$group` | Aggregate (inside windows) | Stateful |
 | `$merge` | Write to Atlas collection | Output (required, last) |
 | `$emit` | Write to Kafka, Kinesis, or S3 | Output (required, last) |
+| `$iceberg` | Write Iceberg tables to S3 or Azure Blob (SP10+) | Output (required, last) |
 
 | Category | Stages | Rules |
 |----------|--------|-------|
@@ -35,7 +36,7 @@ Always consult the official repo for the latest validated patterns before creati
 | **Validation** | `$validate` | Schema enforcement. Place early to catch bad data before expensive stages. |
 | **Stateful/Window** | `$tumblingWindow`, `$hoppingWindow`, `$sessionWindow` | Accumulates state in memory. Monitor `memoryUsageBytes`. |
 | **Custom Code** | `$function` | JavaScript UDFs. Requires SP30+. |
-| **Output** (1+, required) | `$merge`, `$emit`, `$https`, `$externalFunction` (async only) | Must be last. Required for deployed processors. |
+| **Output** (1+, required) | `$merge`, `$emit`, `$iceberg`, `$https`, `$externalFunction` (async only) | Must be last. Required for deployed processors. |
 
 ## Invalid Constructs
 
@@ -43,7 +44,7 @@ Do NOT use these in streaming pipelines:
 - `$$NOW`, `$$CURRENT` — not available in stream processing
 - HTTPS connections as `$source` — HTTPS is for `$https` enrichment only
 - Kafka `$source` without `topic` — topic field is required
-- Pipelines without a sink — `$merge`/`$emit` required for deployed processors (sinkless only works via `sp.process()`)
+- Pipelines without a sink — `$merge`/`$emit`/`$iceberg` required for deployed processors (sinkless only works via `sp.process()`)
 - Lambda connections with `$emit` — Lambda uses `$externalFunction` (can be mid-pipeline or terminal sink with async execution), not `$emit`
 
 ## Source Patterns
@@ -471,13 +472,13 @@ DLQ documents include: original document, error message, stage info, timestamp.
 
 ## Chained Processors (Multi-Sink Pattern)
 
-**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). You CANNOT have both `$merge` and `$emit` as terminal stages. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
+**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge`, `$emit`, or `$iceberg`). You CANNOT have more than one terminal sink stage. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
 
 1. **Acknowledge** the single-sink constraint explicitly in your response
 2. **Propose chained processors**: Processor A reads source → enriches → writes to intermediate via `$merge` (Atlas) or `$emit` (Kafka). Processor B reads from that intermediate (change stream or Kafka topic) → emits to second destination. Kafka-as-intermediate is lower latency; Atlas-as-intermediate is simpler to inspect.
 3. **Show both processor pipelines** including any `$lookup` enrichment stages with `parallelism` settings.
 
-Note: `$externalFunction` (Lambda) can be used mid-pipeline OR as a terminal sink (with `execution: "async"`). A pipeline with mid-pipeline `$externalFunction` AND a terminal `$merge`/`$emit` is a valid single-sink pattern (Lambda enriches, then the result is written to the sink).
+Note: `$externalFunction` (Lambda) can be used mid-pipeline OR as a terminal sink (with `execution: "async"`). A pipeline with mid-pipeline `$externalFunction` AND a terminal `$merge`/`$emit`/`$iceberg` is a valid single-sink pattern (Lambda enriches, then the result is written to the sink).
 
 ## Required Field Examples by Stage
 
