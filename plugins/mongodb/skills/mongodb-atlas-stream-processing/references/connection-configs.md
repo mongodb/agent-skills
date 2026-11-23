@@ -11,11 +11,12 @@ Know what each connection type can do before creating pipelines:
 | **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
 | **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
 | **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
-| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config` |
+| **S3** | ❌ Not valid | ✅ $emit to buckets; `$iceberg` (SP10+) | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config` |
 | **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
 | **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
 | **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
+| **DataCatalog** | ❌ Not valid | ❌ Not valid | ❌ | **Metadata only** - Unity or Horizon Iceberg catalog referenced by `$iceberg.catalog.connectionName` |
 
 **Common connection usage mistakes to avoid:**
 - ❌ Using HTTPS connections as `$source` → HTTPS is for enrichment or sink only
@@ -70,7 +71,7 @@ See [development-workflow.md](development-workflow.md) "Pre-Deployment Connectio
 - HTTPS connections are for `$https` enrichment ONLY — they are NOT valid as `$source` data sources
 - Store API authentication in connection settings, never hardcode in processor pipelines
 - AWS connections (S3, Kinesis, Lambda) require IAM role ARN registered via Atlas Cloud Provider Access first
-- Supported `connectionType` values: `Kafka`, `Cluster`, `S3`, `Https`, `AWSKinesisDataStreams`, `AWSLambda`, `SchemaRegistry`, `Sample`
+- Supported `connectionType` values: `Kafka`, `Cluster`, `S3`, `Https`, `AWSKinesisDataStreams`, `AWSLambda`, `SchemaRegistry`, `DataCatalog`, `Sample`
 
 ## AWS Cloud Provider Access Prerequisites
 
@@ -259,6 +260,44 @@ Required IAM policy permissions: `kinesis:ListShards`, `kinesis:SubscribeToShard
 - `schemaRegistryUrls` is an **array** (not a string). The tool auto-wraps a string into an array if needed.
 - `schemaRegistryAuthentication.type`: `"USER_INFO"` (explicit credentials) or `"SASL_INHERIT"` (inherit from Kafka connection)
 - Tool elicitation will collect sensitive fields (password) — don't ask the user for these directly
+
+### DataCatalog
+Iceberg catalog connection for `$iceberg` sinks. Pick one provider and supply only its settings block.
+
+**Databricks Unity:**
+```json
+{
+  "connectionType": "DataCatalog",
+  "connectionConfig": {
+    "catalogProvider": "DATABRICKS_UNITY",
+    "catalogUrl": "https://my-workspace.cloud.databricks.com",
+    "databricks": {
+      "authentication": {"clientId": "...", "clientSecret": "..."}
+    }
+  }
+}
+```
+
+**Snowflake Horizon:**
+```json
+{
+  "connectionType": "DataCatalog",
+  "connectionConfig": {
+    "catalogProvider": "SNOWFLAKE_HORIZON",
+    "catalogUrl": "https://myaccount.snowflakecomputing.com",
+    "snowflake": {
+      "authentication": {"account": "...", "user": "...", "role": "...", "privateKey": "-----BEGIN PRIVATE KEY-----..."}
+    }
+  }
+}
+```
+- `connectionType` MUST be `"DataCatalog"`; `catalogProvider` is required and cannot be changed after creation
+- `catalogUrl` is the HTTPS **base URL only** — no REST path, query, fragment, or credentials. Host must end in `.cloud.databricks.com` or `.azuredatabricks.net` (Unity), or `.snowflakecomputing.com` (Horizon)
+- Do not combine `databricks` and `snowflake` blocks
+- Unity authenticates with a Databricks service principal (`clientId`/`clientSecret`). Horizon uses key-pair auth; `privateKey` must be an unencrypted PKCS#8 PEM starting `-----BEGIN PRIVATE KEY-----`
+- Tool elicitation collects missing fields and secrets — don't ask the user for `clientSecret` or `privateKey` directly
+- Secrets are never returned by Atlas or the tool. Never supply token credentials or call a private token endpoint
+- Reference the connection from a processor via `$iceberg.catalog.connectionName` (see [pipeline-patterns.md](pipeline-patterns.md#iceberg-to-s3-or-azure-blob))
 
 ### Sample
 No connectionConfig required. Provides built-in test data. Useful for development and testing without external infrastructure.

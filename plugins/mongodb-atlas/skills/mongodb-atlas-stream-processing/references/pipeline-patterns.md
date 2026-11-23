@@ -179,6 +179,41 @@ Requires a `SchemaRegistry` connection (see [connection-configs.md](connection-c
 ```
 Fields: `connectionName` (required), `bucket` (required), `path` (required — key prefix string or expression), `region` (optional), `config` (optional — `outputFormat`, `writeOptions`, `delimiter`, `compression`).
 
+### $iceberg to S3 or Azure Blob
+`$iceberg` is its own terminal stage (not `$emit`) and requires tier SP10 or higher. `connectionName` is the **storage** connection (S3 or Azure Blob), not the catalog.
+
+```json
+{"$iceberg": {
+  "connectionName": "my-s3",
+  "bucket": "my-bucket",
+  "path": "warehouse/iceberg",
+  "databaseName": "my_db",
+  "tableName": {"$meta": "stream.source.ns.coll"},
+  "mode": "cdc",
+  "catalog": {"type": "unity", "connectionName": "my-unity", "warehouse": "my_unity_catalog"}
+}}
+```
+Fields: `connectionName`, `path` (no trailing `/`), `databaseName`, `tableName` (string or expression) are required. `mode` is `cdc` or `insert`. `catalog` is optional.
+- **S3:** use `bucket`. `region` is required only when the workspace is not on AWS.
+- **Azure Blob Storage:** use `container` instead of `bucket`; `region` is not supported.
+
+**`catalog` by type:**
+
+| `type` | Extra fields | Notes |
+|--------|--------------|-------|
+| `hadoop` | none | Built-in; type only |
+| `glue` | none | Built-in; S3 only; type only |
+| `unity` | `connectionName`, `warehouse` | `connectionName` is a DataCatalog connection; `warehouse` is the Unity catalog name |
+| `horizon` | `connectionName`, `warehouse` | `connectionName` is a DataCatalog connection; `warehouse` is the Snowflake database |
+
+Common mistakes:
+- ❌ `$emit` for Iceberg → use `$iceberg`
+- ❌ Omitting `warehouse` for `unity`/`horizon` → rejected
+- ❌ Adding `connectionName`/`warehouse` to `hadoop`/`glue` → type only
+- ❌ Pointing `$iceberg.connectionName` at the DataCatalog connection → it is the S3/Azure storage connection; the DataCatalog goes in `catalog.connectionName`
+
+Create the DataCatalog connection first (see [connection-configs.md](connection-configs.md#datacatalog)).
+
 ### $https as Sink (webhook/API)
 ```json
 {"$https": {

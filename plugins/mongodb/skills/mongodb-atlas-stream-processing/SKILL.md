@@ -1,6 +1,6 @@
 ---
 name: mongodb-atlas-stream-processing
-description: "Manages MongoDB Atlas Stream Processing (ASP) workflows. Handles workspace provisioning, data source/sink connections, processor lifecycle operations, debugging diagnostics, and tier sizing. Supports Kafka, Atlas clusters, S3, HTTPS, and Lambda integrations for streaming data workloads and event processing. NOT for general MongoDB queries or Atlas cluster management. Requires MongoDB MCP Server with Atlas API credentials."
+description: "Manages MongoDB Atlas Stream Processing (ASP) workflows. Handles workspace provisioning, data source/sink connections, processor lifecycle operations, debugging diagnostics, and tier sizing. Supports Kafka, Atlas clusters, S3, Apache Iceberg (with Unity and Horizon catalogs), HTTPS, and Lambda integrations for streaming data workloads and event processing. NOT for general MongoDB queries or Atlas cluster management. Requires MongoDB MCP Server with Atlas API credentials."
 license: Apache-2.0
 metadata:
   version: "1.1.0"
@@ -47,7 +47,7 @@ If the MongoDB MCP Server is not connected or the streams tools are missing, see
 | Resource | Key parameters |
 |----------|---------------|
 | `workspace` | `cloudProvider`, `region`, `tier` (default SP10), `includeSampleData` |
-| `connection` | `connectionName`, `connectionType` (Kafka/Cluster/S3/Https/Kinesis/Lambda/SchemaRegistry/Sample), `connectionConfig` |
+| `connection` | `connectionName`, `connectionType` (Kafka/Cluster/S3/Https/Kinesis/Lambda/SchemaRegistry/DataCatalog/Sample), `connectionConfig` |
 | `processor` | `processorName`, `pipeline` (must start with `$source`, end with `$merge`/`$emit`), `dlq`, `autoStart` |
 | `privatelink` | `privateLinkConfig` (project-level, not tied to a specific workspace) |
 
@@ -143,6 +143,7 @@ Key quickstarts:
 - **`$source` (Kinesis)**: use `stream` (NOT `streamName` or `topic`)
 - **`$emit` (Kinesis)**: MUST include `partitionKey`
 - **`$emit` (S3)**: use `path` (NOT `prefix`)
+- **`$iceberg`**: terminal stage (not `$emit`); needs `connectionName`, `path`, `databaseName`, `tableName`, plus `bucket` (S3) or `container` (Azure Blob). `catalog.type` of `unity`/`horizon` also needs `catalog.connectionName` and `catalog.warehouse`. Requires SP10+.
 - **`$https`**: must include `connectionName`, `path`, `method`, `as`, `onError: "dlq"`
 - **`$externalFunction`**: must include `connectionName`, `functionName`, `execution`, `as`, `onError: "dlq"`
 - **`$validate`**: must include `validator` with `$jsonSchema` and `validationAction: "dlq"`
@@ -150,6 +151,8 @@ Key quickstarts:
 - **AWS connections** (S3, Kinesis, Lambda): IAM role ARN must be registered via Atlas Cloud Provider Access first. Always confirm this with user. See [references/connection-configs.md](references/connection-configs.md) for details.
 
 See [references/pipeline-patterns.md](references/pipeline-patterns.md) for stage field examples with JSON syntax.
+
+**DataCatalog connection:** `connectionType` must be `"DataCatalog"` with `catalogProvider` (`DATABRICKS_UNITY` or `SNOWFLAKE_HORIZON`) and `catalogUrl`. Reference it from `$iceberg.catalog.connectionName`; it is not a `$source` or sink itself. See [references/connection-configs.md](references/connection-configs.md#datacatalog) for fields.
 
 **SchemaRegistry connection:** `connectionType` must be `"SchemaRegistry"` (not `"Kafka"`). Schema type values are case-sensitive (use lowercase `avro`, not `AVRO`). See [references/connection-configs.md](references/connection-configs.md#schemaregistry) for required fields and auth types.
 
@@ -187,11 +190,12 @@ Know what each connection type can do before creating pipelines:
 | **Cluster** | ✅ Change streams | ✅ $merge to collections | ✅ $lookup | Change streams monitor insert/update/delete/replace operations |
 | **Kafka** | ✅ Topic consumer | ✅ $emit to topics | ❌ | Source MUST include `topic` field |
 | **Sample Stream** | ✅ Sample data | ❌ Not valid | ❌ | Testing/demo only |
-| **S3** | ❌ Not valid | ✅ $emit to buckets | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config`. Supports AWS PrivateLink. |
+| **S3** | ❌ Not valid | ✅ $emit to buckets; `$iceberg` (SP10+) | ❌ | Sink only - use `path` and `config.outputFormat` (no top-level `format`); `compression` under `config`. Supports AWS PrivateLink. |
 | **Https** | ❌ Not valid | ✅ $https as sink | ✅ $https enrichment | Can be used mid-pipeline for enrichment OR as final sink stage |
 | **AWSLambda** | ❌ Not valid | ✅ $externalFunction (async only) | ✅ $externalFunction (sync or async) | **Sink:** `execution: "async"` required. **Mid-pipeline:** `execution: "sync"` or `"async"` |
 | **AWS Kinesis** | ✅ Stream consumer | ✅ $emit to streams | ❌ | Similar to Kafka pattern |
 | **SchemaRegistry** | ❌ Not valid | ❌ Not valid | ✅ Schema resolution | **Metadata only** - used by Kafka connections for Avro schemas |
+| **DataCatalog** | ❌ Not valid | ❌ Not valid | ❌ | **Metadata only** - Unity or Horizon catalog referenced by `$iceberg.catalog.connectionName` |
 
 **Common connection usage mistakes to avoid:**
 - ❌ Using `$externalFunction` as sink with `execution: "sync"` → Must use `execution: "async"` for sink stage
