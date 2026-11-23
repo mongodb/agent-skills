@@ -195,7 +195,7 @@ Required IAM policy permissions: `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`
   }
 }
 ```
-- `servicePrincipalId` is the ID of an Azure service principal that **must already exist** and have access to the storage account (for `$iceberg`, Storage Blob Data Contributor on the container). The connection does not create it.
+- `servicePrincipalId` is the ID of an Azure service principal that **must already be registered in the project via Atlas Cloud Provider Access** and have access to the storage account (for `$iceberg`, Storage Blob Data Contributor on the container). The connection does not create or register it.
 - `storageAccountName` is 3-24 letters and numbers only; mixed case is lowercased automatically.
 - Sink only. Use it as the storage connection for `$emit` (`container`, `path`) or `$iceberg` (see [pipeline-patterns.md](pipeline-patterns.md#iceberg-to-s3-or-azure-blob)).
 - Private networking goes in `connectionConfig.publicPrivateNetworking`, not `networking`.
