@@ -26,7 +26,7 @@ Always consult the official repo for the latest validated patterns before creati
 | `$group` | Aggregate (inside windows) | Stateful |
 | `$merge` | Write to Atlas collection | Output (required, last) |
 | `$emit` | Write to Kafka, Kinesis, or S3 | Output (required, last) |
-| `$iceberg` | Write Iceberg tables to S3 or Azure Blob (SP10+) | Output (required, last) |
+| `$iceberg` | Append to or update an Iceberg table registered in a catalog (SP10+) | Output (required, last) |
 
 | Category | Stages | Rules |
 |----------|--------|-------|

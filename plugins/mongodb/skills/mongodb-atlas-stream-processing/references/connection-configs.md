@@ -301,7 +301,7 @@ Iceberg catalog connection for `$iceberg` sinks. Pick one provider and supply on
     "catalogProvider": "SNOWFLAKE_HORIZON",
     "catalogUrl": "https://myaccount.snowflakecomputing.com",
     "snowflake": {
-      "authentication": {"account": "...", "user": "...", "role": "...", "privateKey": "-----BEGIN PRIVATE KEY-----..."}
+      "authentication": {"account": "...", "user": "...", "role": "...", "privateKey": "<unencrypted-PKCS8-PEM-private-key>"}
     }
   }
 }
