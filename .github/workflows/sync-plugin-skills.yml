@@ -36,9 +36,7 @@ jobs:
           # scripts run without a transpile step).
           node-version-file: tools/package.json
           cache: "pnpm"
-          cache-dependency-path: |
-            tools/pnpm-lock.yaml
-            plugins/*/pnpm-lock.yaml
+          cache-dependency-path: tools/pnpm-lock.yaml
 
       - name: Install tools dependencies
         run: pnpm install --frozen-lockfile
@@ -65,10 +63,12 @@ jobs:
 
       - name: Type-check OpenCode plugins
         # Checks index.ts against the real @opencode/plugin API, which the unit
-        # tests can't (they cover only the dependency-free skills.ts).
+        # tests can't (they cover only the dependency-free skills.ts). The plugins
+        # have no lockfile, so this checks the latest @opencode/plugin in range,
+        # the version users' OpenCode is most likely to run.
         run: |
           for dir in plugins/mongodb plugins/mongodb-atlas; do
-            (cd "$dir" && pnpm install --frozen-lockfile && pnpm run typecheck)
+            (cd "$dir" && pnpm install --no-frozen-lockfile && pnpm run typecheck)
           done
 
       - name: Check for drift
