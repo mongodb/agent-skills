@@ -247,17 +247,6 @@ rejects any ref that isn't the release tag — by design, so a dispatch can
 never publish an untagged version.) It skips any version already on npm and
 publishes only what's missing.
 
-One-time setup (already done unless the packages are missing from npm): both
-packages use npm trusted publishing, so publishes need no token. npm can only
-attach a trusted publisher to a package that already exists. So each name was
-first published once by hand by an org member with 2FA, and then configured on
-npmjs.com as a trusted publisher for `mongodb/agent-skills` and the
-`.github/workflows/publish-opencode.yml` workflow. Adding another OpenCode
-package later means repeating that bootstrap for its name.
-
-After the first release, smoke-test the registry install once:
-`opencode plugin add opencode-plugin-mongodb` in a scratch project.
-
 Users install from npm:
 
 ```bash
