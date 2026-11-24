@@ -14,6 +14,9 @@ This repo publishes two plugins from `plugins/`:
   - `.github/plugin/plugin.json` — GitHub Copilot / VS Code (`oauth.clientId`, a CIMD URL)
   - On Codex it points at a connector via `.app.json`.
   - `.gemini-plugin/plugin.json` — Gemini (`oauth.clientId` `google-gemini`)
+  - `.opencode-plugin/index.ts` — OpenCode (remote MCP; inlined
+    `oauth.client_id: "opencode"`, the static atlas-iam seed — OpenCode's CIMD
+    URL is not seeded)
 
   Don't add a `.mcp.json` or `mcp.json` to `plugins/mongodb-atlas/`. Claude,
   Cursor, Copilot, Grok, and Codex all load those files automatically, and
@@ -34,6 +37,7 @@ backs all of them:
 | Cursor | `mongodb`, `mongodb-atlas` | `.cursor-plugin/marketplace.json` | `plugins/<name>/.cursor-plugin/plugin.json` |
 | Codex | `mongodb`, `mongodb-atlas` | `.agents/plugins/marketplace.json` | `plugins/<name>/.codex-plugin/plugin.json` |
 | Grok (xAI) | `mongodb`, `mongodb-atlas` | `.grok-plugin/marketplace.json` | `plugins/<name>/.grok-plugin/plugin.json` |
+| OpenCode | `mongodb`, `mongodb-atlas` | _(none — npm registry + git spec)_ | `plugins/<name>/package.json` (root; entry in `.opencode-plugin/`) |
 | Copilot / VS Code | `mongodb-atlas` only | `.github/plugin/marketplace.json` | `plugins/<name>/.github/plugin/plugin.json` |
 | Antigravity | `mongodb`, `mongodb-atlas` | _(none — Google-curated only)_ | `plugins/<name>/.antigravity-plugin/plugin.json` |
 | Gemini | `mongodb-atlas` only | _(none — partner onboarding)_ | `plugins/<name>/.gemini-plugin/plugin.json` |
@@ -53,6 +57,34 @@ must stay at the plugin root: Antigravity ignores it inside
 `.antigravity-plugin/`. The `.antigravity-plugin/` layout requires Antigravity
 CLI 1.3.2 or later. Don't move the manifest to `plugins/<name>/plugin.json`:
 Copilot reads a root `plugin.json` before `.github/plugin/plugin.json`.
+
+OpenCode has no marketplace or catalog index — its plugins are npm-style
+TypeScript packages, installed by npm name or git spec (`opencode plugin add …`)
+and registered in code rather than by manifest fields. Each plugin therefore
+carries a root `package.json` (the OpenCode package manifest, kept in the
+repo-wide version lockstep) whose `exports` point at `.opencode-plugin/index.ts`,
+which registers the MCP server and the bundled skills through OpenCode's plugin
+API (`ctx.mcp.transform` / `ctx.skill.transform`). The package root is the
+plugin root itself — the same folder every other harness installs — so the
+existing generated `skills/` copy serves OpenCode too and no extra copy is
+needed. The npm tarball ships only `.opencode-plugin/`, `skills/`, and
+`README.md` (plus npm's always-included `package.json`/`LICENSE`): `files`
+in `package.json` is an allowlist, so the other clients' manifests never reach
+npm. The root `package.json` is OpenCode's equivalent of Antigravity's root
+`mcp_config.json` — a file the harness's format requires at the plugin root —
+and no other client reads it.
+Because the root `package.json` sets `"type": "module"`, any future `.js`
+helper script inside a bundled skill must be ESM (or use the `.cjs`
+extension) — for every harness, not just OpenCode.
+OpenCode keeps one entry per skill ID — later
+registration wins, so the outcome depends on install order (in the tested
+order, community → Atlas, the Atlas copy supplied the 7 shared skills) — and a
+project-level skills copy (`.opencode/skills`, `.claude/skills`,
+`.agents/skills`) overrides both; the overlap never errors. The plugins' MCP
+registrations likewise override any pre-existing server registered under the
+same name (`mongodb` / `mongodb-atlas`). The `Publish OpenCode Plugins`
+workflow publishes both packages to npm (trusted publishing, no tokens) when a
+GitHub release is published.
 
 The repo-root `skills/` directory is the canonical source of truth for all skill
 content. Each plugin ships its own committed copy under `plugins/<name>/skills/`,
@@ -139,6 +171,7 @@ exists for the release tag, the workflow skips release creation.
 | [Copilot (CLI / VS Code agent plugins)](#github-copilot-cli-and-vs-code-agent-plugins) | Custom marketplace: changes merged to `main`. Official marketplace: after the `awesome-copilot` PR is merged | Open or refresh the `github/awesome-copilot` PR (and bump the ref/sha) |
 | [Codex](#codex) | Changes are merged to `main` | None |
 | [Grok (xAI)](#grok-xai) | Custom marketplace: changes merged to `main`. Official catalog: after the upstream PR is merged | Open or refresh the `xai-org/plugin-marketplace` PR (and bump the commit SHA) |
+| [OpenCode](#opencode) | The `Publish OpenCode Plugins` workflow publishes both npm packages when the release is published | Once, before the first release: bootstrap-publish both names and configure trusted publishing. After each release: check the workflow run, and re-run it if it failed |
 | [VS Code extension](#vs-code-extension) | The VS Code extension publishes a release with the updated skills | Coordinate the extension update |
 
 #### Gemini
@@ -200,6 +233,44 @@ After publishing the GitHub release, open a PR adding the plugins to
 [`xai-org/plugin-marketplace`](https://github.com/xai-org/plugin-marketplace)'s
 `.grok-plugin/marketplace.json`, pinned to the release commit SHA, and regenerate
 its `plugin-index.json`.
+
+#### OpenCode
+
+No manual submission is required after publishing the GitHub release: the
+`Publish OpenCode Plugins` workflow publishes `opencode-plugin-mongodb` and
+`opencode-plugin-mongodb-atlas` to npm when the release is published (check the
+workflow run succeeded — that is the only operator action). If it failed
+partway, re-run it: either Actions → **Re-run jobs** on the failed run, or
+`gh workflow run publish-opencode.yml --ref v<release-tag>`. (The GitHub UI's
+Run-workflow dropdown only offers branches, and the workflow's ref guard
+rejects any ref that isn't the release tag — by design, so a dispatch can
+never publish an untagged version.) It skips any version already on npm and
+publishes only what's missing.
+
+One-time setup (already done unless the packages are missing from npm): both
+packages use npm trusted publishing, so publishes need no token. npm can only
+attach a trusted publisher to a package that already exists. So each name was
+first published once by hand by an org member with 2FA, and then configured on
+npmjs.com as a trusted publisher for `mongodb/agent-skills` and the
+`.github/workflows/publish-opencode.yml` workflow. Adding another OpenCode
+package later means repeating that bootstrap for its name.
+
+After the first release, smoke-test the registry install once:
+`opencode plugin add opencode-plugin-mongodb` in a scratch project.
+
+Users install from npm:
+
+```bash
+opencode plugin add opencode-plugin-mongodb
+opencode plugin add opencode-plugin-mongodb-atlas
+```
+
+Run `opencode plugin update` (or `plugin check`) after a new release to move to
+the newer version. A git-spec fallback also works, pinned to a release tag:
+
+```bash
+opencode plugin add 'github:mongodb/agent-skills#v<release-tag>::path:plugins/mongodb-atlas'
+```
 
 #### VS Code extension
 

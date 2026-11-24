@@ -1,0 +1,80 @@
+name: Publish OpenCode Plugins
+
+# Publishes the OpenCode npm packages (plugins/*/package.json — the same plugin
+# folders every other harness installs) when a GitHub release is published.
+# Uses npm trusted publishing (OIDC): no tokens; the trusted-publisher config
+# on npmjs.com must reference this exact workflow path (see CONTRIBUTING.md).
+
+on:
+  release:
+    types: [published]
+  # Manual re-run path: Actions → "Re-run jobs" on the failed run, or
+  # `gh workflow run publish-opencode.yml --ref v<release-tag>`. (The Run-workflow
+  # dropdown lists branches only, which the ref guard rejects.)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# Never run two publishes at once (e.g. a release event plus a manual re-run).
+concurrency:
+  group: publish-opencode
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # engines.node (>= 24), whose bundled npm (>= 11.5.1) supports trusted
+          # publishing. No dependency cache: this job holds the OIDC publish
+          # token, and a poisoned cache could expose it.
+          node-version-file: tools/package.json
+          package-manager-cache: false
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Read and validate plugin versions
+        id: version
+        shell: bash
+        # Validates lockstep and emits version / release_tag to $GITHUB_OUTPUT
+        # (the same outputs Draft Release uses).
+        run: node tools/plugin-version.ts check
+
+      - name: Verify the ref is the release tag for the lockstep version
+        shell: bash
+        env:
+          EXPECTED_TAG: ${{ steps.version.outputs.release_tag }}
+        # On a release event GITHUB_REF is the release's tag; on a manual
+        # dispatch it is whatever ref was picked. Either way it must be exactly
+        # refs/tags/<lockstep tag>, so a dispatch from main can never publish an
+        # untagged version.
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/tags/$EXPECTED_TAG" ]; then
+            echo "::error::Ref $GITHUB_REF is not refs/tags/$EXPECTED_TAG (the manifests' lockstep release tag)."
+            exit 1
+          fi
+
+      - name: Publish packages (skipping versions already on npm)
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        # Re-runnable: if one package published and the other failed, a re-run
+        # (or workflow_dispatch on the release tag) publishes only the missing one.
+        run: |
+          set -euo pipefail
+          for dir in plugins/mongodb plugins/mongodb-atlas; do
+            name="$(node -p "require('./$dir/package.json').name")"
+            if npm view "$name@$VERSION" version >/dev/null 2>&1; then
+              echo "$name@$VERSION is already on npm; skipping."
+              continue
+            fi
+
+            (cd "$dir" && npm publish --provenance --access public)
+          done

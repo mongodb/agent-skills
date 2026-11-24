@@ -1,0 +1,42 @@
+{
+  "name": "opencode-plugin-mongodb",
+  "version": "1.2.1",
+  "description": "Official MongoDB plugin for OpenCode: self-managed MongoDB MCP Server (via npx) plus the official MongoDB agent skills for query, schema, and optimization workflows.",
+  "type": "module",
+  "exports": {
+    ".": "./.opencode-plugin/index.ts"
+  },
+  "files": [
+    ".opencode-plugin/",
+    "!.opencode-plugin/skills.test.ts",
+    "skills/",
+    "README.md"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "mongodb",
+    "database",
+    "mcp"
+  ],
+  "author": "MongoDB",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/mongodb/agent-skills/tree/main/plugins/mongodb#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mongodb/agent-skills.git",
+    "directory": "plugins/mongodb"
+  },
+  "peerDependencies": {
+    "@opencode/plugin": ">=2.4.1 <3"
+  },
+  "devDependencies": {
+    "@opencode/plugin": ">=2.4.1 <3",
+    "@types/node": "^24",
+    "typescript": "^5.8"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "packageManager": "pnpm@11.7.0"
+}

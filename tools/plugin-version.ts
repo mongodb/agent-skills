@@ -3,10 +3,13 @@
 // repo. All plugin manifests are kept in lockstep on one version:
 //   - gemini-extension.json (root community Gemini extension)
 //   - every plugin.json under plugins/ (each client's manifest, wherever it lives)
+//   - every package.json at a plugin root (plugins/*/package.json — the OpenCode
+//     plugin packages are npm-style packages, so their manifest is package.json)
 //
 // Manifests are discovered by finding every plugin.json under plugins/ (plus the
-// known root manifests), rather than assuming a `.<client>-plugin/` layout — so a
-// future client using a different directory convention is picked up automatically.
+// known root manifests and the OpenCode packages' package.json at each plugin
+// root), rather than assuming a `.<client>-plugin/` layout — so a future client
+// using a different directory convention is picked up automatically.
 //
 // This is the single source of truth for the release version logic. The release
 // GitHub Actions workflows call it; you can run the exact same thing locally:
@@ -59,11 +62,21 @@ function findPluginManifests(dir: string): string[] {
   return found;
 }
 
-// Every versioned manifest: known root manifests + all plugin.json under plugins/.
+// Every versioned manifest: known root manifests + all plugin.json under plugins/
+// + the OpenCode packages' package.json manifests.
 function discoverManifests(): string[] {
   const manifests: string[] = ROOT_MANIFESTS.filter((m) => existsSync(m));
   if (existsSync("plugins")) {
     manifests.push(...findPluginManifests("plugins"));
+    // OpenCode plugin packages: npm-style packages whose manifest is
+    // package.json (not plugin.json), at each plugin's root. findPluginManifests
+    // only matches plugin.json, so there is no double-count.
+    for (const plugin of readdirSync("plugins")) {
+      const packageManifest = join("plugins", plugin, "package.json");
+      if (existsSync(packageManifest)) {
+        manifests.push(packageManifest);
+      }
+    }
   }
 
   return manifests.sort();

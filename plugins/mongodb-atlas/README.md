@@ -6,6 +6,15 @@ Running a deployment you manage yourself — Community, Enterprise Advanced, sel
 
 For installation steps on each client, see the [repository README](https://github.com/mongodb/agent-skills#readme).
 
+## Install in OpenCode
+
+```bash
+opencode plugin add opencode-plugin-mongodb-atlas
+```
+
+Run `opencode plugin update` after a new release. For other clients, see the
+[repository README](https://github.com/mongodb/agent-skills#readme).
+
 ## Prerequisites
 
 - A MongoDB Atlas account.

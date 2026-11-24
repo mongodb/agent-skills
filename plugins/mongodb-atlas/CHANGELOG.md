@@ -22,6 +22,10 @@ same skills in the single `mongodb` plugin.
   quickstart walkthrough ([#66](https://github.com/mongodb/agent-skills/pull/66)).
 - Antigravity logo and suggested prompts
   ([#84](https://github.com/mongodb/agent-skills/pull/84)).
+- OpenCode plugin packages (`plugins/<name>/package.json` +
+  `.opencode-plugin/`), published to npm as `opencode-plugin-mongodb-atlas` (and
+  `opencode-plugin-mongodb` for the community plugin) by the new
+  `Publish OpenCode Plugins` release workflow.
 
 ### Changed
 
