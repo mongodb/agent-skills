@@ -11,7 +11,10 @@ This repo publishes two plugins from `plugins/`:
   - `.claude-plugin/plugin.json` — Claude (`oauth.clientId`, a CIMD URL)
   - `.cursor-plugin/plugin.json` — Cursor (`auth.CLIENT_ID`)
   - `.grok-plugin/plugin.json` — Grok (`oauth.clientId`)
-  - `.github/plugin/plugin.json` — GitHub Copilot / VS Code (`oauth.clientId`, a CIMD URL)
+  - `.github/plugin/` — GitHub Copilot / VS Code. This folder follows the Agent Plugins
+    v1.0.0 layout (`plugin.json`, `mcp.json`, `skills/`) so it can also be submitted to
+    `github/awesome-copilot` as an external plugin. That schema has no `oauth` field and
+    requires `type: "streamable-http"`, so this server entry carries no OAuth client ID.
   - On Codex it points at a connector via `.app.json`.
   - `.gemini-plugin/plugin.json` — Gemini (`oauth.clientId` `google-gemini`)
 
@@ -34,7 +37,7 @@ backs all of them:
 | Cursor | `mongodb`, `mongodb-atlas` | `.cursor-plugin/marketplace.json` | `plugins/<name>/.cursor-plugin/plugin.json` |
 | Codex | `mongodb`, `mongodb-atlas` | `.agents/plugins/marketplace.json` | `plugins/<name>/.codex-plugin/plugin.json` |
 | Grok (xAI) | `mongodb`, `mongodb-atlas` | `.grok-plugin/marketplace.json` | `plugins/<name>/.grok-plugin/plugin.json` |
-| Copilot / VS Code | `mongodb-atlas` only | `.github/plugin/marketplace.json` | `plugins/<name>/.github/plugin/plugin.json` |
+| Copilot / VS Code | `mongodb-atlas` only | `.github/plugin/marketplace.json` (entry points at `plugins/mongodb-atlas/.github/plugin`) | `plugins/<name>/.github/plugin/plugin.json` |
 | Antigravity | `mongodb`, `mongodb-atlas` | _(none — Google-curated only)_ | `plugins/<name>/.antigravity-plugin/plugin.json` |
 | Gemini | `mongodb-atlas` only | _(none — partner onboarding)_ | `plugins/<name>/.gemini-plugin/plugin.json` |
 
@@ -65,7 +68,9 @@ node tools/sync-plugin-skills.ts
 
 (Node 24 — or any Node ≥ 22.18 — runs the TypeScript directly, no transpile step.)
 Commit the regenerated copies. CI (the `Plugin Skills Sync` workflow) fails if
-they drift. The script also copies the root `LICENSE` into each plugin and
+they drift. The script also generates `plugins/mongodb-atlas/.github/plugin/skills/`
+(the Copilot plugin folder installs on its own, so it needs its own copy), copies
+the root `LICENSE` into each plugin and
 rewrites the `skills` array in `.gemini-plugin/plugin.json`. The repo-root
 `gemini-extension.json` remains the community Gemini CLI extension; the Atlas
 plugin is not published on Gemini yet.
@@ -173,16 +178,19 @@ ask for the required submission details.
 
 #### GitHub Copilot (CLI and VS Code agent plugins)
 
-After publishing the GitHub release, open a PR adding `mongodb-atlas` to
-[`github/awesome-copilot`](https://github.com/github/awesome-copilot)'s
-`.github/plugin/marketplace.json`, using a `github` source pinned to the release
-commit:
+After publishing the GitHub release, submit `mongodb-atlas` to
+[`github/awesome-copilot`](https://github.com/github/awesome-copilot) as an
+**external plugin**. Do not open a PR that edits their `plugins/external.json`;
+file an issue with their external plugin submission form
+(see their `CONTRIBUTING.md`, "Adding External Plugins"). Use:
 
-```json
-{ "source": "github", "repo": "mongodb/agent-skills", "path": "plugins/mongodb-atlas", "ref": "<release-tag>", "sha": "<commit-sha>" }
-```
+- Repository: `mongodb/agent-skills`
+- Plugin path: `plugins/mongodb-atlas/.github/plugin`
+- Ref: `<release-tag>`; commit SHA: `<commit-sha>`
 
-Each update bumps the `ref`/`sha`. Only `mongodb-atlas` is published to Copilot,
+Automated gates check the plugin against the Agent Plugins v1.0.0 spec, run
+`vally lint`, and smoke-test a Copilot CLI install; a maintainer then approves.
+For each later release, update the listing with the new `ref`/`sha`. Only `mongodb-atlas` is published to Copilot,
 not the community `mongodb` plugin.
 
 #### Codex

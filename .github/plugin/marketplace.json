@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "mongodb-atlas",
-      "source": "./plugins/mongodb-atlas"
+      "source": "./plugins/mongodb-atlas/.github/plugin"
     }
   ]
 }

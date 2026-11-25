@@ -52,6 +52,11 @@ const LICENSE_SRC = "LICENSE";
 const PLUGINS_DIR = "plugins";
 const GEMINI_MANIFEST = join(".gemini-plugin", "plugin.json");
 
+// Client subfolders that are installed on their own (the client downloads only
+// this folder), so they need their own copy of skills/. `.github/plugin` is the
+// Copilot plugin root (Agent Plugins layout: plugin.json, mcp.json, skills/).
+const SELF_CONTAINED_DIRS = [join(".github", "plugin")];
+
 // Never copy these into the published plugin copies.
 const EXCLUDE_NAMES = new Set([".score_cache", ".DS_Store"]);
 const copyFilter = (src: string): boolean => !EXCLUDE_NAMES.has(basename(src));
@@ -105,15 +110,23 @@ for (const [plugin, cfg] of Object.entries(PLUGINS)) {
 
   const selected = selectSkills(plugin, cfg.skills);
 
-  // Regenerate skills/
-  const destSkills = join(pluginDir, SKILLS_SRC);
-  rmSync(destSkills, { recursive: true, force: true });
-  mkdirSync(destSkills, { recursive: true });
-  for (const skill of selected) {
-    cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
-      recursive: true,
-      filter: copyFilter,
-    });
+  // Regenerate skills/ in the plugin root and in each client subfolder that
+  // must be self-contained (installed from that folder alone).
+  const destSkillsDirs = [join(pluginDir, SKILLS_SRC)];
+  for (const dir of SELF_CONTAINED_DIRS) {
+    if (existsSync(join(pluginDir, dir))) {
+      destSkillsDirs.push(join(pluginDir, dir, SKILLS_SRC));
+    }
+  }
+  for (const destSkills of destSkillsDirs) {
+    rmSync(destSkills, { recursive: true, force: true });
+    mkdirSync(destSkills, { recursive: true });
+    for (const skill of selected) {
+      cpSync(join(SKILLS_SRC, skill), join(destSkills, skill), {
+        recursive: true,
+        filter: copyFilter,
+      });
+    }
   }
 
   // Regenerate assets/.
