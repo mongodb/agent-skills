@@ -53,9 +53,10 @@ const PLUGINS_DIR = "plugins";
 const GEMINI_MANIFEST = join(".gemini-plugin", "plugin.json");
 
 // Client subfolders that are installed on their own (the client downloads only
-// this folder), so they need their own copy of skills/. `.github/plugin` is the
-// Copilot plugin root (Agent Plugins layout: plugin.json, mcp.json, skills/).
-const SELF_CONTAINED_DIRS = [join(".github", "plugin")];
+// this folder), so they need their own copy of skills/. `.copilot-plugin` is the
+// plugin root submitted to github/awesome-copilot (Agent Plugins layout:
+// plugin.json, mcp.json, skills/).
+const SELF_CONTAINED_DIRS = [".copilot-plugin"];
 
 // Never copy these into the published plugin copies.
 const EXCLUDE_NAMES = new Set([".score_cache", ".DS_Store"]);

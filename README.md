@@ -51,7 +51,7 @@ Install `mongodb-atlas` from the [Cursor marketplace](https://cursor.com/marketp
 
    ```bash
    copilot plugin marketplace add mongodb/agent-skills
-   copilot plugin install mongodb-atlas@mongodb-plugins
+   copilot plugin install mongodb/agent-skills:plugins/mongodb-atlas
    ```
 
    To browse first, run `copilot plugin marketplace browse`.
