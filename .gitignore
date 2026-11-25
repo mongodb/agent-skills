@@ -12,3 +12,7 @@ testing/*/trigger-eval-results.json
 node_modules/
 
 .DS_Store
+
+# OpenCode plugin packages: no lockfile. Consumers resolve their own dependencies,
+# and CI type-checks against the latest @opencode/plugin in range.
+plugins/*/pnpm-lock.yaml

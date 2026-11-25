@@ -2,7 +2,16 @@
 
 For deployments you manage yourself — **Community**, **Enterprise Advanced**, a local dev container, or an Atlas cluster — this plugin connects your agent using nothing more than a connection string. It runs the [MongoDB MCP server](https://www.mongodb.com/docs/mcp-server/) locally via `npx`, giving your agent tools to explore databases and collections, run queries and aggregations, and manage indexes.
 
-To get started, see the [Community & Enterprise Advanced setup guide](../../README.community.md).
+To get started, see the [Community & Enterprise Advanced setup guide](https://github.com/mongodb/agent-skills/blob/main/README.community.md).
+
+## Install in OpenCode
+
+```bash
+opencode plugin add opencode-plugin-mongodb
+```
+
+Run `opencode plugin update` after a new release. For other clients, see the
+[repository README](https://github.com/mongodb/agent-skills#readme).
 
 ## Skills
 

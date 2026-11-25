@@ -7,7 +7,7 @@ This README covers the **`mongodb-atlas`** plugin, which connects your agent to 
 > **Connecting to MongoDB Community or Enterprise Advanced?**
 > For self-managed deployments, use the **`mongodb`** plugin instead — it runs the MongoDB MCP server locally and connects to your own deployment. See **[Community & Enterprise Advanced setup](README.community.md)** for installation and configuration instructions.
 
-The `mongodb-atlas` plugin is available on Claude, Cursor, Codex, GitHub Copilot (CLI and VS Code), and Grok.
+The `mongodb-atlas` plugin is available on Claude, Cursor, Codex, GitHub Copilot (CLI and VS Code), Grok, and OpenCode.
 
 ## Installation
 
@@ -70,6 +70,18 @@ find `mongodb-atlas`, and select **Install**.
    ```
 
 2. Find `mongodb-atlas` and press `i` to install it.
+
+### OpenCode
+
+1. Install the plugin from npm:
+
+   ```bash
+   opencode plugin add opencode-plugin-mongodb-atlas
+   ```
+
+2. Run `opencode plugin update` after a new release to move to the newer version.
+
+Alternatively, install straight from this repository, pinned to a release tag (see [releases](https://github.com/mongodb/agent-skills/releases) for the latest): `opencode plugin add 'github:mongodb/agent-skills#v<release-tag>::path:plugins/mongodb-atlas'`.
 
 ## Authentication
 
