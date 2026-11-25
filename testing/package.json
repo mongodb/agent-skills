@@ -9,6 +9,6 @@
   },
   "devDependencies": {
     "ajv": "^8.17.1",
-    "glob": "^11.0.0"
+    "glob": "^14.0.6"
   }
 }

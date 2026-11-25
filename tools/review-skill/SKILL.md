@@ -10,6 +10,7 @@ compatibility: Requires skill-validator CLI and claude CLI for LLM scoring. LLM 
 metadata:
   author: mongodb
   version: "1.0"
+  labelText: "Review proposed Agent Skill for validity and quality"
 ---
 
 # Review Skill Workflow
@@ -35,7 +36,12 @@ cat ~/.config/skill-validator/review-state.yaml 2>/dev/null
 > 2. **Re-run prerequisite checks**
 > 3. **Change environment** — switch between full and structural-only
 
-Option 1: read `llm_scoring` from the file and skip to Step 2.
+Option 1: from the `agent-skills` root, compare the version tag in
+`skill-validator --version` (ignore the `skill-validator version ` prefix) to
+the bare tag printed by `bash tools/install-skill-validator.sh --version`.
+If the binary is missing or the versions differ, tell the user and continue
+below as if they chose option 2.
+Otherwise read `llm_scoring` from the file and skip to Step 2.
 Options 2-3: continue below.
 
 **If no state file exists**, or the user chose to re-check/change, ask:
@@ -54,15 +60,17 @@ Option 2: set `LLM_SCORING=false`. Run Step 1a only, then jump to Step 2.
 
 ```bash
 skill-validator --version
+bash tools/install-skill-validator.sh --version
 ```
 
 If not found, search common locations (`/usr/local/bin`, `/opt/homebrew/bin`,
 `~/go/bin`). If found but not on PATH, tell the user. If not found anywhere,
 follow [references/install-skill-validator.md](references/install-skill-validator.md).
 
-If `--version` is not at least v1.5.1, help the user upgrade with
-`brew upgrade skill-validator` or
-`go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest`.
+Run the installer version command from the `agent-skills` root. Compare only
+the version tags, not the full output lines. If the tags do not match, help the
+user install the pinned fork release by following
+[references/install-skill-validator.md](references/install-skill-validator.md).
 
 Do NOT proceed until this succeeds.
 
