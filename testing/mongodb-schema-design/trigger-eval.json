@@ -16,6 +16,10 @@
     "should_trigger": false
   },
   {
+    "prompt": "These slow-query logs show a collection scan. Which compound index should I add without changing the documents?",
+    "should_trigger": false
+  },
+  {
     "prompt": "How do I add a covered query index so MongoDB doesn't need to fetch documents?",
     "should_trigger": false
   },
@@ -41,6 +45,22 @@
   },
   {
     "prompt": "Add JSON Schema validation to my users collection to enforce required fields",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Our contacts collection has schema drift: phone is a string in some documents and an object in others. How should I clean up the inconsistent fields?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "Backfill firstName and lastName from fullName in my existing MongoDB documents and prevent future drift",
+    "should_trigger": true
+  },
+  {
+    "prompt": "How can I migrate existing documents to a new schema version without downtime?",
+    "should_trigger": true
+  },
+  {
+    "prompt": "I exported $queryStats and slow-query logs for our forum. Which access patterns should drive changes to the document schema, and which queries should we prioritize?",
     "should_trigger": true
   },
   {
