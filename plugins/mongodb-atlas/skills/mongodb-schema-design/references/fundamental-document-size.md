@@ -221,6 +221,6 @@ db.serverStatus().wiredTiger.cache
 Atlas Schema Suggestions flags: "Array field may grow without bound", "Document size exceeds recommended limit"
 
 References:
-- [BSON Document Size Limit](https://mongodb.com/docs/manual/reference/limits/#std-label-limit-bson-document-size)
-- [Avoid Unbounded Arrays](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/unbounded-arrays/)
-- [Reduce Bloated Documents](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/bloated-documents/)
+- [BSON Document Size Limit](https://mongodb.com/docs/manual/reference/limits/?utm_source=agent-skills#std-label-limit-bson-document-size)
+- [Avoid Unbounded Arrays](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/unbounded-arrays/?utm_source=agent-skills)
+- [Reduce Bloated Documents](https://mongodb.com/docs/manual/data-modeling/design-antipatterns/bloated-documents/?utm_source=agent-skills)

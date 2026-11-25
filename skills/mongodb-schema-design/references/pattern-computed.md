@@ -130,7 +130,7 @@ db.screenings.aggregate([
 
 **Consider on-demand materialized views:**
 
-When the computed results are best stored in a separate collection rather than embedded in the source documents, MongoDB's [on-demand materialized views](https://www.mongodb.com/docs/manual/core/materialized-views/) formalize this approach. An on-demand materialized view is an aggregation pipeline whose output is written to a separate collection using `$merge` or `$out`—the same mechanism shown in Strategy 2 above. The difference is conceptual: instead of updating a field on existing documents, you maintain a dedicated read-optimized collection that can be independently indexed. This is especially useful when:
+When the computed results are best stored in a separate collection rather than embedded in the source documents, MongoDB's [on-demand materialized views](https://www.mongodb.com/docs/manual/core/materialized-views/?utm_source=agent-skills) formalize this approach. An on-demand materialized view is an aggregation pipeline whose output is written to a separate collection using `$merge` or `$out`—the same mechanism shown in Strategy 2 above. The difference is conceptual: instead of updating a field on existing documents, you maintain a dedicated read-optimized collection that can be independently indexed. This is especially useful when:
 
 - The computed data has a different shape or granularity than the source (e.g. monthly summaries from daily records).
 - Multiple consumers need the pre-aggregated data, and a shared collection is cleaner than duplicating fields across documents.
@@ -159,4 +159,4 @@ Use codebase if available, ask the user.
 
 High count + high avgMs on an aggregation that computes a result = candidate for computed pattern
 
-Reference: [Computed Schema Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/computed-schema-pattern/)
+Reference: [Computed Schema Pattern](https://mongodb.com/docs/manual/data-modeling/design-patterns/computed-values/computed-schema-pattern/?utm_source=agent-skills)
