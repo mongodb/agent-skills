@@ -26,6 +26,7 @@ Always consult the official repo for the latest validated patterns before creati
 | `$group` | Aggregate (inside windows) | Stateful |
 | `$merge` | Write to Atlas collection | Output (required, last) |
 | `$emit` | Write to Kafka, Kinesis, or S3 | Output (required, last) |
+| `$iceberg` | Append to or update an Iceberg table registered in a catalog (SP10+) | Output (required, last) |
 
 | Category | Stages | Rules |
 |----------|--------|-------|
@@ -35,7 +36,7 @@ Always consult the official repo for the latest validated patterns before creati
 | **Validation** | `$validate` | Schema enforcement. Place early to catch bad data before expensive stages. |
 | **Stateful/Window** | `$tumblingWindow`, `$hoppingWindow`, `$sessionWindow` | Accumulates state in memory. Monitor `memoryUsageBytes`. |
 | **Custom Code** | `$function` | JavaScript UDFs. Requires SP30+. |
-| **Output** (1+, required) | `$merge`, `$emit`, `$https`, `$externalFunction` (async only) | Must be last. Required for deployed processors. |
+| **Output** (1+, required) | `$merge`, `$emit`, `$iceberg`, `$https`, `$externalFunction` (async only) | Must be last. Required for deployed processors. |
 
 ## Invalid Constructs
 
@@ -43,7 +44,7 @@ Do NOT use these in streaming pipelines:
 - `$$NOW`, `$$CURRENT` — not available in stream processing
 - HTTPS connections as `$source` — HTTPS is for `$https` enrichment only
 - Kafka `$source` without `topic` — topic field is required
-- Pipelines without a sink — `$merge`/`$emit` required for deployed processors (sinkless only works via `sp.process()`)
+- Pipelines without a sink — `$merge`/`$emit`/`$iceberg` required for deployed processors (sinkless only works via `sp.process()`)
 - Lambda connections with `$emit` — Lambda uses `$externalFunction` (can be mid-pipeline or terminal sink with async execution), not `$emit`
 
 ## Source Patterns
@@ -178,6 +179,52 @@ Requires a `SchemaRegistry` connection (see [connection-configs.md](connection-c
 }}
 ```
 Fields: `connectionName` (required), `bucket` (required), `path` (required — key prefix string or expression), `region` (optional), `config` (optional — `outputFormat`, `writeOptions`, `delimiter`, `compression`).
+
+### $iceberg to S3 or Azure Blob
+`$iceberg` is its own terminal stage (not `$emit`) and requires tier SP10 or higher. `connectionName` is the **storage** connection (S3 or Azure Blob), not the catalog.
+
+```json
+{"$iceberg": {
+  "connectionName": "my-s3",
+  "bucket": "my-bucket",
+  "path": "warehouse/iceberg",
+  "databaseName": "my_db",
+  "tableName": {"$meta": "stream.source.ns.coll"},
+  "mode": "insert",
+  "catalog": {"type": "unity", "connectionName": "my-unity", "warehouse": "my_unity_catalog"}
+}}
+```
+Fields: `connectionName`, `path` (no trailing `/`), `databaseName`, `tableName` (string or expression) are required. `mode` is `cdc` (default; applies inserts, updates and deletes from `stream.source.operationType`) or `insert` (appends every document as a new row, ignoring operation type). `catalog` is optional.
+- **Unity does not support `cdc` mode**. With `catalog.type: "unity"`, set `mode: "insert"`. Horizon, Hadoop and Glue support `cdc`.
+- **S3:** use `bucket`. `region` is required only when the workspace is not on AWS.
+- **Azure Blob Storage:** use `container` instead of `bucket`; `region` is not supported.
+
+**`catalog` by type:**
+
+| `type` | Extra fields | Notes |
+|--------|--------------|-------|
+| `hadoop` | none | Built-in; type only |
+| `glue` | none | Built-in; S3 only; type only |
+| `unity` | `connectionName`, `warehouse` | `connectionName` is a DataCatalog connection; `warehouse` is the Unity catalog name |
+| `horizon` | `connectionName`, `warehouse` | `connectionName` is a DataCatalog connection; `warehouse` is the Snowflake database |
+
+`warehouse` and `databaseName` together identify where the table is created:
+- **`unity`:** `warehouse` is the Unity catalog name; `databaseName` is the schema within that catalog.
+- **`horizon`:** `warehouse` is the Snowflake database; `databaseName` is the schema within that database.
+
+**Azure Blob Storage with a catalog:** `unity` and `horizon` work with an Azure Blob storage connection; `hadoop` is also available.
+- The connection's service principal needs Storage Blob Data Contributor on the container.
+- **Horizon:** create the Snowflake external volume on the Data Lake endpoint (`azure://<account>.dfs.core.windows.net/...`), not the Blob endpoint.
+- **Horizon:** Snowflake's Azure app needs Storage Blob Data Contributor on the container and Storage Blob Delegator on the storage account. The Horizon connection role needs USAGE on the database and schema and CREATE ICEBERG TABLE on the schema.
+
+Common mistakes:
+- ❌ `$emit` for Iceberg → use `$iceberg`
+- ❌ Unity catalog with `mode: "cdc"` (or omitting `mode`, which defaults to `cdc`) → set `mode: "insert"`
+- ❌ Omitting `warehouse` for `unity`/`horizon` → rejected
+- ❌ Adding `connectionName`/`warehouse` to `hadoop`/`glue` → rejected; use `type` alone
+- ❌ Pointing `$iceberg.connectionName` at the DataCatalog connection → it is the S3/Azure storage connection; the DataCatalog goes in `catalog.connectionName`
+
+Create the DataCatalog connection first (see [connection-configs.md](connection-configs.md#datacatalog)).
 
 ### $https as Sink (webhook/API)
 ```json
@@ -425,13 +472,13 @@ DLQ documents include: original document, error message, stage info, timestamp.
 
 ## Chained Processors (Multi-Sink Pattern)
 
-**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge` or `$emit`). You CANNOT have both `$merge` and `$emit` as terminal stages. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
+**CRITICAL: A single pipeline can only have ONE terminal sink** (`$merge`, `$emit`, or `$iceberg`). You CANNOT have more than one terminal sink stage. When a user requests multiple output destinations (e.g., "write to Atlas AND emit to Kafka" or "archive to S3 AND send to Lambda"), you MUST:
 
 1. **Acknowledge** the single-sink constraint explicitly in your response
 2. **Propose chained processors**: Processor A reads source → enriches → writes to intermediate via `$merge` (Atlas) or `$emit` (Kafka). Processor B reads from that intermediate (change stream or Kafka topic) → emits to second destination. Kafka-as-intermediate is lower latency; Atlas-as-intermediate is simpler to inspect.
 3. **Show both processor pipelines** including any `$lookup` enrichment stages with `parallelism` settings.
 
-Note: `$externalFunction` (Lambda) can be used mid-pipeline OR as a terminal sink (with `execution: "async"`). A pipeline with mid-pipeline `$externalFunction` AND a terminal `$merge`/`$emit` is a valid single-sink pattern (Lambda enriches, then the result is written to the sink).
+Note: `$externalFunction` (Lambda) can be used mid-pipeline OR as a terminal sink (with `execution: "async"`). A pipeline with mid-pipeline `$externalFunction` AND a terminal `$merge`/`$emit`/`$iceberg` is a valid single-sink pattern (Lambda enriches, then the result is written to the sink).
 
 ## Required Field Examples by Stage
 
