@@ -58,7 +58,12 @@ Copilot reads a root `plugin.json` before `.github/plugin/plugin.json`.
 Kiro installs from the `.kiro-plugin/` folder alone, so it needs `plugin.json`,
 `mcp.json`, and `skills/` inside that folder. `tools/sync-plugin-skills.ts`
 generates the `.kiro-plugin/skills/` copy (see `SELF_CONTAINED_DIRS`); `mcp.json`
-is hand-maintained.
+is hand-maintained. The Atlas power ships skills only: Atlas requires the
+pre-registered `aws-kiro` OAuth client ID, and Kiro's loader skips any power
+`mcp.json` server entry that has an `oauth` field. Users add the Atlas server
+to `~/.kiro/settings/mcp.json` instead (see README.md). Once Kiro supports a
+client ID in powers, or Atlas trusts Kiro's default client metadata URL, add
+a plain `mcp.json` back here.
 
 The repo-root `skills/` directory is the canonical source of truth for all skill
 content. Each plugin ships its own committed copy under `plugins/<name>/skills/`,

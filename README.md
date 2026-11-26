@@ -79,7 +79,20 @@ find `mongodb-atlas`, and select **Install**.
    https://github.com/mongodb/agent-skills/tree/main/plugins/mongodb-atlas/.kiro-plugin
    ```
 
-2. When prompted, sign in to MongoDB Atlas in your browser to authorize the MCP server.
+2. Add the Atlas MCP server to your Kiro user settings (`~/.kiro/settings/mcp.json`). A power's own `mcp.json` can't carry the pre-registered OAuth client ID that Atlas requires, so the server is configured here instead:
+
+   ```json
+   {
+     "mcpServers": {
+       "mongodb-atlas": {
+         "url": "https://mcp.mongodb.com",
+         "oauth": { "clientId": "aws-kiro" }
+       }
+     }
+   }
+   ```
+
+3. Open the MCP panel in Kiro, select **Re-authenticate** on `mongodb-atlas`, and sign in to MongoDB Atlas in your browser.
 
 ## Authentication
 
