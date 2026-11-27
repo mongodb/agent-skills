@@ -35,6 +35,7 @@ backs all of them:
 | Codex | `mongodb`, `mongodb-atlas` | `.agents/plugins/marketplace.json` | `plugins/<name>/.codex-plugin/plugin.json` |
 | Grok (xAI) | `mongodb`, `mongodb-atlas` | `.grok-plugin/marketplace.json` | `plugins/<name>/.grok-plugin/plugin.json` |
 | Copilot / VS Code | `mongodb-atlas` only | `.github/plugin/marketplace.json` | `plugins/<name>/.github/plugin/plugin.json` |
+| Kiro | `mongodb`, `mongodb-atlas` | _(none)_ | `plugins/<name>/.kiro-plugin/plugin.json` |
 | Antigravity | `mongodb`, `mongodb-atlas` | _(none — Google-curated only)_ | `plugins/<name>/.antigravity-plugin/plugin.json` |
 | Gemini | `mongodb-atlas` only | _(none — partner onboarding)_ | `plugins/<name>/.gemini-plugin/plugin.json` |
 
@@ -53,6 +54,14 @@ must stay at the plugin root: Antigravity ignores it inside
 `.antigravity-plugin/`. The `.antigravity-plugin/` layout requires Antigravity
 CLI 1.3.2 or later. Don't move the manifest to `plugins/<name>/plugin.json`:
 Copilot reads a root `plugin.json` before `.github/plugin/plugin.json`.
+
+Kiro installs from the `.kiro-plugin/` folder alone, so it needs `plugin.json`,
+`mcp.json`, and `skills/` inside that folder. `tools/sync-plugin-skills.ts`
+generates the `.kiro-plugin/skills/` copy (see `SELF_CONTAINED_DIRS`); `mcp.json`
+is hand-maintained. The Atlas power's `mcp.json` sets no `oauth` client ID: Kiro then
+uses its default client metadata URL (`https://kiro.dev/oauth/client-metadata.json`),
+which the Atlas auth server must trust. Kiro's loader skips any power `mcp.json`
+server entry that has an `oauth` field, so don't add one.
 
 The repo-root `skills/` directory is the canonical source of truth for all skill
 content. Each plugin ships its own committed copy under `plugins/<name>/skills/`,
